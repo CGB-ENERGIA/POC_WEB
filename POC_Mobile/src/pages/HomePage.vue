@@ -7,7 +7,26 @@
       </div>
       <div class="text-h6 text-weight-bold">Olá, {{ session.displayName }}!</div>
       <div class="text-body2 q-mt-xs" style="opacity: 0.88">
-        {{ session.matricula }} · Meta: {{ meta }} observações/mês
+        {{ session.matricula }} · Meta: {{ metaAtual }} {{ metaAtual === 1 ? "observação" : "observações" }}/{{ periodoLabel }}
+      </div>
+
+      <div class="welcome-banner__period q-mt-md">
+        <button
+          type="button"
+          class="welcome-banner__period-btn"
+          :class="{ 'welcome-banner__period-btn--active': periodo === 'semana' }"
+          @click="periodo = 'semana'"
+        >
+          Semana
+        </button>
+        <button
+          type="button"
+          class="welcome-banner__period-btn"
+          :class="{ 'welcome-banner__period-btn--active': periodo === 'mes' }"
+          @click="periodo = 'mes'"
+        >
+          Mês
+        </button>
       </div>
 
       <div class="row items-center q-mt-md q-gutter-md">
@@ -23,9 +42,11 @@
           {{ metaProgress }}%
         </q-circular-progress>
         <div class="col">
-          <div class="text-subtitle2 text-weight-bold">{{ totalMes }} deste mês</div>
+          <div class="text-subtitle2 text-weight-bold">
+            {{ totalPeriodo }} deste{{ periodo === "semana" ? "a semana" : " mês" }}
+          </div>
           <div class="text-caption" style="opacity: 0.82">
-            {{ totalGeral }} registro{{ totalGeral !== 1 ? "s" : "" }} no total
+            {{ totalGeral }} {{ totalGeral === 1 ? "registro" : "registros" }} no total
           </div>
         </div>
       </div>
@@ -83,18 +104,35 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useSessionStore } from "@/stores/session";
 import { useObservacoesStore } from "@/stores/observacoes";
 import { totalPerguntasGoman } from "@/data/goman-checklist";
+import { getMetaMensal, getMetaSemanal, META_SEMANAL_PADRAO, SEMANAS_POR_MES } from "@/data/employees";
+
+type PeriodoVisao = "semana" | "mes";
 
 const router = useRouter();
 const session = useSessionStore();
 const observacoes = useObservacoesStore();
+const periodo = ref<PeriodoVisao>("mes");
 
 const matricula = computed(() => session.matricula);
-const meta = computed(() => session.employee?.meta ?? 4);
+const metaMensal = computed(() =>
+  session.employee ? getMetaMensal(session.employee) : META_SEMANAL_PADRAO * SEMANAS_POR_MES
+);
+const metaSemanal = computed(() =>
+  session.employee ? getMetaSemanal(session.employee) : META_SEMANAL_PADRAO
+);
+
+const metaAtual = computed(() =>
+  periodo.value === "semana" ? metaSemanal.value : metaMensal.value
+);
+
+const periodoLabel = computed(() =>
+  periodo.value === "semana" ? "semana" : "mês"
+);
 
 const minhasObs = computed(() =>
   observacoes.byMatricula(matricula.value)
@@ -102,18 +140,39 @@ const minhasObs = computed(() =>
 
 const totalGeral = computed(() => minhasObs.value.length);
 
+function semanaDoMes(date: Date) {
+  return Math.ceil(date.getDate() / 7);
+}
+
+function isMesmoMes(date: Date, ref: Date) {
+  return (
+    date.getMonth() === ref.getMonth() &&
+    date.getFullYear() === ref.getFullYear()
+  );
+}
+
+function isMesmaSemanaDoMes(date: Date, ref: Date) {
+  return isMesmoMes(date, ref) && semanaDoMes(date) === semanaDoMes(ref);
+}
+
 const totalMes = computed(() => {
   const now = new Date();
-  const mes = now.getMonth();
-  const ano = now.getFullYear();
-  return minhasObs.value.filter((o) => {
-    const d = new Date(o.data);
-    return d.getMonth() === mes && d.getFullYear() === ano;
-  }).length;
+  return minhasObs.value.filter((o) => isMesmoMes(new Date(o.data), now)).length;
 });
 
+const totalSemana = computed(() => {
+  const now = new Date();
+  return minhasObs.value.filter((o) =>
+    isMesmaSemanaDoMes(new Date(o.data), now)
+  ).length;
+});
+
+const totalPeriodo = computed(() =>
+  periodo.value === "semana" ? totalSemana.value : totalMes.value
+);
+
 const metaProgress = computed(() =>
-  Math.min(100, Math.round((totalMes.value / meta.value) * 100))
+  Math.min(100, Math.round((totalPeriodo.value / metaAtual.value) * 100))
 );
 
 function irNovaObservacao() {

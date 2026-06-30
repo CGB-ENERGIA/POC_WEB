@@ -213,7 +213,7 @@
             class="nc-foto-preview q-mb-md"
             @click="selecionarFoto"
           >
-            <img :src="modalFotoPreview" alt="Preview" />
+            <img :src="modalFotoPreview" alt="Visualização da foto" />
             <div class="nc-foto-preview__overlay">
               <q-icon name="mdi-camera-retake" size="28px" color="white" />
               <span>Trocar foto</span>

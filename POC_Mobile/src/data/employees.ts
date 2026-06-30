@@ -5,7 +5,40 @@ export interface Employee {
   gerencia: string
   base: string
   funcao: string
-  meta: number // observações por mês
+  /** @deprecated Use getMetaMensal() — metas derivadas de getMetaSemanal() */
+  meta: number
+}
+
+export const META_SEMANAL_TECNICO_SEGURANCA = 5
+export const META_SEMANAL_PADRAO = 2
+export const SEMANAS_POR_MES = 4
+
+export function isTecnicoSeguranca(
+  employee: Pick<Employee, "gerencia" | "funcao">
+): boolean {
+  const funcao = employee.funcao.toLowerCase()
+
+  return (
+    employee.gerencia === "SESMT" ||
+    funcao.includes("hse") ||
+    funcao.includes("sesmt") ||
+    funcao.includes("segurança") ||
+    funcao.includes("seguranca")
+  )
+}
+
+export function getMetaSemanal(
+  employee: Pick<Employee, "gerencia" | "funcao">
+): number {
+  return isTecnicoSeguranca(employee)
+    ? META_SEMANAL_TECNICO_SEGURANCA
+    : META_SEMANAL_PADRAO
+}
+
+export function getMetaMensal(
+  employee: Pick<Employee, "gerencia" | "funcao">
+): number {
+  return getMetaSemanal(employee) * SEMANAS_POR_MES
 }
 
 export const employees: Employee[] = [

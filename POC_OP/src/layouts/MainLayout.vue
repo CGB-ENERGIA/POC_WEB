@@ -1,19 +1,31 @@
 <template>
-  <q-layout view="lHh Lpr lFf">
-    <q-header elevated>
-      <q-toolbar>
+  <q-layout view="lHh Lpr lFf" class="app-layout">
+    <q-header elevated class="app-header">
+      <q-toolbar class="app-header__toolbar">
         <q-btn
           flat
           dense
           round
           icon="menu"
           aria-label="Menu"
+          color="white"
           @click.stop="toggleLeftDrawer"
         />
 
-        <q-toolbar-title class="text-weight-bold text-white">
-          CGB Engenharia
+        <BrandLogo
+          compact
+          inverse
+          :size="36"
+          :title="BRAND.name"
+          :subtitle="BRAND.product"
+          class="q-ml-xs gt-xs"
+        />
+
+        <q-toolbar-title class="text-weight-bold text-white lt-sm">
+          {{ BRAND.name }}
         </q-toolbar-title>
+
+        <q-space class="gt-xs" />
 
         <q-btn
           flat
@@ -23,21 +35,17 @@
           color="white"
           @click.stop="toggleDarkMode"
         >
-          <q-tooltip>{{ $q.dark.isActive ? 'Modo Claro' : 'Modo Escuro' }}</q-tooltip>
+          <q-tooltip>{{ $q.dark.isActive ? "Modo claro" : "Modo escuro" }}</q-tooltip>
         </q-btn>
       </q-toolbar>
     </q-header>
 
-    <q-drawer ref="drawerRef" v-model="leftDrawerOpen" show-if-above bordered>
-      <div class="sidebar-header row items-center no-wrap q-gutter-sm">
-        <img src="/favicon.ico" style="width: 40px; height: 40px;" alt="CGB" />
-        <div>
-          <div class="company-name">CGB Engenharia</div>
-          <div class="company-subtitle">Gestão de Segurança</div>
-        </div>
+    <q-drawer ref="drawerRef" v-model="leftDrawerOpen" show-if-above bordered class="app-drawer">
+      <div class="sidebar-brand">
+        <BrandLogo stacked :size="72" :title="BRAND.name" :subtitle="BRAND.tagline" />
       </div>
 
-      <q-list padding>
+      <q-list padding class="sidebar-nav">
         <EssentialLink
           v-for="link in linksList"
           :key="link.label"
@@ -67,6 +75,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
 import { useQuasar } from "quasar";
+import BrandLogo from "@/components/BrandLogo.vue";
+import { BRAND } from "@/constants/brand";
 import EssentialLink, {
   type EssentialLinkProps
 } from "@/components/EssentialLink.vue";
@@ -179,9 +189,10 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
 <style scoped>
 .sidebar-section-label {
   font-size: 11px;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #64748b;
   padding-left: 16px;
+  font-weight: 700;
 }
 </style>

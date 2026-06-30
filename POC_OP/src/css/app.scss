@@ -1,30 +1,42 @@
 // CGB Engenharia - Global styles
 
-// ─── Header (sempre escuro com identidade da marca) ───────────────────────
-.q-header {
-  background: linear-gradient(90deg, #0f172a 0%, #1e3a5f 100%) !important;
-  border-bottom: 2px solid #0284c7;
+// ─── Header ────────────────────────────────────────────────────────────────
+.app-header {
+  background: linear-gradient(135deg, #7a1225 0%, #5c0e1c 55%, #3d0912 100%) !important;
+  border-bottom: none !important;
+  box-shadow: 0 8px 24px rgba(122, 18, 37, 0.22) !important;
 }
 
-// ─── Sidebar header (logo area) ────────────────────────────────────────────
-.sidebar-header {
-  background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
-  padding: 20px 16px;
-  border-bottom: 1px solid rgba(14, 165, 233, 0.2);
+.app-header__toolbar {
+  min-height: 60px;
+  padding-right: 12px;
+}
 
-  .company-name {
-    color: #fff;
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-  }
+// ─── Sidebar brand block ─────────────────────────────────────────────────────
+.sidebar-brand {
+  display: flex;
+  justify-content: center;
+  padding: 28px 20px 24px;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(196, 33, 58, 0.08), transparent 42%),
+    linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+  border-bottom: 1px solid #e2e8f0;
+  position: relative;
+}
 
-  .company-subtitle {
-    color: #94a3b8;
-    font-size: 11px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-  }
+.sidebar-brand::after {
+  content: "";
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #7a1225 0%, #c4213a 100%);
+}
+
+.sidebar-nav {
+  padding-top: 8px;
 }
 
 // ─── LIGHT MODE sidebar ────────────────────────────────────────────────────
@@ -40,17 +52,17 @@ body:not(.body--dark) {
       transition: background 0.2s ease;
 
       &:hover {
-        background-color: rgba(2, 132, 199, 0.08);
-        color: #0284c7;
+        background-color: rgba(122, 18, 37, 0.08);
+        color: #7a1225;
       }
 
       &.q-router-link--active {
-        background-color: rgba(2, 132, 199, 0.12);
-        color: #0284c7;
+        background-color: rgba(122, 18, 37, 0.1);
+        color: #7a1225;
         font-weight: 600;
 
         .q-icon {
-          color: #0284c7;
+          color: #7a1225;
         }
       }
 
@@ -340,6 +352,21 @@ body:not(.body--dark) {
 
 // ─── DARK MODE sidebar ─────────────────────────────────────────────────────
 body.body--dark {
+  .sidebar-brand {
+    background:
+      radial-gradient(circle at 20% 0%, rgba(196, 33, 58, 0.16), transparent 42%),
+      linear-gradient(180deg, #111827 0%, #0f172a 100%);
+    border-bottom-color: #334155;
+  }
+
+  .sidebar-brand :deep(.brand-logo__title) {
+    color: #f8fafc;
+  }
+
+  .sidebar-brand :deep(.brand-logo__subtitle) {
+    color: #94a3b8;
+  }
+
   .q-drawer {
     background-color: #0f172a !important;
 
@@ -350,16 +377,16 @@ body.body--dark {
       transition: background 0.2s ease;
 
       &:hover {
-        background-color: rgba(14, 165, 233, 0.15);
+        background-color: rgba(196, 33, 58, 0.14);
         color: #fff;
       }
 
       &.q-router-link--active {
-        background-color: rgba(14, 165, 233, 0.25);
-        color: #38bdf8;
+        background-color: rgba(196, 33, 58, 0.22);
+        color: #fca5a5;
 
         .q-icon {
-          color: #38bdf8;
+          color: #f87171;
         }
       }
 
