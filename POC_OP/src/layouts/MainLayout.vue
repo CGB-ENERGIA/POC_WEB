@@ -43,6 +43,18 @@
           :key="link.label"
           v-bind="link"
         />
+
+        <q-separator class="q-my-md" />
+
+        <q-item-label header class="sidebar-section-label">
+          Acesso em Campo
+        </q-item-label>
+
+        <EssentialLink
+          v-for="link in fieldLinks"
+          :key="link.label"
+          v-bind="link"
+        />
       </q-list>
     </q-drawer>
 
@@ -124,6 +136,16 @@ const linksList: EssentialLinkProps[] = [
   }
 ];
 
+const fieldLinks: EssentialLinkProps[] = [
+  {
+    label: "Checklist Mobile",
+    caption: "Auditagem GOMAN / GSTC",
+    icon: "mdi-clipboard-check-outline",
+    link: "/mobile/",
+    external: true,
+  },
+];
+
 const drawerRef = ref<{ $el: HTMLElement } | null>(null);
 const leftDrawerOpen = ref(false);
 
@@ -153,3 +175,13 @@ onMounted(() => {
 });
 onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
 </script>
+
+<style scoped>
+.sidebar-section-label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+  padding-left: 16px;
+}
+</style>
