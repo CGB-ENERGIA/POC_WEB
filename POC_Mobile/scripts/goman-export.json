@@ -1,0 +1,410 @@
+﻿[
+  {
+    "categoria": "APR",
+    "gerencia": "GOMAN",
+    "pergunta": "Foi preenchido os riscos de choque elÚtrico?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "APR",
+    "gerencia": "GOMAN",
+    "pergunta": "Foi preenchido os riscos de queda?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "APR",
+    "gerencia": "GOMAN",
+    "pergunta": "Foi preenchido os riscos relacionados a EPI, EPC e ferramentas?",
+    "peso": 3,
+    "gravidade": "MÚdio"
+  },
+  {
+    "categoria": "APR",
+    "gerencia": "GOMAN",
+    "pergunta": "Foi preenchido os riscos de deslocamento de veÝculos e movimentaþÒo de cargas?",
+    "peso": 3,
+    "gravidade": "MÚdio"
+  },
+  {
+    "categoria": "APR",
+    "gerencia": "GOMAN",
+    "pergunta": "Foi preenchido o risco ergon¶mico?",
+    "peso": 1,
+    "gravidade": "Leve"
+  },
+  {
+    "categoria": "APR",
+    "gerencia": "GOMAN",
+    "pergunta": "Foi preenchido os riscos de trabalho com Linha Viva (MT e AT)?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "APR",
+    "gerencia": "GOMAN",
+    "pergunta": "Foi preenchido os riscos de operaþÒo com equipamentos e ferramentas?",
+    "peso": 3,
+    "gravidade": "MÚdio"
+  },
+  {
+    "categoria": "APR",
+    "gerencia": "GOMAN",
+    "pergunta": "Foi preenchido as medidas de controle para todos os riscos identificados na APR?",
+    "peso": 3,
+    "gravidade": "MÚdio"
+  },
+  {
+    "categoria": "APR",
+    "gerencia": "GOMAN",
+    "pergunta": "Foi preenchido o nome do Padrinho de Seguranþa?",
+    "peso": 3,
+    "gravidade": "MÚdio"
+  },
+  {
+    "categoria": "APR",
+    "gerencia": "GOMAN",
+    "pergunta": "Existia risco para Recusa da atividade? Foi apresentado as evidÛncias do risco da atividade?",
+    "peso": 1,
+    "gravidade": "Leve"
+  },
+  {
+    "categoria": "APR",
+    "gerencia": "GOMAN",
+    "pergunta": "Foi preenchido o nome de todos os colaboradores e assinada?",
+    "peso": 1,
+    "gravidade": "Leve"
+  },
+  {
+    "categoria": "REGRAS DE OURO",
+    "gerencia": "GOMAN",
+    "pergunta": "Cumpriu a etapa da Regra de Ouro: DESLIGAR?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "REGRAS DE OURO",
+    "gerencia": "GOMAN",
+    "pergunta": "Cumpriu a etapa da Regra de Ouro: BLOQUEAR?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "REGRAS DE OURO",
+    "gerencia": "GOMAN",
+    "pergunta": "Cumpriu a etapa da Regra de Ouro: SINALIZAR?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "REGRAS DE OURO",
+    "gerencia": "GOMAN",
+    "pergunta": "Cumpriu a etapa da Regra de Ouro: TESTAR?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "REGRAS DE OURO",
+    "gerencia": "GOMAN",
+    "pergunta": "Cumpriu a etapa da Regra de Ouro: ATERRAR?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "REGRAS DE OURO",
+    "gerencia": "GOMAN",
+    "pergunta": "Cumpriu a etapa da Regra de Ouro: PROTEGER?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "PADRINHO DE SEGURANÃA",
+    "gerencia": "GOMAN",
+    "pergunta": "O Padrinho de Seguranþa estß supervisionando a execuþÒo da atividade?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "PADRINHO DE SEGURANÃA",
+    "gerencia": "GOMAN",
+    "pergunta": "O Padrinho de Seguranþa se comunica e orienta a execuþÒo da atividade?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "PADRINHO DE SEGURANÃA",
+    "gerencia": "GOMAN",
+    "pergunta": "O Padrinho de Seguranþa interviu para evitar desvios?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "EPI, EPC e FERRAMENTAS",
+    "gerencia": "GOMAN",
+    "pergunta": "O EPI luvas isolante estß em condiþ§es de uso? Estß em vigÛncia o teste dielÚtrico?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "EPI, EPC e FERRAMENTAS",
+    "gerencia": "GOMAN",
+    "pergunta": "O EPI manga isolante estß em condiþ§es de uso? Estß em vigÛncia o teste dielÚtrico?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "EPI, EPC e FERRAMENTAS",
+    "gerencia": "GOMAN",
+    "pergunta": "Os EPI (capacete, vestimenta, bota de seguranþa, etc.) estÒo em condiþ§es de uso?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "EPI, EPC e FERRAMENTAS",
+    "gerencia": "GOMAN",
+    "pergunta": "O EPC mantas isolantes estÒo em condiþ§es de uso? Estß em vigÛncia o teste dielÚtrico?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "EPI, EPC e FERRAMENTAS",
+    "gerencia": "GOMAN",
+    "pergunta": "O EPC lenþ¾is isolantes estÒo em condiþ§es de uso? Estß em vigÛncia o teste dielÚtrico?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "EPI, EPC e FERRAMENTAS",
+    "gerencia": "GOMAN",
+    "pergunta": "O EPC coberturas isolantes estÒo em condiþ§es de uso? Estß em vigÛncia o teste dielÚtrico?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "EPI, EPC e FERRAMENTAS",
+    "gerencia": "GOMAN",
+    "pergunta": "O EPC banqueta isolante estß em condiþ§es de uso? Estß em vigÛncia o teste dielÚtrico?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "EPI, EPC e FERRAMENTAS",
+    "gerencia": "GOMAN",
+    "pergunta": "O EPC vara de manobra estß em condiþ§es de uso? Estß em vigÛncia o teste dielÚtrico?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "EPI, EPC e FERRAMENTAS",
+    "gerencia": "GOMAN",
+    "pergunta": "O EPC bastÒo GLV estß em condiþ§es de uso? Estß em vigÛncia o teste dielÚtrico?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "EPI, EPC e FERRAMENTAS",
+    "gerencia": "GOMAN",
+    "pergunta": "Os EPC (cones, fita de sinalizaþÒo, etc.) estÒo em condiþ§es de uso?",
+    "peso": 3,
+    "gravidade": "MÚdio"
+  },
+  {
+    "categoria": "EPI, EPC e FERRAMENTAS",
+    "gerencia": "GOMAN",
+    "pergunta": "O EPC escadas estß em condiþ§es de uso?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "EPI, EPC e FERRAMENTAS",
+    "gerencia": "GOMAN",
+    "pergunta": "As Ferramentas (ferramenta AMPACT, chaves, alicates, etc.) estÒo em condiþ§es de uso?",
+    "peso": 3,
+    "gravidade": "MÚdio"
+  },
+  {
+    "categoria": "EPI, EPC e FERRAMENTAS",
+    "gerencia": "GOMAN",
+    "pergunta": "As Ferramentas (detector de tensÒo, detector de ausÛncia de tensÒo) estÒo em condiþ§es de uso?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "PROCEDIMENTO",
+    "gerencia": "GOMAN",
+    "pergunta": "Cumpriu o procedimento de movimentaþÒo de carga (corda guia, transitar embaixo da carga, etc.)?",
+    "peso": 3,
+    "gravidade": "MÚdio"
+  },
+  {
+    "categoria": "PROCEDIMENTO",
+    "gerencia": "GOMAN",
+    "pergunta": "Foi utilizado o cavalete para apoio do poste de concreto?",
+    "peso": 3,
+    "gravidade": "MÚdio"
+  },
+  {
+    "categoria": "PROCEDIMENTO",
+    "gerencia": "GOMAN",
+    "pergunta": "A equipe possui os Procedimentos Operacionais PadrÒo das suas atividades?",
+    "peso": 3,
+    "gravidade": "MÚdio"
+  },
+  {
+    "categoria": "PROCEDIMENTO",
+    "gerencia": "GOMAN",
+    "pergunta": "A ßrea de trabalho estß sinalizada e delimitada com cones e fitas de sinalizaþÒo, e demarcaþÒo da rota de fuga?",
+    "peso": 3,
+    "gravidade": "MÚdio"
+  },
+  {
+    "categoria": "PROCEDIMENTO",
+    "gerencia": "GOMAN",
+    "pergunta": "O veÝculo estß estacionado corretamente?",
+    "peso": 3,
+    "gravidade": "MÚdio"
+  },
+  {
+    "categoria": "PROCEDIMENTO",
+    "gerencia": "GOMAN",
+    "pergunta": "Utilizou adornos durante a execuþÒo da atividade?",
+    "peso": 3,
+    "gravidade": "MÚdio"
+  },
+  {
+    "categoria": "PROCEDIMENTO",
+    "gerencia": "GOMAN",
+    "pergunta": "Fez o teste de ausÛncia de tensÒo em fibras ¾ticas, luminßrias e fiaþ§es de IP?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "PROCEDIMENTO",
+    "gerencia": "GOMAN",
+    "pergunta": "Utilizou os EPI (Vestimenta, capacete de seguranþa com jugular, luvas isolantes, mangas isolantes etc.) corretamente?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "PROCEDIMENTO",
+    "gerencia": "GOMAN",
+    "pergunta": "Utilizou os EPC (detector de ausÛncia de tensÒo, mantas isolantes, lenþ¾is isolantes, vara de manobra etc.) corretamente?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "VE═CULOS E EQUIPAMENTOS",
+    "gerencia": "GOMAN",
+    "pergunta": "A documentaþÒo do veÝculo/equipamento (CRLV, ART, manual de operaþÒo) estß correta?",
+    "peso": 1,
+    "gravidade": "Leve"
+  },
+  {
+    "categoria": "VE═CULOS E EQUIPAMENTOS",
+    "gerencia": "GOMAN",
+    "pergunta": "A documentaþÒo do veÝculo/equipamento ( laudos ac·sticos e dielÚtricos) estß correta?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "VE═CULOS E EQUIPAMENTOS",
+    "gerencia": "GOMAN",
+    "pergunta": "O checklist veicular foi preenchido corretamente?",
+    "peso": 3,
+    "gravidade": "MÚdio"
+  },
+  {
+    "categoria": "VE═CULOS E EQUIPAMENTOS",
+    "gerencia": "GOMAN",
+    "pergunta": "As partes hidrßulicas estÒo com vazamento?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "VE═CULOS E EQUIPAMENTOS",
+    "gerencia": "GOMAN",
+    "pergunta": "Itens de seguranþa veicular estÒo em condiþ§es de uso? (freio, pneu, iluminaþÒo, cinto de seguranþa)",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "VE═CULOS E EQUIPAMENTOS",
+    "gerencia": "GOMAN",
+    "pergunta": "O veÝculo estß calþado, freado e sinalizado (estabilizado, sapatas abertas e niveladas)?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "VE═CULOS E EQUIPAMENTOS",
+    "gerencia": "GOMAN",
+    "pergunta": "O gancho do munck e as travas da sapata estÒo em condiþ§es de uso?",
+    "peso": 3,
+    "gravidade": "MÚdio"
+  },
+  {
+    "categoria": "VE═CULOS E EQUIPAMENTOS",
+    "gerencia": "GOMAN",
+    "pergunta": "A cabine e carroceria do caminhÒo estÒo limpas e organizadas? Hß objetos sobre o painel?",
+    "peso": 1,
+    "gravidade": "Leve"
+  },
+  {
+    "categoria": "VE═CULOS E EQUIPAMENTOS",
+    "gerencia": "GOMAN",
+    "pergunta": "O grßfico de carga dos equipamentos estß devidamente sinalizada e visÝvel?",
+    "peso": 1,
+    "gravidade": "Leve"
+  },
+  {
+    "categoria": "VE═CULOS E EQUIPAMENTOS",
+    "gerencia": "GOMAN",
+    "pergunta": "A capacidade de carga da cinta e/ou pega poste Ú compatÝvel com a carga a ser iþada?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "VE═CULOS E EQUIPAMENTOS",
+    "gerencia": "GOMAN",
+    "pergunta": "O pino da trava de seguranþa das patola estÒo travados?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "VE═CULOS E EQUIPAMENTOS",
+    "gerencia": "GOMAN",
+    "pergunta": "A quantidade de carga transportada Ú compatÝvel com o veÝculo? E estÒo em condiþ§es de serem transportadas durante o trajeto e descarregas em condiþÒo segura?",
+    "peso": 3,
+    "gravidade": "MÚdio"
+  },
+  {
+    "categoria": "TRABALHO EM ALTURA",
+    "gerencia": "GOMAN",
+    "pergunta": "Fez a amarraþÒo correta da escada no centro e topo?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "TRABALHO EM ALTURA",
+    "gerencia": "GOMAN",
+    "pergunta": "Utilizou balde de lona para iþamento de materiais e ferramentas?",
+    "peso": 3,
+    "gravidade": "MÚdio"
+  },
+  {
+    "categoria": "TRABALHO EM ALTURA",
+    "gerencia": "GOMAN",
+    "pergunta": "Utilizou corretamente o cinto de seguranþa, talabarte e trava quedas em trabalho em altura?",
+    "peso": 5,
+    "gravidade": "Grave"
+  },
+  {
+    "categoria": "TRABALHO EM ALTURA",
+    "gerencia": "GOMAN",
+    "pergunta": "O parceiro da atividade segurou a escada durante a escalada?",
+    "peso": 3,
+    "gravidade": "MÚdio"
+  }
+]
+TOTAL 58
+CATEGORIAS ['APR', 'EPI, EPC e FERRAMENTAS', 'PADRINHO DE SEGURANÃA', 'PROCEDIMENTO', 'REGRAS DE OURO', 'TRABALHO EM ALTURA', 'VE═CULOS E EQUIPAMENTOS']

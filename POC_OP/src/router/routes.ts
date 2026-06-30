@@ -1,0 +1,33 @@
+import type { RouteRecordRaw } from "vue-router";
+
+const routes: RouteRecordRaw[] = [
+  {
+    path: "/",
+    component: () => import("@/layouts/MainLayout.vue"),
+    children: [
+      { path: "", component: () => import("@/pages/DashboardPage.vue") },
+      { path: "acompanhamento-semanal", component: () => import("@/pages/AcompanhamentoSemanal.vue") },
+      { path: "acompanhamento-mensal", component: () => import("@/pages/AcompanhamentoMensal.vue") },
+      { path: "indice-conformidade",  component: () => import("@/pages/IndiceConformidade.vue")   },
+      { path: "icit",                 component: () => import("@/pages/IcitPage.vue")              },
+      { path: "historico-icit",       component: () => import("@/pages/HistoricoIcit.vue")         },
+      { path: "relatorio-equipes",    component: () => import("@/pages/RelatorioEquipes.vue")      },
+      { path: "tolerancia-zero",        component: () => import("@/pages/ToleranciaZero.vue")            },
+      { path: "indicadores-categoria", component: () => import("@/pages/IndicadoresCategoria.vue")      },
+      { path: "observadores",          component: () => import("@/pages/ObservadoresPage.vue")          },
+      { path: "mapa-calor-base",       component: () => import("@/pages/MapaCalorBase.vue")             },
+      { path: "mapa-calor-mensal",     component: () => import("@/pages/MapaCalorMensal.vue")           },
+      { path: "matriz-responsabilidade", component: () => import("@/pages/MatrizResponsabilidade.vue")  },
+      { path: "second", component: () => import("@/pages/SecondPage.vue") }
+    ]
+  },
+
+  // Always leave this as last one,
+  // but you can also remove it
+  {
+    path: "/:catchAll(.*)*",
+    component: () => import("@/pages/ErrorNotFound.vue")
+  }
+];
+
+export default routes;

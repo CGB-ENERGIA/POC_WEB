@@ -1,0 +1,54 @@
+html,
+body {
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: #f1f5f9;
+}
+
+.mobile-page {
+  min-height: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.mobile-header {
+  background: linear-gradient(135deg, #8B1C2B 0%, #6b1522 100%);
+  color: #fff;
+}
+
+.mobile-card {
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
+}
+
+.field-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.employee-chip {
+  border-radius: 12px;
+  background: rgba(139, 28, 43, 0.08);
+  border: 1px solid rgba(139, 28, 43, 0.15);
+}
+
+.action-tile {
+  border-radius: 16px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.obs-item {
+  border-left: 4px solid #8B1C2B;
+  border-radius: 12px;
+}
