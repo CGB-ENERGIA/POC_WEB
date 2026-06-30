@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "quasar dev -m pwa",
     "build": "quasar build -m pwa",
+    "vercel-build": "quasar build -m pwa",
     "postinstall": "quasar prepare --silent"
   },
   "dependencies": {

@@ -1,0 +1,15 @@
+{
+  "name": "poc-web",
+  "private": true,
+  "description": "CGB Engenharia — POC Web e Checklist Mobile (domínio único)",
+  "type": "module",
+  "scripts": {
+    "vercel-build": "node scripts/vercel-build.mjs",
+    "build": "node scripts/vercel-build.mjs",
+    "dev:op": "npm run dev --prefix POC_OP",
+    "dev:mobile": "npm run dev --prefix POC_Mobile"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

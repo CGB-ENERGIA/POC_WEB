@@ -14,12 +14,15 @@ export default defineConfig(() => {
 
     build: {
       typescript: { strict: true, vueShim: true },
+      publicPath: "/mobile/",
+      vueRouterBase: "/mobile/",
       vueRouterMode: "hash",
     },
 
     devServer: {
       open: true,
       port: 9100,
+      vueRouterBase: "/mobile/",
     },
 
     framework: {
@@ -42,7 +45,8 @@ export default defineConfig(() => {
           background_color: "#f1f5f9",
           display: "standalone",
           orientation: "portrait",
-          start_url: "./",
+          start_url: "/mobile/",
+          scope: "/mobile/",
           icons: [
             { src: "icons/icon-192.png", sizes: "192x192", type: "image/png" },
             { src: "icons/icon-512.png", sizes: "512x512", type: "image/png" },
