@@ -9,13 +9,22 @@
           dense
           icon="mdi-arrow-left"
           aria-label="Voltar"
+          class="q-mr-xs"
           @click="$router.back()"
         />
-        <q-toolbar-title class="text-weight-bold">
+
+        <BrandLogo
+          v-if="!showBack || route.name === 'home'"
+          :size="32"
+          class="q-mr-sm"
+        />
+
+        <q-toolbar-title class="text-weight-bold ellipsis">
           {{ title }}
         </q-toolbar-title>
+
         <q-btn
-          v-if="session.isAuthenticated && $route.name !== 'identificacao'"
+          v-if="session.isAuthenticated && route.name !== 'identificacao'"
           flat
           round
           dense
@@ -41,6 +50,7 @@ import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useQuasar } from "quasar";
 import { useSessionStore } from "@/stores/session";
+import BrandLogo from "@/components/BrandLogo.vue";
 
 const $q = useQuasar();
 const route = useRoute();
@@ -49,7 +59,7 @@ const session = useSessionStore();
 
 const titles: Record<string, string> = {
   identificacao: "Identificação",
-  home: "CGB Checklist",
+  home: "Início",
   "nova-observacao": "Nova Observação",
   "checklist-goman": "Checklist GOMAN",
   "minhas-observacoes": "Minhas Observações",
@@ -72,19 +82,3 @@ function onLogout() {
   });
 }
 </script>
-
-<style scoped>
-.mobile-layout {
-  background: #f1f5f9;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.15s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-</style>

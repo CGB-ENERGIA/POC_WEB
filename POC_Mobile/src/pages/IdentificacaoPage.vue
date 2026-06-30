@@ -1,30 +1,26 @@
 <template>
-  <q-page class="mobile-page flex flex-center q-pa-md">
-    <div class="full-width" style="max-width: 420px">
-      <!-- Logo / Header -->
-      <div class="text-center q-mb-xl">
-        <div
-          class="inline-flex items-center justify-center q-mb-md"
-          style="
-            width: 72px;
-            height: 72px;
-            border-radius: 20px;
-            background: linear-gradient(135deg, #8B1C2B, #b91c3c);
-          "
-        >
-          <q-icon name="mdi-clipboard-check-outline" size="36px" color="white" />
-        </div>
-        <div class="text-h5 text-weight-bold text-grey-9">CGB Checklist</div>
-        <div class="text-body2 text-grey-6 q-mt-xs">
-          Observações de Segurança
-        </div>
+  <q-page class="mobile-page mobile-page--centered hero-surface q-pa-md">
+    <div class="full-width login-shell">
+      <div class="text-center q-mb-lg relative-position" style="z-index: 1">
+        <BrandLogo
+          :size="88"
+          show-text
+          stacked
+          :title="BRAND.product"
+          :subtitle="BRAND.tagline"
+        />
       </div>
 
-      <!-- Card -->
-      <q-card flat bordered class="mobile-card q-pa-lg">
+      <q-card flat class="mobile-card q-pa-lg relative-position" style="z-index: 1">
+        <div class="section-title q-mb-xs">Entrar no checklist</div>
+        <div class="section-subtitle q-mb-lg">
+          Informe sua matrícula para iniciar a auditagem
+        </div>
+
         <div class="field-label">Matrícula do colaborador</div>
         <q-select
           v-model="matricula"
+          class="input-shell q-mb-md"
           :options="filteredOptions"
           option-label="matricula"
           option-value="matricula"
@@ -33,7 +29,6 @@
           use-input
           input-debounce="150"
           outlined
-          dense
           hide-selected
           fill-input
           placeholder="Digite ou selecione a matrícula"
@@ -47,13 +42,15 @@
             <q-icon name="mdi-badge-account-outline" color="primary" />
           </template>
           <template #option="scope">
-            <q-item v-bind="scope.itemProps">
+            <q-item v-bind="scope.itemProps" class="q-py-sm">
               <q-item-section>
-                <q-item-label>{{ scope.opt.matricula }}</q-item-label>
+                <q-item-label class="text-weight-medium">
+                  {{ scope.opt.matricula }}
+                </q-item-label>
                 <q-item-label caption>{{ scope.opt.nomeCompleto }}</q-item-label>
               </q-item-section>
               <q-item-section side>
-                <q-badge color="grey-4" text-color="grey-8">{{ scope.opt.base }}</q-badge>
+                <q-badge color="grey-2" text-color="grey-8">{{ scope.opt.base }}</q-badge>
               </q-item-section>
             </q-item>
           </template>
@@ -66,12 +63,17 @@
           </template>
         </q-select>
 
-        <!-- Nome auto-preenchido -->
         <transition name="fade">
-          <div v-if="employee" class="employee-chip q-pa-md q-mt-lg">
+          <div v-if="employee" class="employee-chip q-pa-md q-mb-lg">
             <div class="row items-center no-wrap">
-              <q-avatar color="primary" text-color="white" size="48px" class="q-mr-md">
-                <q-icon name="mdi-account" />
+              <q-avatar
+                color="primary"
+                text-color="white"
+                size="52px"
+                class="q-mr-md"
+                font-size="18px"
+              >
+                {{ initials }}
               </q-avatar>
               <div class="col">
                 <div class="text-caption text-grey-6">Colaborador identificado</div>
@@ -82,38 +84,39 @@
                   {{ employee.funcao }} · {{ employee.base }} · {{ employee.gerencia }}
                 </div>
               </div>
+              <q-icon name="mdi-check-circle" color="positive" size="22px" />
             </div>
           </div>
         </transition>
 
-        <!-- Categoria de auditagem -->
         <transition name="fade">
-          <div v-if="employee" class="q-mt-lg">
+          <div v-if="employee">
             <div class="field-label">Categoria de auditagem</div>
-            <div class="row q-col-gutter-sm">
+            <div class="row q-col-gutter-sm q-mb-md">
               <div
                 v-for="cat in categoriasAuditagem"
                 :key="cat.value"
-                class="col-6"
+                class="col-12 col-xs-6"
               >
                 <q-btn
                   :outline="auditagem !== cat.value"
                   :unelevated="auditagem === cat.value"
-                  :color="auditagem === cat.value ? 'primary' : 'grey-4'"
+                  :color="auditagem === cat.value ? 'primary' : 'white'"
                   :text-color="auditagem === cat.value ? 'white' : 'grey-8'"
                   class="full-width auditagem-btn"
+                  :class="{ 'auditagem-btn--active': auditagem === cat.value }"
                   no-caps
                   @click="auditagem = cat.value"
                 >
-                  <div class="column items-center q-py-xs">
-                    <q-icon :name="cat.icon" size="22px" />
+                  <div class="column items-center q-py-sm">
+                    <q-icon :name="cat.icon" size="24px" />
                     <div class="text-subtitle2 text-weight-bold q-mt-xs">
                       {{ cat.label }}
                     </div>
                     <div
-                      class="text-caption q-mt-xs"
+                      class="text-caption q-mt-xs text-center"
                       :class="auditagem === cat.value ? 'text-white' : 'text-grey-6'"
-                      style="line-height: 1.2"
+                      style="line-height: 1.25; max-width: 140px"
                     >
                       {{ cat.descricao }}
                     </div>
@@ -125,12 +128,11 @@
         </transition>
 
         <q-btn
-          class="full-width q-mt-xl"
+          class="full-width btn-primary-lg q-mt-md"
           color="primary"
           size="lg"
           unelevated
           no-caps
-          rounded
           label="Continuar"
           icon-right="mdi-arrow-right"
           :disable="!canContinue"
@@ -139,8 +141,9 @@
         />
       </q-card>
 
-      <div class="text-center text-caption text-grey-5 q-mt-lg">
-        Uso exclusivo para celulares e tablets
+      <div class="text-center text-caption text-grey-6 q-mt-lg relative-position" style="z-index: 1">
+        <q-icon name="mdi-cellphone-link" size="14px" class="q-mr-xs" />
+        Otimizado para celulares e tablets
       </div>
     </div>
   </q-page>
@@ -150,6 +153,8 @@
 import { ref, watch, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useSessionStore } from "@/stores/session";
+import BrandLogo from "@/components/BrandLogo.vue";
+import { BRAND } from "@/constants/brand";
 import {
   employees,
   findByMatricula,
@@ -171,6 +176,15 @@ const touched = ref(false);
 const loading = ref(false);
 
 const canContinue = computed(() => employee.value !== null && auditagem.value !== null);
+
+const initials = computed(() => {
+  if (!employee.value) return "";
+  return employee.value.nome
+    .split(" ")
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("");
+});
 
 function resolveEmployee(value: string | null) {
   employee.value = value ? findByMatricula(value) ?? null : null;
@@ -211,8 +225,9 @@ async function onContinue() {
 </script>
 
 <style scoped>
-.auditagem-btn {
-  border-radius: 12px;
-  min-height: 96px;
+.login-shell {
+  max-width: 440px;
+  margin: 0 auto;
+  width: 100%;
 }
 </style>

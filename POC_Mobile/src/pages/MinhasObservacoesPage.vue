@@ -1,14 +1,18 @@
 <template>
   <q-page class="mobile-page q-pa-md">
-    <div v-if="items.length === 0" class="flex flex-center column q-pt-xl">
-      <q-icon name="mdi-clipboard-text-off-outline" size="64px" color="grey-4" />
-      <div class="text-subtitle1 text-grey-6 q-mt-md">Nenhuma observação ainda</div>
+    <div v-if="items.length === 0" class="empty-state">
+      <div class="empty-state__icon">
+        <q-icon name="mdi-clipboard-text-off-outline" size="36px" color="primary" />
+      </div>
+      <div class="section-title">Nenhuma observação ainda</div>
+      <div class="section-subtitle q-mt-xs q-mb-lg">
+        Suas auditagens aparecerão aqui após o envio
+      </div>
       <q-btn
-        class="q-mt-lg"
         color="primary"
         unelevated
         no-caps
-        rounded
+        class="btn-primary-lg"
         label="Registrar primeira observação"
         icon="mdi-plus"
         @click="irNova"
@@ -62,8 +66,7 @@
                   <div
                     v-for="nc in naoConformidades(obs)"
                     :key="nc.perguntaId"
-                    class="q-mb-sm q-pa-sm"
-                    style="background:#fef2f2;border-radius:8px"
+                    class="q-mb-sm q-pa-sm nc-resumo"
                   >
                     <div class="text-caption text-weight-bold">{{ nc.categoria }}</div>
                     <div class="text-body2">{{ nc.pergunta }}</div>
@@ -181,12 +184,3 @@ function naoConformidades(obs: ObservacaoChecklist): RespostaSalva[] {
     });
 }
 </script>
-
-<style scoped>
-.nc-evidencia-foto {
-  width: 100%;
-  max-height: 180px;
-  object-fit: cover;
-  border-radius: 8px;
-}
-</style>

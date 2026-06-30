@@ -2,19 +2,35 @@
   <q-page class="mobile-page checklist-page">
     <!-- Cabeçalho fixo com progresso -->
     <div class="checklist-header q-pa-md">
-      <div class="row items-center justify-between q-mb-sm">
-        <div class="text-subtitle2 text-weight-bold text-grey-9">Checklist GOMAN</div>
-        <q-badge color="primary" :label="`${respondidas}/${totalPerguntas}`" />
-      </div>
-      <q-linear-progress
-        :value="progresso"
-        color="primary"
-        track-color="grey-3"
-        rounded
-        style="height: 8px"
-      />
-      <div class="text-caption text-grey-6 q-mt-xs">
-        {{ naoConformes }} não conforme{{ naoConformes !== 1 ? "s" : "" }}
+      <div class="mobile-card mobile-card--flat q-pa-md">
+        <div class="row items-center justify-between q-mb-sm">
+          <div>
+            <div class="section-title">Checklist GOMAN</div>
+            <div class="section-subtitle">{{ respondidas }} de {{ totalPerguntas }} respondidas</div>
+          </div>
+          <q-circular-progress
+            :value="progresso"
+            size="52px"
+            :thickness="0.2"
+            color="primary"
+            track-color="grey-3"
+            show-value
+            class="text-weight-bold"
+          >
+            {{ Math.round(progresso * 100) }}%
+          </q-circular-progress>
+        </div>
+        <q-linear-progress
+          :value="progresso"
+          color="primary"
+          track-color="grey-3"
+          rounded
+          style="height: 8px"
+        />
+        <div class="row q-gutter-sm q-mt-sm">
+          <q-badge color="positive" outline :label="`${respondidas - naoConformes} conformes`" />
+          <q-badge color="negative" outline :label="`${naoConformes} não conformes`" />
+        </div>
       </div>
     </div>
 
@@ -51,10 +67,10 @@
         <q-expansion-item
           v-for="cat in gomanChecklist"
           :key="cat.id"
+          v-model="expandedCategories[cat.id]"
           expand-separator
           class="mobile-card checklist-category"
           header-class="q-pa-md"
-          :default-opened="cat.id === gomanChecklist[0]?.id"
         >
           <template #header>
             <q-item-section>
@@ -82,8 +98,12 @@
             <div
               v-for="(pergunta, idx) in cat.perguntas"
               :key="pergunta.id"
+              :id="`pergunta-${pergunta.id}`"
               class="pergunta-card q-pa-md"
-              :class="{ 'pergunta-card--answered': respostas[pergunta.id] }"
+              :class="{
+                'pergunta-card--answered': respostas[pergunta.id],
+                'pergunta-card--focus': proximaPerguntaId === pergunta.id,
+              }"
             >
               <div class="row items-start no-wrap q-mb-sm">
                 <q-badge outline color="grey-6" class="q-mr-sm">{{ idx + 1 }}</q-badge>
@@ -150,13 +170,13 @@
       </q-list>
 
       <q-btn
+        id="checklist-finalizar"
         type="submit"
-        class="full-width q-mt-lg q-mb-md"
+        class="full-width btn-primary-lg q-mt-lg q-mb-md"
         color="primary"
         size="lg"
         unelevated
         no-caps
-        rounded
         label="Finalizar checklist"
         icon="mdi-content-save"
         :loading="saving"
@@ -250,7 +270,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from "vue";
+import { computed, nextTick, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useQuasar } from "quasar";
 import { useSessionStore } from "@/stores/session";
@@ -292,6 +312,15 @@ const modalTouched = ref(false);
 const carregandoFoto = ref(false);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const modalEraNaoConforme = ref(false);
+const proximaPerguntaId = ref<string | null>(null);
+
+const todasPerguntasIds = gomanChecklist.flatMap((cat) =>
+  cat.perguntas.map((p) => p.id)
+);
+
+const expandedCategories = reactive<Record<string, boolean>>(
+  Object.fromEntries(gomanChecklist.map((cat, index) => [cat.id, index === 0]))
+);
 
 const totalPerguntas = totalPerguntasGoman;
 
@@ -314,8 +343,36 @@ function progressoCategoria(catId: string) {
 }
 
 function setConforme(id: string) {
+  if (respostas[id] === "conforme") return;
   respostas[id] = "conforme";
   delete detalhesMap[id];
+  irParaProximaPergunta(id);
+}
+
+function irParaProximaPergunta(fromPerguntaId: string) {
+  const fromIndex = todasPerguntasIds.indexOf(fromPerguntaId);
+  const nextId = todasPerguntasIds.slice(fromIndex + 1).find((id) => !respostas[id]);
+
+  proximaPerguntaId.value = nextId ?? null;
+
+  if (!nextId) {
+    scrollToElement("checklist-finalizar");
+    return;
+  }
+
+  const categoria = gomanChecklist.find((cat) =>
+    cat.perguntas.some((p) => p.id === nextId)
+  );
+  if (categoria) expandedCategories[categoria.id] = true;
+
+  nextTick(() => {
+    window.setTimeout(() => scrollToElement(`pergunta-${nextId}`), 280);
+  });
+}
+
+function scrollToElement(elementId: string) {
+  const el = document.getElementById(elementId);
+  el?.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 function abrirModalNaoConforme(pergunta: PerguntaGoman) {
@@ -385,8 +442,10 @@ function confirmarNaoConforme() {
     foto: modalFotoPreview.value,
   };
   respostas[modalPerguntaId.value] = "nao_conforme";
+  const answeredId = modalPerguntaId.value;
   modalAberto.value = false;
   modalPerguntaId.value = null;
+  irParaProximaPergunta(answeredId);
 }
 
 function gravidadeColor(g: Gravidade) {
@@ -448,63 +507,10 @@ async function onSubmit() {
   padding-bottom: 24px;
 }
 
-.checklist-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: #f1f5f9;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.checklist-category {
-  border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid #e2e8f0;
-  background: #fff;
-}
-
-.pergunta-card {
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  background: #fafafa;
-}
-
-.pergunta-card--answered {
-  border-color: rgba(139, 28, 43, 0.25);
-  background: #fff;
-}
-
-.resposta-btn {
-  border-radius: 10px;
-  min-height: 44px;
-}
-
-.nc-resumo {
-  border-radius: 10px;
-  border: 1px solid rgba(220, 38, 38, 0.2);
-  background: #fef2f2;
-  cursor: pointer;
-}
-
-.nc-resumo__foto {
-  width: 56px;
-  height: 56px;
-  border-radius: 8px;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.nc-resumo__texto {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
 .nc-modal {
   width: 100%;
   max-width: 480px;
-  border-radius: 16px 16px 0 0;
+  border-radius: 20px 20px 0 0;
 }
 
 .hidden-input {
@@ -513,10 +519,11 @@ async function onSubmit() {
 
 .nc-foto-preview {
   position: relative;
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
   max-height: 220px;
   cursor: pointer;
+  border: 1px dashed rgba(122, 18, 37, 0.25);
 }
 
 .nc-foto-preview img {
