@@ -64,49 +64,55 @@
 
       <!-- Membros da equipe -->
       <q-card flat bordered class="mobile-card q-pa-md q-mb-md">
-        <div class="field-label q-mb-sm">Membros da equipe</div>
+        <div class="field-label q-mb-md">Membros da equipe</div>
         <div class="column q-gutter-sm">
           <div
             v-for="(membro, idx) in membros"
             :key="idx"
-            class="row items-start q-gutter-xs"
+            class="membro-card"
           >
-            <div class="col column q-gutter-xs">
-              <q-input
-                v-model="membro.nome"
-                outlined
-                dense
-                :label="`Membro ${idx + 1} — Nome`"
-                placeholder="Nome do colaborador"
-              />
-              <q-input
-                v-model="membro.matricula"
-                outlined
-                dense
-                label="Matrícula"
-                placeholder="Ex: 12512"
+            <div class="row items-center no-wrap q-mb-sm">
+              <div class="membro-num">{{ idx + 1 }}</div>
+              <span class="text-caption text-weight-medium text-grey-7 q-ml-sm">
+                Membro {{ idx + 1 }}
+              </span>
+              <q-space />
+              <q-btn
+                flat round dense
+                icon="mdi-close"
+                size="sm"
+                color="grey-4"
+                :disable="membros.length === 1"
+                @click="removerMembro(idx)"
               />
             </div>
-            <q-btn
-              flat
-              round
-              dense
-              icon="mdi-close"
-              color="grey-5"
-              class="q-mt-xs"
-              :disable="membros.length === 1"
-              @click="removerMembro(idx)"
-            />
+            <div class="row q-col-gutter-sm">
+              <div class="col-7">
+                <q-input
+                  v-model="membro.nome"
+                  outlined dense
+                  label="Nome"
+                  placeholder="Nome do colaborador"
+                />
+              </div>
+              <div class="col-5">
+                <q-input
+                  v-model="membro.matricula"
+                  outlined dense
+                  label="Matrícula"
+                  placeholder="Ex: 12512"
+                />
+              </div>
+            </div>
           </div>
         </div>
+
         <q-btn
-          flat
-          no-caps
-          dense
-          icon="mdi-plus"
+          flat no-caps dense
+          icon="mdi-plus-circle-outline"
           label="Adicionar membro"
           color="primary"
-          class="q-mt-sm"
+          class="q-mt-md full-width adicionar-btn"
           @click="adicionarMembro"
         />
       </q-card>
@@ -615,5 +621,38 @@ async function onSubmit() {
 .nc-foto-preview:hover .nc-foto-preview__overlay,
 .nc-foto-preview:active .nc-foto-preview__overlay {
   opacity: 1;
+}
+
+.membro-card {
+  background: #f7f8fa;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 14px;
+  padding: 12px 12px 10px;
+  transition: box-shadow 0.15s ease;
+}
+
+.membro-card:focus-within {
+  box-shadow: 0 2px 12px rgba(122, 18, 37, 0.1);
+  border-color: rgba(122, 18, 37, 0.2);
+}
+
+.membro-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--q-primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.adicionar-btn {
+  border: 1.5px dashed rgba(122, 18, 37, 0.3);
+  border-radius: 10px;
+  padding: 8px 0;
 }
 </style>
