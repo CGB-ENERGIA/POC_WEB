@@ -289,7 +289,7 @@
               />
             </div>
 
-            <div class="foto-add" :class="{ 'foto-add--loading': carregandoFotoLocal }" @click="!carregandoFotoLocal && selecionarFotoLocal()">
+            <div class="foto-add" :class="{ 'foto-add--loading': carregandoFotoLocal }" @click="!carregandoFotoLocal && abrirCameraLocal()">
               <q-spinner v-if="carregandoFotoLocal" color="primary" size="28px" />
               <template v-else>
                 <q-icon name="mdi-camera-plus-outline" size="28px" color="grey-5" />
@@ -297,14 +297,6 @@
               </template>
             </div>
           </div>
-          <input
-            ref="fileInputLocalRef"
-            type="file"
-            accept="image/*"
-            capture="environment"
-            class="hidden-input"
-            @change="onFotoLocalSelecionada"
-          />
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -324,19 +316,11 @@
           </div>
 
           <div class="field-label q-mb-sm">Foto da evidência</div>
-          <input
-            ref="fileInputRef"
-            type="file"
-            accept="image/*"
-            capture="environment"
-            class="hidden-input"
-            @change="onFotoSelecionada"
-          />
 
           <div
             v-if="modalFotoPreview"
             class="nc-foto-preview q-mb-md"
-            @click="selecionarFoto"
+            @click="abrirCameraNc"
           >
             <img :src="modalFotoPreview" alt="Visualização da foto" />
             <div class="nc-foto-preview__overlay">
@@ -351,9 +335,8 @@
             color="primary"
             no-caps
             icon="mdi-camera"
-            label="Tirar ou escolher foto"
-            :loading="carregandoFoto"
-            @click="selecionarFoto"
+            label="Tirar foto"
+            @click="abrirCameraNc"
           />
 
           <q-input
@@ -385,12 +368,14 @@
             color="negative"
             label="Confirmar"
             icon="mdi-check"
-            :loading="carregandoFoto"
             @click="confirmarNaoConforme"
           />
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <CameraModal v-model="cameraLocalAberta" @captured="onFotoLocalCapturada" />
+    <CameraModal v-model="cameraNcAberta" @captured="onFotoNcCapturada" />
   </q-page>
 </template>
 
@@ -409,7 +394,8 @@ import {
   type RespostaChecklist,
 } from "@/data/gstc-checklist";
 import type { RespostaSalva } from "@/types/checklist";
-import { compressImage } from "@/utils/image";
+import { compressBase64 } from "@/utils/image";
+import CameraModal from "@/components/CameraModal.vue";
 
 interface NaoConformeDetalhe {
   observacao: string;
@@ -428,7 +414,7 @@ const equipe = ref("");
 const draftKey = `cgb-fotos-local-gstc-${session.employee?.matricula ?? "anon"}`
 const fotosLocal = ref<string[]>([])
 const modalFotosAberto = ref(false)
-const fileInputLocalRef = ref<HTMLInputElement | null>(null)
+const cameraLocalAberta = ref(false)
 const carregandoFotoLocal = ref(false)
 
 onMounted(() => {
@@ -499,28 +485,20 @@ function abrirModalFotosLocal() {
   modalFotosAberto.value = true
 }
 
-function selecionarFotoLocal() {
-  fileInputLocalRef.value?.click()
+function abrirCameraLocal() {
+  cameraLocalAberta.value = true
 }
 
-async function onFotoLocalSelecionada(event: Event) {
-  const input = event.target as HTMLInputElement
-  const files = Array.from(input.files ?? [])
-  input.value = ""
-  if (!files.length) return
-
+async function onFotoLocalCapturada(base64: string) {
   carregandoFotoLocal.value = true
   try {
     const serverTime = await getServerTime()
-    for (const file of files) {
-      if (!file.type.startsWith("image/")) continue
-      try {
-        const compressed = await compressImage(file)
-        const carimbrada = await carimbrarFoto(compressed, serverTime)
-        fotosLocal.value.push(carimbrada)
-      } catch {
-        $q.notify({ type: "negative", message: "Erro ao processar foto", position: "top" })
-      }
+    try {
+      const compressed = await compressBase64(base64)
+      const carimbrada = await carimbrarFoto(compressed, serverTime)
+      fotosLocal.value.push(carimbrada)
+    } catch {
+      $q.notify({ type: "negative", message: "Erro ao processar foto", position: "top" })
     }
   } catch {
     $q.notify({
@@ -561,8 +539,7 @@ const modalPerguntaTexto = ref("");
 const modalObservacao = ref("");
 const modalFotoPreview = ref<string | null>(null);
 const modalTouched = ref(false);
-const carregandoFoto = ref(false);
-const fileInputRef = ref<HTMLInputElement | null>(null);
+const cameraNcAberta = ref(false);
 const modalEraNaoConforme = ref(false);
 const proximaPerguntaId = ref<string | null>(null);
 
@@ -639,28 +616,15 @@ function abrirModalNaoConforme(pergunta: PerguntaGstc) {
   modalAberto.value = true;
 }
 
-function selecionarFoto() {
-  fileInputRef.value?.click();
+function abrirCameraNc() {
+  cameraNcAberta.value = true;
 }
 
-async function onFotoSelecionada(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-  input.value = "";
-  if (!file) return;
-
-  if (!file.type.startsWith("image/")) {
-    $q.notify({ type: "negative", message: "Selecione um arquivo de imagem", position: "top" });
-    return;
-  }
-
-  carregandoFoto.value = true;
+async function onFotoNcCapturada(base64: string) {
   try {
-    modalFotoPreview.value = await compressImage(file);
+    modalFotoPreview.value = await compressBase64(base64);
   } catch {
     $q.notify({ type: "negative", message: "Não foi possível processar a foto", position: "top" });
-  } finally {
-    carregandoFoto.value = false;
   }
 }
 
