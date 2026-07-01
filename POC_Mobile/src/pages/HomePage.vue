@@ -55,25 +55,22 @@
     <div class="section-title q-mb-sm">O que deseja fazer?</div>
 
     <div class="column q-gutter-md">
+      <!-- Checklist GOMAN -->
       <q-card
         flat
         class="action-tile action-tile--primary cursor-pointer"
-        @click="irNovaObservacao"
+        @click="$router.push({ name: 'checklist-goman' })"
       >
         <q-card-section class="row items-center no-wrap q-pa-none">
           <div class="action-tile__accent" />
           <div class="row items-center no-wrap col q-pa-lg">
             <q-avatar color="primary" text-color="white" size="56px" class="q-mr-md">
-              <q-icon name="mdi-clipboard-check-outline" size="28px" />
+              <q-icon name="mdi-wrench-outline" size="28px" />
             </q-avatar>
             <div class="col">
-              <div class="text-subtitle1 text-weight-bold">
-                {{ session.auditagem === "GOMAN" ? "Iniciar Checklist GOMAN" : "Nova Observação" }}
-              </div>
+              <div class="text-subtitle1 text-weight-bold">Checklist GOMAN</div>
               <div class="text-caption text-grey-6 q-mt-xs">
-                {{ session.auditagem === "GOMAN"
-                  ? `${totalPerguntasGoman} perguntas · Conforme / Não conforme`
-                  : "Registrar checklist de segurança" }}
+                {{ totalPerguntasGoman }} perguntas · Conforme / Não conforme
               </div>
             </div>
             <q-icon name="mdi-chevron-right" size="24px" color="primary" />
@@ -81,6 +78,30 @@
         </q-card-section>
       </q-card>
 
+      <!-- Checklist GSTC -->
+      <q-card
+        flat
+        class="action-tile action-tile--primary cursor-pointer"
+        @click="$router.push({ name: 'nova-observacao' })"
+      >
+        <q-card-section class="row items-center no-wrap q-pa-none">
+          <div class="action-tile__accent" />
+          <div class="row items-center no-wrap col q-pa-lg">
+            <q-avatar color="primary" text-color="white" size="56px" class="q-mr-md">
+              <q-icon name="mdi-crane" size="28px" />
+            </q-avatar>
+            <div class="col">
+              <div class="text-subtitle1 text-weight-bold">Checklist GSTC</div>
+              <div class="text-caption text-grey-6 q-mt-xs">
+                Registrar observação de segurança
+              </div>
+            </div>
+            <q-icon name="mdi-chevron-right" size="24px" color="primary" />
+          </div>
+        </q-card-section>
+      </q-card>
+
+      <!-- Minhas Observações -->
       <q-card
         flat
         class="action-tile cursor-pointer"
@@ -178,9 +199,5 @@ const metaProgress = computed(() =>
   Math.min(100, Math.round((totalPeriodo.value / metaAtual.value) * 100))
 );
 
-function irNovaObservacao() {
-  const destino =
-    session.auditagem === "GOMAN" ? "checklist-goman" : "nova-observacao";
-  router.push({ name: destino });
-}
+
 </script>
