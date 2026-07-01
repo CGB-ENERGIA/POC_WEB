@@ -62,6 +62,7 @@ const titles: Record<string, string> = {
   home: "Início",
   "nova-observacao": "Nova Observação",
   "checklist-goman": "Checklist GOMAN",
+  "checklist-gstc": "Checklist GSTC",
   "minhas-observacoes": "Minhas Observações",
 };
 

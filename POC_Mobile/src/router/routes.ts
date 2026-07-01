@@ -27,13 +27,13 @@ const routes: RouteRecordRaw[] = [
         path: "checklist-goman",
         name: "checklist-goman",
         component: () => import("@/pages/ChecklistGomanPage.vue"),
-        meta: { requiresAuth: true, auditagem: "GOMAN" },
+        meta: { requiresAuth: true },
       },
       {
         path: "checklist-gstc",
         name: "checklist-gstc",
         component: () => import("@/pages/ChecklistGstcPage.vue"),
-        meta: { requiresAuth: true, auditagem: "GSTC" },
+        meta: { requiresAuth: true },
       },
       {
         path: "minhas-observacoes",
