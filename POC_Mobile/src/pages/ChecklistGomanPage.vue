@@ -289,9 +289,12 @@
               />
             </div>
 
-            <div class="foto-add" @click="selecionarFotoLocal">
-              <q-icon name="mdi-camera-plus-outline" size="28px" color="grey-5" />
-              <div class="text-caption text-grey-5 q-mt-xs">Adicionar</div>
+            <div class="foto-add" :class="{ 'foto-add--loading': carregandoFotoLocal }" @click="!carregandoFotoLocal && selecionarFotoLocal()">
+              <q-spinner v-if="carregandoFotoLocal" color="primary" size="28px" />
+              <template v-else>
+                <q-icon name="mdi-camera-plus-outline" size="28px" color="grey-5" />
+                <div class="text-caption text-grey-5 q-mt-xs">Adicionar</div>
+              </template>
             </div>
           </div>
           <input
@@ -422,11 +425,12 @@ const observacoes = useObservacoesStore();
 const base = ref(session.employee?.base ?? "");
 const equipe = ref("");
 
-// ── Fotos do local (rascunho persistido) ──────────────────────────────────────
+// ── Fotos do local com timestamp de servidor ──────────────────────────────────
 const draftKey = `cgb-fotos-local-${session.employee?.matricula ?? "anon"}`
 const fotosLocal = ref<string[]>([])
 const modalFotosAberto = ref(false)
 const fileInputLocalRef = ref<HTMLInputElement | null>(null)
+const carregandoFotoLocal = ref(false)
 
 onMounted(() => {
   const saved = LocalStorage.getItem<string[]>(draftKey)
@@ -437,6 +441,61 @@ watch(fotosLocal, (val) => {
   if (val.length) LocalStorage.set(draftKey, val)
   else LocalStorage.remove(draftKey)
 }, { deep: true })
+
+async function getServerTime(): Promise<Date> {
+  // Usa o trace da Cloudflare — retorna ts= em Unix segundos, sem CORS
+  const res = await fetch("https://www.cloudflare.com/cdn-cgi/trace", { cache: "no-store" })
+  const text = await res.text()
+  const ts = text.match(/ts=([0-9.]+)/)?.[1]
+  if (ts) return new Date(parseFloat(ts) * 1000)
+  const dateHeader = res.headers.get("date")
+  if (dateHeader) return new Date(dateHeader)
+  throw new Error("Não foi possível obter a hora do servidor")
+}
+
+async function carimbrarFoto(base64: string, serverTime: Date): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement("canvas")
+      canvas.width = img.width
+      canvas.height = img.height
+      const ctx = canvas.getContext("2d")!
+      ctx.drawImage(img, 0, 0)
+
+      const fs = Math.max(18, Math.round(img.width * 0.038))
+      const pad = Math.round(fs * 0.7)
+      const lh = Math.round(fs * 1.45)
+
+      const dateStr = serverTime.toLocaleDateString("pt-BR", { timeZone: "America/Fortaleza" })
+      const timeStr = serverTime.toLocaleTimeString("pt-BR", { timeZone: "America/Fortaleza" })
+      const obs = session.employee?.nomeCompleto ?? session.employee?.nome ?? "—"
+      const eq = equipe.value.trim() || "—"
+
+      const lines = [
+        `📅 ${dateStr}  🕐 ${timeStr}`,
+        `👷 ${obs}`,
+        `🚧 Equipe: ${eq}`,
+      ]
+
+      const boxH = pad * 2 + lines.length * lh
+      const y0 = img.height - boxH
+
+      ctx.fillStyle = "rgba(0,0,0,0.62)"
+      ctx.fillRect(0, y0, img.width, boxH)
+
+      ctx.fillStyle = "#ffffff"
+      ctx.font = `bold ${fs}px sans-serif`
+      ctx.textBaseline = "top"
+      lines.forEach((line, i) => {
+        ctx.fillText(line, pad, y0 + pad + i * lh)
+      })
+
+      resolve(canvas.toDataURL("image/jpeg", 0.88))
+    }
+    img.src = base64
+  })
+}
 
 function abrirModalFotosLocal() {
   modalFotosAberto.value = true
@@ -452,14 +511,28 @@ async function onFotoLocalSelecionada(event: Event) {
   input.value = ""
   if (!files.length) return
 
-  for (const file of files) {
-    if (!file.type.startsWith("image/")) continue
-    try {
-      const compressed = await compressImage(file)
-      fotosLocal.value.push(compressed)
-    } catch {
-      $q.notify({ type: "negative", message: "Erro ao processar foto", position: "top" })
+  carregandoFotoLocal.value = true
+  try {
+    const serverTime = await getServerTime()
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) continue
+      try {
+        const compressed = await compressImage(file)
+        const carimbrada = await carimbrarFoto(compressed, serverTime)
+        fotosLocal.value.push(carimbrada)
+      } catch {
+        $q.notify({ type: "negative", message: "Erro ao processar foto", position: "top" })
+      }
     }
+  } catch {
+    $q.notify({
+      type: "warning",
+      message: "Sem conexão para obter hora do servidor. Foto não adicionada.",
+      position: "top",
+      timeout: 4000,
+    })
+  } finally {
+    carregandoFotoLocal.value = false
   }
 }
 
@@ -827,5 +900,11 @@ async function onSubmit() {
 
 .foto-add:active {
   border-color: var(--q-primary);
+}
+
+.foto-add--loading {
+  border-color: var(--q-primary);
+  opacity: 0.7;
+  cursor: wait;
 }
 </style>
