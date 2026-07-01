@@ -32,7 +32,7 @@ register(import.meta.env.QUASAR_SERVICE_WORKER_FILE, {
   },
 
   offline() {
-    // console.log('No internet connection found. App is running in offline mode.')
+    console.info("[PWA] Modo offline — app servido do cache local.");
   },
 
   error(/* err */) {

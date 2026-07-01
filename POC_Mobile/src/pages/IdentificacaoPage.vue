@@ -76,11 +76,11 @@
                 {{ initials }}
               </q-avatar>
               <div class="col">
-                <div class="text-caption text-grey-6">Colaborador identificado</div>
-                <div class="text-subtitle1 text-weight-bold text-grey-9">
+                <div class="text-caption employee-chip__label">Colaborador identificado</div>
+                <div class="text-subtitle1 text-weight-bold employee-chip__name">
                   {{ employee.nomeCompleto }}
                 </div>
-                <div class="text-caption text-grey-7 q-mt-xs">
+                <div class="text-caption employee-chip__meta q-mt-xs">
                   {{ employee.funcao }} · {{ employee.base }} · {{ employee.gerencia }}
                 </div>
               </div>

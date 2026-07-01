@@ -93,7 +93,7 @@
           >
             <div class="row items-center no-wrap q-mb-sm">
               <div class="membro-num">{{ idx + 1 }}</div>
-              <span class="text-caption text-weight-medium text-grey-7 q-ml-sm">
+              <span class="text-caption text-weight-medium membro-card__label q-ml-sm">
                 Membro {{ idx + 1 }}
               </span>
               <q-space />
@@ -101,7 +101,7 @@
                 flat round dense
                 icon="mdi-close"
                 size="sm"
-                color="grey-4"
+                color="grey-6"
                 :disable="membros.length === 1"
                 @click="removerMembro(idx)"
               />
@@ -183,7 +183,7 @@
               <div class="row items-start no-wrap q-mb-sm">
                 <q-badge outline color="grey-6" class="q-mr-sm">{{ idx + 1 }}</q-badge>
                 <div class="col">
-                  <div class="text-body2 text-grey-9">{{ pergunta.texto }}</div>
+                  <div class="text-body2 pergunta-texto">{{ pergunta.texto }}</div>
                   <div class="row q-gutter-xs q-mt-xs">
                     <q-badge
                       :color="gravidadeColor(pergunta.gravidade)"
@@ -198,24 +198,26 @@
                 <div class="col-6">
                   <q-btn
                     class="full-width resposta-btn"
+                    :class="{ 'resposta-btn--idle': respostas[pergunta.id] !== 'conforme' }"
                     no-caps
                     unelevated
                     icon="mdi-check-circle"
                     label="Conforme"
-                    :color="respostas[pergunta.id] === 'conforme' ? 'positive' : 'grey-3'"
-                    :text-color="respostas[pergunta.id] === 'conforme' ? 'white' : 'grey-8'"
+                    :color="respostas[pergunta.id] === 'conforme' ? 'positive' : undefined"
+                    :text-color="respostas[pergunta.id] === 'conforme' ? 'white' : undefined"
                     @click="setConforme(pergunta.id)"
                   />
                 </div>
                 <div class="col-6">
                   <q-btn
                     class="full-width resposta-btn"
+                    :class="{ 'resposta-btn--idle': respostas[pergunta.id] !== 'nao_conforme' }"
                     no-caps
                     unelevated
                     icon="mdi-close-circle"
                     label="Não conforme"
-                    :color="respostas[pergunta.id] === 'nao_conforme' ? 'negative' : 'grey-3'"
-                    :text-color="respostas[pergunta.id] === 'nao_conforme' ? 'white' : 'grey-8'"
+                    :color="respostas[pergunta.id] === 'nao_conforme' ? 'negative' : undefined"
+                    :text-color="respostas[pergunta.id] === 'nao_conforme' ? 'white' : undefined"
                     @click="abrirModalNaoConforme(pergunta)"
                   />
                 </div>
@@ -252,7 +254,7 @@
         size="lg"
         unelevated
         no-caps
-        label="Finalizar checklist"
+        label="Finalizar"
         icon="mdi-content-save"
         :loading="saving"
         :disable="respondidas < totalPerguntas"
@@ -413,6 +415,9 @@ import {
 } from "@/data/goman-checklist";
 import type { RespostaSalva } from "@/types/checklist";
 import { compressBase64 } from "@/utils/image";
+import { getTrustedTime } from "@/utils/server-time";
+import { stampAuditPhoto } from "@/utils/photo-stamp";
+import { useChecklistDraft } from "@/composables/useChecklistDraft";
 import CameraModal from "@/components/CameraModal.vue";
 
 interface NaoConformeDetalhe {
@@ -445,94 +450,12 @@ watch(fotosLocal, (val) => {
   else LocalStorage.remove(draftKey)
 }, { deep: true })
 
-async function getServerTime(): Promise<Date> {
-  // Usa o trace da Cloudflare — retorna ts= em Unix segundos, sem CORS
-  const res = await fetch("https://www.cloudflare.com/cdn-cgi/trace", { cache: "no-store" })
-  const text = await res.text()
-  const ts = text.match(/ts=([0-9.]+)/)?.[1]
-  if (ts) return new Date(parseFloat(ts) * 1000)
-  const dateHeader = res.headers.get("date")
-  if (dateHeader) return new Date(dateHeader)
-  throw new Error("Não foi possível obter a hora do servidor")
-}
-
-async function carimbrarFoto(base64: string, serverTime: Date): Promise<string> {
-  return new Promise((resolve) => {
-    const img = new Image()
-    img.onload = () => {
-      const canvas = document.createElement("canvas")
-      canvas.width = img.width
-      canvas.height = img.height
-      const ctx = canvas.getContext("2d")!
-      ctx.drawImage(img, 0, 0)
-
-      const fs = Math.max(18, Math.round(img.width * 0.038))
-      const pad = Math.round(fs * 0.7)
-      const lh = Math.round(fs * 1.45)
-
-      const dateStr = serverTime.toLocaleDateString("pt-BR", { timeZone: "America/Fortaleza" })
-      const timeStr = serverTime.toLocaleTimeString("pt-BR", { timeZone: "America/Fortaleza" })
-      const obs = session.employee?.nomeCompleto ?? session.employee?.nome ?? "—"
-      const eq = equipe.value.trim() || "—"
-
-      const lines = [
-        `📅 ${dateStr}  🕐 ${timeStr}`,
-        `👷 ${obs}`,
-        `🚧 Equipe: ${eq}`,
-      ]
-
-      const boxH = pad * 2 + lines.length * lh
-      const y0 = img.height - boxH
-
-      ctx.fillStyle = "rgba(0,0,0,0.62)"
-      ctx.fillRect(0, y0, img.width, boxH)
-
-      ctx.fillStyle = "#ffffff"
-      ctx.font = `bold ${fs}px sans-serif`
-      ctx.textBaseline = "top"
-      lines.forEach((line, i) => {
-        ctx.fillText(line, pad, y0 + pad + i * lh)
-      })
-
-      resolve(canvas.toDataURL("image/jpeg", 0.88))
-    }
-    img.src = base64
-  })
-}
-
 function abrirModalFotosLocal() {
-  modalFotosAberto.value = true
+  modalFotosAberto.value = true;
 }
 
 function abrirCameraLocal() {
-  cameraLocalAberta.value = true
-}
-
-async function onFotoLocalCapturada(base64: string) {
-  carregandoFotoLocal.value = true
-  try {
-    const serverTime = await getServerTime()
-    try {
-      const compressed = await compressBase64(base64)
-      const carimbrada = await carimbrarFoto(compressed, serverTime)
-      fotosLocal.value.push(carimbrada)
-    } catch {
-      $q.notify({ type: "negative", message: "Erro ao processar foto", position: "top" })
-    }
-  } catch {
-    $q.notify({
-      type: "warning",
-      message: "Sem conexão para obter hora do servidor. Foto não adicionada.",
-      position: "top",
-      timeout: 4000,
-    })
-  } finally {
-    carregandoFotoLocal.value = false
-  }
-}
-
-function removerFotoLocal(idx: number) {
-  fotosLocal.value.splice(idx, 1)
+  cameraLocalAberta.value = true;
 }
 
 // ── Membros ───────────────────────────────────────────────────────────────────
@@ -570,7 +493,52 @@ const expandedCategories = reactive<Record<string, boolean>>(
   Object.fromEntries(gomanChecklist.map((cat, index) => [cat.id, index === 0]))
 );
 
+const { clearDraft: clearChecklistDraft } = useChecklistDraft(
+  "GOMAN",
+  session.employee?.matricula ?? "anon",
+  {
+    base,
+    equipe,
+    membros,
+    respostas,
+    detalhesMap,
+    expandedCategories,
+  }
+);
+
 const totalPerguntas = totalPerguntasGoman;
+
+async function onFotoLocalCapturada(base64: string) {
+  carregandoFotoLocal.value = true;
+  try {
+    const { date, source } = await getTrustedTime();
+    const compressed = await compressBase64(base64);
+    const carimbrada = await stampAuditPhoto(compressed, {
+      time: date,
+      deviceTime: source === "device",
+      observer: session.employee?.nomeCompleto ?? session.employee?.nome ?? "—",
+      equipe: equipe.value.trim(),
+    });
+    fotosLocal.value.push(carimbrada);
+
+    if (source === "device") {
+      $q.notify({
+        type: "info",
+        message: "Foto salva com horário do aparelho (sem conexão).",
+        position: "top",
+        timeout: 3000,
+      });
+    }
+  } catch {
+    $q.notify({ type: "negative", message: "Erro ao processar foto", position: "top" });
+  } finally {
+    carregandoFotoLocal.value = false;
+  }
+}
+
+function removerFotoLocal(idx: number) {
+  fotosLocal.value.splice(idx, 1);
+}
 
 const respondidas = computed(
   () => Object.keys(respostas).filter((k) => respostas[k]).length
@@ -735,6 +703,7 @@ async function onSubmit() {
     respostas: respostasSalvas,
   });
   LocalStorage.remove(draftKey);
+  clearChecklistDraft();
 
   $q.notify({
     type: "positive",
@@ -799,39 +768,6 @@ async function onSubmit() {
   opacity: 1;
 }
 
-.membro-card {
-  background: #f7f8fa;
-  border: 1px solid rgba(0, 0, 0, 0.07);
-  border-radius: 14px;
-  padding: 12px 12px 10px;
-  transition: box-shadow 0.15s ease;
-}
-
-.membro-card:focus-within {
-  box-shadow: 0 2px 12px rgba(122, 18, 37, 0.1);
-  border-color: rgba(122, 18, 37, 0.2);
-}
-
-.membro-num {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--q-primary);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.adicionar-btn {
-  border: 1.5px dashed rgba(122, 18, 37, 0.3);
-  border-radius: 10px;
-  padding: 8px 0;
-}
-
 .foto-local-btn {
   min-width: 36px;
   min-height: 36px;
@@ -850,14 +786,6 @@ async function onSubmit() {
   gap: 8px;
 }
 
-.foto-thumb {
-  position: relative;
-  border-radius: 10px;
-  overflow: hidden;
-  aspect-ratio: 1;
-  background: #f0f0f0;
-}
-
 .foto-thumb img {
   width: 100%;
   height: 100%;
@@ -870,18 +798,6 @@ async function onSubmit() {
   top: 4px;
   right: 4px;
   background: rgba(0, 0, 0, 0.45) !important;
-}
-
-.foto-add {
-  border-radius: 10px;
-  aspect-ratio: 1;
-  border: 2px dashed #d0d0d0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: border-color 0.15s;
 }
 
 .foto-add:active {

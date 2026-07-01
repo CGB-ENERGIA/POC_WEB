@@ -125,20 +125,29 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import { useRouter } from "vue-router";
+import { computed, ref, watch } from "vue";
+import { LocalStorage } from "quasar";
 import { useSessionStore } from "@/stores/session";
 import { useObservacoesStore } from "@/stores/observacoes";
 import { totalPerguntasGoman } from "@/data/goman-checklist";
 import { totalPerguntasGstc } from "@/data/gstc-checklist";
 import { getMetaMensal, getMetaSemanal, META_SEMANAL_PADRAO, diasUteisNoMes } from "@/data/employees";
+import { PERIODO_VISAO_STORAGE_KEY } from "@/constants/theme";
 
 type PeriodoVisao = "semana" | "mes";
 
-const router = useRouter();
+function loadPeriodoSalvo(): PeriodoVisao {
+  const saved = LocalStorage.getItem<string | null>(PERIODO_VISAO_STORAGE_KEY);
+  return saved === "semana" || saved === "mes" ? saved : "mes";
+}
+
 const session = useSessionStore();
 const observacoes = useObservacoesStore();
-const periodo = ref<PeriodoVisao>("mes");
+const periodo = ref<PeriodoVisao>(loadPeriodoSalvo());
+
+watch(periodo, (valor) => {
+  LocalStorage.set(PERIODO_VISAO_STORAGE_KEY, valor);
+});
 
 const matricula = computed(() => session.matricula);
 const metaMensal = computed(() => {

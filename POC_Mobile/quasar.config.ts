@@ -2,7 +2,7 @@ import { defineConfig } from "#q-app";
 
 export default defineConfig(() => {
   return {
-    boot: ["pinia", "dark-mode", "auth", "lang"],
+    boot: ["pinia", "dark-mode", "auth", "lang", "network"],
 
     css: ["app.scss"],
 
@@ -36,9 +36,11 @@ export default defineConfig(() => {
     animations: [],
 
     pwa: {
-      workboxMode: "GenerateSW",
+      workboxMode: "InjectManifest",
+      swFilename: "sw.js",
       extendPWAManifestJson(json) {
         Object.assign(json, {
+          id: "/mobile/",
           name: "CGB Checklist",
           short_name: "CGB Obs",
           description: "Checklist de Observações de Segurança — CGB Engenharia",

@@ -75,7 +75,7 @@ const router = useRouter();
 const session = useSessionStore();
 
 const titles: Record<string, string> = {
-  identificacao: "Identificação",
+  identificacao: "POC - CGB",
   home: "Início",
   "nova-observacao": "Nova Observação",
   "checklist-goman": "Checklist GOMAN",
@@ -83,7 +83,7 @@ const titles: Record<string, string> = {
   "minhas-observacoes": "Minhas Observações",
 };
 
-const title = computed(() => titles[String(route.name)] ?? "CGB Checklist");
+const title = computed(() => titles[String(route.name)] ?? "POC - CGB");
 const showBack = computed(
   () => route.name !== "home" && route.name !== "identificacao"
 );

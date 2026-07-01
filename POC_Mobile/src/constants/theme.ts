@@ -1,4 +1,5 @@
 export const THEME_STORAGE_KEY = "cgb-mobile-dark-mode";
+export const PERIODO_VISAO_STORAGE_KEY = "cgb-mobile-periodo-visao";
 
 export const THEME_COLORS = {
   light: "#7a1225",
