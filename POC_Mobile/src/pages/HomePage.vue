@@ -109,7 +109,7 @@ import { useRouter } from "vue-router";
 import { useSessionStore } from "@/stores/session";
 import { useObservacoesStore } from "@/stores/observacoes";
 import { totalPerguntasGoman } from "@/data/goman-checklist";
-import { getMetaMensal, getMetaSemanal, META_SEMANAL_PADRAO, SEMANAS_POR_MES } from "@/data/employees";
+import { getMetaMensal, getMetaSemanal, META_SEMANAL_PADRAO, diasUteisNoMes } from "@/data/employees";
 
 type PeriodoVisao = "semana" | "mes";
 
@@ -119,9 +119,12 @@ const observacoes = useObservacoesStore();
 const periodo = ref<PeriodoVisao>("mes");
 
 const matricula = computed(() => session.matricula);
-const metaMensal = computed(() =>
-  session.employee ? getMetaMensal(session.employee) : META_SEMANAL_PADRAO * SEMANAS_POR_MES
-);
+const metaMensal = computed(() => {
+  const now = new Date()
+  if (session.employee) return getMetaMensal(session.employee, now)
+  const dias = diasUteisNoMes(now.getFullYear(), now.getMonth() + 1)
+  return Math.round(META_SEMANAL_PADRAO * dias / 5)
+});
 const metaSemanal = computed(() =>
   session.employee ? getMetaSemanal(session.employee) : META_SEMANAL_PADRAO
 );
