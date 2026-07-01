@@ -302,7 +302,6 @@
             type="file"
             accept="image/*"
             capture="environment"
-            multiple
             class="hidden-input"
             @change="onFotoLocalSelecionada"
           />
