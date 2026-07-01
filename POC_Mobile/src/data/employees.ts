@@ -88,7 +88,7 @@ export function getMetaMensal(
 ): number {
   const data = referencia ?? new Date()
   const dias = diasUteisNoMes(data.getFullYear(), data.getMonth() + 1)
-  return Math.round(getMetaSemanal(employee) * dias / 5)
+  return Math.min(Math.round(getMetaSemanal(employee) * dias / 5), 20)
 }
 
 export const employees: Employee[] = [

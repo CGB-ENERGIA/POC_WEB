@@ -123,7 +123,7 @@ const metaMensal = computed(() => {
   const now = new Date()
   if (session.employee) return getMetaMensal(session.employee, now)
   const dias = diasUteisNoMes(now.getFullYear(), now.getMonth() + 1)
-  return Math.round(META_SEMANAL_PADRAO * dias / 5)
+  return Math.min(Math.round(META_SEMANAL_PADRAO * dias / 5), 20)
 });
 const metaSemanal = computed(() =>
   session.employee ? getMetaSemanal(session.employee) : META_SEMANAL_PADRAO
