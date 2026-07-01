@@ -67,17 +67,24 @@
         <div class="field-label q-mb-sm">Membros da equipe</div>
         <div class="column q-gutter-sm">
           <div
-            v-for="(_, idx) in membros"
+            v-for="(membro, idx) in membros"
             :key="idx"
-            class="row items-center q-gutter-xs"
+            class="row items-start q-gutter-xs"
           >
-            <div class="col">
+            <div class="col column q-gutter-xs">
               <q-input
-                v-model="membros[idx]"
+                v-model="membro.nome"
                 outlined
                 dense
-                :label="`Membro ${idx + 1}`"
+                :label="`Membro ${idx + 1} — Nome`"
                 placeholder="Nome do colaborador"
+              />
+              <q-input
+                v-model="membro.matricula"
+                outlined
+                dense
+                label="Matrícula"
+                placeholder="Ex: 12512"
               />
             </div>
             <q-btn
@@ -86,6 +93,7 @@
               dense
               icon="mdi-close"
               color="grey-5"
+              class="q-mt-xs"
               :disable="membros.length === 1"
               @click="removerMembro(idx)"
             />
@@ -339,11 +347,13 @@ const observacoes = useObservacoesStore();
 
 const base = ref(session.employee?.base ?? "");
 const equipe = ref("");
-const membros = ref<string[]>(Array(6).fill(""));
+const membros = ref<{ nome: string; matricula: string }[]>(
+  Array.from({ length: 6 }, () => ({ nome: "", matricula: "" }))
+);
 const saving = ref(false);
 
 function adicionarMembro() {
-  membros.value.push("");
+  membros.value.push({ nome: "", matricula: "" });
 }
 
 function removerMembro(idx: number) {
@@ -537,7 +547,10 @@ async function onSubmit() {
     observador: session.employee.nome,
     base: base.value,
     equipe: equipe.value.trim(),
-    membros: membros.value.map((m) => m.trim()).filter(Boolean),
+    membros: membros.value.filter((m) => m.nome.trim() || m.matricula.trim()).map((m) => ({
+      nome: m.nome.trim(),
+      matricula: m.matricula.trim(),
+    })),
     respostas: respostasSalvas,
   });
 

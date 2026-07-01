@@ -74,7 +74,7 @@ export const useObservacoesStore = defineStore("observacoes", {
       observador: string;
       base: string;
       equipe: string;
-      membros: string[];
+      membros: { nome: string; matricula: string }[];
       respostas: RespostaSalva[];
     }) {
       const resumo: ChecklistResumo = {
