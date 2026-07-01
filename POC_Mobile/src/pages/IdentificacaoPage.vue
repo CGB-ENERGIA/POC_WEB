@@ -89,44 +89,6 @@
           </div>
         </transition>
 
-        <transition name="fade">
-          <div v-if="employee">
-            <div class="field-label">Categoria de auditagem</div>
-            <div class="row q-col-gutter-sm q-mb-md">
-              <div
-                v-for="cat in categoriasAuditagem"
-                :key="cat.value"
-                class="col-12 col-xs-6"
-              >
-                <q-btn
-                  :outline="auditagem !== cat.value"
-                  :unelevated="auditagem === cat.value"
-                  :color="auditagem === cat.value ? 'primary' : 'white'"
-                  :text-color="auditagem === cat.value ? 'white' : 'grey-8'"
-                  class="full-width auditagem-btn"
-                  :class="{ 'auditagem-btn--active': auditagem === cat.value }"
-                  no-caps
-                  @click="auditagem = cat.value"
-                >
-                  <div class="column items-center q-py-sm">
-                    <q-icon :name="cat.icon" size="24px" />
-                    <div class="text-subtitle2 text-weight-bold q-mt-xs">
-                      {{ cat.label }}
-                    </div>
-                    <div
-                      class="text-caption q-mt-xs text-center"
-                      :class="auditagem === cat.value ? 'text-white' : 'text-grey-6'"
-                      style="line-height: 1.25; max-width: 140px"
-                    >
-                      {{ cat.descricao }}
-                    </div>
-                  </div>
-                </q-btn>
-              </div>
-            </div>
-          </div>
-        </transition>
-
         <q-btn
           class="full-width btn-primary-lg q-mt-md"
           color="primary"
@@ -160,22 +122,16 @@ import {
   findByMatricula,
   type Employee,
 } from "@/data/employees";
-import {
-  categoriasAuditagem,
-  type AuditagemCategoria,
-} from "@/data/auditagem";
-
 const router = useRouter();
 const session = useSessionStore();
 
 const matricula = ref("");
 const employee = ref<Employee | null>(null);
-const auditagem = ref<AuditagemCategoria | null>(null);
 const filteredOptions = ref<Employee[]>([...employees]);
 const touched = ref(false);
 const loading = ref(false);
 
-const canContinue = computed(() => employee.value !== null && auditagem.value !== null);
+const canContinue = computed(() => employee.value !== null);
 
 const initials = computed(() => {
   if (!employee.value) return "";
@@ -188,7 +144,6 @@ const initials = computed(() => {
 
 function resolveEmployee(value: string | null) {
   employee.value = value ? findByMatricula(value) ?? null : null;
-  if (!employee.value) auditagem.value = null;
 }
 
 function onMatriculaChange(value: string | null) {
@@ -216,9 +171,9 @@ watch(matricula, (val) => {
 });
 
 async function onContinue() {
-  if (!employee.value || !auditagem.value) return;
+  if (!employee.value) return;
   loading.value = true;
-  session.login(employee.value, auditagem.value);
+  session.login(employee.value, employee.value.gerencia === "SESMT" ? "GSTC" : "GOMAN");
   await router.replace({ name: "home" });
   loading.value = false;
 }
