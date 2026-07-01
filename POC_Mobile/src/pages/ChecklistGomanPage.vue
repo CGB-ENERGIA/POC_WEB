@@ -339,6 +339,24 @@
             @click="abrirCameraNc"
           />
 
+          <div v-if="fotosLocal.length" class="q-mb-md">
+            <div class="field-label q-mb-xs">Fotos do local da auditagem</div>
+            <div class="fotos-local-picker">
+              <div
+                v-for="(foto, i) in fotosLocal"
+                :key="i"
+                class="foto-local-thumb"
+                :class="{ 'foto-local-thumb--ativa': modalFotoPreview === foto }"
+                @click="usarFotoLocal(foto)"
+              >
+                <img :src="foto" alt="" />
+                <div v-if="modalFotoPreview === foto" class="foto-local-thumb__check">
+                  <q-icon name="mdi-check-circle" size="20px" />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <q-input
             v-model="modalObservacao"
             type="textarea"
@@ -619,6 +637,10 @@ function abrirModalNaoConforme(pergunta: PerguntaGoman) {
 
 function abrirCameraNc() {
   cameraNcAberta.value = true;
+}
+
+function usarFotoLocal(foto: string) {
+  modalFotoPreview.value = foto;
 }
 
 async function onFotoNcCapturada(base64: string) {

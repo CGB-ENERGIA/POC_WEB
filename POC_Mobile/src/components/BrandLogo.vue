@@ -1,5 +1,5 @@
 <template>
-  <div class="brand-logo" :class="{ 'brand-logo--stacked': stacked }">
+  <div class="brand-logo" :class="{ 'brand-logo--stacked': stacked, 'brand-logo--on-dark': onDark }">
     <div class="brand-logo__mark" :style="markStyle">
       <img :src="LOGO_URL" alt="CGB Engenharia" class="brand-logo__img" />
     </div>
@@ -12,7 +12,11 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { useQuasar } from "quasar";
 import { BRAND, LOGO_URL } from "@/constants/brand";
+
+const $q = useQuasar();
+const onDark = computed(() => $q.dark.isActive);
 
 const props = withDefaults(
   defineProps<{
@@ -79,5 +83,13 @@ const markStyle = computed(() => ({
   font-size: 0.875rem;
   color: #64748b;
   margin-top: 4px;
+}
+
+.brand-logo--on-dark .brand-logo__title {
+  color: #f8fafc;
+}
+
+.brand-logo--on-dark .brand-logo__subtitle {
+  color: #94a3b8;
 }
 </style>

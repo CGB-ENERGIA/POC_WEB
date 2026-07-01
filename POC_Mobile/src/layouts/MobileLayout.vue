@@ -23,6 +23,20 @@
           {{ title }}
         </q-toolbar-title>
 
+        <q-space />
+
+        <q-btn
+          flat
+          round
+          dense
+          :icon="$q.dark.isActive ? 'mdi-weather-sunny' : 'mdi-weather-night'"
+          color="white"
+          :aria-label="$q.dark.isActive ? 'Modo claro' : 'Modo escuro'"
+          @click="toggleDarkMode"
+        >
+          <q-tooltip>{{ $q.dark.isActive ? "Modo claro" : "Modo escuro" }}</q-tooltip>
+        </q-btn>
+
         <q-btn
           v-if="session.isAuthenticated && route.name !== 'identificacao'"
           flat
@@ -30,6 +44,7 @@
           dense
           icon="mdi-logout"
           aria-label="Sair"
+          class="q-ml-xs"
           @click="onLogout"
         />
       </q-toolbar>
@@ -48,9 +63,11 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useQuasar } from "quasar";
+import { LocalStorage, useQuasar } from "quasar";
 import { useSessionStore } from "@/stores/session";
 import BrandLogo from "@/components/BrandLogo.vue";
+import { applyThemeColor } from "@/utils/theme";
+import { THEME_STORAGE_KEY } from "@/constants/theme";
 
 const $q = useQuasar();
 const route = useRoute();
@@ -70,6 +87,12 @@ const title = computed(() => titles[String(route.name)] ?? "CGB Checklist");
 const showBack = computed(
   () => route.name !== "home" && route.name !== "identificacao"
 );
+
+function toggleDarkMode() {
+  $q.dark.toggle();
+  LocalStorage.set(THEME_STORAGE_KEY, $q.dark.isActive);
+  applyThemeColor($q.dark.isActive);
+}
 
 function onLogout() {
   $q.dialog({
