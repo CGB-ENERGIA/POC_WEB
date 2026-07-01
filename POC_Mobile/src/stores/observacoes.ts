@@ -70,6 +70,7 @@ export const useObservacoesStore = defineStore("observacoes", {
     },
 
     addChecklist(payload: {
+      auditagem: "GOMAN" | "GSTC";
       matricula: string;
       observador: string;
       base: string;
@@ -96,7 +97,7 @@ export const useObservacoesStore = defineStore("observacoes", {
       const entry: ObservacaoChecklist = {
         id: crypto.randomUUID(),
         data: new Date().toISOString(),
-        auditagem: "GOMAN",
+        auditagem: payload.auditagem,
         matricula: payload.matricula,
         observador: payload.observador,
         base: payload.base,

@@ -82,7 +82,7 @@
       <q-card
         flat
         class="action-tile action-tile--primary cursor-pointer"
-        @click="$router.push({ name: 'nova-observacao' })"
+        @click="$router.push({ name: 'checklist-gstc' })"
       >
         <q-card-section class="row items-center no-wrap q-pa-none">
           <div class="action-tile__accent" />
@@ -93,7 +93,7 @@
             <div class="col">
               <div class="text-subtitle1 text-weight-bold">Checklist GSTC</div>
               <div class="text-caption text-grey-6 q-mt-xs">
-                Registrar observação de segurança
+                {{ totalPerguntasGstc }} perguntas · Conforme / Não conforme
               </div>
             </div>
             <q-icon name="mdi-chevron-right" size="24px" color="primary" />
@@ -130,6 +130,7 @@ import { useRouter } from "vue-router";
 import { useSessionStore } from "@/stores/session";
 import { useObservacoesStore } from "@/stores/observacoes";
 import { totalPerguntasGoman } from "@/data/goman-checklist";
+import { totalPerguntasGstc } from "@/data/gstc-checklist";
 import { getMetaMensal, getMetaSemanal, META_SEMANAL_PADRAO, diasUteisNoMes } from "@/data/employees";
 
 type PeriodoVisao = "semana" | "mes";

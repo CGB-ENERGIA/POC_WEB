@@ -10,7 +10,7 @@ export interface ObservacaoChecklist {
   id: string;
   matricula: string;
   observador: string;
-  auditagem: "GOMAN";
+  auditagem: "GOMAN" | "GSTC";
   data: string;
   base: string;
   equipe: string;

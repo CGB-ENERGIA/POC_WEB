@@ -30,6 +30,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, auditagem: "GOMAN" },
       },
       {
+        path: "checklist-gstc",
+        name: "checklist-gstc",
+        component: () => import("@/pages/ChecklistGstcPage.vue"),
+        meta: { requiresAuth: true, auditagem: "GSTC" },
+      },
+      {
         path: "minhas-observacoes",
         name: "minhas-observacoes",
         component: () => import("@/pages/MinhasObservacoesPage.vue"),

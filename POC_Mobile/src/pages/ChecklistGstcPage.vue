@@ -5,7 +5,7 @@
       <div class="mobile-card mobile-card--flat q-pa-md">
         <div class="row items-center justify-between q-mb-sm">
           <div>
-            <div class="section-title">Checklist GOMAN</div>
+            <div class="section-title">Checklist GSTC</div>
             <div class="section-subtitle">{{ respondidas }} de {{ totalPerguntas }} respondidas</div>
           </div>
           <q-circular-progress
@@ -140,7 +140,7 @@
       <!-- Categorias -->
       <q-list class="checklist-categories q-gutter-y-sm">
         <q-expansion-item
-          v-for="cat in gomanChecklist"
+          v-for="cat in gstcChecklist"
           :key="cat.id"
           v-model="expandedCategories[cat.id]"
           expand-separator
@@ -402,12 +402,12 @@ import { useSessionStore } from "@/stores/session";
 import { useObservacoesStore } from "@/stores/observacoes";
 import { basesOperacionais } from "@/data/checklist";
 import {
-  gomanChecklist,
-  totalPerguntasGoman,
+  gstcChecklist,
+  totalPerguntasGstc,
   type Gravidade,
-  type PerguntaGoman,
+  type PerguntaGstc,
   type RespostaChecklist,
-} from "@/data/goman-checklist";
+} from "@/data/gstc-checklist";
 import type { RespostaSalva } from "@/types/checklist";
 import { compressImage } from "@/utils/image";
 
@@ -425,7 +425,7 @@ const base = ref(session.employee?.base ?? "");
 const equipe = ref("");
 
 // ── Fotos do local com timestamp de servidor ──────────────────────────────────
-const draftKey = `cgb-fotos-local-${session.employee?.matricula ?? "anon"}`
+const draftKey = `cgb-fotos-local-gstc-${session.employee?.matricula ?? "anon"}`
 const fotosLocal = ref<string[]>([])
 const modalFotosAberto = ref(false)
 const fileInputLocalRef = ref<HTMLInputElement | null>(null)
@@ -442,7 +442,6 @@ watch(fotosLocal, (val) => {
 }, { deep: true })
 
 async function getServerTime(): Promise<Date> {
-  // Usa o trace da Cloudflare — retorna ts= em Unix segundos, sem CORS
   const res = await fetch("https://www.cloudflare.com/cdn-cgi/trace", { cache: "no-store" })
   const text = await res.text()
   const ts = text.match(/ts=([0-9.]+)/)?.[1]
@@ -567,15 +566,15 @@ const fileInputRef = ref<HTMLInputElement | null>(null);
 const modalEraNaoConforme = ref(false);
 const proximaPerguntaId = ref<string | null>(null);
 
-const todasPerguntasIds = gomanChecklist.flatMap((cat) =>
+const todasPerguntasIds = gstcChecklist.flatMap((cat) =>
   cat.perguntas.map((p) => p.id)
 );
 
 const expandedCategories = reactive<Record<string, boolean>>(
-  Object.fromEntries(gomanChecklist.map((cat, index) => [cat.id, index === 0]))
+  Object.fromEntries(gstcChecklist.map((cat, index) => [cat.id, index === 0]))
 );
 
-const totalPerguntas = totalPerguntasGoman;
+const totalPerguntas = totalPerguntasGstc;
 
 const respondidas = computed(
   () => Object.keys(respostas).filter((k) => respostas[k]).length
@@ -590,7 +589,7 @@ const progresso = computed(() =>
 );
 
 function progressoCategoria(catId: string) {
-  const cat = gomanChecklist.find((c) => c.id === catId);
+  const cat = gstcChecklist.find((c) => c.id === catId);
   if (!cat) return 0;
   return cat.perguntas.filter((p) => respostas[p.id]).length;
 }
@@ -613,7 +612,7 @@ function irParaProximaPergunta(fromPerguntaId: string) {
     return;
   }
 
-  const categoria = gomanChecklist.find((cat) =>
+  const categoria = gstcChecklist.find((cat) =>
     cat.perguntas.some((p) => p.id === nextId)
   );
   if (categoria) expandedCategories[categoria.id] = true;
@@ -628,7 +627,7 @@ function scrollToElement(elementId: string) {
   el?.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
-function abrirModalNaoConforme(pergunta: PerguntaGoman) {
+function abrirModalNaoConforme(pergunta: PerguntaGstc) {
   modalPerguntaId.value = pergunta.id;
   modalPerguntaTexto.value = pergunta.texto;
   modalEraNaoConforme.value = respostas[pergunta.id] === "nao_conforme";
@@ -716,7 +715,7 @@ async function onSubmit() {
 
   const respostasSalvas: RespostaSalva[] = [];
 
-  for (const cat of gomanChecklist) {
+  for (const cat of gstcChecklist) {
     for (const p of cat.perguntas) {
       const resposta = respostas[p.id];
       if (!resposta) continue;
@@ -736,7 +735,7 @@ async function onSubmit() {
   }
 
   observacoes.addChecklist({
-    auditagem: "GOMAN",
+    auditagem: "GSTC",
     matricula: session.employee.matricula,
     observador: session.employee.nome,
     base: base.value,
@@ -752,7 +751,7 @@ async function onSubmit() {
 
   $q.notify({
     type: "positive",
-    message: "Checklist GOMAN registrado com sucesso!",
+    message: "Checklist GSTC registrado com sucesso!",
     icon: "mdi-check-circle",
     position: "top",
   });
