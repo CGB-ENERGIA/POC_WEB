@@ -140,6 +140,7 @@ import {
   severidades,
   tiposObservacao,
 } from "@/data/checklist";
+import { getTrustedTime, ServerTimeError } from "@/utils/server-time";
 
 const $q = useQuasar();
 const router = useRouter();
@@ -175,6 +176,21 @@ async function onSubmit() {
   if (!session.employee || !categoriaSelecionada.value) return;
 
   saving.value = true;
+
+  let dataRegistro: string;
+  try {
+    const { date } = await getTrustedTime();
+    dataRegistro = date.toISOString();
+  } catch (err) {
+    saving.value = false;
+    const message =
+      err instanceof ServerTimeError
+        ? err.message
+        : "Não foi possível obter o horário do servidor.";
+    $q.notify({ type: "warning", message, position: "top", timeout: 4500 });
+    return;
+  }
+
   observacoes.add({
     matricula: session.employee.matricula,
     observador: session.employee.nome,
@@ -187,6 +203,8 @@ async function onSubmit() {
     severidade: form.tipo === "inconforme" ? form.severidade : "—",
     descricao: form.descricao.trim(),
     resolvido: form.tipo === "conforme",
+    data: dataRegistro,
+    employee: session.employee,
   });
 
   $q.notify({

@@ -1,0 +1,20 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "cgb-poc-r2-upload",
+  "account_id": "c93d5ade48f6a552e190d68f4d83a549",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-03-01",
+  "workers_dev": true,
+  "observability": {
+    "enabled": true
+  },
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "poc-checklist-fotos"
+    }
+  ],
+  "vars": {
+    "ALLOWED_ORIGINS": "http://localhost:9100,http://127.0.0.1:9100,https://poc-web.vercel.app,https://poc-web-cgb.vercel.app"
+  }
+}

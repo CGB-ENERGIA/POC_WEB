@@ -397,7 +397,7 @@ import {
 } from "@/data/gstc-checklist";
 import type { RespostaSalva } from "@/types/checklist";
 import { compressBase64 } from "@/utils/image";
-import { getTrustedTime } from "@/utils/server-time";
+import { getTrustedTime, ServerTimeError } from "@/utils/server-time";
 import { stampAuditPhoto } from "@/utils/photo-stamp";
 import { useChecklistDraft } from "@/composables/useChecklistDraft";
 import CameraModal from "@/components/CameraModal.vue";
@@ -493,26 +493,20 @@ const totalPerguntas = totalPerguntasGstc;
 async function onFotoLocalCapturada(base64: string) {
   carregandoFotoLocal.value = true;
   try {
-    const { date, source } = await getTrustedTime();
+    const { date } = await getTrustedTime();
     const compressed = await compressBase64(base64);
     const carimbrada = await stampAuditPhoto(compressed, {
       time: date,
-      deviceTime: source === "device",
       observer: session.employee?.nomeCompleto ?? session.employee?.nome ?? "—",
       equipe: equipe.value.trim(),
     });
     fotosLocal.value.push(carimbrada);
-
-    if (source === "device") {
-      $q.notify({
-        type: "info",
-        message: "Foto salva com horário do aparelho (sem conexão).",
-        position: "top",
-        timeout: 3000,
-      });
-    }
-  } catch {
-    $q.notify({ type: "negative", message: "Erro ao processar foto", position: "top" });
+  } catch (err) {
+    const message =
+      err instanceof ServerTimeError
+        ? err.message
+        : "Erro ao processar foto";
+    $q.notify({ type: "warning", message, position: "top", timeout: 4500 });
   } finally {
     carregandoFotoLocal.value = false;
   }
@@ -646,6 +640,20 @@ async function onSubmit() {
 
   saving.value = true;
 
+  let dataRegistro: string;
+  try {
+    const { date } = await getTrustedTime();
+    dataRegistro = date.toISOString();
+  } catch (err) {
+    saving.value = false;
+    const message =
+      err instanceof ServerTimeError
+        ? err.message
+        : "Não foi possível obter o horário do servidor.";
+    $q.notify({ type: "warning", message, position: "top", timeout: 4500 });
+    return;
+  }
+
   const respostasSalvas: RespostaSalva[] = [];
 
   for (const cat of gstcChecklist) {
@@ -679,6 +687,8 @@ async function onSubmit() {
     })),
     fotosLocal: [...fotosLocal.value],
     respostas: respostasSalvas,
+    data: dataRegistro,
+    employee: session.employee,
   });
   LocalStorage.remove(draftKey);
   clearChecklistDraft();

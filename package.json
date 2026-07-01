@@ -7,7 +7,9 @@
     "vercel-build": "node scripts/vercel-build.mjs",
     "build": "node scripts/vercel-build.mjs",
     "dev:op": "npm run dev --prefix POC_OP",
-    "dev:mobile": "npm run dev --prefix POC_Mobile"
+    "dev:mobile": "npm run dev --prefix POC_Mobile",
+    "dev:r2-worker": "npm run dev --prefix workers/r2-upload",
+    "deploy:r2-worker": "npm run deploy --prefix workers/r2-upload"
   },
   "engines": {
     "node": "22.x"

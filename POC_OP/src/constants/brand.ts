@@ -1,4 +1,6 @@
-export const LOGO_URL = `${import.meta.env.BASE_URL}assets/logo-cgb.png`;
+import logoCgb from "@/assets/logo-cgb.png";
+
+export const LOGO_URL = logoCgb;
 
 export const BRAND = {
   name: "CGB Engenharia",

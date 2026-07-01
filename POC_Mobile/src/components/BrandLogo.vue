@@ -1,5 +1,12 @@
 <template>
-  <div class="brand-logo" :class="{ 'brand-logo--stacked': stacked, 'brand-logo--on-dark': onDark }">
+  <div
+    class="brand-logo"
+    :class="{
+      'brand-logo--stacked': stacked,
+      'brand-logo--on-dark': onDark,
+      'brand-logo--header': header,
+    }"
+  >
     <div class="brand-logo__mark" :style="markStyle">
       <img :src="LOGO_URL" alt="CGB Engenharia" class="brand-logo__img" />
     </div>
@@ -23,6 +30,7 @@ const props = withDefaults(
     size?: number;
     showText?: boolean;
     stacked?: boolean;
+    header?: boolean;
     title?: string;
     subtitle?: string;
   }>(),
@@ -30,6 +38,7 @@ const props = withDefaults(
     size: 48,
     showText: false,
     stacked: false,
+    header: false,
     title: BRAND.product,
     subtitle: BRAND.tagline,
   }
@@ -52,6 +61,27 @@ const markStyle = computed(() => ({
   flex-direction: column;
   text-align: center;
   gap: 14px;
+}
+
+.brand-logo--header .brand-logo__mark {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+.brand-logo--header .brand-logo__img {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
+}
+
+.brand-logo--header .brand-logo__title {
+  color: #fff;
+  font-size: 1rem;
+}
+
+.brand-logo--header .brand-logo__subtitle {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.75rem;
 }
 
 .brand-logo__mark {

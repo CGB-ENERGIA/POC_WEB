@@ -6,6 +6,13 @@ export interface ChecklistResumo {
   naoConformes: number;
 }
 
+export type RespostaSalva = RespostaPergunta & {
+  categoria: string;
+  pergunta: string;
+  gravidade: string;
+  peso: number;
+};
+
 export interface ObservacaoChecklist {
   id: string;
   matricula: string;
@@ -16,13 +23,7 @@ export interface ObservacaoChecklist {
   equipe: string;
   membros: { nome: string; matricula: string }[];
   fotosLocal: string[];
-  respostas: RespostaPergunta[];
+  respostas: RespostaSalva[];
   resumo: ChecklistResumo;
+  syncStatus?: "pending" | "synced" | "failed";
 }
-
-export type RespostaSalva = RespostaPergunta & {
-  categoria: string;
-  pergunta: string;
-  gravidade: string;
-  peso: number;
-};

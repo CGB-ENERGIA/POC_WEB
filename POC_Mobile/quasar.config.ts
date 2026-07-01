@@ -2,7 +2,7 @@ import { defineConfig } from "#q-app";
 
 export default defineConfig(() => {
   return {
-    boot: ["pinia", "dark-mode", "auth", "lang", "network"],
+    boot: ["pinia", "dark-mode", "auth", "lang", "network", "time-sync"],
 
     css: ["app.scss"],
 
@@ -41,8 +41,8 @@ export default defineConfig(() => {
       extendPWAManifestJson(json) {
         Object.assign(json, {
           id: "/mobile/",
-          name: "CGB Checklist",
-          short_name: "CGB Obs",
+          name: "POC - CGB",
+          short_name: "CGB",
           description: "Checklist de Observações de Segurança — CGB Engenharia",
           theme_color: "#7a1225",
           background_color: "#eef2f7",

@@ -2,8 +2,12 @@ import { defineStore } from "pinia";
 import { LocalStorage } from "quasar";
 
 import type { AuditagemCategoria } from "@/data/auditagem";
-import type { RespostaPergunta } from "@/data/goman-checklist";
+import type { Employee } from "@/data/employees";
 import type { ChecklistResumo, ObservacaoChecklist, RespostaSalva } from "@/types/checklist";
+import { isRemoteSyncEnabled } from "@/lib/config";
+import { syncChecklistToRemote } from "@/services/checklist-sync";
+import { syncObservacaoLivreToRemote } from "@/services/observacao-sync";
+import { refreshServerTimeSync } from "@/utils/server-time";
 
 const STORAGE_KEY = "cgb-observacoes";
 
@@ -58,15 +62,39 @@ export const useObservacoesStore = defineStore("observacoes", {
       LocalStorage.set(STORAGE_KEY, this.items);
     },
 
-    add(obs: Omit<Observacao, "id" | "data">) {
+    add(payload: Omit<Observacao, "id" | "data"> & { data: string; employee: Employee }) {
+      const { employee, data, ...obs } = payload;
       const entry: Observacao = {
         ...obs,
         id: crypto.randomUUID(),
-        data: new Date().toISOString(),
+        data,
       };
       this.items.unshift(entry);
       this.persist();
+
+      if (isRemoteSyncEnabled()) {
+        void syncObservacaoLivreToRemote(entry, employee).catch(() => {});
+      }
+
       return entry;
+    },
+
+    retryFailedSyncs(employee: Employee) {
+      if (!isRemoteSyncEnabled() || !navigator.onLine) return;
+
+      for (const item of this.items) {
+        if (!isChecklist(item) || item.syncStatus !== "failed") continue;
+        item.syncStatus = "pending";
+        void syncChecklistToRemote(item, employee)
+          .then(() => {
+            item.syncStatus = "synced";
+            this.persist();
+          })
+          .catch(() => {
+            item.syncStatus = "failed";
+            this.persist();
+          });
+      }
     },
 
     addChecklist(payload: {
@@ -78,6 +106,8 @@ export const useObservacoesStore = defineStore("observacoes", {
       membros: { nome: string; matricula: string }[];
       fotosLocal: string[];
       respostas: RespostaSalva[];
+      data: string;
+      employee: Employee;
     }) {
       const resumo: ChecklistResumo = {
         total: payload.respostas.length,
@@ -85,18 +115,9 @@ export const useObservacoesStore = defineStore("observacoes", {
         naoConformes: payload.respostas.filter((r) => r.resposta === "nao_conforme").length,
       };
 
-      const respostas: RespostaPergunta[] = payload.respostas.map(
-        ({ perguntaId, resposta, observacao, foto }) => ({
-          perguntaId,
-          resposta,
-          ...(observacao ? { observacao } : {}),
-          ...(foto ? { foto } : {}),
-        })
-      );
-
       const entry: ObservacaoChecklist = {
         id: crypto.randomUUID(),
-        data: new Date().toISOString(),
+        data: payload.data,
         auditagem: payload.auditagem,
         matricula: payload.matricula,
         observador: payload.observador,
@@ -104,12 +125,27 @@ export const useObservacoesStore = defineStore("observacoes", {
         equipe: payload.equipe,
         membros: payload.membros,
         fotosLocal: payload.fotosLocal,
-        respostas,
+        respostas: payload.respostas,
         resumo,
+        syncStatus: isRemoteSyncEnabled() ? "pending" : undefined,
       };
 
       this.items.unshift(entry);
       this.persist();
+
+      if (isRemoteSyncEnabled()) {
+        void syncChecklistToRemote(entry, payload.employee)
+          .then(async () => {
+            entry.syncStatus = "synced";
+            this.persist();
+            await refreshServerTimeSync();
+          })
+          .catch(() => {
+            entry.syncStatus = "failed";
+            this.persist();
+          });
+      }
+
       return entry;
     },
 

@@ -2,7 +2,6 @@ export interface PhotoStampMeta {
   observer: string;
   equipe: string;
   time: Date;
-  deviceTime?: boolean;
 }
 
 export function stampAuditPhoto(base64: string, meta: PhotoStampMeta): Promise<string> {
@@ -33,7 +32,7 @@ export function stampAuditPhoto(base64: string, meta: PhotoStampMeta): Promise<s
       });
 
       const lines = [
-        `📅 ${dateStr}  🕐 ${timeStr}${meta.deviceTime ? " (aparelho)" : ""}`,
+        `📅 ${dateStr}  🕐 ${timeStr}`,
         `👷 ${meta.observer}`,
         `🚧 Equipe: ${meta.equipe || "—"}`,
       ];

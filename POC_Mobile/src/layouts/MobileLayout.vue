@@ -13,14 +13,16 @@
           @click="$router.back()"
         />
 
-        <BrandLogo
-          v-if="!showBack || route.name === 'home'"
-          :size="32"
-          class="q-mr-sm"
-        />
-
-        <q-toolbar-title class="text-weight-bold ellipsis">
-          {{ title }}
+        <q-toolbar-title class="text-weight-bold ellipsis toolbar-title">
+          <BrandLogo
+            v-if="!showBack"
+            :size="26"
+            header
+            show-text
+            :title="title"
+            class="toolbar-title__brand"
+          />
+          <span v-else>{{ title }}</span>
         </q-toolbar-title>
 
         <q-space />
