@@ -50,14 +50,34 @@
             />
           </div>
           <div class="col-6">
-            <q-input
-              v-model="equipe"
-              outlined
-              dense
-              label="Equipe / Prefixo"
-              placeholder="Ex: ALOJ74"
-              :rules="[required]"
-            />
+            <div class="row items-start no-wrap" style="gap: 6px">
+              <q-input
+                v-model="equipe"
+                class="col"
+                outlined
+                dense
+                label="Equipe / Prefixo"
+                placeholder="Ex: ALOJ74"
+                :rules="[required]"
+              />
+              <q-btn
+                flat
+                round
+                size="md"
+                class="foto-local-btn q-mt-xs"
+                @click="abrirModalFotosLocal"
+              >
+                <q-icon name="mdi-camera-outline" size="22px" :color="fotosLocal.length ? 'primary' : 'grey-5'" />
+                <q-badge
+                  v-if="fotosLocal.length"
+                  floating
+                  color="primary"
+                  style="font-size: 10px"
+                >
+                  {{ fotosLocal.length }}
+                </q-badge>
+              </q-btn>
+            </div>
           </div>
         </div>
       </q-card>
@@ -239,6 +259,54 @@
       />
     </q-form>
 
+    <!-- Modal fotos do local -->
+    <q-dialog v-model="modalFotosAberto" position="bottom">
+      <q-card class="fotos-local-modal">
+        <q-card-section class="row items-center q-pb-sm">
+          <div>
+            <div class="text-subtitle1 text-weight-bold">📸 Fotos do local</div>
+            <div class="text-caption text-grey-6">Salvas automaticamente como rascunho</div>
+          </div>
+          <q-space />
+          <q-btn flat round dense icon="mdi-close" v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <div class="fotos-local-grid">
+            <div
+              v-for="(foto, i) in fotosLocal"
+              :key="i"
+              class="foto-thumb"
+            >
+              <img :src="foto" alt="Foto do local" />
+              <q-btn
+                round dense flat
+                icon="mdi-close"
+                size="xs"
+                color="white"
+                class="foto-thumb__del"
+                @click="removerFotoLocal(i)"
+              />
+            </div>
+
+            <div class="foto-add" @click="selecionarFotoLocal">
+              <q-icon name="mdi-camera-plus-outline" size="28px" color="grey-5" />
+              <div class="text-caption text-grey-5 q-mt-xs">Adicionar</div>
+            </div>
+          </div>
+          <input
+            ref="fileInputLocalRef"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            multiple
+            class="hidden-input"
+            @change="onFotoLocalSelecionada"
+          />
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
     <!-- Modal não conforme -->
     <q-dialog v-model="modalAberto" persistent position="bottom">
       <q-card class="nc-modal">
@@ -325,9 +393,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref } from "vue";
+import { computed, nextTick, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { useQuasar } from "quasar";
+import { LocalStorage, useQuasar } from "quasar";
 import { useSessionStore } from "@/stores/session";
 import { useObservacoesStore } from "@/stores/observacoes";
 import { basesOperacionais } from "@/data/checklist";
@@ -353,6 +421,53 @@ const observacoes = useObservacoesStore();
 
 const base = ref(session.employee?.base ?? "");
 const equipe = ref("");
+
+// ── Fotos do local (rascunho persistido) ──────────────────────────────────────
+const draftKey = `cgb-fotos-local-${session.employee?.matricula ?? "anon"}`
+const fotosLocal = ref<string[]>([])
+const modalFotosAberto = ref(false)
+const fileInputLocalRef = ref<HTMLInputElement | null>(null)
+
+onMounted(() => {
+  const saved = LocalStorage.getItem<string[]>(draftKey)
+  if (saved?.length) fotosLocal.value = saved
+})
+
+watch(fotosLocal, (val) => {
+  if (val.length) LocalStorage.set(draftKey, val)
+  else LocalStorage.remove(draftKey)
+}, { deep: true })
+
+function abrirModalFotosLocal() {
+  modalFotosAberto.value = true
+}
+
+function selecionarFotoLocal() {
+  fileInputLocalRef.value?.click()
+}
+
+async function onFotoLocalSelecionada(event: Event) {
+  const input = event.target as HTMLInputElement
+  const files = Array.from(input.files ?? [])
+  input.value = ""
+  if (!files.length) return
+
+  for (const file of files) {
+    if (!file.type.startsWith("image/")) continue
+    try {
+      const compressed = await compressImage(file)
+      fotosLocal.value.push(compressed)
+    } catch {
+      $q.notify({ type: "negative", message: "Erro ao processar foto", position: "top" })
+    }
+  }
+}
+
+function removerFotoLocal(idx: number) {
+  fotosLocal.value.splice(idx, 1)
+}
+
+// ── Membros ───────────────────────────────────────────────────────────────────
 const membros = ref<{ nome: string; matricula: string }[]>(
   Array.from({ length: 6 }, () => ({ nome: "", matricula: "" }))
 );
@@ -557,8 +672,10 @@ async function onSubmit() {
       nome: m.nome.trim(),
       matricula: m.matricula.trim(),
     })),
+    fotosLocal: [...fotosLocal.value],
     respostas: respostasSalvas,
   });
+  LocalStorage.remove(draftKey);
 
   $q.notify({
     type: "positive",
@@ -654,5 +771,61 @@ async function onSubmit() {
   border: 1.5px dashed rgba(122, 18, 37, 0.3);
   border-radius: 10px;
   padding: 8px 0;
+}
+
+.foto-local-btn {
+  min-width: 36px;
+  min-height: 36px;
+  flex-shrink: 0;
+}
+
+.fotos-local-modal {
+  width: 100%;
+  max-width: 480px;
+  border-radius: 20px 20px 0 0;
+}
+
+.fotos-local-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.foto-thumb {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  aspect-ratio: 1;
+  background: #f0f0f0;
+}
+
+.foto-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.foto-thumb__del {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.45) !important;
+}
+
+.foto-add {
+  border-radius: 10px;
+  aspect-ratio: 1;
+  border: 2px dashed #d0d0d0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.foto-add:active {
+  border-color: var(--q-primary);
 }
 </style>

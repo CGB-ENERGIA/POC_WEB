@@ -75,6 +75,7 @@ export const useObservacoesStore = defineStore("observacoes", {
       base: string;
       equipe: string;
       membros: { nome: string; matricula: string }[];
+      fotosLocal: string[];
       respostas: RespostaSalva[];
     }) {
       const resumo: ChecklistResumo = {
@@ -101,6 +102,7 @@ export const useObservacoesStore = defineStore("observacoes", {
         base: payload.base,
         equipe: payload.equipe,
         membros: payload.membros,
+        fotosLocal: payload.fotosLocal,
         respostas,
         resumo,
       };

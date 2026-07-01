@@ -15,6 +15,7 @@ export interface ObservacaoChecklist {
   base: string;
   equipe: string;
   membros: { nome: string; matricula: string }[];
+  fotosLocal: string[];
   respostas: RespostaPergunta[];
   resumo: ChecklistResumo;
 }
