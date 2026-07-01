@@ -62,6 +62,47 @@
         </div>
       </q-card>
 
+      <!-- Membros da equipe -->
+      <q-card flat bordered class="mobile-card q-pa-md q-mb-md">
+        <div class="field-label q-mb-sm">Membros da equipe</div>
+        <div class="column q-gutter-sm">
+          <div
+            v-for="(_, idx) in membros"
+            :key="idx"
+            class="row items-center q-gutter-xs"
+          >
+            <div class="col">
+              <q-input
+                v-model="membros[idx]"
+                outlined
+                dense
+                :label="`Membro ${idx + 1}`"
+                placeholder="Nome do colaborador"
+              />
+            </div>
+            <q-btn
+              flat
+              round
+              dense
+              icon="mdi-close"
+              color="grey-5"
+              :disable="membros.length === 1"
+              @click="removerMembro(idx)"
+            />
+          </div>
+        </div>
+        <q-btn
+          flat
+          no-caps
+          dense
+          icon="mdi-plus"
+          label="Adicionar membro"
+          color="primary"
+          class="q-mt-sm"
+          @click="adicionarMembro"
+        />
+      </q-card>
+
       <!-- Categorias -->
       <q-list class="checklist-categories q-gutter-y-sm">
         <q-expansion-item
@@ -298,7 +339,16 @@ const observacoes = useObservacoesStore();
 
 const base = ref(session.employee?.base ?? "");
 const equipe = ref("");
+const membros = ref<string[]>(Array(6).fill(""));
 const saving = ref(false);
+
+function adicionarMembro() {
+  membros.value.push("");
+}
+
+function removerMembro(idx: number) {
+  if (membros.value.length > 1) membros.value.splice(idx, 1);
+}
 
 const respostas = reactive<Record<string, Exclude<RespostaChecklist, null>>>({});
 const detalhesMap = reactive<Record<string, NaoConformeDetalhe>>({});
@@ -487,6 +537,7 @@ async function onSubmit() {
     observador: session.employee.nome,
     base: base.value,
     equipe: equipe.value.trim(),
+    membros: membros.value.map((m) => m.trim()).filter(Boolean),
     respostas: respostasSalvas,
   });
 

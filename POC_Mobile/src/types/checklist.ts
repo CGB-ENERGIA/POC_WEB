@@ -14,6 +14,7 @@ export interface ObservacaoChecklist {
   data: string;
   base: string;
   equipe: string;
+  membros: string[];
   respostas: RespostaPergunta[];
   resumo: ChecklistResumo;
 }
