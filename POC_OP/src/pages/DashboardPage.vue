@@ -39,6 +39,8 @@
       </div>
     </div>
 
+    <q-linear-progress v-if="loading" indeterminate color="primary" class="dash-loading" />
+
     <!-- ══════════════════════════════════════════════════════
          CONTENT
     ══════════════════════════════════════════════════════ -->
@@ -141,7 +143,7 @@
         </div>
         <div class="alert-strip__text">
           <span class="alert-strip__title">Tolerância Zero em destaque</span>
-          <span class="alert-strip__body">34 ocorrências registradas este mês — queda de 8% em relação ao mês anterior.</span>
+          <span class="alert-strip__body">{{ loading ? '…' : `${toleranciaZero} ocorrência(s) registrada(s) no período selecionado.` }}</span>
         </div>
         <router-link to="/tolerancia-zero" class="alert-strip__link">
           Ver detalhes <q-icon name="mdi-chevron-right" size="16px" />
@@ -176,7 +178,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue"
+import { ref, computed, watch, onMounted } from "vue"
 import { use } from "echarts/core"
 import { CanvasRenderer } from "echarts/renderers"
 import { BarChart, LineChart, PieChart } from "echarts/charts"
@@ -184,6 +186,7 @@ import {
   GridComponent, TooltipComponent, LegendComponent, MarkLineComponent
 } from "echarts/components"
 import VChart from "vue-echarts"
+import { useChecklistData, fmtPct, fmtN } from "@/composables/useChecklistData"
 
 use([
   CanvasRenderer, BarChart, LineChart, PieChart,
@@ -201,7 +204,29 @@ const meses = [
   { label: "set", value: 9 },  { label: "out", value: 10 },
   { label: "nov", value: 11 }, { label: "dez", value: 12 },
 ]
-const filters = ref({ ano: 2026, mes: 6 })
+const filters = ref({ ano: 2026, mes: new Date().getMonth() + 1 })
+
+// ── Dados do banco ────────────────────────────────────────────────────────────
+const {
+  loading,
+  load,
+  totalSubmissions,
+  conformidadeIndex,
+  toleranciaZero,
+  pctPerfeitas,
+  basesCovertas,
+  byMes,
+  byGerencia,
+  byCategoria,
+  conformidadePorObservador,
+} = useChecklistData()
+
+async function recarregar() {
+  await load(filters.value, true)
+}
+
+onMounted(recarregar)
+watch(filters, recarregar, { deep: true })
 
 // ── Cores ────────────────────────────────────────────────────────────────────
 const BRAND   = "#8B1C2B"
@@ -213,248 +238,257 @@ const PURPLE  = "#7c3aed"
 const ORANGE  = "#f97316"
 const TEAL    = "#0891b2"
 
+// Paleta para donut gerência
+const GERENCIA_COLORS: Record<string, string> = {
+  GOMAN:   BRAND,
+  GSTC:    "#b02035",
+  OFICINA: "#d4405a",
+  ADM:     "#e8768b",
+  GERE:    "#f0a8b5",
+  SESMT:   "#6b1020",
+}
+function gerenciaColor(nome: string, idx: number) {
+  return GERENCIA_COLORS[nome] ?? ["#0ea5e9","#7c3aed","#f97316","#16a34a"][idx % 4]
+}
+
 // ── KPI Cards ────────────────────────────────────────────────────────────────
-const kpis = [
+const kpis = computed(() => [
   {
     label:      "Total de Observações",
-    value:      "1.248",
+    value:      loading.value ? "…" : fmtN(totalSubmissions.value),
     icon:       "mdi-eye-outline",
     accent:     BRAND,
-    trend:      "+12% vs mês ant.",
-    trendIcon:  "mdi-trending-up",
-    trendColor: GREEN,
+    trend:      "período selecionado",
+    trendIcon:  "mdi-calendar",
+    trendColor: "#6b7280",
   },
   {
     label:      "Índice de Conformidade",
-    value:      "94,7%",
+    value:      loading.value ? "…" : fmtPct(conformidadeIndex.value),
     icon:       "mdi-check-decagram-outline",
     accent:     GREEN,
-    trend:      "+3p.p. vs mês ant.",
-    trendIcon:  "mdi-trending-up",
+    trend:      `${fmtN(totalSubmissions.value)} checklist(s)`,
+    trendIcon:  "mdi-clipboard-check",
     trendColor: GREEN,
   },
   {
     label:      "Tolerância Zero",
-    value:      "34",
+    value:      loading.value ? "…" : fmtN(toleranciaZero.value),
     icon:       "mdi-alert-octagon-outline",
     accent:     RED,
-    trend:      "-8% vs mês ant.",
-    trendIcon:  "mdi-trending-down",
-    trendColor: GREEN,
+    trend:      "não conformidades críticas",
+    trendIcon:  "mdi-alert",
+    trendColor: toleranciaZero.value > 0 ? RED : GREEN,
   },
   {
     label:      "Obs. 100% Perfeitas",
-    value:      "62,3%",
+    value:      loading.value ? "…" : fmtPct(pctPerfeitas.value),
     icon:       "mdi-star-circle-outline",
     accent:     YELLOW,
-    trend:      "+5p.p. vs mês ant.",
-    trendIcon:  "mdi-trending-up",
-    trendColor: GREEN,
+    trend:      "sem nenhuma NC",
+    trendIcon:  "mdi-star",
+    trendColor: pctPerfeitas.value >= 0.5 ? GREEN : YELLOW,
   },
   {
     label:      "Bases Cobertas",
-    value:      "6 / 6",
+    value:      loading.value ? "…" : String(basesCovertas.value),
     icon:       "mdi-map-marker-multiple-outline",
     accent:     BLUE,
-    trend:      "100% de cobertura",
-    trendIcon:  "mdi-check",
+    trend:      "bases com observações",
+    trendIcon:  "mdi-map-marker",
     trendColor: GREEN,
   },
-]
+])
 
 // ── Evolução Mensal ───────────────────────────────────────────────────────────
-const lineOption = computed(() => ({
-  backgroundColor: "transparent",
-  tooltip: {
-    trigger: "axis",
-    formatter: (p: any[]) =>
-      `<b>${p[0]?.name}</b><br/>${p[0]?.value} observações`,
-  },
-  grid: { top: 24, right: 20, bottom: 28, left: 48 },
-  xAxis: {
-    type: "category",
-    data: ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun"],
-    axisLine: { lineStyle: { color: "#e5e7eb" } },
-    axisTick: { show: false },
-    axisLabel: { color: "#9ca3af", fontSize: 11 },
-  },
-  yAxis: {
-    type: "value",
-    axisLabel: { color: "#9ca3af", fontSize: 11 },
-    splitLine: { lineStyle: { color: "#f3f4f6", type: "dashed" as const } },
-    axisLine: { show: false },
-    axisTick: { show: false },
-  },
-  series: [
-    {
-      type: "line",
-      data: [180, 195, 210, 185, 220, 258],
-      smooth: true,
-      symbol: "circle",
-      symbolSize: 8,
-      lineStyle: { color: BRAND, width: 2.5 },
-      itemStyle: { color: BRAND, borderColor: "#fff", borderWidth: 2 },
-      areaStyle: {
-        color: {
-          type: "linear" as const,
-          x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [
-            { offset: 0, color: "rgba(139,28,43,0.20)" },
-            { offset: 1, color: "rgba(139,28,43,0.01)" },
-          ],
-        },
-      },
-      markLine: {
-        silent: true,
-        symbol: ["none", "none"],
-        data: [{ type: "average" as const }],
-        lineStyle: { color: BRAND, type: "dashed" as const, width: 1 },
-        label: {
-          formatter: "Média: {c}",
-          color: BRAND,
-          fontSize: 10,
-          position: "insideEndTop" as const,
-        },
-      },
+const lineOption = computed(() => {
+  const mesLabels = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
+  const mesData = meses.map(m => byMes.value[m.value] ?? 0)
+  return {
+    backgroundColor: "transparent",
+    tooltip: {
+      trigger: "axis",
+      formatter: (p: any[]) =>
+        `<b>${p[0]?.name}</b><br/>${p[0]?.value} observações`,
     },
-  ],
-}))
+    grid: { top: 24, right: 20, bottom: 28, left: 48 },
+    xAxis: {
+      type: "category",
+      data: mesLabels,
+      axisLine: { lineStyle: { color: "#e5e7eb" } },
+      axisTick: { show: false },
+      axisLabel: { color: "#9ca3af", fontSize: 11 },
+    },
+    yAxis: {
+      type: "value",
+      axisLabel: { color: "#9ca3af", fontSize: 11 },
+      splitLine: { lineStyle: { color: "#f3f4f6", type: "dashed" as const } },
+      axisLine: { show: false },
+      axisTick: { show: false },
+    },
+    series: [
+      {
+        type: "line",
+        data: mesData,
+        smooth: true,
+        symbol: "circle",
+        symbolSize: 8,
+        lineStyle: { color: BRAND, width: 2.5 },
+        itemStyle: { color: BRAND, borderColor: "#fff", borderWidth: 2 },
+        areaStyle: {
+          color: {
+            type: "linear" as const,
+            x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: "rgba(139,28,43,0.20)" },
+              { offset: 1, color: "rgba(139,28,43,0.01)" },
+            ],
+          },
+        },
+        markLine: {
+          silent: true,
+          symbol: ["none", "none"],
+          data: [{ type: "average" as const }],
+          lineStyle: { color: BRAND, type: "dashed" as const, width: 1 },
+          label: {
+            formatter: "Média: {c}",
+            color: BRAND,
+            fontSize: 10,
+            position: "insideEndTop" as const,
+          },
+        },
+      },
+    ],
+  }
+})
 
 // ── Donut Gerência ────────────────────────────────────────────────────────────
-const donutOption = computed(() => ({
-  backgroundColor: "transparent",
-  tooltip: {
-    trigger: "item",
-    formatter: "{b}: <b>{c}</b> obs. ({d}%)",
-  },
-  legend: {
-    orient: "vertical" as const,
-    right: 4,
-    top: "center",
-    textStyle: { fontSize: 11, color: "#6b7280" },
-    itemWidth: 10,
-    itemHeight: 10,
-    itemGap: 10,
-  },
-  series: [
-    {
-      type: "pie",
-      radius: ["42%", "72%"],
-      center: ["38%", "50%"],
-      label: { show: false },
-      emphasis: { scale: true, scaleSize: 5 },
-      data: [
-        { value: 480, name: "GOMAN",   itemStyle: { color: BRAND } },
-        { value: 295, name: "GSTC",    itemStyle: { color: "#b02035" } },
-        { value: 218, name: "OFICINA", itemStyle: { color: "#d4405a" } },
-        { value: 148, name: "ADM",     itemStyle: { color: "#e8768b" } },
-        { value: 72,  name: "GERE",    itemStyle: { color: "#f0a8b5" } },
-        { value: 35,  name: "SESMT",   itemStyle: { color: "#6b1020" } },
-      ],
+const donutOption = computed(() => {
+  const entries = Object.entries(byGerencia.value)
+    .sort((a, b) => b[1] - a[1])
+  return {
+    backgroundColor: "transparent",
+    tooltip: {
+      trigger: "item",
+      formatter: "{b}: <b>{c}</b> obs. ({d}%)",
     },
-  ],
-}))
+    legend: {
+      orient: "vertical" as const,
+      right: 4,
+      top: "center",
+      textStyle: { fontSize: 11, color: "#6b7280" },
+      itemWidth: 10,
+      itemHeight: 10,
+      itemGap: 10,
+    },
+    series: [
+      {
+        type: "pie",
+        radius: ["42%", "72%"],
+        center: ["38%", "50%"],
+        label: { show: false },
+        emphasis: { scale: true, scaleSize: 5 },
+        data: entries.length
+          ? entries.map(([nome, value], i) => ({
+              value,
+              name: nome,
+              itemStyle: { color: gerenciaColor(nome, i) },
+            }))
+          : [{ value: 1, name: "Sem dados", itemStyle: { color: "#e5e7eb" } }],
+      },
+    ],
+  }
+})
 
 // ── Top Observadores ──────────────────────────────────────────────────────────
-const observBarOption = computed(() => ({
-  backgroundColor: "transparent",
-  tooltip: { trigger: "axis", axisPointer: { type: "shadow" as const } },
-  grid: { top: 8, right: 56, bottom: 8, left: 80, containLabel: false },
-  xAxis: {
-    type: "value",
-    max: 100,
-    axisLabel: { formatter: "{value}%", color: "#9ca3af", fontSize: 10 },
-    splitLine: { lineStyle: { color: "#f3f4f6", type: "dashed" as const } },
-    axisLine: { show: false },
-    axisTick: { show: false },
-  },
-  yAxis: {
-    type: "category",
-    data: [
-      "Arilson",
-      "Reinaldo",
-      "Vanilson",
-      "Washington S.",
-      "R.Hermesson",
-      "A.Samuel",
-      "Paulo H.",
-      "Deilton C.",
-    ],
-    axisLabel: { color: "#6b7280", fontSize: 10 },
-    axisTick: { show: false },
-    axisLine: { show: false },
-  },
-  series: [
-    {
-      type: "bar",
-      data: [98.5, 98.8, 99.2, 99.5, 100, 100, 100, 100],
-      barMaxWidth: 16,
-      label: {
-        show: true,
-        position: "right" as const,
-        formatter: (p: any) => `${p.value}%`,
-        fontSize: 10,
-        color: "#6b7280",
-      },
-      itemStyle: {
-        color: (p: any) => {
-          const v = p.value as number
-          if (v >= 99) return GREEN
-          if (v >= 97) return "#84cc16"
-          if (v >= 95) return YELLOW
-          return RED
-        },
-        borderRadius: [0, 4, 4, 0],
-      },
+const observBarOption = computed(() => {
+  const top = conformidadePorObservador.value.slice(0, 8)
+  return {
+    backgroundColor: "transparent",
+    tooltip: { trigger: "axis", axisPointer: { type: "shadow" as const } },
+    grid: { top: 8, right: 56, bottom: 8, left: 80, containLabel: false },
+    xAxis: {
+      type: "value",
+      max: 100,
+      axisLabel: { formatter: "{value}%", color: "#9ca3af", fontSize: 10 },
+      splitLine: { lineStyle: { color: "#f3f4f6", type: "dashed" as const } },
+      axisLine: { show: false },
+      axisTick: { show: false },
     },
-  ],
-}))
+    yAxis: {
+      type: "category",
+      data: top.map(o => o.nome.split(" ")[0]),
+      axisLabel: { color: "#6b7280", fontSize: 10 },
+      axisTick: { show: false },
+      axisLine: { show: false },
+    },
+    series: [
+      {
+        type: "bar",
+        data: top.map(o => o.pct),
+        barMaxWidth: 16,
+        label: {
+          show: true,
+          position: "right" as const,
+          formatter: (p: any) => `${p.value}%`,
+          fontSize: 10,
+          color: "#6b7280",
+        },
+        itemStyle: {
+          color: (p: any) => {
+            const v = p.value as number
+            if (v >= 99) return GREEN
+            if (v >= 97) return "#84cc16"
+            if (v >= 95) return YELLOW
+            return RED
+          },
+          borderRadius: [0, 4, 4, 0],
+        },
+      },
+    ],
+  }
+})
 
 // ── Por Categoria ─────────────────────────────────────────────────────────────
-const catBarOption = computed(() => ({
-  backgroundColor: "transparent",
-  tooltip: { trigger: "axis", axisPointer: { type: "shadow" as const } },
-  grid: { top: 8, right: 48, bottom: 8, left: 128, containLabel: false },
-  xAxis: {
-    type: "value",
-    axisLabel: { color: "#9ca3af", fontSize: 10 },
-    splitLine: { lineStyle: { color: "#f3f4f6", type: "dashed" as const } },
-    axisLine: { show: false },
-    axisTick: { show: false },
-  },
-  yAxis: {
-    type: "category",
-    data: [
-      "Estruturas",
-      "Ergonomia",
-      "Ferramentas",
-      "Housekeeping",
-      "Procedimentos",
-      "Uso de EPI",
-      "Comportamento",
-    ],
-    axisLabel: { color: "#6b7280", fontSize: 10 },
-    axisTick: { show: false },
-    axisLine: { show: false },
-  },
-  series: [
-    {
-      type: "bar",
-      data: [38, 67, 98, 142, 198, 285, 420],
-      barMaxWidth: 16,
-      label: {
-        show: true,
-        position: "right" as const,
-        fontSize: 10,
-        color: "#6b7280",
-      },
-      itemStyle: {
-        color: BRAND,
-        borderRadius: [0, 4, 4, 0],
-      },
+const catBarOption = computed(() => {
+  const cats = [...byCategoria.value].sort((a, b) => a.total - b.total)
+  return {
+    backgroundColor: "transparent",
+    tooltip: { trigger: "axis", axisPointer: { type: "shadow" as const } },
+    grid: { top: 8, right: 48, bottom: 8, left: 128, containLabel: false },
+    xAxis: {
+      type: "value",
+      axisLabel: { color: "#9ca3af", fontSize: 10 },
+      splitLine: { lineStyle: { color: "#f3f4f6", type: "dashed" as const } },
+      axisLine: { show: false },
+      axisTick: { show: false },
     },
-  ],
-}))
+    yAxis: {
+      type: "category",
+      data: cats.map(c => c.categoria),
+      axisLabel: { color: "#6b7280", fontSize: 10 },
+      axisTick: { show: false },
+      axisLine: { show: false },
+    },
+    series: [
+      {
+        type: "bar",
+        data: cats.map(c => c.total),
+        barMaxWidth: 16,
+        label: {
+          show: true,
+          position: "right" as const,
+          fontSize: 10,
+          color: "#6b7280",
+        },
+        itemStyle: {
+          color: BRAND,
+          borderRadius: [0, 4, 4, 0],
+        },
+      },
+    ],
+  }
+})
 
 // ── Acesso Rápido ─────────────────────────────────────────────────────────────
 const pages = [

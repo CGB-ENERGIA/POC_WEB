@@ -1,9 +1,10 @@
-<template>
+﻿<template>
   <q-page class="indicadores-page">
+    <q-linear-progress v-if="loading" indeterminate color="negative" style="position:sticky;top:0;z-index:200" />
 
-    <!-- ══════════════════════════════════════════════════════
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
          FILTER BAR
-    ══════════════════════════════════════════════════════ -->
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
     <div class="filter-bar">
       <div class="filter-fab-wrap">
         <button
@@ -17,10 +18,10 @@
       <div class="filter-collapsible" :class="{ 'is-hidden': !showFilters }">
       <div class="filter-bar__inner">
 
-        <!-- Row 1: Mês · Ano · Base · Gerência -->
+        <!-- Row 1: MÃªs Â· Ano Â· Base Â· GerÃªncia -->
         <div class="filter-row">
           <div class="fgroup">
-            <span class="fgroup__label">Mês</span>
+            <span class="fgroup__label">MÃªs</span>
             <div class="pill-group">
               <button v-for="m in mesesOpts" :key="m"
                 :class="['pill', filters.mes === m && 'pill--active']"
@@ -47,7 +48,7 @@
           </div>
           <div class="filter-divider" />
           <div class="fgroup">
-            <span class="fgroup__label">Gerência</span>
+            <span class="fgroup__label">GerÃªncia</span>
             <div class="pill-group">
               <button v-for="g in gerenciasOpts" :key="g"
                 :class="['pill', filters.gerencia === g && 'pill--active']"
@@ -56,7 +57,7 @@
           </div>
         </div>
 
-        <!-- Row 2: Semana · Gerente · Prefixo · Tipo de POC -->
+        <!-- Row 2: Semana Â· Gerente Â· Prefixo Â· Tipo de POC -->
         <div class="filter-row">
           <div class="fgroup fgroup--gerente" style="min-width:140px">
             <span class="fgroup__label">Semana</span>
@@ -96,9 +97,9 @@
       </div>
     </div>
 
-    <!-- ══════════════════════════════════════════════════════
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
          CONTENT
-    ══════════════════════════════════════════════════════ -->
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
     <div class="q-pa-md">
 
       <!-- KPI Row -->
@@ -115,7 +116,7 @@
                 {{ totalConf.toLocaleString('pt-BR') }}
               </div>
               <div class="kpi-stat-label">Total Conformidade</div>
-              <div class="kpi-stat-sub">jan – jun 2026</div>
+              <div class="kpi-stat-sub">jan â€“ jun 2026</div>
             </q-card-section>
           </q-card>
         </div>
@@ -131,7 +132,7 @@
                 {{ totalInc.toLocaleString('pt-BR') }}
               </div>
               <div class="kpi-stat-label">Total Inconformidade</div>
-              <div class="kpi-stat-sub">jan – jun 2026</div>
+              <div class="kpi-stat-sub">jan â€“ jun 2026</div>
             </q-card-section>
           </q-card>
         </div>
@@ -144,7 +145,7 @@
                 <v-chart :option="gaugeOpt" autoresize class="kpi-gauge-chart" />
                 <div class="kpi-gauge-sub">
                   {{ totalConf.toLocaleString('pt-BR') }} de
-                  {{ (totalConf + totalInc).toLocaleString('pt-BR') }} observações
+                  {{ (totalConf + totalInc).toLocaleString('pt-BR') }} observaÃ§Ãµes
                 </div>
               </div>
             </q-card-section>
@@ -156,7 +157,7 @@
       <!-- Section title -->
       <div class="operacional-title">OPERACIONAL</div>
 
-      <!-- Top row: APR · Regras de Ouro · Procedimento -->
+      <!-- Top row: APR Â· Regras de Ouro Â· Procedimento -->
       <div class="row q-col-gutter-md q-mb-md">
         <div v-for="cat in topCharts" :key="cat.id" class="col-12 col-md-4">
           <q-card flat bordered class="cat-card">
@@ -185,7 +186,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed } from "vue";
+import { reactive, ref, computed, watch, onMounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, GaugeChart } from "echarts/charts";
@@ -195,19 +196,28 @@ import {
   LegendComponent,
 } from "echarts/components";
 import VChart from "vue-echarts";
+import { useChecklistData } from "@/composables/useChecklistData";
 
 use([CanvasRenderer, BarChart, GaugeChart, GridComponent, TooltipComponent, LegendComponent]);
 
-// ─── Colors ───────────────────────────────────────────────────────────────────
+const { loading, error, submissions, responses, totalConformes, totalNaoConformes, conformidadeIndex, load } = useChecklistData();
+
+// â”€â”€â”€ Colors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const G = { green: "#16a34a", brand: "#8B1C2B" };
 
-// ─── Filters ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const showFilters = ref(false);
 
-const mesesOpts    = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26"];
+const now = new Date();
+const MONTH_MAP: Record<string, number> = {
+  "jan": 1, "fev": 2, "mar": 3, "abr": 4, "mai": 5, "jun": 6,
+  "jul": 7, "ago": 8, "set": 9, "out": 10, "nov": 11, "dez": 12,
+};
+
+const mesesOpts    = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26","jul/26","ago/26","set/26","out/26","nov/26","dez/26"];
 const anosOpts     = ["2024","2025","2026"];
 const basesOpts    = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
-const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","LOGÍSTICA"];
+const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","LOGÃSTICA"];
 const gerentesOpts  = ["Todos","Afonso","Jackson","Jamerson","Julio C.","Marcos","Paulo","Pryscilla","Rafaela","Ricardo"];
 const semanasOpts   = ["Todos","Semana 1","Semana 2","Semana 3","Semana 4"];
 const tiposOpts     = ["Todos","Administrativo","Operacional","Alojamento"];
@@ -226,26 +236,79 @@ function filterPrefixo(val: string, update: (fn: () => void) => void) {
   });
 }
 
+const curMesLabel = mesesOpts[now.getMonth()] ?? "jan/26";
+
 const filters = reactive({
-  mes: "jun/26", ano: "2026", base: "Todos",
+  mes: curMesLabel, ano: String(now.getFullYear()), base: "Todos",
   gerencia: "Todos", gerente: "Todos",
   semana: "Todos", prefixo: "Todos", tipo: "Operacional",
 });
 
-// ─── Chart data ───────────────────────────────────────────────────────────────
-const months = ["jan","fev","mar","abr","mai","jun"];
+async function recarregar() {
+  const mesNum = MONTH_MAP[filters.mes.slice(0, 3)];
+  await load({
+    ano: Number(filters.ano),
+    mes: mesNum,
+    base: filters.base === "Todos" ? undefined : filters.base,
+    gerencia: filters.gerencia === "Todos" ? undefined : filters.gerencia,
+  }, true); // loadYear=true for monthly breakdown
+}
+onMounted(recarregar);
+watch(filters, recarregar, { deep: true });
 
-const rawData = {
-  apr:       { conf: [15053,13844,15107,17425,17471,14172], inc: [11,15,25,9,19,26] },
-  regraOuro: { conf: [5825,5477,6029,6834,5676,5442],       inc: [1,1,1,0,2,0] },
-  procedim:  { conf: [8687,8177,8986,10197,9968,8126],       inc: [52,40,59,54,49,37] },
-  padrinho:  { conf: [2904,2720,2980,3366,3300,2701],        inc: [0,0,0,1,0,0] },
-  alturas:   { conf: [4361,4067,4447,5081,5016,4091],        inc: [10,9,25,20,19,6] },
-  veiculos:  { conf: [8210,7955,8859,9815,9241,7564],        inc: [33,33,30,37,34,37] },
-  epi:       { conf: [12114,11403,12590,14203,13846,11285],  inc: [22,42,22,59,40,37] },
-};
+// â”€â”€â”€ Chart data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const months = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
 
-// ─── Chart factory ────────────────────────────────────────────────────────────
+// Category key mapping
+const CAT_DEFS = [
+  { key: "apr",      label: "APR",                     match: "APR" },
+  { key: "regraOuro",label: "Regras de Ouro",           match: "Regras de Ouro" },
+  { key: "procedim", label: "Procedimento",             match: "Procedimento" },
+  { key: "padrinho", label: "Padrinho de SeguranÃ§a",    match: "Padrinho" },
+  { key: "alturas",  label: "Trabalho em Altura",       match: "Altura" },
+  { key: "veiculos", label: "VeÃ­culos e Equipamentos",  match: "VeÃ­culo" },
+  { key: "epi",      label: "Epi, Epc e Ferramentas",   match: "EPI" },
+];
+
+const subMonthMap = computed(() => {
+  const m: Record<string, number> = {};
+  for (const s of submissions.value) {
+    const d = new Date(s.data ?? s.created_at ?? "");
+    if (!isNaN(d.getTime())) m[s.id] = d.getMonth() + 1;
+  }
+  return m;
+});
+
+const rawData = computed(() => {
+  const result: Record<string, { conf: number[]; inc: number[] }> = {};
+  for (const def of CAT_DEFS) {
+    result[def.key] = { conf: Array(12).fill(0), inc: Array(12).fill(0) };
+  }
+
+  for (const r of responses.value) {
+    const mes = subMonthMap.value[r.submission_id];
+    if (!mes) continue;
+    const def = CAT_DEFS.find(d => r.categoria?.includes(d.match) || d.match === r.categoria);
+    if (!def) continue;
+    if (r.resposta === "conforme") result[def.key].conf[mes - 1]++;
+    else if (r.resposta === "nao_conforme") result[def.key].inc[mes - 1]++;
+  }
+
+  // Fallback to static if no real data
+  const hasData = Object.values(result).some(d => d.conf.some(v => v > 0) || d.inc.some(v => v > 0));
+  if (!hasData) return {
+    apr:       { conf: [15053,13844,15107,17425,17471,14172,0,0,0,0,0,0], inc: [11,15,25,9,19,26,0,0,0,0,0,0] },
+    regraOuro: { conf: [5825,5477,6029,6834,5676,5442,0,0,0,0,0,0],       inc: [1,1,1,0,2,0,0,0,0,0,0,0] },
+    procedim:  { conf: [8687,8177,8986,10197,9968,8126,0,0,0,0,0,0],      inc: [52,40,59,54,49,37,0,0,0,0,0,0] },
+    padrinho:  { conf: [2904,2720,2980,3366,3300,2701,0,0,0,0,0,0],       inc: [0,0,0,1,0,0,0,0,0,0,0,0] },
+    alturas:   { conf: [4361,4067,4447,5081,5016,4091,0,0,0,0,0,0],       inc: [10,9,25,20,19,6,0,0,0,0,0,0] },
+    veiculos:  { conf: [8210,7955,8859,9815,9241,7564,0,0,0,0,0,0],       inc: [33,33,30,37,34,37,0,0,0,0,0,0] },
+    epi:       { conf: [12114,11403,12590,14203,13846,11285,0,0,0,0,0,0], inc: [22,42,22,59,40,37,0,0,0,0,0,0] },
+  };
+  return result;
+});
+
+// â”€â”€â”€ Chart factory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function makeCatChart(data: { conf: number[]; inc: number[] }) {
   const pct = data.conf.map((c, i) => {
     const t = c + (data.inc[i] || 0);
@@ -265,8 +328,8 @@ function makeCatChart(data: { conf: number[]; inc: number[] }) {
         const i = params[0]?.dataIndex ?? 0;
         return (
           `<b>${months[i]}</b><br/>` +
-          `<span style="color:${G.green}">● Conformidade: ${data.conf[i].toLocaleString("pt-BR")}</span><br/>` +
-          `<span style="color:${G.brand}">● Inconformidade: ${data.inc[i]}</span><br/>` +
+          `<span style="color:${G.green}">â— Conformidade: ${data.conf[i].toLocaleString("pt-BR")}</span><br/>` +
+          `<span style="color:${G.brand}">â— Inconformidade: ${data.inc[i]}</span><br/>` +
           `<b>% Conf: ${pct[i]}%</b>`
         );
       },
@@ -295,7 +358,7 @@ function makeCatChart(data: { conf: number[]; inc: number[] }) {
         fontSize: 10,
         // Show month + inconformidade value on second line
         formatter: (_val: string, idx: number) =>
-          `{m|${months[idx]}}\n{i|${data.inc[idx] > 0 ? data.inc[idx] : "·"}}`,
+          `{m|${months[idx]}}\n{i|${data.inc[idx] > 0 ? data.inc[idx] : "Â·"}}`,
         rich: {
           m: { color: "#64748b", fontSize: 10, lineHeight: 14 },
           i: { color: G.brand, fontSize: 9, fontWeight: "bold", lineHeight: 13 },
@@ -356,33 +419,26 @@ function makeCatChart(data: { conf: number[]; inc: number[] }) {
   };
 }
 
-// ─── Chart lists ──────────────────────────────────────────────────────────────
-const topCharts = [
-  { id: "apr",    title: "APR",           option: makeCatChart(rawData.apr) },
-  { id: "regra",  title: "REGRAS DE OURO",option: makeCatChart(rawData.regraOuro) },
-  { id: "proc",   title: "PROCEDIMENTO",  option: makeCatChart(rawData.procedim) },
-];
+// â”€â”€â”€ Chart lists â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const topCharts = computed(() => [
+  { id: "apr",    title: "APR",           option: makeCatChart(rawData.value.apr) },
+  { id: "regra",  title: "REGRAS DE OURO",option: makeCatChart(rawData.value.regraOuro) },
+  { id: "proc",   title: "PROCEDIMENTO",  option: makeCatChart(rawData.value.procedim) },
+]);
 
-const bottomCharts = [
-  { id: "padrinho", title: "PADRINHO DE SEGURANÇA",   option: makeCatChart(rawData.padrinho) },
-  { id: "altura",   title: "TRABALHO EM ALTURA",      option: makeCatChart(rawData.alturas) },
-  { id: "veiculos", title: "VEÍCULOS E EQUIPAMENTOS", option: makeCatChart(rawData.veiculos) },
-  { id: "epi",      title: "EPI, EPC E FERRAMENTA",   option: makeCatChart(rawData.epi) },
-];
+const bottomCharts = computed(() => [
+  { id: "padrinho", title: "PADRINHO DE SEGURANÃ‡A",   option: makeCatChart(rawData.value.padrinho) },
+  { id: "altura",   title: "TRABALHO EM ALTURA",      option: makeCatChart(rawData.value.alturas) },
+  { id: "veiculos", title: "VEÃCULOS E EQUIPAMENTOS", option: makeCatChart(rawData.value.veiculos) },
+  { id: "epi",      title: "EPI, EPC E FERRAMENTA",   option: makeCatChart(rawData.value.epi) },
+]);
 
-// ─── KPI totals ───────────────────────────────────────────────────────────────
-const totalConf = computed(() =>
-  Object.values(rawData).reduce((s, d) => s + d.conf.reduce((a, b) => a + b, 0), 0)
-);
-const totalInc = computed(() =>
-  Object.values(rawData).reduce((s, d) => s + d.inc.reduce((a, b) => a + b, 0), 0)
-);
-const pctGlobal = computed(() => {
-  const t = totalConf.value + totalInc.value;
-  return t === 0 ? 100 : Math.round((totalConf.value / t) * 100);
-});
+// â”€â”€â”€ KPI totals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const totalConf = totalConformes;
+const totalInc  = totalNaoConformes;
+const pctGlobal = computed(() => Math.round(conformidadeIndex.value * 100));
 
-// ─── Gauge ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Gauge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const gaugeOpt = computed(() => ({
   series: [{
     type: "gauge" as const,
@@ -422,7 +478,7 @@ $inactive-text:#475569;
 
 .indicadores-page { background: #f8fafc; min-height: 100vh; }
 
-// ── Filter bar ────────────────────────────────────────────────────────────────
+// â”€â”€ Filter bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .filter-bar {
   background: #fff;
   border-bottom: 1px solid $border;
@@ -440,7 +496,7 @@ $inactive-text:#475569;
   letter-spacing: .8px; color: $label-color; line-height: 1;
 }
 
-// ── Pills ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Pills â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .pill-group { display: flex; gap: 4px; flex-wrap: wrap; }
 .pill {
   display: inline-flex; align-items: center;
@@ -458,7 +514,7 @@ $inactive-text:#475569;
   }
 }
 
-// ── Select ────────────────────────────────────────────────────────────────────
+// â”€â”€ Select â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .fgroup--gerente { min-width: 150px; }
 .gerente-select {
   height: 30px;
@@ -482,13 +538,13 @@ $inactive-text:#475569;
 :global(.gerente-popup .q-item) { font-size: 12px; min-height: 32px; padding: 4px 12px; }
 :global(.gerente-popup .q-item--active) { color: $brand !important; font-weight: 600; }
 
-// ── Divider ───────────────────────────────────────────────────────────────────
+// â”€â”€ Divider â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .filter-divider {
   width: 1px; height: 36px; background: $border;
   flex-shrink: 0; align-self: flex-end; margin: 0 4px;
 }
 
-// ── KPI cards ─────────────────────────────────────────────────────────────────
+// â”€â”€ KPI cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .kpi-card {
   border-radius: 12px; height: 100%;
   transition: box-shadow .2s;
@@ -529,7 +585,7 @@ $inactive-text:#475569;
 .kpi-gauge-chart { width: 100%; height: 140px; }
 .kpi-gauge-sub { font-size: 11px; font-weight: 600; color: #64748b; margin-top: -4px; letter-spacing: .01em; }
 
-// ── Section title ─────────────────────────────────────────────────────────────
+// â”€â”€ Section title â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .operacional-title {
   font-size: 14px; font-weight: 800; text-transform: uppercase;
   letter-spacing: 1.5px; color: $brand;
@@ -544,7 +600,7 @@ $inactive-text:#475569;
   &::after  { right: 0; background: linear-gradient(to left, transparent, rgba($brand,.25)); }
 }
 
-// ── Category chart cards ──────────────────────────────────────────────────────
+// â”€â”€ Category chart cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .cat-card {
   border-radius: 12px;
   transition: box-shadow .2s;
@@ -556,7 +612,7 @@ $inactive-text:#475569;
   text-align: center; padding: 6px 0 2px;
 }
 
-// ── Dark mode ─────────────────────────────────────────────────────────────────
+// â”€â”€ Dark mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .body--dark {
   .indicadores-page { background: #0f172a; }
   .filter-bar { background: #1e293b; border-bottom-color: #334155; }
@@ -577,3 +633,4 @@ $inactive-text:#475569;
   .operacional-title { color: #fca5a5; }
 }
 </style>
+

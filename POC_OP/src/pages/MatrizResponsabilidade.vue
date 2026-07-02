@@ -186,7 +186,8 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed } from "vue";
+import { reactive, ref, computed, watch, onMounted } from "vue";
+import { useChecklistData } from "@/composables/useChecklistData";
 
 // ─── Filters ──────────────────────────────────────────────────────────────────
 const showFilters = ref(false);
@@ -198,9 +199,28 @@ const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","LOGISTICA","OFICINA"
 const basesOpts     = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 const gerentesOpts  = ["Todos","Afonso","Jackson","Jamerson","Julio C.","Marcos","Paulo","Pryscilla","Rafaela","Ricardo"];
 
+const MONTH_MAP: Record<string, number> = {
+  jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6,
+  jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12,
+};
+
 const filters = reactive({
-  mes: "jun", ano: "2026", gerencia: "Todos", base: "Todos", gerente: "Todos",
+  mes: mesesOpts[new Date().getMonth()],
+  ano: String(new Date().getFullYear()),
+  gerencia: "Todos", base: "Todos", gerente: "Todos",
 });
+
+// ─── Dados reais ──────────────────────────────────────────────────────────────
+const { loading, load, submissions, responses } = useChecklistData();
+
+async function recarregar() {
+  const mes = MONTH_MAP[filters.mes];
+  const ano = Number(filters.ano);
+  await load({ ano, mes, base: filters.base !== "Todos" ? filters.base : undefined });
+}
+
+onMounted(recarregar);
+watch(filters, recarregar, { deep: true });
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 type Row = {
@@ -208,7 +228,30 @@ type Row = {
   categoria: string; inconformidade: string; resolvido: "Sim" | "Não"; dataResolucao: string;
 };
 
-const allData: Row[] = [
+const allData = computed<Row[]>(() => {
+  const rows: Row[] = [];
+  for (const r of responses.value) {
+    if (r.resposta !== "nao_conforme") continue;
+    const sub = submissions.value.find(s => s.id === r.submission_id);
+    if (!sub) continue;
+    const dt = new Date(sub.data);
+    const fmt = `${dt.toLocaleDateString("pt-BR")} ${dt.toLocaleTimeString("pt-BR")}`;
+    rows.push({
+      data: fmt,
+      base: sub.base,
+      observador: sub.observador,
+      equipe: sub.equipe,
+      categoria: r.categoria,
+      inconformidade: r.observacao ?? r.pergunta,
+      resolvido: "Não",
+      dataResolucao: "",
+    });
+  }
+  return rows.sort((a, b) => b.data.localeCompare(a.data));
+});
+
+// legacy static rows kept for reference
+const _staticRows: Row[] = [
   {
     data: "02/06/2026 15:11:36", base: "STI", observador: "Jorden C.", equipe: "ALOJ74",
     categoria: "Repúblicas",
@@ -372,16 +415,18 @@ const allData: Row[] = [
     resolvido: "Não", dataResolucao: "",
   },
 ];
+void _staticRows;
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
 const filteredData = computed(() => {
   const q = search.value.toLowerCase();
-  return allData.filter(r => {
-    if (filters.base !== "Todos" && r.base !== filters.base) return false;
+  return allData.value.filter(r => {
     if (q && !Object.values(r).join(" ").toLowerCase().includes(q)) return false;
     return true;
   });
 });
+
+void loading;
 
 const naoResolvidos = computed(() => filteredData.value.filter(r => r.resolvido === "Não").length);
 const resolvidos    = computed(() => filteredData.value.filter(r => r.resolvido === "Sim").length);

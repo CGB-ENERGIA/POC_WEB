@@ -1,7 +1,8 @@
-<template>
+﻿<template>
   <q-page class="mapa-page">
+    <q-linear-progress v-if="loading" indeterminate color="negative" style="position:sticky;top:0;z-index:200" />
 
-    <!-- ═══════════════════════════ FILTER BAR ═══════════════════════════ -->
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• FILTER BAR â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
     <div class="filter-bar">
       <div class="filter-fab-wrap">
         <button
@@ -15,7 +16,7 @@
       <div class="filter-collapsible" :class="{ 'is-hidden': !showFilters }">
       <div class="filter-bar__inner">
 
-        <!-- Row 1: Semana · Mês · Ano · Gerência -->
+        <!-- Row 1: Semana Â· MÃªs Â· Ano Â· GerÃªncia -->
         <div class="filter-row">
           <div class="fgroup">
             <span class="fgroup__label">Semana</span>
@@ -27,7 +28,7 @@
           </div>
           <div class="filter-divider" />
           <div class="fgroup">
-            <span class="fgroup__label">Mês</span>
+            <span class="fgroup__label">MÃªs</span>
             <div class="pill-group">
               <button v-for="m in mesesOpts" :key="m"
                 :class="['pill', filters.mes === m && 'pill--active']"
@@ -45,7 +46,7 @@
           </div>
           <div class="filter-divider" />
           <div class="fgroup">
-            <span class="fgroup__label">Gerência</span>
+            <span class="fgroup__label">GerÃªncia</span>
             <div class="pill-group">
               <button v-for="g in gerenciasOpts" :key="g"
                 :class="['pill', filters.gerencia === g && 'pill--active']"
@@ -54,7 +55,7 @@
           </div>
         </div>
 
-        <!-- Row 2: Gerente · Base -->
+        <!-- Row 2: Gerente Â· Base -->
         <div class="filter-row">
           <div class="fgroup">
             <span class="fgroup__label">Gerente</span>
@@ -79,7 +80,7 @@
       </div>
     </div>
 
-    <!-- ═══════════════════════════ CONTENT ═══════════════════════════ -->
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• CONTENT â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
     <div class="q-pa-md">
 
       <!-- KPI -->
@@ -95,7 +96,7 @@
                 {{ totalInc.toLocaleString('pt-BR') }}
               </div>
               <div class="kpi-stat-label">Inconformidades</div>
-              <div class="kpi-stat-sub">acumulado no período</div>
+              <div class="kpi-stat-sub">acumulado no perÃ­odo</div>
             </q-card-section>
           </q-card>
         </div>
@@ -109,8 +110,8 @@
               <div class="kpi-stat-value" style="color:#dc2626">
                 {{ maxCell.value }}
               </div>
-              <div class="kpi-stat-label">Pior Célula</div>
-              <div class="kpi-stat-sub">{{ maxCell.base }} · {{ maxCell.cat }}</div>
+              <div class="kpi-stat-label">Pior CÃ©lula</div>
+              <div class="kpi-stat-sub">{{ maxCell.base }} Â· {{ maxCell.cat }}</div>
             </q-card-section>
           </q-card>
         </div>
@@ -174,52 +175,98 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed } from "vue";
+import { reactive, ref, computed, watch, onMounted } from "vue";
+import { useChecklistData } from "@/composables/useChecklistData";
 
-// ─── Filters ──────────────────────────────────────────────────────────────────
+const { loading, error, submissions, responses, load } = useChecklistData();
+
+// â”€â”€â”€ Filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const showFilters = ref(false);
+
+const now = new Date();
+const MONTH_MAP: Record<string, number> = {
+  "jan": 1, "fev": 2, "mar": 3, "abr": 4, "mai": 5, "jun": 6,
+  "jul": 7, "ago": 8, "set": 9, "out": 10, "nov": 11, "dez": 12,
+};
 
 const semanasOpts = [
   { v: "todos", l: "Todos" },
   { v: "s1", l: "1. Segunda" },
-  { v: "s2", l: "2. Terça" },
+  { v: "s2", l: "2. TerÃ§a" },
   { v: "s3", l: "3. Quarta" },
   { v: "s4", l: "4. Quinta" },
 ];
-const mesesOpts    = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26"];
+const mesesOpts    = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26","jul/26","ago/26","set/26","out/26","nov/26","dez/26"];
 const anosOpts     = ["2024","2025","2026"];
 const gerenciasOpts = ["Todos","GERE","GOMAN","GSTC","SPOT"];
 const gerentesOpts  = ["Todos","Afonso","Jamerson","Julio C.","Marcos","Paulo","Rafaela","Ricardo"];
 const basesOpts    = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 
+const curMesLabel = mesesOpts[now.getMonth()] ?? "jan/26";
+
 const filters = reactive({
-  semana: "todos", mes: "abr/26", ano: "2026",
+  semana: "todos", mes: curMesLabel, ano: String(now.getFullYear()),
   gerencia: "Todos", gerente: "Todos", base: "Todos",
 });
 
-// ─── Categories & Matrix data ─────────────────────────────────────────────────
+async function recarregar() {
+  const mesNum = MONTH_MAP[filters.mes.slice(0, 3)] ?? (now.getMonth() + 1);
+  await load({
+    ano: Number(filters.ano),
+    mes: mesNum,
+    base: filters.base === "Todos" ? undefined : filters.base,
+    gerencia: filters.gerencia === "Todos" ? undefined : filters.gerencia,
+  });
+}
+onMounted(recarregar);
+watch(filters, recarregar, { deep: true });
+
+// â”€â”€â”€ Categories â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const categories = [
   "APR",
   "Epi, Epc e Ferramentas",
-  "Padrinho de Segurança",
+  "Padrinho de SeguranÃ§a",
   "Procedimento",
   "Regras de Ouro",
   "Trabalho em Altura",
-  "Veículos e Equipamentos",
+  "VeÃ­culos e Equipamentos",
 ];
 
-const matrixData = [
-  { base: "BCB", values: [6,  7, 17, 28,  0, 10,  5] },
-  { base: "BDC", values: [0,  1,  3,  2,  0,  2,  3] },
-  { base: "ITM", values: [1,  4,  2,  4,  0,  1,  6] },
-  { base: "PDS", values: [3, 13,  1,  2,  0,  2,  4] },
-  { base: "PDT", values: [9,  7,  7,  8,  0,  1,  5] },
-  { base: "STI", values: [0,  9, 10, 14,  2,  3, 13] },
-];
+// â”€â”€â”€ NC Matrix base Ã— category from real data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const subById = computed(() => {
+  const m: Record<string, { base: string }> = {};
+  for (const s of submissions.value) m[s.id] = { base: s.base };
+  return m;
+});
 
-// ─── Computed ─────────────────────────────────────────────────────────────────
+const matrixData = computed(() => {
+  const basesInData = [...new Set(submissions.value.map(s => s.base).filter(Boolean))].sort();
+  const rows = basesInData.map(base => ({ base, values: categories.map(() => 0) }));
+  const rowMap: Record<string, number[]> = {};
+  rows.forEach(r => { rowMap[r.base] = r.values; });
+
+  for (const r of responses.value) {
+    if (r.resposta !== "nao_conforme") continue;
+    const sub = subById.value[r.submission_id];
+    if (!sub?.base) continue;
+    const ci = categories.findIndex(c => r.categoria?.includes(c) || c.includes(r.categoria ?? ""));
+    if (ci < 0) continue;
+    if (!rowMap[sub.base]) { rowMap[sub.base] = categories.map(() => 0); rows.push({ base: sub.base, values: rowMap[sub.base] }); }
+    rowMap[sub.base][ci]++;
+  }
+  return rows.length ? rows : [
+    { base: "BCB", values: [6,  7, 17, 28,  0, 10,  5] },
+    { base: "BDC", values: [0,  1,  3,  2,  0,  2,  3] },
+    { base: "ITM", values: [1,  4,  2,  4,  0,  1,  6] },
+    { base: "PDS", values: [3, 13,  1,  2,  0,  2,  4] },
+    { base: "PDT", values: [9,  7,  7,  8,  0,  1,  5] },
+    { base: "STI", values: [0,  9, 10, 14,  2,  3, 13] },
+  ];
+});
+
+// â”€â”€â”€ Computed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const colTotals = computed(() =>
-  categories.map((_, ci) => matrixData.reduce((s, r) => s + r.values[ci], 0))
+  categories.map((_, ci) => matrixData.value.reduce((s, r) => s + r.values[ci], 0))
 );
 
 const totalInc = computed(() =>
@@ -228,7 +275,7 @@ const totalInc = computed(() =>
 
 const maxCell = computed(() => {
   let max = { value: 0, base: "", cat: "" };
-  matrixData.forEach(row => {
+  matrixData.value.forEach(row => {
     row.values.forEach((v, ci) => {
       if (v > max.value) max = { value: v, base: row.base, cat: categories[ci] };
     });
@@ -236,7 +283,7 @@ const maxCell = computed(() => {
   return max;
 });
 
-// ─── Color scale ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Color scale â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function heatColor(v: number): string {
   if (v === 0)   return "#22c55e";   // bright green
   if (v <= 5)    return "#4ade80";   // light green
@@ -253,11 +300,11 @@ function cellTextColor(v: number): string {
 
 const legendLevels = [
   { color: "#22c55e", label: "0" },
-  { color: "#4ade80", label: "1–5" },
-  { color: "#86efac", label: "6–9" },
-  { color: "#eab308", label: "10–14" },
-  { color: "#f97316", label: "15–19" },
-  { color: "#ef4444", label: "20–24" },
+  { color: "#4ade80", label: "1â€“5" },
+  { color: "#86efac", label: "6â€“9" },
+  { color: "#eab308", label: "10â€“14" },
+  { color: "#f97316", label: "15â€“19" },
+  { color: "#ef4444", label: "20â€“24" },
   { color: "#991b1b", label: "25+" },
 ];
 </script>
@@ -272,7 +319,7 @@ $inactive-text:#475569;
 
 .mapa-page { background: #f8fafc; min-height: 100vh; }
 
-// ── Filter bar ────────────────────────────────────────────────────────────────
+// â”€â”€ Filter bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .filter-bar {
   background: #fff; border-bottom: 1px solid $border;
   box-shadow: 0 2px 12px rgba(0,0,0,.06);
@@ -305,7 +352,7 @@ $inactive-text:#475569;
   flex-shrink: 0; align-self: flex-end; margin: 0 4px;
 }
 
-// ── KPI cards ─────────────────────────────────────────────────────────────────
+// â”€â”€ KPI cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .kpi-card {
   border-radius: 12px; height: 100%;
   transition: box-shadow .2s;
@@ -332,7 +379,7 @@ $inactive-text:#475569;
 }
 .kpi-stat-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }
 
-// ── Legend card ───────────────────────────────────────────────────────────────
+// â”€â”€ Legend card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .kpi-legend-card {
   border-radius: 12px; height: 100%;
 }
@@ -354,7 +401,7 @@ $inactive-text:#475569;
   font-size: 11px; font-weight: 600; color: #475569;
 }
 
-// ── Heat map card & table ──────────────────────────────────────────────────────
+// â”€â”€ Heat map card & table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .heatmap-card { border-radius: 12px; }
 .heatmap-card-title {
   font-size: 22px; font-weight: 800; color: $brand;
@@ -415,7 +462,7 @@ $inactive-text:#475569;
   }
 }
 
-// ── Dark mode ─────────────────────────────────────────────────────────────────
+// â”€â”€ Dark mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .body--dark {
   .mapa-page { background: #0f172a; }
   .filter-bar { background: #1e293b; border-bottom-color: #334155; }
@@ -432,3 +479,4 @@ $inactive-text:#475569;
   .heatmap-card { background: #1e293b; }
 }
 </style>
+

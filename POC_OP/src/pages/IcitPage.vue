@@ -1,9 +1,10 @@
-<template>
+﻿<template>
   <q-page class="icit-page">
+    <q-linear-progress v-if="loading" indeterminate color="negative" style="position:sticky;top:0;z-index:200" />
 
-    <!-- ══════════════════════════════════════════════════════
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
          FILTER BAR
-    ══════════════════════════════════════════════════════ -->
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
     <div class="filter-bar">
       <div class="filter-fab-wrap">
         <button
@@ -17,7 +18,7 @@
       <div class="filter-collapsible" :class="{ 'is-hidden': !showFilters }">
       <div class="filter-bar__inner">
 
-        <!-- Row 1: Ano · Semana · Gerente -->
+        <!-- Row 1: Ano Â· Semana Â· Gerente -->
         <div class="filter-row">
 
           <div class="fgroup">
@@ -55,11 +56,11 @@
 
         </div>
 
-        <!-- Row 2: Mês · Gerência -->
+        <!-- Row 2: MÃªs Â· GerÃªncia -->
         <div class="filter-row">
 
           <div class="fgroup">
-            <span class="fgroup__label">Mês</span>
+            <span class="fgroup__label">MÃªs</span>
             <div class="pill-group">
               <button v-for="m in meses" :key="m.value"
                 :class="['pill', { 'pill--active': filters.mes === m.value }]"
@@ -70,7 +71,7 @@
           <div class="filter-divider" />
 
           <div class="fgroup">
-            <span class="fgroup__label">Gerência</span>
+            <span class="fgroup__label">GerÃªncia</span>
             <div class="pill-group">
               <button v-for="g in gerencias" :key="g"
                 :class="['pill', { 'pill--active': filters.gerencia === g }]"
@@ -80,7 +81,7 @@
 
         </div>
 
-        <!-- Row 3: Base · Segurança · Tipo de POC -->
+        <!-- Row 3: Base Â· SeguranÃ§a Â· Tipo de POC -->
         <div class="filter-row">
 
           <div class="fgroup">
@@ -95,7 +96,7 @@
           <div class="filter-divider" />
 
           <div class="fgroup">
-            <span class="fgroup__label">Segurança</span>
+            <span class="fgroup__label">SeguranÃ§a</span>
             <div class="pill-group">
               <button v-for="s in segurancas" :key="s"
                 :class="['pill', { 'pill--active': filters.seguranca === s }]"
@@ -119,9 +120,9 @@
       </div>
     </div>
 
-    <!-- ══════════════════════════════════════════════════════
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
          KPI + CHARTS
-    ══════════════════════════════════════════════════════ -->
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
     <div class="q-pa-md">
 
       <!-- KPI Row -->
@@ -139,7 +140,7 @@
             </q-card-section>
           </q-card>
         </div>
-        <!-- Histórico button -->
+        <!-- HistÃ³rico button -->
         <div class="col-6 col-md-4">
           <q-card flat bordered class="kpi-card historico-card cursor-pointer"
             @click="$router.push('/historico-icit')">
@@ -147,7 +148,7 @@
               <div class="row items-center justify-between no-wrap full-height">
                 <div>
                   <div class="text-caption text-grey-6">Visualizar</div>
-                  <div class="text-subtitle1 text-weight-bold" style="color:#8B1C2B">Histórico ICIT</div>
+                  <div class="text-subtitle1 text-weight-bold" style="color:#8B1C2B">HistÃ³rico ICIT</div>
                   <div class="text-caption text-grey-5">Clique aqui para seguir</div>
                 </div>
                 <q-icon name="mdi-chart-timeline-variant" size="48px" color="deep-orange-8" style="opacity:.7" />
@@ -160,15 +161,15 @@
       <!-- Charts main grid: LEFT 9 cols + RIGHT 3 cols (equipe) -->
       <div class="row q-col-gutter-md">
 
-        <!-- LEFT: 3×2 grid -->
+        <!-- LEFT: 3Ã—2 grid -->
         <div class="col-12 col-md-9">
 
-          <!-- Row 1: Donut · Mês · Gerência -->
+          <!-- Row 1: Donut Â· MÃªs Â· GerÃªncia -->
           <div class="row q-col-gutter-md q-mb-md">
             <div class="col-12 col-md-4">
               <q-card flat bordered>
                 <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Índice Geral de Conformidade</div>
+                  <div class="text-subtitle1 text-weight-bold">Ãndice Geral de Conformidade</div>
                 </q-card-section>
                 <q-card-section>
                   <v-chart :option="chartDonut" autoresize style="height:260px" />
@@ -178,7 +179,7 @@
             <div class="col-12 col-md-4">
               <q-card flat bordered>
                 <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Índice de Conformidade por Mês</div>
+                  <div class="text-subtitle1 text-weight-bold">Ãndice de Conformidade por MÃªs</div>
                   <div class="text-caption text-grey-6">% acumulada</div>
                 </q-card-section>
                 <q-card-section>
@@ -189,7 +190,7 @@
             <div class="col-12 col-md-4">
               <q-card flat bordered>
                 <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Índice de Conformidade por Gerência</div>
+                  <div class="text-subtitle1 text-weight-bold">Ãndice de Conformidade por GerÃªncia</div>
                 </q-card-section>
                 <q-card-section>
                   <v-chart :option="chartGerencia" autoresize style="height:260px" />
@@ -198,12 +199,12 @@
             </div>
           </div>
 
-          <!-- Row 2: Base · Não Conformidades por Categoria -->
+          <!-- Row 2: Base Â· NÃ£o Conformidades por Categoria -->
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-4">
               <q-card flat bordered>
                 <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Índice de Conformidade por Base</div>
+                  <div class="text-subtitle1 text-weight-bold">Ãndice de Conformidade por Base</div>
                 </q-card-section>
                 <q-card-section>
                   <v-chart :option="chartBase" autoresize style="height:240px" />
@@ -213,8 +214,8 @@
             <div class="col-12 col-md-8">
               <q-card flat bordered>
                 <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Não Conformidades por Categoria</div>
-                  <div class="text-caption text-grey-6">Ocorrências no período</div>
+                  <div class="text-subtitle1 text-weight-bold">NÃ£o Conformidades por Categoria</div>
+                  <div class="text-caption text-grey-6">OcorrÃªncias no perÃ­odo</div>
                 </q-card-section>
                 <q-card-section>
                   <v-chart :option="chartCategoria" autoresize style="height:240px" />
@@ -229,7 +230,7 @@
         <div class="col-12 col-md-3 equipe-col">
           <q-card flat bordered class="equipe-card">
             <q-card-section class="q-pb-none">
-              <div class="text-subtitle1 text-weight-bold">Índice de Conformidade por Equipe</div>
+              <div class="text-subtitle1 text-weight-bold">Ãndice de Conformidade por Equipe</div>
               <div class="text-caption text-grey-6">Role para ver mais</div>
             </q-card-section>
             <q-card-section>
@@ -245,7 +246,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from "vue";
+import { reactive, ref, computed, watch, onMounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, PieChart } from "echarts/charts";
@@ -257,6 +258,7 @@ import {
   DataZoomComponent
 } from "echarts/components";
 import VChart from "vue-echarts";
+import { useChecklistData, fmtPct, fmtN } from "@/composables/useChecklistData";
 
 use([
   CanvasRenderer, BarChart, PieChart,
@@ -264,7 +266,14 @@ use([
   TitleComponent, DataZoomComponent
 ]);
 
-// ─── Paleta ───────────────────────────────────────────────────────────────────
+const {
+  loading, error,
+  totalConformes, totalNaoConformes, conformidadeIndex, basesCovertas,
+  byCategoria, byBase, byGerencia, byMes, submissions,
+  load,
+} = useChecklistData();
+
+// â”€â”€â”€ Paleta â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const P = {
   conf:    "#16a34a",
   confLt:  "#22c55e",
@@ -272,9 +281,10 @@ const P = {
   inconfLt:"#C4364E",
 };
 
-// ─── Filter options ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Filter options â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const showFilters = ref(false);
 
+const now = new Date();
 const anos     = [2024, 2025, 2026];
 const semanas  = [
   { value: 1, label: "1. Primeira" },
@@ -283,40 +293,49 @@ const semanas  = [
   { value: 4, label: "4. Quarta"   },
 ];
 const meses = [
-  { value: 1, label: "jan/26" }, { value: 2, label: "fev/26" },
-  { value: 3, label: "mar/26" }, { value: 4, label: "abr/26" },
-  { value: 5, label: "mai/26" }, { value: 6, label: "jun/26" },
+  { value: 1,  label: "jan" }, { value: 2,  label: "fev" },
+  { value: 3,  label: "mar" }, { value: 4,  label: "abr" },
+  { value: 5,  label: "mai" }, { value: 6,  label: "jun" },
+  { value: 7,  label: "jul" }, { value: 8,  label: "ago" },
+  { value: 9,  label: "set" }, { value: 10, label: "out" },
+  { value: 11, label: "nov" }, { value: 12, label: "dez" },
 ];
 const gerencias  = ["Todos", "GERE", "GOMAN", "GSTC", "SPOT"];
 const bases      = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
-const segurancas = ["Todos", "Segurança"];
+const segurancas = ["Todos", "SeguranÃ§a"];
 const tiposPoc   = ["Todos", "Administrativo", "Operacional"];
 const gerentes   = [
-  "Todos", "Afonso", "Jamerson", "João F.", "Julio C.", "Leandro",
+  "Todos", "Afonso", "Jamerson", "JoÃ£o F.", "Julio C.", "Leandro",
   "Marcos", "Paulo", "Rafaela", "Ricardo", "Valvick", "Waldir"
 ];
 
-// ─── Filter state ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Filter state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const filters = reactive({
-  ano:       2026,
-  semana:    3,
-  mes:       6,
+  ano:       now.getFullYear(),
+  semana:    Math.ceil(now.getDate() / 7),
+  mes:       now.getMonth() + 1,
   gerencia:  "Todos",
   base:      "Todos",
-  seguranca: "Segurança",
+  seguranca: "SeguranÃ§a",
   tipoPoc:   "Operacional",
   gerente:   "Todos",
 });
 
-// ─── KPIs ─────────────────────────────────────────────────────────────────────
-const kpis = [
-  { label: "Conformidade",    value: "219",   icon: "mdi-check-circle",  color: "positive", hex: "#16a34a" },
-  { label: "Inconformidade",  value: "25",    icon: "mdi-alert-circle",  color: "negative", hex: "#dc2626" },
-  { label: "Índice Geral",    value: "90%",   icon: "mdi-gauge",         color: "teal",     hex: "#0d9488" },
-  { label: "Equipes Auditadas",value: "24",   icon: "mdi-account-group", color: "primary",  hex: "#0284c7" },
-];
+async function recarregar() {
+  await load({ ano: filters.ano, mes: filters.mes, base: filters.base === "Todos" ? undefined : filters.base, gerencia: filters.gerencia === "Todos" ? undefined : filters.gerencia }, true);
+}
+onMounted(recarregar);
+watch(filters, recarregar, { deep: true });
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ KPIs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const kpis = computed(() => [
+  { label: "Conformidade",     value: fmtN(totalConformes.value),   icon: "mdi-check-circle",  color: "positive", hex: "#16a34a" },
+  { label: "Inconformidade",   value: fmtN(totalNaoConformes.value), icon: "mdi-alert-circle",  color: "negative", hex: "#dc2626" },
+  { label: "Ãndice Geral",     value: fmtPct(conformidadeIndex.value), icon: "mdi-gauge",       color: "teal",     hex: "#0d9488" },
+  { label: "Equipes Auditadas",value: fmtN(basesCovertas.value),    icon: "mdi-account-group", color: "primary",  hex: "#0284c7" },
+]);
+
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ttItem = {
   trigger: "item" as const,
   backgroundColor: "rgba(255,255,255,0.97)",
@@ -361,19 +380,19 @@ function hBar(
   };
 }
 
-// ─── Chart: Donut ─────────────────────────────────────────────────────────────
-const chartDonut = {
+// â”€â”€â”€ Chart: Donut â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const chartDonut = computed(() => ({
   tooltip: {
     ...ttItem,
     formatter: (p: { name: string; value: number; percent: number }) =>
-      `<b>${p.name}</b><br/>${p.value} · <b>${p.percent.toFixed(0)}%</b>`
+      `<b>${p.name}</b><br/>${p.value} Â· <b>${p.percent.toFixed(0)}%</b>`
   },
   legend: {
     bottom: 4, left: "center", itemWidth: 10, itemHeight: 10, itemGap: 16,
     textStyle: { color: "#64748b", fontSize: 11 }
   },
   title: {
-    text: "90%",
+    text: fmtPct(conformidadeIndex.value),
     subtext: "conformidade",
     left: "50%", top: "34%", textAlign: "center",
     textStyle: { fontSize: 26, fontWeight: "bold" as const, color: P.conf },
@@ -396,92 +415,102 @@ const chartDonut = {
     itemStyle: { borderRadius: 8, borderColor: "#fff", borderWidth: 3 },
     emphasis: { scale: true, scaleSize: 5, itemStyle: { shadowBlur: 16, shadowColor: "rgba(0,0,0,.15)" } },
     data: [
-      { value: 219, name: "Conformidade",   itemStyle: { color: P.conf   } },
-      { value: 25,  name: "Inconformidade", itemStyle: { color: P.inconf } }
+      { value: totalConformes.value, name: "Conformidade",   itemStyle: { color: P.conf   } },
+      { value: totalNaoConformes.value, name: "Inconformidade", itemStyle: { color: P.inconf } }
     ]
   }]
-};
+}));
 
-// ─── Chart: Por Mês ───────────────────────────────────────────────────────────
-const chartMes = hBar(
-  ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26"],
-  [88, 91, 89, 92, 87, 90]
-);
+// â”€â”€â”€ Chart: Por MÃªs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const chartMes = computed(() => {
+  const mesLabels = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+  const entries = Object.entries(byMes.value).sort((a, b) => Number(a[0]) - Number(b[0]));
+  return hBar(
+    entries.map(([m]) => mesLabels[Number(m) - 1] ?? m),
+    entries.map(([, v]) => v)
+  );
+});
 
-// ─── Chart: Por Gerência ──────────────────────────────────────────────────────
-const chartGerencia = hBar(
-  ["GSTC","GOMAN","GERE"],
-  [80, 96, 100]
-);
+// â”€â”€â”€ Chart: Por GerÃªncia â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const chartGerencia = computed(() => {
+  const entries = Object.entries(byGerencia.value).sort((a, b) => a[1] - b[1]);
+  return hBar(entries.map(([k]) => k), entries.map(([, v]) => v), P.conf, "", Math.max(...entries.map(([,v]) => v), 1));
+});
 
-// ─── Chart: Por Base ──────────────────────────────────────────────────────────
-const chartBase = hBar(
-  ["BCB","PDT","ITM","PDS","STI","BDC"],
-  [83, 89, 91, 91, 93, 100]
-);
+// â”€â”€â”€ Chart: Por Base â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const chartBase = computed(() => {
+  const entries = Object.entries(byBase.value).sort((a, b) => a[1] - b[1]);
+  return hBar(entries.map(([k]) => k), entries.map(([, v]) => v), P.conf, "", Math.max(...entries.map(([,v]) => v), 1));
+});
 
-// ─── Chart: Não Conformidades por Categoria ───────────────────────────────────
-const naoConfCats = [
-  "Regras de Ouro",
-  "Trabalho em Altura",
-  "APR",
-  "Padrinho de Segur.",
-  "Veículos e Equipa.",
-  "Epi, Epc e Ferrame.",
-  "Procedimento",
-];
-const naoConfVals = [0, 2, 2, 4, 7, 7, 15];
-
-const chartCategoria = {
-  tooltip: {
-    ...ttItem,
-    formatter: (p: { name: string; value: number }) =>
-      `<b>${p.name}</b><br/>Ocorrências: <b style="color:${P.inconf}">${p.value}</b>`
-  },
-  grid: { left: 8, right: 36, top: 8, bottom: 8, containLabel: true },
-  xAxis: { type: "value" as const, show: false, splitLine: { show: false } },
-  yAxis: {
-    type: "category" as const, data: naoConfCats,
-    axisLine: { show: false }, axisTick: { show: false },
-    splitLine: { show: false }, axisLabel: { color: "#334155", fontSize: 11 }
-  },
-  series: [{
-    type: "bar" as const,
-    data: naoConfVals.map((v, i) => ({
-      value: v,
-      itemStyle: {
-        color: v === 0 ? "#cbd5e1"
-             : v <= 2  ? P.inconfLt
-             : `rgba(139,28,43,${0.6 + (i / naoConfVals.length) * 0.4})`,
-        borderRadius: [0, 6, 6, 0]
+// â”€â”€â”€ Chart: NÃ£o Conformidades por Categoria â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const chartCategoria = computed(() => {
+  const catEntries = Object.entries(byCategoria.value)
+    .map(([cat, d]) => ({ cat, nc: d.nc }))
+    .filter(e => e.nc > 0)
+    .sort((a, b) => a.nc - b.nc);
+  const cats = catEntries.map(e => e.cat);
+  const vals = catEntries.map(e => e.nc);
+  const maxV = Math.max(...vals, 1);
+  return {
+    tooltip: {
+      ...ttItem,
+      formatter: (p: { name: string; value: number }) =>
+        `<b>${p.name}</b><br/>OcorrÃªncias: <b style="color:${P.inconf}">${p.value}</b>`
+    },
+    grid: { left: 8, right: 36, top: 8, bottom: 8, containLabel: true },
+    xAxis: { type: "value" as const, show: false, splitLine: { show: false } },
+    yAxis: {
+      type: "category" as const, data: cats,
+      axisLine: { show: false }, axisTick: { show: false },
+      splitLine: { show: false }, axisLabel: { color: "#334155", fontSize: 11 }
+    },
+    series: [{
+      type: "bar" as const,
+      data: vals.map((v) => ({
+        value: v,
+        itemStyle: {
+          color: v === 0 ? "#cbd5e1"
+               : v <= 2  ? P.inconfLt
+               : `rgba(139,28,43,${0.6 + (v / maxV) * 0.4})`,
+          borderRadius: [0, 6, 6, 0]
+        }
+      })),
+      barMaxWidth: 28,
+      emphasis: { itemStyle: { opacity: 0.8 } },
+      label: {
+        show: true, position: "right" as const,
+        fontSize: 12, fontWeight: "bold" as const,
+        formatter: (p: { value: number }) => `${p.value}`
       }
-    })),
-    barMaxWidth: 28,
-    emphasis: { itemStyle: { opacity: 0.8 } },
-    label: {
-      show: true, position: "right" as const,
-      fontSize: 12, fontWeight: "bold" as const,
-      formatter: (p: { value: number }) => `${p.value}`
+    }]
+  };
+});
+
+// â”€â”€â”€ Chart: Por Equipe (scrollable vertical) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const equipePct = computed(() => {
+  const map: Record<string, { conf: number; total: number }> = {};
+  for (const sub of submissions.value) {
+    const equipes: string[] = Array.isArray(sub.membros)
+      ? (sub.membros as string[])
+      : sub.equipe ? [sub.equipe] : [];
+    for (const eq of equipes) {
+      if (!map[eq]) map[eq] = { conf: 0, total: 0 };
+      map[eq].total++;
     }
-  }]
-};
+  }
+  return Object.entries(map)
+    .map(([name, d]) => ({ name, pct: d.total > 0 ? Math.round((d.conf / d.total) * 100) : 0 }))
+    .sort((a, b) => a.pct - b.pct);
+});
 
-// ─── Chart: Por Equipe (scrollable vertical) ──────────────────────────────────
-const equipeNames = [
-  "MA-ANJ-E001M","MA-ARI-E001M","MA-BCB-C001M","MA-BCB-C002M","MA-BCB-D001M",
-  "MA-BCB-E002M","MA-BCB-E003M","MA-BCB-F001M","MA-BCB-F004M","MA-BCB-F006M",
-  "MA-BCB-F011M","MA-BCB-F012M","MA-BCB-O001M","MA-BCB-O002M","MA-BCB-O003M",
-  "MA-BCB-O004M","MA-BCB-O005M","MA-BCB-O006M","MA-BCB-P001M","MA-BCB-W003M",
-  "MA-BDC-C001M","MA-BDC-E001M","MA-BDC-E002M","MA-BDC-F001M","MA-BDC-F002M",
-  "MA-ITM-C001M","MA-ITM-D001M","MA-PDS-C001M","MA-PDT-C001M","MA-STI-C001M",
-  "MA-STI-D001M","MA-STI-E001M",
-];
-const equipeVals = Array(equipeNames.length).fill(100);
-equipeVals[6]  = 95;
-equipeVals[14] = 92;
-equipeVals[22] = 88;
-
-const chartEquipe = {
+const chartEquipe = computed(() => {
+  const data = equipePct.value.length
+    ? equipePct.value
+    : [{ name: "Sem dados", pct: 0 }];
+  const cats = data.map(e => e.name);
+  const vals = data.map(e => e.pct);
+  return {
   tooltip: {
     ...ttItem,
     formatter: (p: { name: string; value: number }) =>
@@ -491,7 +520,7 @@ const chartEquipe = {
   xAxis: { type: "value" as const, max: 100, show: false, splitLine: { show: false } },
   yAxis: {
     type: "category" as const,
-    data: [...equipeNames].reverse(),
+    data: cats,
     axisLine: { show: false }, axisTick: { show: false },
     splitLine: { show: false }, axisLabel: { color: "#334155", fontSize: 10 }
   },
@@ -504,7 +533,7 @@ const chartEquipe = {
   }],
   series: [{
     type: "bar" as const,
-    data: [...equipeVals].reverse().map((v) => ({
+    data: vals.map((v) => ({
       value: v,
       itemStyle: {
         color: v === 100 ? P.conf : v >= 90 ? "#84cc16" : P.inconfLt,
@@ -519,7 +548,8 @@ const chartEquipe = {
       formatter: (p: { value: number }) => `${p.value}%`
     }
   }]
-};
+  };
+});
 </script>
 
 <style scoped lang="scss">
@@ -620,3 +650,4 @@ $label-color:  #94a3b8;
   .fgroup__label  { color: #64748b; }
 }
 </style>
+

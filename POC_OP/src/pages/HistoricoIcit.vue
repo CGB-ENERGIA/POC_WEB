@@ -1,17 +1,18 @@
-<template>
+﻿<template>
   <q-page class="hist-page">
+    <q-linear-progress v-if="loading" indeterminate color="negative" style="position:sticky;top:0;z-index:200" />
 
-    <!-- ══════════════════════════════════════════════════════
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
          HEADER BAR
-    ══════════════════════════════════════════════════════ -->
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
     <div class="hist-header">
 
       <!-- Left: title, date, filtrar por -->
       <div class="hist-header__left">
-        <div class="hist-title">HISTÓRICO - ICIT</div>
+        <div class="hist-title">HISTÃ“RICO - ICIT</div>
         <div class="hist-date">
           <span>22/06/2026 13:54:55</span>
-          <span class="text-grey-5"> · Última Atualização</span>
+          <span class="text-grey-5"> Â· Ãšltima AtualizaÃ§Ã£o</span>
         </div>
         <div class="filtrar-por">
           <span class="filtrar-label">Filtrar por</span>
@@ -63,7 +64,7 @@
         <div class="frow">
 
           <div class="fgroup">
-            <span class="fgroup__label">Mês</span>
+            <span class="fgroup__label">MÃªs</span>
             <div class="pill-group">
               <button v-for="m in meses" :key="m.v"
                 :class="['pill', filters.mes === m.v && 'pill--active']"
@@ -84,7 +85,7 @@
           <div class="filter-divider" />
 
           <div class="fgroup">
-            <span class="fgroup__label">Gerência</span>
+            <span class="fgroup__label">GerÃªncia</span>
             <div class="pill-group">
               <button v-for="g in gerencias" :key="g"
                 :class="['pill', filters.gerencia === g && 'pill--active']"
@@ -100,9 +101,9 @@
         class="back-btn" @click="$router.push('/icit')" />
     </div>
 
-    <!-- ══════════════════════════════════════════════════════
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
          DATA TABLE
-    ══════════════════════════════════════════════════════ -->
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
     <div class="table-wrap">
       <table class="hist-table">
         <thead>
@@ -120,7 +121,7 @@
               :style="cell ? cellBg(cell) : {}">
               <template v-if="cell">
                 <div v-if="cell.reinc" class="cell-inner">
-                  <span class="cell-reinc">Reincidência: {{ cell.reinc }}</span>
+                  <span class="cell-reinc">ReincidÃªncia: {{ cell.reinc }}</span>
                   <span class="cell-pct">{{ fmtPct(cell.pct) }}</span>
                 </div>
                 <div v-else class="cell-inner cell-inner--single">{{ fmtPct(cell.pct) }}</div>
@@ -128,7 +129,7 @@
             </td>
             <td class="td-total">
               <div class="cell-inner">
-                <span class="total-reinc">Reincidência: {{ row.total.reinc }}</span>
+                <span class="total-reinc">ReincidÃªncia: {{ row.total.reinc }}</span>
                 <span class="total-pct" :style="{ color: totalColor(row.total.pct) }">{{ fmtPct(row.total.pct) }}</span>
               </div>
             </td>
@@ -141,19 +142,27 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, ref } from "vue";
+import { reactive, computed, ref, watch, onMounted } from "vue";
+import { useChecklistData } from "@/composables/useChecklistData";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+const { loading, error, submissions, responses, load } = useChecklistData();
+
+// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface Cell { reinc?: number; pct: number }
 interface Row  { prefixo: string; months: (Cell | null)[]; total: { reinc: number; pct: number } }
 
-// ─── Filter state ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Filter state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const now = new Date();
 const bases     = ["BCB","BDC","ITM","PDS","PDT","STI"];
 const gerentes  = ["Afonso","Jackson","Julio C.","Marcos","Paulo","Pryscilla","Rafaela","Ricardo"];
 const gerencias = ["GERE","GOMAN","GSTC"];
 const meses     = [
   { v: 1, l: "jan" }, { v: 2, l: "fev" },
   { v: 3, l: "mar" }, { v: 4, l: "abr" },
+  { v: 5, l: "mai" }, { v: 6, l: "jun" },
+  { v: 7, l: "jul" }, { v: 8, l: "ago" },
+  { v: 9, l: "set" }, { v: 10, l: "out" },
+  { v: 11, l: "nov"}, { v: 12, l: "dez" },
 ];
 const filtroTipos = [
   { value: "<80%",      label: "<80% ICIT",  color: "orange" },
@@ -163,14 +172,14 @@ const filtroTipos = [
 ];
 
 const monthNames = [
-  "janeiro","fevereiro","março","abril",
+  "janeiro","fevereiro","marÃ§o","abril",
   "maio","junho","julho","agosto",
   "setembro","outubro","novembro","dezembro",
 ];
 
 const filters = reactive({
-  ano:      2026,
-  mes:      4,
+  ano:      now.getFullYear(),
+  mes:      now.getMonth() + 1,
   base:     "",
   prefixo:  "Todos",
   gerente:  "",
@@ -178,7 +187,18 @@ const filters = reactive({
   tipo:     "Geral",
 });
 
-// ─── Full prefix list (191 entries) ──────────────────────────────────────────
+async function recarregar() {
+  // Load full year so all months are available for the table
+  await load({
+    ano: filters.ano,
+    base: filters.base || undefined,
+    gerencia: filters.gerencia || undefined,
+  });
+}
+onMounted(recarregar);
+watch(() => [filters.ano, filters.base, filters.gerencia], recarregar);
+
+// â”€â”€â”€ Full prefix list (191 entries) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const allPrefixes: string[] = [
   "MA-BCB-E001M","MA-BCB-E002M","MA-PDT-P002M","MA-BDC-E002M",
   "MA-PDT-M001M","MA-BDC-C001M","MA-PDT-O035M","MA-BDC-F001M",
@@ -230,61 +250,59 @@ const allPrefixes: string[] = [
   "MA-BDC-H001M","MA-PDT-H001M","MA-ITM-H001M",
 ];
 
-// ─── Deterministic data generator ─────────────────────────────────────────────
-function hash(s: string): number {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = (h * 0x01000193) >>> 0;
+// â”€â”€â”€ Real data: per-equipe per-month ICIT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const rawRows = computed<Row[]>(() => {
+  // Map submission_id â†’ { month, conf, total }
+  const subInfo: Record<string, { month: number }> = {};
+  for (const s of submissions.value) {
+    const d = new Date(s.data ?? s.created_at ?? "");
+    if (!isNaN(d.getTime())) subInfo[s.id] = { month: d.getMonth() + 1 };
   }
-  return h;
-}
 
-// Percentage lookup tables for non-reinc months
-const pctTable = [100, 100, 100, 100, 100, 100, 100, 85.71, 90, 92.86, 87.5, 80];
-// Percentage lookup tables for reinc months
-const reincPctTable = [50, 60, 66.67, 71.43, 75, 77.78, 50, 62.5, 66.67, 72.73, 75, 69.23];
-// Max reinc distribution: most rows have 0, fewer have more
-const maxReincDist = [0,0,0,0,0,0,0,1,1,1,2,3];
+  // Collect per-equipe per-month stats
+  type MonthStats = { conf: number; total: number };
+  const equipeData: Record<string, Record<number, MonthStats>> = {};
 
-function generateRow(prefixo: string): Row {
-  const h0 = hash(prefixo);
-  const maxReinc = maxReincDist[h0 % maxReincDist.length];
-
-  const months: (Cell | null)[] = [];
-  let reincUsed = 0;
-  let sumPct = 0;
-
-  for (let mi = 0; mi < 12; mi++) {
-    if (mi >= 6) { months.push(null); continue; }
-
-    const mh = hash(prefixo + mi);
-    // Decide if this month gets a reincidência
-    const doReinc = reincUsed < maxReinc && (mh % 3 === 0);
-
-    let pct: number;
-    let reinc: number | undefined;
-
-    if (doReinc) {
-      reincUsed++;
-      reinc = 1;
-      pct = reincPctTable[mh % reincPctTable.length];
-    } else {
-      pct = pctTable[mh % pctTable.length];
+  for (const r of responses.value) {
+    const info = subInfo[r.submission_id];
+    if (!info) continue;
+    const sub = submissions.value.find(s => s.id === r.submission_id);
+    if (!sub) continue;
+    const equipes: string[] = Array.isArray(sub.membros)
+      ? (sub.membros as string[])
+      : sub.equipe ? [sub.equipe] : [];
+    for (const eq of equipes) {
+      if (!equipeData[eq]) equipeData[eq] = {};
+      if (!equipeData[eq][info.month]) equipeData[eq][info.month] = { conf: 0, total: 0 };
+      equipeData[eq][info.month].total++;
+      if (r.resposta === "conforme") equipeData[eq][info.month].conf++;
     }
-
-    sumPct += pct;
-    months.push(reinc !== undefined ? { reinc, pct } : { pct });
   }
 
-  const avgPct = Math.round((sumPct / 6) * 100) / 100;
-  return { prefixo, months, total: { reinc: reincUsed, pct: avgPct } };
-}
+  const rows: Row[] = Object.entries(equipeData).map(([prefixo, mStats]) => {
+    const months: (Cell | null)[] = [];
+    let sumPct = 0;
+    let counted = 0;
+    for (let mi = 1; mi <= 12; mi++) {
+      const st = mStats[mi];
+      if (!st) { months.push(null); continue; }
+      const pct = st.total > 0 ? Math.round((st.conf / st.total) * 10000) / 100 : 100;
+      months.push({ pct });
+      sumPct += pct;
+      counted++;
+    }
+    const avgPct = counted > 0 ? Math.round((sumPct / counted) * 100) / 100 : 0;
+    return { prefixo, months, total: { reinc: 0, pct: avgPct } };
+  });
 
-// Build rows once
-const rawRows: Row[] = allPrefixes.map(generateRow);
+  return rows.length ? rows : allPrefixes.slice(0, 20).map(prefixo => ({
+    prefixo,
+    months: Array(12).fill(null) as (Cell | null)[],
+    total: { reinc: 0, pct: 0 }
+  }));
+});
 
-// ─── Prefixo search filter ────────────────────────────────────────────────────
+// â”€â”€â”€ Prefixo search filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const prefixoOpts = ref<string[]>(["Todos", ...allPrefixes]);
 
 function filterPrefixo(val: string, update: (fn: () => void) => void) {
@@ -294,15 +312,15 @@ function filterPrefixo(val: string, update: (fn: () => void) => void) {
   });
 }
 
-// ─── Computed filtered + sorted rows ─────────────────────────────────────────
+// â”€â”€â”€ Computed filtered + sorted rows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const filteredRows = computed<Row[]>(() => {
-  let rows = rawRows;
+  let rows = rawRows.value;
 
   // Prefixo filter
   if (filters.prefixo && filters.prefixo !== "Todos")
     rows = rows.filter(r => r.prefixo === filters.prefixo);
 
-  // Base filter (from prefix code, e.g. MA-BCB-* → BCB)
+  // Base filter (from prefix code, e.g. MA-BCB-* â†’ BCB)
   if (filters.base)
     rows = rows.filter(r => r.prefixo.split("-")[1] === filters.base);
 
@@ -310,14 +328,14 @@ const filteredRows = computed<Row[]>(() => {
   if (filters.tipo === ">80%")      rows = rows.filter(r => r.total.pct >= 80);
   else if (filters.tipo === "<80%") rows = rows.filter(r => r.total.pct < 80);
 
-  // Sort: most reincidências first, then worst % first
+  // Sort: most reincidÃªncias first, then worst % first
   return [...rows].sort((a, b) => {
     if (b.total.reinc !== a.total.reinc) return b.total.reinc - a.total.reinc;
     return a.total.pct - b.total.pct;
   });
 });
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function fmtPct(v: number) {
   return v.toFixed(2).replace(".", ",") + "%";
 }
@@ -349,7 +367,7 @@ $inactive-txt:#475569;
   flex-direction: column;
 }
 
-/* ─── Header ─────────────────────────────────────────────────────── */
+/* â”€â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .hist-header {
   background: #fff;
   border-bottom: 1px solid $border;
@@ -415,7 +433,7 @@ $inactive-txt:#475569;
   &--dark   { background: #1e293b; color: #fff; }
 }
 
-/* ─── Filter pills ───────────────────────────────────────────────── */
+/* â”€â”€â”€ Filter pills â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .hist-header__right {
   flex: 1;
   display: flex;
@@ -470,7 +488,7 @@ $inactive-txt:#475569;
 
 .back-btn { align-self: center; margin-left: auto; flex-shrink: 0; }
 
-/* ─── Table ──────────────────────────────────────────────────────── */
+/* â”€â”€â”€ Table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .table-wrap {
   flex: 1;
   overflow-x: auto;
@@ -548,7 +566,7 @@ $inactive-txt:#475569;
   }
 }
 
-/* ─── Cell content ───────────────────────────────────────────────── */
+/* â”€â”€â”€ Cell content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .cell-inner {
   display: flex;
   flex-direction: column;
@@ -567,7 +585,7 @@ $inactive-txt:#475569;
 .total-reinc { font-size: 9px; color: #94a3b8; font-weight: 600; white-space: nowrap; }
 .total-pct   { font-size: 13px; font-weight: 800; }
 
-/* ─── Dark mode ─────────────────────────────────────────────────── */
+/* â”€â”€â”€ Dark mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .body--dark {
   .hist-page    { background: #0f172a; }
   .hist-header  { background: #1e293b; border-bottom-color: #334155; }
@@ -582,3 +600,4 @@ $inactive-txt:#475569;
   }
 }
 </style>
+

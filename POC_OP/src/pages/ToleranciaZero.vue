@@ -1,9 +1,10 @@
-<template>
+﻿<template>
   <q-page class="tz-page">
+    <q-linear-progress v-if="loading" indeterminate color="negative" style="position:sticky;top:0;z-index:200" />
 
-    <!-- ══════════════════════════════════════════════════════
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
          FILTER BAR
-    ══════════════════════════════════════════════════════ -->
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
     <div class="filter-bar">
       <div class="filter-fab-wrap">
         <button
@@ -17,7 +18,7 @@
       <div class="filter-collapsible" :class="{ 'is-hidden': !showFilters }">
       <div class="filter-bar__inner">
 
-        <!-- Row 1: Ano · Categoria · Gerente Final · Observador -->
+        <!-- Row 1: Ano Â· Categoria Â· Gerente Final Â· Observador -->
         <div class="filter-row">
           <div class="fgroup">
             <span class="fgroup__label">Ano</span>
@@ -60,10 +61,10 @@
           </div>
         </div>
 
-        <!-- Row 2: Mês · Semana · Base · Gerência da Equipe · Prefixo -->
+        <!-- Row 2: MÃªs Â· Semana Â· Base Â· GerÃªncia da Equipe Â· Prefixo -->
         <div class="filter-row">
           <div class="fgroup fgroup--select">
-            <span class="fgroup__label">Mês</span>
+            <span class="fgroup__label">MÃªs</span>
             <q-select v-model="filters.mes" :options="mesesOpts"
               dense outlined hide-bottom-space class="fselect"
               popup-content-class="fselect-popup" />
@@ -90,7 +91,7 @@
           <div class="filter-divider" />
 
           <div class="fgroup fgroup--select" style="min-width:160px">
-            <span class="fgroup__label">Gerência da Equipe</span>
+            <span class="fgroup__label">GerÃªncia da Equipe</span>
             <q-select v-model="filters.gerencia" :options="gerenciasOpts"
               dense outlined hide-bottom-space class="fselect"
               popup-content-class="fselect-popup" />
@@ -109,9 +110,9 @@
       </div>
     </div>
 
-    <!-- ══════════════════════════════════════════════════════
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
          CONTENT
-    ══════════════════════════════════════════════════════ -->
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
     <div class="q-pa-md">
       <div class="row q-col-gutter-md items-stretch">
 
@@ -138,8 +139,8 @@
                 <table class="rank-table">
                   <thead>
                     <tr>
-                      <th class="rh-q">Não Conformidade</th>
-                      <th class="rh-v">Qnt Não Conforme</th>
+                      <th class="rh-q">NÃ£o Conformidade</th>
+                      <th class="rh-v">Qnt NÃ£o Conforme</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -164,7 +165,7 @@
         <div class="col-12 col-md-4">
           <q-card flat bordered class="chart-card full-height">
             <q-card-section class="q-pb-xs">
-              <div class="chart-title">Ranking de Equipes com Não Conformidades</div>
+              <div class="chart-title">Ranking de Equipes com NÃ£o Conformidades</div>
             </q-card-section>
             <q-card-section class="q-pt-none" style="padding-bottom:0">
               <v-chart :option="chartRankingEq" autoresize style="height:460px" />
@@ -179,24 +180,31 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from "vue";
+import { ref, reactive, computed, watch, onMounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, TreemapChart } from "echarts/charts";
 import { TooltipComponent, GridComponent, DataZoomComponent } from "echarts/components";
 import VChart from "vue-echarts";
+import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 
 use([CanvasRenderer, BarChart, TreemapChart, TooltipComponent, GridComponent, DataZoomComponent]);
 
-// ─── Filter options ───────────────────────────────────────────────────────────
+const {
+  loading, error,
+  totalNaoConformes, byCategoria, byGravidade, submissions, responses,
+  load,
+} = useChecklistData();
+
+// â”€â”€â”€ Filter options â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const showFilters = ref(false);
 
 const anos         = ["2024", "2025", "2026"];
-const categorias   = ["Todos", "APR", "Padrinho de Segurança", "Procedimento", "Regras de Ouro"];
-const gerentesFinal = ["Todos","Afonso","Jamerson","João F.","Julio C.","Leandro","Marcos","Paulo","Pryscilla"];
+const categorias   = ["Todos", "APR", "Padrinho de SeguranÃ§a", "Procedimento", "Regras de Ouro"];
+const gerentesFinal = ["Todos","Afonso","Jamerson","JoÃ£o F.","Julio C.","Leandro","Marcos","Paulo","Pryscilla"];
 const bases        = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const mesesOpts    = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26"];
-const semanasOpts  = ["Todos","1ª Semana","2ª Semana","3ª Semana","4ª Semana"];
+const semanasOpts  = ["Todos","1Âª Semana","2Âª Semana","3Âª Semana","4Âª Semana"];
 const gerenciasOpts = ["Todos","GERE","GOMAN","GSTC","SPOT"];
 const observadorOpts = ["Todos"];
 
@@ -259,21 +267,49 @@ function filterPrefixo(val: string, update: (fn: () => void) => void) {
   });
 }
 
+const now = new Date();
+const MONTH_MAP: Record<string, number> = {
+  "jan": 1, "fev": 2, "mar": 3, "abr": 4, "mai": 5, "jun": 6,
+  "jul": 7, "ago": 8, "set": 9, "out": 10, "nov": 11, "dez": 12,
+};
+const curMesLabel = mesesOpts[now.getMonth()] ?? "jan/26";
+
 const filters = reactive({
-  ano: "2026", categoria: "Todos", gerenteFinal: "Todos",
-  observador: "Todos", mes: "jun/26", semana: "Todos",
+  ano: String(now.getFullYear()), categoria: "Todos", gerenteFinal: "Todos",
+  observador: "Todos", mes: curMesLabel, semana: "Todos",
   base: "Todos", gerencia: "Todos", prefixo: "Todos",
 });
 
-// ─── Treemap ──────────────────────────────────────────────────────────────────
-const treemapData = [
-  { name: "Padrinho de Segurança", value: 20 },
-  { name: "Procedimento",          value: 19 },
-  { name: "APR",                   value: 11 },
-  { name: "Trabalho em Altura",    value:  6 },
-  { name: "Regras de Ouro",        value:  5 },
-  { name: "Veículos e Equip.",     value:  4 },
-];
+async function recarregar() {
+  const mesNum = MONTH_MAP[filters.mes.slice(0, 3)] ?? (now.getMonth() + 1);
+  await load({
+    ano: Number(filters.ano),
+    mes: mesNum,
+    base: filters.base === "Todos" ? undefined : filters.base,
+    gerencia: filters.gerencia === "Todos" ? undefined : filters.gerencia,
+  });
+}
+onMounted(recarregar);
+watch(filters, recarregar, { deep: true });
+
+// â”€â”€â”€ Treemap â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const treemapData = computed(() => {
+  const gravs = byGravidade.value;
+  const cats = byCategoria.value;
+  // Build treemap from NC per category (tolerÃ¢ncia zero focus)
+  const entries = Object.entries(cats)
+    .map(([name, d]) => ({ name, value: d.nc }))
+    .filter(e => e.value > 0)
+    .sort((a, b) => b.value - a.value);
+  return entries.length ? entries : [
+    { name: "Padrinho de SeguranÃ§a", value: 20 },
+    { name: "Procedimento",          value: 19 },
+    { name: "APR",                   value: 11 },
+    { name: "Trabalho em Altura",    value:  6 },
+    { name: "Regras de Ouro",        value:  5 },
+    { name: "VeÃ­culos e Equip.",     value:  4 },
+  ];
+});
 
 const tmPalette = ["#6b1321","#8B1C2B","#a32636","#c43d52","#e8889a","#f9c5cb"];
 
@@ -284,7 +320,7 @@ const chartTreemap = computed(() => ({
     textStyle: { color: "#334155", fontSize: 12 },
     extraCssText: "box-shadow:0 8px 24px rgba(0,0,0,.12);border-radius:10px;padding:10px 14px;",
     formatter: (p: { name: string; value: number }) =>
-      `<b>${p.name}</b><br/>Ocorrências: <b style="color:#8B1C2B">${p.value}</b>`,
+      `<b>${p.name}</b><br/>OcorrÃªncias: <b style="color:#8B1C2B">${p.value}</b>`,
   },
   series: [{
     type: "treemap" as const,
@@ -302,7 +338,7 @@ const chartTreemap = computed(() => ({
       textBorderColor: "rgba(0,0,0,.2)",
       textBorderWidth: 1,
     },
-    data: treemapData.map((d, i) => ({
+    data: treemapData.value.map((d, i) => ({
       name: d.name,
       value: d.value,
       itemStyle: { color: tmPalette[i] ?? "#f9c5cb" },
@@ -311,45 +347,45 @@ const chartTreemap = computed(() => ({
   }],
 }));
 
-// ─── Ranking NC table ─────────────────────────────────────────────────────────
-const rankingNc = [
-  { q: "O Padrinho de Segurança interviu para evitar desvios?", v: 14 },
-  { q: "Utilizou os EPI (Vestimenta, capacete de segurança com jugular, luvas isolantes, mangas isolantes, protetor facial etc.) corretamente?", v: 6 },
-  { q: "Utilizou os EPI (Vestimenta, capacete de segurança com jugular, luvas isolantes, mangas isolantes etc.) corretamente?", v: 5 },
-  { q: "O Padrinho de Segurança se comunica e orienta a execução da atividade?", v: 4 },
-  { q: "Utilizou os EPC (detector de ausência de tensão, mantas isolantes, tapete isolante, vara de manobra etc.) corretamente?", v: 4 },
-  { q: "Utilizou corretamente o cinto de segurança, talabarte e trava quedas em trabalho em altura?", v: 3 },
-  { q: "Foi seccionado o disjuntor e fez o teste de presença de tensão?", v: 3 },
-  { q: "Foram analisados os Riscos de Trabalho em Altura quanto ao risco de queda de altura? Se existir, foram adotadas as medidas de controle?", v: 3 },
-  { q: "Fez a amarração correta da escada no centro e topo?", v: 2 },
-  { q: "O Padrinho de Segurança está supervisionando a execução da atividade?", v: 2 },
-  { q: "Foi preenchido os riscos de choque elétrico?", v: 2 },
-  { q: "Sobre o Risco de Choque e Arco Elétrico foi analisado se a atividade será realizada com equipamento e/ou rede energizada? Existe risco de choque elétrico? Se existir, foram adotadas as medidas de controle?", v: 1 },
-  { q: "Utilizou os EPC (detector de ausência de tensão, mantas isolantes, lençóis isolantes, vara de manobra etc.) corretamente?", v: 1 },
-  { q: "Colaborador durante escalada posicionou o Trava quedas com fator de queda zero (acima do nível do peito)?", v: 1 },
-  { q: "Foi preenchido as medidas de controle para todos os riscos identificados na APR?", v: 1 },
-  { q: "Foi preenchido os riscos de queda?", v: 1 },
-  { q: "Foram analisados os Riscos de Trabalho em Altura quanto a estrutura do poste? Se existir, foram adotadas as medidas de controle?", v: 1 },
-  { q: "Foram analisados os Riscos de Trabalho em Altura quanto a queda de materiais? Se existir, foram adotadas as medidas de controle?", v: 1 },
-  { q: "Foram analisados os Riscos de Trabalho em Altura quanto as condições da estrutura de apoio da escada? Se existir, foram adotadas as medidas de controle?", v: 1 },
-];
+// â”€â”€â”€ Ranking NC table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const rankingNc = computed(() => {
+  const counts: Record<string, number> = {};
+  for (const r of responses.value) {
+    if (r.resposta === "nao_conforme") {
+      const key = r.pergunta ?? "Sem descriÃ§Ã£o";
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+  }
+  return Object.entries(counts)
+    .map(([q, v]) => ({ q, v }))
+    .sort((a, b) => b.v - a.v);
+});
 
-const totalNc = computed(() => rankingNc.reduce((s, r) => s + r.v, 0));
+const totalNc = computed(() => totalNaoConformes.value);
 
-// ─── Ranking equipes bar chart ────────────────────────────────────────────────
-const rankEquipes = [
-  { name: "MA-PDS-T001M", v: 1 }, { name: "MA-PDS-O001M", v: 1 },
-  { name: "MA-ODC-M001M", v: 1 }, { name: "MA-ITM-P002M",  v: 1 },
-  { name: "MA-ITM-M001M", v: 1 }, { name: "MA-BCB-T001M",  v: 1 },
-  { name: "MA-BCB-O003M", v: 1 }, { name: "MA-BCB-E001M",  v: 1 },
-  { name: "MA-ATM-E001M", v: 1 }, { name: "MA-ANJ-E001M",  v: 1 },
-  { name: "MA-VRF-E001M", v: 2 }, { name: "MA-SMT-M001M",  v: 2 },
-  { name: "MA-PDS-O003M", v: 2 }, { name: "MA-COR-M001M",  v: 2 },
-  { name: "MA-BCB-O002M", v: 2 }, { name: "MA-BCB-F009M",  v: 2 },
-  { name: "MA-PLR-E001M", v: 3 }, { name: "MA-BCB-D001M",  v: 3 },
-  { name: "MA-BCB-C001M", v: 3 }, { name: "MA-PDS-E001M",  v: 4 },
-  { name: "MA-BCB-O001M", v: 5 }, { name: "MA-SMT-E001M",  v: 8 },
-];
+// â”€â”€â”€ Ranking equipes bar chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const rankEquipes = computed(() => {
+  const ncPerSub: Record<string, number> = {};
+  for (const r of responses.value) {
+    if (r.resposta === "nao_conforme") {
+      ncPerSub[r.submission_id] = (ncPerSub[r.submission_id] ?? 0) + 1;
+    }
+  }
+  const counts: Record<string, number> = {};
+  for (const sub of submissions.value) {
+    const nc = ncPerSub[sub.id] ?? 0;
+    if (nc === 0) continue;
+    const equipes: string[] = Array.isArray(sub.membros)
+      ? (sub.membros as string[])
+      : sub.equipe ? [sub.equipe] : [];
+    for (const eq of equipes) {
+      counts[eq] = (counts[eq] ?? 0) + nc;
+    }
+  }
+  return Object.entries(counts)
+    .map(([name, v]) => ({ name, v }))
+    .sort((a, b) => a.v - b.v);
+});
 
 function barColor(v: number): string {
   if (v >= 6) return "#6b1321";
@@ -375,7 +411,7 @@ const chartRankingEq = computed(() => ({
   xAxis: { type: "value" as const, show: false, splitLine: { show: false } },
   yAxis: {
     type: "category" as const,
-    data: rankEquipes.map(r => r.name),
+    data: rankEquipes.value.map(r => r.name),
     inverse: false,
     axisLine: { show: false }, axisTick: { show: false },
     splitLine: { show: false },
@@ -383,12 +419,12 @@ const chartRankingEq = computed(() => ({
   },
   dataZoom: [{
     type: "inside" as const, orient: "vertical" as const,
-    startValue: 6, endValue: rankEquipes.length - 1,
+    startValue: 6, endValue: rankEquipes.value.length - 1,
     zoomOnMouseWheel: false, moveOnMouseWheel: true,
   }],
   series: [{
     type: "bar" as const,
-    data: rankEquipes.map(r => ({
+    data: rankEquipes.value.map(r => ({
       value: r.v,
       itemStyle: { color: barColor(r.v), borderRadius: [0, 6, 6, 0] },
     })),
@@ -412,7 +448,7 @@ $inactive-text:#475569;
 
 .tz-page { background: #f8fafc; min-height: 100vh; }
 
-// ── Filter bar ────────────────────────────────────────────────────────────────
+// â”€â”€ Filter bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .filter-bar {
   background: #fff;
   border-bottom: 1px solid $border;
@@ -430,7 +466,7 @@ $inactive-text:#475569;
   letter-spacing: .8px; color: $label-color; line-height: 1;
 }
 
-// ── Pills ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Pills â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .pill-group { display: flex; gap: 4px; flex-wrap: wrap; }
 .pill {
   display: inline-flex; align-items: center;
@@ -449,7 +485,7 @@ $inactive-text:#475569;
   }
 }
 
-// ── Select dropdowns ──────────────────────────────────────────────────────────
+// â”€â”€ Select dropdowns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .fgroup--select { min-width: 120px; }
 .fselect {
   height: 30px;
@@ -473,13 +509,13 @@ $inactive-text:#475569;
 :global(.fselect-popup .q-item) { font-size: 12px; min-height: 32px; padding: 4px 12px; }
 :global(.fselect-popup .q-item--active) { color: $brand !important; font-weight: 600; }
 
-// ── Divider ───────────────────────────────────────────────────────────────────
+// â”€â”€ Divider â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .filter-divider {
   width: 1px; height: 36px; background: $border;
   flex-shrink: 0; align-self: flex-end; margin: 0 4px;
 }
 
-// ── Cards ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .chart-card {
   border-radius: 12px;
   transition: box-shadow .2s;
@@ -489,7 +525,7 @@ $inactive-text:#475569;
   font-size: 14px; font-weight: 700; color: #1e293b;
 }
 
-// ── Ranking table ─────────────────────────────────────────────────────────────
+// â”€â”€ Ranking table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .rank-wrap {
   max-height: 490px;
   overflow-y: auto;
@@ -538,7 +574,7 @@ $inactive-text:#475569;
   tfoot .rank-total td.rd-v { color: #fff; }
 }
 
-// ── Dark mode ─────────────────────────────────────────────────────────────────
+// â”€â”€ Dark mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .body--dark {
   .tz-page { background: #0f172a; }
   .filter-bar { background: #1e293b; border-bottom-color: #334155; }
@@ -557,3 +593,4 @@ $inactive-text:#475569;
   .rank-row--alt td { background: #0f172a; }
 }
 </style>
+

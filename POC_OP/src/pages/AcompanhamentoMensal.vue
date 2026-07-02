@@ -236,7 +236,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from "vue";
+import { reactive, ref, computed, watch, onMounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, LineChart } from "echarts/charts";
@@ -248,6 +248,7 @@ import {
   DataZoomComponent
 } from "echarts/components";
 import VChart from "vue-echarts";
+import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 
 use([
   CanvasRenderer, BarChart, LineChart,
@@ -298,23 +299,46 @@ const gerentes = [
 ];
 
 // ─── Filter state ─────────────────────────────────────────────────────────────
+const now = new Date();
 const filters = reactive({
-  mes:      6,
-  semana:   3,
-  ano:      2026,
+  mes:      now.getMonth() + 1,
+  semana:   0,
+  ano:      now.getFullYear(),
   base:     "Todos",
   funcao:   "Todos",
   gerencia: "Todos",
   gerente:  "Todos",
 });
 
+// ─── Dados reais ──────────────────────────────────────────────────────────────
+const {
+  loading,
+  load,
+  totalSubmissions,
+  basesCovertas,
+  byObservador,
+  byBase,
+  bySemana,
+  byGerencia,
+  conformidadePorObservador,
+} = useChecklistData();
+
+async function recarregar() {
+  await load({ ano: filters.ano, mes: filters.mes, base: filters.base !== "Todos" ? filters.base : undefined });
+}
+
+onMounted(recarregar);
+watch(filters, recarregar, { deep: true });
+
+const mesLabel = computed(() => meses.find(m => m.value === filters.mes)?.label ?? "");
+
 // ─── KPIs ─────────────────────────────────────────────────────────────────────
-const kpis = [
-  { label: "Total Realizado",  value: "256", icon: "mdi-eye-check",        color: "positive" },
-  { label: "Meta do Mês",      value: "248", icon: "mdi-bullseye-arrow",    color: "primary"  },
-  { label: "Atingimento",      value: "103%", icon: "mdi-check-decagram",   color: "teal"     },
-  { label: "Bases Ativas",     value: "6",   icon: "mdi-map-marker-radius", color: "orange"   },
-];
+const kpis = computed(() => [
+  { label: "Total Realizado",  value: loading.value ? "…" : fmtN(totalSubmissions.value), icon: "mdi-eye-check",        color: "positive" },
+  { label: "Meta do Mês",      value: "—",   icon: "mdi-bullseye-arrow",    color: "primary"  },
+  { label: "Atingimento",      value: "—",   icon: "mdi-check-decagram",    color: "teal"     },
+  { label: "Bases Ativas",     value: loading.value ? "…" : String(basesCovertas.value), icon: "mdi-map-marker-radius", color: "orange"   },
+]);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const ttItem = {
@@ -342,256 +366,180 @@ const legend = {
   textStyle: { color: "#64748b", fontSize: 11 }
 };
 
-// Retorna duas séries agrupadas (Realizado + Meta)
-function pairedBars(realData: number[], metaData: number[]) {
-  return [
-    {
-      name: "Realizado",
-      type: "bar" as const,
-      data: realData,
-      barMaxWidth: 48,
-      barGap: "8%",
-      itemStyle: {
-        color: G.real,
-        borderRadius: [6, 6, 0, 0],
-        shadowColor: "rgba(22,163,74,.2)",
-        shadowBlur: 6, shadowOffsetY: 3
-      },
-      emphasis: { itemStyle: { color: G.light, shadowBlur: 12, shadowColor: "rgba(22,163,74,.35)" } },
-      label: {
-        show: true, position: "top" as const,
-        fontSize: 12, fontWeight: "bold" as const,
-        color: G.real, distance: 4
-      }
+function singleBar(labels: string[], data: number[]) {
+  return [{
+    name: "Realizado",
+    type: "bar" as const,
+    data,
+    barMaxWidth: 48,
+    itemStyle: {
+      color: G.real,
+      borderRadius: [6, 6, 0, 0],
+      shadowColor: "rgba(22,163,74,.2)",
+      shadowBlur: 6, shadowOffsetY: 3
     },
-    {
-      name: "Meta",
-      type: "bar" as const,
-      data: metaData,
-      barMaxWidth: 48,
-      itemStyle: {
-        color: G.meta,
-        borderRadius: [6, 6, 0, 0]
-      },
-      emphasis: { itemStyle: { color: "#b0bec5" } },
-      label: {
-        show: true, position: "top" as const,
-        fontSize: 12, fontWeight: "bold" as const,
-        color: G.metaTx, distance: 4
-      }
-    }
-  ];
+    emphasis: { itemStyle: { color: G.light, shadowBlur: 12 } },
+    label: { show: true, position: "top" as const, fontSize: 12, fontWeight: "bold" as const, color: G.real, distance: 4 }
+  }];
+  void labels;
 }
 
 // ─── Chart: Observações x Meta (Mês) ─────────────────────────────────────────
-const chartMetaMes = {
+const chartMetaMes = computed(() => ({
   tooltip: {
     ...ttItem,
     formatter: (p: { seriesName: string; value: number }) =>
-      `${p.seriesName}: <b style="color:${p.seriesName === 'Realizado' ? G.real : G.metaTx}">${p.value}</b>`
+      `${p.seriesName}: <b style="color:${G.real}">${p.value}</b>`
   },
   legend,
   grid: { left: 12, right: 12, top: 12, bottom: 36, containLabel: true },
-  xAxis: cleanXAxis(["jun"]),
+  xAxis: cleanXAxis([mesLabel.value]),
   yAxis: { show: false },
-  series: pairedBars([256], [248])
-};
+  series: singleBar([mesLabel.value], [totalSubmissions.value])
+}));
 
 // ─── Chart: Obs Realizadas por Semana ─────────────────────────────────────────
-const chartMetaSemana = {
+const chartMetaSemana = computed(() => ({
   tooltip: {
     ...ttItem,
-    formatter: (p: { seriesName: string; name: string; value: number }) =>
-      `<b>${p.name}</b><br/>${p.seriesName}: <b style="color:${p.seriesName === 'Realizado' ? G.real : G.metaTx}">${p.value}</b>`
+    formatter: (p: { name: string; value: number }) =>
+      `<b>${p.name}</b><br/>Realizado: <b style="color:${G.real}">${p.value}</b>`
   },
   legend,
   grid: { left: 12, right: 12, top: 12, bottom: 36, containLabel: true },
   xAxis: cleanXAxis(["1ª Sem", "2ª Sem", "3ª Sem", "4ª Sem"]),
   yAxis: { show: false },
-  series: pairedBars([48, 60, 72, 76], [62, 62, 62, 62])
-};
+  series: singleBar(["1ª Sem","2ª Sem","3ª Sem","4ª Sem"], [1,2,3,4].map(s => bySemana.value[s] ?? 0))
+}));
 
 // ─── Chart: Obs por Base ──────────────────────────────────────────────────────
-const chartBase = {
-  tooltip: {
-    ...ttItem,
-    formatter: (p: { seriesName: string; name: string; value: number }) =>
-      `<b>${p.name}</b><br/>${p.seriesName}: <b style="color:${p.seriesName === 'Realizado' ? G.real : G.metaTx}">${p.value}</b>`
-  },
-  legend,
-  grid: { left: 12, right: 12, top: 12, bottom: 36, containLabel: true },
-  xAxis: cleanXAxis(["BCB", "PDT", "STI", "PDS", "ITM", "BDC"]),
-  yAxis: { show: false },
-  series: pairedBars(
-    [86, 48, 28, 50, 24, 20],
-    [65, 57, 45, 37, 25, 19]
-  )
-};
+const chartBase = computed(() => {
+  const entries = Object.entries(byBase.value).sort((a, b) => b[1] - a[1]);
+  return {
+    tooltip: {
+      ...ttItem,
+      formatter: (p: { name: string; value: number }) =>
+        `<b>${p.name}</b><br/>Realizado: <b style="color:${G.real}">${p.value}</b>`
+    },
+    legend,
+    grid: { left: 12, right: 12, top: 12, bottom: 36, containLabel: true },
+    xAxis: cleanXAxis(entries.map(([n]) => n)),
+    yAxis: { show: false },
+    series: singleBar(entries.map(([n]) => n), entries.map(([, v]) => v))
+  };
+});
 
 // ─── Chart: Obs por Gerência ──────────────────────────────────────────────────
-const chartGerencia = {
-  tooltip: {
-    ...ttItem,
-    formatter: (p: { seriesName: string; name: string; value: number }) =>
-      `<b>${p.name}</b><br/>${p.seriesName}: <b style="color:${p.seriesName === 'Realizado' ? G.real : G.metaTx}">${p.value}</b>`
-  },
-  legend,
-  grid: { left: 12, right: 12, top: 12, bottom: 52, containLabel: true },
-  xAxis: cleanXAxis(["GOMAN","GSTC","SESMT","GERE","ADM","OFICINA"], { rotate: 20 }),
-  yAxis: { show: false },
-  series: pairedBars(
-    [111, 74, 37, 26, 6, 2],
-    [144, 40, 34, 16, 10, 4]
-  )
-};
+const chartGerencia = computed(() => {
+  const entries = Object.entries(byGerencia.value).sort((a, b) => b[1] - a[1]);
+  return {
+    tooltip: {
+      ...ttItem,
+      formatter: (p: { name: string; value: number }) =>
+        `<b>${p.name}</b><br/>Realizado: <b style="color:${G.real}">${p.value}</b>`
+    },
+    legend,
+    grid: { left: 12, right: 12, top: 12, bottom: 52, containLabel: true },
+    xAxis: cleanXAxis(entries.map(([n]) => n), { rotate: 20 }),
+    yAxis: { show: false },
+    series: singleBar(entries.map(([n]) => n), entries.map(([, v]) => v))
+  };
+});
 
 // ─── Chart: Obs por Observador (scrollável) ───────────────────────────────────
-const obsNames = [
-  "Isaac","Lucas A.","Normam","Reinaldo","Adalton","Nilo","Vanilson",
-  "Josielington","Welrisson","Dario","Deilton","Gleyson","Jarbem","Wemesson",
-  "Alex M.","Everton S.","Idlaldo","R.Matos","Weyderson","A.Marcos",
-  "Diego S.A","Dyuljan","J.Airton","J.Cesar","Patrick A.","R.Herme.",
-  "Thomas","Wanderso.","A.Samuel","Afonso","Andre S.","Ariosaldo","Artison"
-];
-const obsReal = [
-  13, 9, 8, 8, 7, 7, 7, 6, 6, 5, 5, 5, 5, 5,
-   3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
-];
-const obsMeta = Array(obsNames.length).fill(2);
-
-const chartObservador = {
-  tooltip: {
-    ...ttItem,
-    formatter: (p: { seriesName: string; name: string; value: number }) =>
-      `<b>${p.name}</b><br/>${p.seriesName}: <b style="color:${p.seriesName === 'Realizado' ? G.real : G.red}">${p.value}</b>`
-  },
-  legend: { ...legend, bottom: 30 },
-  grid: { left: 12, right: 12, top: 12, bottom: 62, containLabel: true },
-  dataZoom: [
-    {
-      type: "inside" as const,
-      startValue: 0, endValue: 14,
-      zoomOnMouseWheel: false,
-      moveOnMouseWheel: true
+const chartObservador = computed(() => {
+  const entries = Object.entries(byObservador.value).sort((a, b) => b[1] - a[1]);
+  const obsNames = entries.map(([n]) => n.split(" ")[0]);
+  const obsReal = entries.map(([, v]) => v);
+  return {
+    tooltip: {
+      ...ttItem,
+      formatter: (p: { name: string; value: number }) =>
+        `<b>${p.name}</b><br/>Realizado: <b style="color:${G.real}">${p.value}</b>`
     },
-    {
-      type: "slider" as const,
-      bottom: 4,
-      height: 20,
-      startValue: 0, endValue: 14,
-      brushSelect: false,
-      showDetail: false,
-      showDataShadow: false,
-      borderRadius: 10,
-      borderColor: "#e2e8f0",
-      backgroundColor: "#f1f5f9",
-      fillerColor: "rgba(22,163,74,0.18)",
-      handleIcon: "path://M0,-7a7,7,0,1,0,0,14a7,7,0,1,0,0,-14Z",
-      handleSize: "110%",
-      handleStyle: {
-        color: "#fff",
-        borderColor: G.real,
-        borderWidth: 2,
-        shadowColor: "rgba(22,163,74,.4)",
-        shadowBlur: 6
+    legend: { ...legend, bottom: 30 },
+    grid: { left: 12, right: 12, top: 12, bottom: 62, containLabel: true },
+    dataZoom: [
+      {
+        type: "inside" as const,
+        startValue: 0, endValue: 14,
+        zoomOnMouseWheel: false,
+        moveOnMouseWheel: true
       },
-      moveHandleSize: 6,
-      moveHandleStyle: {
-        color: G.real,
-        opacity: 0.25
-      },
-      emphasis: {
+      {
+        type: "slider" as const,
+        bottom: 4,
+        height: 20,
+        startValue: 0, endValue: 14,
+        brushSelect: false,
+        showDetail: false,
+        showDataShadow: false,
+        borderRadius: 10,
+        borderColor: "#e2e8f0",
+        backgroundColor: "#f1f5f9",
+        fillerColor: "rgba(22,163,74,0.18)",
+        handleSize: "110%",
         handleStyle: {
-          color: G.real,
+          color: "#fff",
           borderColor: G.real,
-          shadowBlur: 10
-        }
+          borderWidth: 2,
+          shadowColor: "rgba(22,163,74,.4)",
+          shadowBlur: 6
+        },
+        moveHandleSize: 6,
       }
-    }
-  ],
-  xAxis: cleanXAxis(obsNames, { fontSize: 10, rotate: 30, interval: 0 }),
-  yAxis: { show: false },
-  series: [
-    {
+    ],
+    xAxis: cleanXAxis(obsNames, { fontSize: 10, rotate: 30, interval: 0 }),
+    yAxis: { show: false },
+    series: [{
       name: "Realizado",
       type: "bar" as const,
       data: obsReal,
       barMaxWidth: 28,
-      itemStyle: {
-        color: G.real,
-        borderRadius: [4, 4, 0, 0],
-        shadowColor: "rgba(22,163,74,.15)", shadowBlur: 4
-      },
+      itemStyle: { color: G.real, borderRadius: [4, 4, 0, 0], shadowColor: "rgba(22,163,74,.15)", shadowBlur: 4 },
       emphasis: { itemStyle: { color: G.light, shadowBlur: 10 } },
-      label: {
-        show: true, position: "top" as const,
-        fontSize: 10, fontWeight: "bold" as const,
-        color: G.real, distance: 3
-      }
-    },
-    {
-      name: "Meta",
-      type: "line" as const,
-      data: obsMeta,
-      symbol: "circle", symbolSize: 7,
-      lineStyle: { color: G.red, type: "dashed" as const, width: 1.5 },
-      itemStyle: { color: G.red, borderColor: "#fff", borderWidth: 2 },
-      label: { show: false }
-    }
-  ]
-};
-
-// ─── Chart: Ranking de Observadores ──────────────────────────────────────────
-const rankingNames = [
-  "Isaac","Lucas A.","Normam","Reinaldo","Adalton",
-  "Nilo","Vanilson","Josielington","Welrisson","Dario","Deilton"
-];
-const rankingVals = [13, 9, 8, 8, 7, 7, 7, 6, 6, 5, 5];
-
-const rankingColors = rankingVals.map((v, i) => {
-  if (i === 0) return "#f59e0b";   // ouro
-  if (i === 1) return "#94a3b8";   // prata
-  if (i === 2) return "#b45309";   // bronze
-  return G.real;
+      label: { show: true, position: "top" as const, fontSize: 10, fontWeight: "bold" as const, color: G.real, distance: 3 }
+    }]
+  };
 });
 
-const chartRanking = {
-  tooltip: {
-    ...ttItem,
-    formatter: (p: { name: string; value: number; dataIndex: number }) =>
-      `<b>${p.name}</b>: <b style="color:${rankingColors[p.dataIndex]}">${p.value}</b>`
-  },
-  grid: { left: 82, right: 36, top: 8, bottom: 8 },
-  xAxis: {
-    type: "value" as const,
-    show: false,
-    splitLine: { show: false }
-  },
-  yAxis: {
-    type: "category" as const,
-    data: [...rankingNames].reverse(),
-    axisLine: { show: false },
-    axisTick: { show: false },
-    splitLine: { show: false },
-    axisLabel: { color: "#334155", fontSize: 11 }
-  },
-  series: [{
-    type: "bar" as const,
-    data: [...rankingVals].reverse().map((v, i) => ({
-      value: v,
-      itemStyle: { color: rankingColors[rankingVals.length - 1 - i], borderRadius: [0, 6, 6, 0] }
-    })),
-    barMaxWidth: 22,
-    emphasis: {
-      itemStyle: { shadowBlur: 8, shadowColor: "rgba(0,0,0,.15)" }
+// ─── Chart: Ranking de Observadores ──────────────────────────────────────────
+const chartRanking = computed(() => {
+  const top11 = conformidadePorObservador.value.slice(0, 11).sort((a, b) => b.totalObs - a.totalObs);
+  const names = top11.map(o => o.nome.split(" ")[0]);
+  const vals = top11.map(o => o.totalObs);
+  const rankingColors = vals.map((_, i) => {
+    if (i === 0) return "#f59e0b";
+    if (i === 1) return "#94a3b8";
+    if (i === 2) return "#b45309";
+    return G.real;
+  });
+  return {
+    tooltip: {
+      ...ttItem,
+      formatter: (p: { name: string; value: number; dataIndex: number }) =>
+        `<b>${p.name}</b>: <b style="color:${rankingColors[p.dataIndex]}">${p.value}</b>`
     },
-    label: {
-      show: true, position: "right" as const,
-      fontSize: 12, fontWeight: "bold" as const,
-      color: "#334155"
-    }
-  }]
-};
+    grid: { left: 82, right: 36, top: 8, bottom: 8 },
+    xAxis: { type: "value" as const, show: false, splitLine: { show: false } },
+    yAxis: {
+      type: "category" as const,
+      data: [...names].reverse(),
+      axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false },
+      axisLabel: { color: "#334155", fontSize: 11 }
+    },
+    series: [{
+      type: "bar" as const,
+      data: [...vals].reverse().map((v, i) => ({
+        value: v,
+        itemStyle: { color: rankingColors[vals.length - 1 - i], borderRadius: [0, 6, 6, 0] }
+      })),
+      barMaxWidth: 22,
+      emphasis: { itemStyle: { shadowBlur: 8, shadowColor: "rgba(0,0,0,.15)" } },
+      label: { show: true, position: "right" as const, fontSize: 12, fontWeight: "bold" as const, color: "#334155" }
+    }]
+  };
+});
 </script>
 
 <style scoped lang="scss">

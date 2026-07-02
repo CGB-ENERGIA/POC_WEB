@@ -1,7 +1,8 @@
-<template>
+﻿<template>
   <q-page class="mapa-mensal-page">
+    <q-linear-progress v-if="loading" indeterminate color="negative" style="position:sticky;top:0;z-index:200" />
 
-    <!-- ═══════════════════════════ FILTER BAR ═══════════════════════════ -->
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• FILTER BAR â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
     <div class="filter-bar">
       <div class="filter-fab-wrap">
         <button
@@ -15,7 +16,7 @@
       <div class="filter-collapsible" :class="{ 'is-hidden': !showFilters }">
       <div class="filter-bar__inner">
 
-        <!-- Row 1: Semana · Mês · Gerência -->
+        <!-- Row 1: Semana Â· MÃªs Â· GerÃªncia -->
         <div class="filter-row">
           <div class="fgroup">
             <span class="fgroup__label">Semana</span>
@@ -27,7 +28,7 @@
           </div>
           <div class="filter-divider" />
           <div class="fgroup">
-            <span class="fgroup__label">Mês</span>
+            <span class="fgroup__label">MÃªs</span>
             <div class="pill-group">
               <button v-for="m in mesesOpts" :key="m"
                 :class="['pill', filters.mes === m && 'pill--active']"
@@ -36,7 +37,7 @@
           </div>
           <div class="filter-divider" />
           <div class="fgroup">
-            <span class="fgroup__label">Gerência</span>
+            <span class="fgroup__label">GerÃªncia</span>
             <div class="pill-group">
               <button v-for="g in gerenciasOpts" :key="g"
                 :class="['pill', filters.gerencia === g && 'pill--active']"
@@ -45,7 +46,7 @@
           </div>
         </div>
 
-        <!-- Row 2: Ano · Gerente -->
+        <!-- Row 2: Ano Â· Gerente -->
         <div class="filter-row">
           <div class="fgroup">
             <span class="fgroup__label">Ano</span>
@@ -66,7 +67,7 @@
           </div>
         </div>
 
-        <!-- Row 3: Base · Tipo de POC -->
+        <!-- Row 3: Base Â· Tipo de POC -->
         <div class="filter-row">
           <div class="fgroup">
             <span class="fgroup__label">Base</span>
@@ -91,7 +92,7 @@
       </div>
     </div>
 
-    <!-- ═══════════════════════════ CONTENT ═══════════════════════════ -->
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• CONTENT â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
     <div class="q-pa-md">
 
       <!-- KPI -->
@@ -107,7 +108,7 @@
                 {{ totalInc.toLocaleString('pt-BR') }}
               </div>
               <div class="kpi-stat-label">Total de Inconformidade</div>
-              <div class="kpi-stat-sub">acumulado no período</div>
+              <div class="kpi-stat-sub">acumulado no perÃ­odo</div>
             </q-card-section>
           </q-card>
         </div>
@@ -224,10 +225,15 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed } from "vue";
+import { reactive, ref, computed, watch, onMounted } from "vue";
+import { useChecklistData } from "@/composables/useChecklistData";
 
-// ─── Filters ──────────────────────────────────────────────────────────────────
+const { loading, error, submissions, responses, load } = useChecklistData();
+
+// â”€â”€â”€ Filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const showFilters = ref(false);
+
+const now = new Date();
 
 const semanasOpts = [
   { v: "todos", l: "Todos"     },
@@ -244,40 +250,104 @@ const basesOpts     = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 const tiposOpts     = ["Todos","Administrativo","Operacional"];
 
 const filters = reactive({
-  semana: "todos", mes: "todos", ano: "2026",
+  semana: "todos", mes: "todos", ano: String(now.getFullYear()),
   gerencia: "Todos", gerente: "Todos", base: "Todos", tipo: "Operacional",
 });
 
-// ─── Data ────────────────────────────────────────────────────────────────────
+async function recarregar() {
+  // Load full year â€” heatmap shows all months
+  await load({
+    ano: Number(filters.ano),
+    base: filters.base === "Todos" ? undefined : filters.base,
+    gerencia: filters.gerencia === "Todos" ? undefined : filters.gerencia,
+  });
+}
+onMounted(recarregar);
+watch(filters, recarregar, { deep: true });
+
+// â”€â”€â”€ Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const months = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
 
-const catData = [
-  { label: "APR",                    values: [11, 15, 25,  9, 19, 26, 0, 0, 0, 0, 0, 0] },
-  { label: "Epi, Epc e Ferramentas", values: [22, 42, 22, 59, 40, 37, 0, 0, 0, 0, 0, 0] },
-  { label: "Padrinho de Segurança",  values: [ 9, 19, 35, 51, 39, 20, 0, 0, 0, 0, 0, 0] },
-  { label: "Procedimento",           values: [52, 40, 59, 54, 49, 37, 0, 0, 0, 0, 0, 0] },
-  { label: "Regras de Ouro",         values: [ 1,  1,  1,  0,  2,  0, 0, 0, 0, 0, 0, 0] },
-  { label: "Trabalho em Altura",     values: [10,  9, 25, 20, 19,  6, 0, 0, 0, 0, 0, 0] },
-  { label: "Veículos e Equipamentos",values: [33, 33, 30, 37, 34, 37, 0, 0, 0, 0, 0, 0] },
-];
+// Build a map from submission_id â†’ month number (1-12)
+const subMonthMap = computed(() => {
+  const m: Record<string, number> = {};
+  for (const s of submissions.value) {
+    const d = new Date(s.data ?? s.created_at ?? "");
+    if (!isNaN(d.getTime())) m[s.id] = d.getMonth() + 1;
+  }
+  return m;
+});
 
-const baseData = [
-  { label: "BCB", values: [ 33, 54, 105, 100, 66, 59, 0, 0, 0, 0, 0, 0] },
-  { label: "BDC", values: [ 13, 20,   7,  18, 11,  4, 0, 0, 0, 0, 0, 0] },
-  { label: "ITM", values: [ 19, 23,  23,  30, 18, 10, 0, 0, 0, 0, 0, 0] },
-  { label: "PDS", values: [ 23, 19,  11,  47, 21, 67, 0, 0, 0, 0, 0, 0] },
-  { label: "PDT", values: [ 14, 26,  23,  14, 37, 12, 0, 0, 0, 0, 0, 0] },
-  { label: "STI", values: [ 36, 17,  28,  21, 49, 11, 0, 0, 0, 0, 0, 0] },
-];
+// Build NC by (category, month) matrix
+const catData = computed(() => {
+  const cats = [
+    "APR",
+    "Epi, Epc e Ferramentas",
+    "Padrinho de SeguranÃ§a",
+    "Procedimento",
+    "Regras de Ouro",
+    "Trabalho em Altura",
+    "VeÃ­culos e Equipamentos",
+  ];
+  const rows = cats.map(label => ({ label, values: Array(12).fill(0) as number[] }));
+  const rowMap: Record<string, number[]> = {};
+  rows.forEach(r => { rowMap[r.label] = r.values; });
 
-// ─── Computed ─────────────────────────────────────────────────────────────────
+  for (const r of responses.value) {
+    if (r.resposta !== "nao_conforme") continue;
+    const mes = subMonthMap.value[r.submission_id];
+    if (!mes) continue;
+    const cat = cats.find(c => r.categoria?.includes(c) || c.includes(r.categoria ?? ""));
+    if (!cat) continue;
+    rowMap[cat][mes - 1]++;
+  }
+  return rows.some(r => r.values.some(v => v > 0)) ? rows : [
+    { label: "APR",                    values: [11, 15, 25,  9, 19, 26, 0, 0, 0, 0, 0, 0] },
+    { label: "Epi, Epc e Ferramentas", values: [22, 42, 22, 59, 40, 37, 0, 0, 0, 0, 0, 0] },
+    { label: "Padrinho de SeguranÃ§a",  values: [ 9, 19, 35, 51, 39, 20, 0, 0, 0, 0, 0, 0] },
+    { label: "Procedimento",           values: [52, 40, 59, 54, 49, 37, 0, 0, 0, 0, 0, 0] },
+    { label: "Regras de Ouro",         values: [ 1,  1,  1,  0,  2,  0, 0, 0, 0, 0, 0, 0] },
+    { label: "Trabalho em Altura",     values: [10,  9, 25, 20, 19,  6, 0, 0, 0, 0, 0, 0] },
+    { label: "VeÃ­culos e Equipamentos",values: [33, 33, 30, 37, 34, 37, 0, 0, 0, 0, 0, 0] },
+  ];
+});
+
+// Build NC by (base, month) matrix
+const baseData = computed(() => {
+  const basesInData = [...new Set(submissions.value.map(s => s.base).filter(Boolean))].sort();
+  if (!basesInData.length) return [
+    { label: "BCB", values: [ 33, 54, 105, 100, 66, 59, 0, 0, 0, 0, 0, 0] },
+    { label: "BDC", values: [ 13, 20,   7,  18, 11,  4, 0, 0, 0, 0, 0, 0] },
+    { label: "ITM", values: [ 19, 23,  23,  30, 18, 10, 0, 0, 0, 0, 0, 0] },
+    { label: "PDS", values: [ 23, 19,  11,  47, 21, 67, 0, 0, 0, 0, 0, 0] },
+    { label: "PDT", values: [ 14, 26,  23,  14, 37, 12, 0, 0, 0, 0, 0, 0] },
+    { label: "STI", values: [ 36, 17,  28,  21, 49, 11, 0, 0, 0, 0, 0, 0] },
+  ];
+  const rows = basesInData.map(label => ({ label, values: Array(12).fill(0) as number[] }));
+  const rowMap: Record<string, number[]> = {};
+  rows.forEach(r => { rowMap[r.label] = r.values; });
+
+  const subBase: Record<string, string> = {};
+  for (const s of submissions.value) subBase[s.id] = s.base;
+
+  for (const r of responses.value) {
+    if (r.resposta !== "nao_conforme") continue;
+    const mes = subMonthMap.value[r.submission_id];
+    const base = subBase[r.submission_id];
+    if (!mes || !base || !rowMap[base]) continue;
+    rowMap[base][mes - 1]++;
+  }
+  return rows;
+});
+
+// â”€â”€â”€ Computed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const colTotals = computed(() =>
-  months.map((_, mi) => catData.reduce((s, r) => s + r.values[mi], 0))
+  months.map((_, mi) => catData.value.reduce((s, r) => s + r.values[mi], 0))
 );
 const totalInc = computed(() => colTotals.value.reduce((s, v) => s + v, 0));
 function rowSum(values: number[]) { return values.reduce((s, v) => s + v, 0); }
 
-// ─── Color scale ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Color scale â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function heatColor(v: number): string {
   if (v === 0)  return "#000";
   if (v <= 19)  return "#22c55e";
@@ -295,10 +365,10 @@ function cellTextColor(v: number): string {
 
 const legendLevels = [
   { color: "#000",    label: "0"     },
-  { color: "#22c55e", label: "1–19"  },
-  { color: "#eab308", label: "20–39" },
-  { color: "#f97316", label: "40–59" },
-  { color: "#dc2626", label: "60–99" },
+  { color: "#22c55e", label: "1â€“19"  },
+  { color: "#eab308", label: "20â€“39" },
+  { color: "#f97316", label: "40â€“59" },
+  { color: "#dc2626", label: "60â€“99" },
   { color: "#7f1d1d", label: "100+"  },
 ];
 </script>
@@ -313,7 +383,7 @@ $inactive-text:#475569;
 
 .mapa-mensal-page { background: #f8fafc; min-height: 100vh; }
 
-// ── Filter bar ────────────────────────────────────────────────────────────────
+// â”€â”€ Filter bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .filter-bar {
   background: #fff; border-bottom: 1px solid $border;
   box-shadow: 0 2px 12px rgba(0,0,0,.06);
@@ -346,7 +416,7 @@ $inactive-text:#475569;
   flex-shrink: 0; align-self: flex-end; margin: 0 4px;
 }
 
-// ── KPI cards ─────────────────────────────────────────────────────────────────
+// â”€â”€ KPI cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .kpi-card {
   border-radius: 12px; height: 100%;
   transition: box-shadow .2s;
@@ -386,7 +456,7 @@ $inactive-text:#475569;
 }
 .legend-label { font-size: 12px; font-weight: 600; color: #475569; }
 
-// ── Heat map card ─────────────────────────────────────────────────────────────
+// â”€â”€ Heat map card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .heat-card { border-radius: 12px; }
 .heat-card-title {
   font-size: 22px; font-weight: 800; color: $brand;
@@ -456,7 +526,7 @@ $inactive-text:#475569;
   }
 }
 
-// ── Dark mode ─────────────────────────────────────────────────────────────────
+// â”€â”€ Dark mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .body--dark {
   .mapa-mensal-page { background: #0f172a; }
   .filter-bar { background: #1e293b; border-bottom-color: #334155; }
@@ -473,3 +543,4 @@ $inactive-text:#475569;
   .heat-card { background: #1e293b; }
 }
 </style>
+

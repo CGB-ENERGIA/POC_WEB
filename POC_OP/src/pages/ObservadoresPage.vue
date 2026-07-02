@@ -263,12 +263,13 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed } from "vue";
+import { reactive, ref, computed, watch, onMounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, GaugeChart, PieChart } from "echarts/charts";
 import { GridComponent, TooltipComponent, LegendComponent } from "echarts/components";
 import VChart from "vue-echarts";
+import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 
 use([CanvasRenderer, BarChart, GaugeChart, PieChart, GridComponent, TooltipComponent, LegendComponent]);
 
@@ -281,70 +282,77 @@ const anosOpts     = ["2024","2025","2026"];
 const basesOpts    = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT"];
 const tiposOpts     = ["Todos","Administrativo","Operacional"];
-const mesesOpts     = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26"];
+const mesesOpts     = ["Todos","jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
 const semanasOpts   = ["Todos","Semana 1","Semana 2","Semana 3","Semana 4"];
 const funcoesOpts   = ["Todos","ENCARREGADO","SUPERVISOR","SESMT","FISCAL","COORDENADOR","GERENTE"];
 const gerentesOpts  = ["Todos","Afonso","Jackson","Jamerson","Julio C.","Leandro","Marcos","Paulo","Rafaela"];
-const allObservadores = [
-  "Todos","Alex M.","Everton S.","Leandro","Normam","Werbeth","Joise",
-  "Josielington","A. S. de Abreu","Dario","Welrisson","Arlison","Carlos R.",
-  "Rafaela","Everaldo","Nilo","Edson","M. Protasio","M. Viegas","Waldir",
-  "J. Airton","Madson F.","Deilton","Jackson","Paulo","Afonso","Marcos",
-  "Pryscilla","Jamerson","Bruno","Eduardo","Thiago",
-];
-const observadoresOpts = ref<string[]>([...allObservadores]);
+const observadoresOpts = ref<string[]>(["Todos"]);
 function filterObservador(val: string, update: (fn: () => void) => void) {
   update(() => {
     const n = val.toLowerCase();
-    observadoresOpts.value = allObservadores.filter(o => o.toLowerCase().includes(n));
+    observadoresOpts.value = ["Todos", ...conformidadePorObservador.value.map(o => o.nome)].filter(o => o.toLowerCase().includes(n));
   });
 }
 
 const filters = reactive({
   ano: "2026", base: "Todos", gerencia: "Todos", tipo: "Operacional",
-  mes: "jun/26", semana: "Todos", funcao: "Todos",
+  mes: "Todos", semana: "Todos", funcao: "Todos",
   gerente: "Todos", observador: "Todos",
 });
+
+// ─── Dados reais ─────────────────────────────────────────────────────────────
+const MONTH_MAP: Record<string, number> = {
+  jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6,
+  jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12,
+};
+
+const {
+  loading,
+  load,
+  submissions,
+  responses,
+  employees,
+  conformidadePorObservador,
+  totalSubmissions,
+  totalConformes,
+  totalNaoConformes,
+  pctPerfeitas,
+  byGerencia,
+  byCategoria,
+} = useChecklistData();
+
+async function recarregar() {
+  const mes = MONTH_MAP[filters.mes] ?? undefined;
+  await load({ ano: Number(filters.ano), mes, base: filters.base !== "Todos" ? filters.base : undefined });
+}
+
+onMounted(recarregar);
+watch(filters, recarregar, { deep: true });
 
 // ─── Table data ───────────────────────────────────────────────────────────────
 type ObsRow = { nome: string; funcao: string; base: string; obs: number; obs100: number; conf: number; inc: number };
 
-const rawRows: ObsRow[] = [
-  { nome: "Alex M.",        funcao: "ENCARREGADO", base: "PDT", obs: 11, obs100: 10, conf: 602,  inc: 36 },
-  { nome: "Everton S.",     funcao: "SUPERVISOR",  base: "PDS", obs: 10, obs100:  1, conf: 570,  inc: 30 },
-  { nome: "Leandro",        funcao: "SESMT",       base: "BCB", obs:  5, obs100:  1, conf: 232,  inc:  8 },
-  { nome: "Normam",         funcao: "SESMT",       base: "BCB", obs: 23, obs100:  7, conf: 1221, inc: 29 },
-  { nome: "Werbeth",        funcao: "SUPERVISOR",  base: "BCB", obs:  6, obs100:  3, conf: 342,  inc:  8 },
-  { nome: "Joise",          funcao: "SESMT",       base: "STI", obs:  5, obs100:  0, conf:  59,  inc:  1 },
-  { nome: "Josielington",   funcao: "SESMT",       base: "PDS", obs: 21, obs100:  7, conf: 1052, inc: 14 },
-  { nome: "A. S. de Abreu", funcao: "SUPERVISOR",  base: "PDT", obs:  4, obs100:  2, conf: 236,  inc:  2 },
-  { nome: "Dario",          funcao: "SESMT",       base: "PDT", obs: 12, obs100:  7, conf: 712,  inc:  6 },
-  { nome: "Welrisson",      funcao: "SESMT",       base: "ITM", obs: 20, obs100:  9, conf: 885,  inc:  7 },
-  { nome: "Arlison",        funcao: "SUPERVISOR",  base: "STI", obs:  7, obs100:  6, conf: 418,  inc:  2 },
-  { nome: "Carlos R.",      funcao: "ENCARREGADO", base: "STI", obs:  4, obs100:  3, conf: 231,  inc:  1 },
-  { nome: "Rafaela",        funcao: "COORDENADOR", base: "PDT", obs:  4, obs100:  3, conf: 231,  inc:  1 },
-  { nome: "Everaldo",       funcao: "SUPERVISOR",  base: "BCB", obs:  5, obs100:  4, conf: 289,  inc:  1 },
-  { nome: "Nilo",           funcao: "SESMT",       base: "BDC", obs: 24, obs100: 17, conf: 1234, inc:  4 },
-  { nome: "Edson",          funcao: "FISCAL",      base: "PDT", obs: 16, obs100: 13, conf: 957,  inc:  3 },
-  { nome: "M. Protasio",    funcao: "ENCARREGADO", base: "BCB", obs:  6, obs100:  5, conf: 347,  inc:  1 },
-  { nome: "M. Viegas",      funcao: "ENCARREGADO", base: "STI", obs:  6, obs100:  5, conf: 349,  inc:  1 },
-  { nome: "Waldir",         funcao: "GERENTE",     base: "PDT", obs:  6, obs100:  5, conf: 355,  inc:  1 },
-  { nome: "J. Airton",      funcao: "ENCARREGADO", base: "PDS", obs:  7, obs100:  6, conf: 405,  inc:  1 },
-  { nome: "Madson F.",      funcao: "FISCAL",      base: "STI", obs: 12, obs100:  8, conf: 539,  inc:  1 },
-  { nome: "Deilton",        funcao: "SUPERVISOR",  base: "BCB", obs: 15, obs100: 14, conf: 899,  inc:  1 },
-  { nome: "Jackson",        funcao: "GERENTE",     base: "PDS", obs: 55, obs100: 52, conf: 3480, inc:  5 },
-  { nome: "Paulo",          funcao: "GERENTE",     base: "STI", obs: 48, obs100: 46, conf: 3050, inc:  4 },
-  { nome: "Afonso",         funcao: "GERENTE",     base: "BCB", obs: 62, obs100: 58, conf: 3900, inc:  5 },
-  { nome: "Marcos",         funcao: "GERENTE",     base: "PDT", obs: 52, obs100: 49, conf: 3300, inc:  4 },
-  { nome: "Pryscilla",      funcao: "COORDENADOR", base: "ITM", obs: 44, obs100: 42, conf: 2800, inc:  3 },
-  { nome: "Jamerson",       funcao: "FISCAL",      base: "BDC", obs: 58, obs100: 55, conf: 3700, inc:  5 },
-  { nome: "Bruno",          funcao: "FISCAL",      base: "BCB", obs: 68, obs100: 65, conf: 4300, inc:  5 },
-  { nome: "Eduardo",        funcao: "SESMT",       base: "STI", obs: 45, obs100: 43, conf: 2850, inc:  3 },
-  { nome: "Thiago",         funcao: "ENCARREGADO", base: "PDS", obs: 36, obs100: 34, conf: 2300, inc:  3 },
-];
+const rawRows = computed<ObsRow[]>(() =>
+  conformidadePorObservador.value.map(o => {
+    const emp = employees.value.find(e => e.matricula === o.matricula);
+    const obsSubs = submissions.value.filter(s => s.matricula === o.matricula);
+    const obs100 = obsSubs.filter(s =>
+      !responses.value.some(r => r.submission_id === s.id && r.resposta === "nao_conforme")
+    ).length;
+    return {
+      nome: o.nome,
+      funcao: emp?.funcao ?? "—",
+      base: emp?.base ?? "—",
+      obs: o.totalObs,
+      obs100,
+      conf: o.conformes,
+      inc: o.naoConformes,
+    };
+  })
+);
 
 const tableDataSorted = computed(() =>
-  [...rawRows].sort((a, b) => rowPct(a) - rowPct(b))
+  [...rawRows.value].sort((a, b) => rowPct(b) - rowPct(a))
 );
 
 function rowPct(row: ObsRow): number {
@@ -361,16 +369,16 @@ function pctColor(pct: number): string {
 }
 
 // ─── KPI totals ───────────────────────────────────────────────────────────────
-const totalObs   = computed(() => rawRows.reduce((s, r) => s + r.obs, 0));
-const totalObs100 = computed(() => rawRows.reduce((s, r) => s + r.obs100, 0));
-const totalConf  = computed(() => rawRows.reduce((s, r) => s + r.conf, 0));
-const totalInc   = computed(() => rawRows.reduce((s, r) => s + r.inc, 0));
-const obsDesvio  = computed(() => totalObs.value - totalObs100.value);
-const globalPct  = computed(() => {
+const totalObs    = totalSubmissions;
+const totalConf   = totalConformes;
+const totalInc    = totalNaoConformes;
+const totalObs100 = computed(() => rawRows.value.reduce((s, r) => s + r.obs100, 0));
+const obsDesvio   = computed(() => totalObs.value - totalObs100.value);
+const globalPct   = computed(() => {
   const t = totalConf.value + totalInc.value;
   return t === 0 ? 100 : (totalConf.value / t) * 100;
 });
-const pctObs100  = computed(() => Math.round((totalObs100.value / totalObs.value) * 100));
+const pctObs100   = computed(() => Math.round((pctPerfeitas.value) * 100));
 
 // ─── Gauge ────────────────────────────────────────────────────────────────────
 const gaugeOpt = computed(() => ({
@@ -412,110 +420,127 @@ const ttItem = {
 };
 
 // ─── Obs 100% por Função ──────────────────────────────────────────────────────
-const chartFuncao = {
-  tooltip: { ...ttItem, formatter: "{b}: {c} ({d}%)" },
-  legend: { show: false },
-  color: donPalette,
-  series: [{
-    type: "pie" as const,
-    radius: ["48%", "76%"],
-    center: ["50%", "52%"],
-    label: {
-      fontSize: 9.5, fontWeight: "bold" as const,
-      formatter: (p: { name: string; value: number; percent: number }) =>
-        `${p.name}\n${p.value} (${p.percent.toFixed(1)}%)`,
-    },
-    labelLine: { length: 6, length2: 6 },
-    data: [
-      { value: 323, name: "FISCAL" },
-      { value: 311, name: "ENCARREGADO" },
-      { value: 114, name: "SUPERVISOR" },
-      { value: 48,  name: "SESMT" },
-      { value: 35,  name: "Outros" },
-    ],
-    itemStyle: { borderRadius: 3, borderColor: "#fff", borderWidth: 1 },
-  }],
-};
+const chartFuncao = computed(() => {
+  const byFuncao: Record<string, number> = {};
+  for (const r of rawRows.value) {
+    byFuncao[r.funcao] = (byFuncao[r.funcao] ?? 0) + r.obs100;
+  }
+  const data = Object.entries(byFuncao)
+    .filter(([k]) => k !== "—")
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, value]) => ({ name, value }));
+  return {
+    tooltip: { ...ttItem, formatter: "{b}: {c} ({d}%)" },
+    legend: { show: false },
+    color: donPalette,
+    series: [{
+      type: "pie" as const,
+      radius: ["48%", "76%"],
+      center: ["50%", "52%"],
+      label: {
+        fontSize: 9.5, fontWeight: "bold" as const,
+        formatter: (p: { name: string; value: number; percent: number }) =>
+          `${p.name}\n${p.value} (${p.percent.toFixed(1)}%)`,
+      },
+      labelLine: { length: 6, length2: 6 },
+      data: data.length ? data : [{ name: "Sem dados", value: 1 }],
+      itemStyle: { borderRadius: 3, borderColor: "#fff", borderWidth: 1 },
+    }],
+  };
+});
 
 // ─── Obs 100% por Gerência ────────────────────────────────────────────────────
-const chartGerencia = {
-  tooltip: { ...ttItem, formatter: "{b}: {c} ({d}%)" },
-  legend: { show: false },
-  color: donPalette,
-  series: [{
-    type: "pie" as const,
-    radius: ["48%", "76%"],
-    center: ["50%", "52%"],
-    label: {
-      fontSize: 9.5, fontWeight: "bold" as const,
-      formatter: (p: { name: string; value: number; percent: number }) =>
-        `${p.name}\n${p.value} (${p.percent.toFixed(1)}%)`,
-    },
-    labelLine: { length: 6, length2: 6 },
-    data: [
-      { value: 400, name: "GOMAN" },
-      { value: 269, name: "GSTC" },
-      { value: 106, name: "GERE" },
-      { value: 51,  name: "SESMT" },
-      { value: 5,   name: "ADM" },
-    ],
-    itemStyle: { borderRadius: 3, borderColor: "#fff", borderWidth: 1 },
-  }],
-};
+const chartGerencia = computed(() => {
+  const data = Object.entries(byGerencia.value)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, value]) => ({ name, value }));
+  return {
+    tooltip: { ...ttItem, formatter: "{b}: {c} ({d}%)" },
+    legend: { show: false },
+    color: donPalette,
+    series: [{
+      type: "pie" as const,
+      radius: ["48%", "76%"],
+      center: ["50%", "52%"],
+      label: {
+        fontSize: 9.5, fontWeight: "bold" as const,
+        formatter: (p: { name: string; value: number; percent: number }) =>
+          `${p.name}\n${p.value} (${p.percent.toFixed(1)}%)`,
+      },
+      labelLine: { length: 6, length2: 6 },
+      data: data.length ? data : [{ name: "Sem dados", value: 1 }],
+      itemStyle: { borderRadius: 3, borderColor: "#fff", borderWidth: 1 },
+    }],
+  };
+});
 
 // ─── Equipes Visitadas ────────────────────────────────────────────────────────
-const chartEquipes = {
-  tooltip: {
-    ...ttItem,
-    formatter: (p: { name: string; value: number }) =>
-      `<b>${p.name}</b><br/>Visitas: <b style="color:${G.green}">${p.value}</b>`,
-  },
-  grid: { left: 6, right: 28, top: 4, bottom: 4, containLabel: true },
-  xAxis: { type: "value" as const, show: false },
-  yAxis: {
-    type: "category" as const, inverse: true,
-    axisLine: { show: false }, axisTick: { show: false },
-    axisLabel: { color: "#334155", fontSize: 9.5 },
-    data: ["MA-BDC-V0...","MA-BCB-P0...","MA-PDS-E0...","MA-PDS-O0...","MA-BCB-C0...","MA-BCB-E0...","MA-BDC-O0...","MA-PDS-P0...","MA-PDS-V0..."],
-  },
-  series: [{
-    type: "bar" as const,
-    data: [20, 15, 13, 13, 12, 12, 12, 12, 12],
-    barMaxWidth: 16,
-    itemStyle: { color: G.green, borderRadius: [0, 4, 4, 0] },
-    label: {
-      show: true, position: "right" as const,
-      fontSize: 10, fontWeight: "bold" as const, color: G.green,
+const chartEquipes = computed(() => {
+  const equipeCounts: Record<string, number> = {};
+  for (const s of submissions.value) {
+    for (const m of (s.membros ?? [])) {
+      const key = m.matricula ?? m.nome;
+      equipeCounts[key] = (equipeCounts[key] ?? 0) + 1;
+    }
+  }
+  const top = Object.entries(equipeCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 9);
+  return {
+    tooltip: {
+      ...ttItem,
+      formatter: (p: { name: string; value: number }) =>
+        `<b>${p.name}</b><br/>Visitas: <b style="color:${G.green}">${p.value}</b>`,
     },
-  }],
-};
+    grid: { left: 6, right: 28, top: 4, bottom: 4, containLabel: true },
+    xAxis: { type: "value" as const, show: false },
+    yAxis: {
+      type: "category" as const, inverse: true,
+      axisLine: { show: false }, axisTick: { show: false },
+      axisLabel: { color: "#334155", fontSize: 9.5 },
+      data: top.map(([nome]) => nome.length > 14 ? nome.slice(0, 13) + "…" : nome),
+    },
+    series: [{
+      type: "bar" as const,
+      data: top.map(([, v]) => v),
+      barMaxWidth: 16,
+      itemStyle: { color: G.green, borderRadius: [0, 4, 4, 0] },
+      label: { show: true, position: "right" as const, fontSize: 10, fontWeight: "bold" as const, color: G.green },
+    }],
+  };
+});
 
 // ─── Inconformidades por Categoria ────────────────────────────────────────────
-const chartIncCat = {
-  tooltip: {
-    ...ttItem,
-    formatter: (p: { name: string; value: number }) =>
-      `<b>${p.name}</b><br/>Inc: <b style="color:${G.brand}">${p.value}</b>`,
-  },
-  grid: { left: 6, right: 28, top: 4, bottom: 4, containLabel: true },
-  xAxis: { type: "value" as const, show: false },
-  yAxis: {
-    type: "category" as const, inverse: true,
-    axisLine: { show: false }, axisTick: { show: false },
-    axisLabel: { color: "#334155", fontSize: 9.5 },
-    data: ["Epi, Epc e Fer...","Procedimento","Veículos e Eq...","APR","Padrinho de S...","Trabalho em..."],
-  },
-  series: [{
-    type: "bar" as const,
-    data: [37, 37, 37, 26, 20, 6],
-    barMaxWidth: 16,
-    itemStyle: { color: G.brand, borderRadius: [0, 4, 4, 0] },
-    label: {
-      show: true, position: "right" as const,
-      fontSize: 10, fontWeight: "bold" as const, color: G.brand,
+const chartIncCat = computed(() => {
+  const cats = [...byCategoria.value]
+    .sort((a, b) => b.total - b.conformes - (a.total - a.conformes))
+    .slice(0, 6);
+  return {
+    tooltip: {
+      ...ttItem,
+      formatter: (p: { name: string; value: number }) =>
+        `<b>${p.name}</b><br/>Inc: <b style="color:${G.brand}">${p.value}</b>`,
     },
-  }],
-};
+    grid: { left: 6, right: 28, top: 4, bottom: 4, containLabel: true },
+    xAxis: { type: "value" as const, show: false },
+    yAxis: {
+      type: "category" as const, inverse: true,
+      axisLine: { show: false }, axisTick: { show: false },
+      axisLabel: { color: "#334155", fontSize: 9.5 },
+      data: cats.map(c => c.categoria.length > 14 ? c.categoria.slice(0, 13) + "…" : c.categoria),
+    },
+    series: [{
+      type: "bar" as const,
+      data: cats.map(c => c.total - c.conformes),
+      barMaxWidth: 16,
+      itemStyle: { color: G.brand, borderRadius: [0, 4, 4, 0] },
+      label: { show: true, position: "right" as const, fontSize: 10, fontWeight: "bold" as const, color: G.brand },
+    }],
+  };
+});
+
+// suppress unused warning
+void fmtN;
 </script>
 
 <style scoped lang="scss">

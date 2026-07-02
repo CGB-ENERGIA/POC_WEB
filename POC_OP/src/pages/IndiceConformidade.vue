@@ -215,7 +215,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from "vue";
+import { reactive, ref, computed, watch, onMounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, PieChart } from "echarts/charts";
@@ -227,6 +227,7 @@ import {
   DataZoomComponent
 } from "echarts/components";
 import VChart from "vue-echarts";
+import { useChecklistData, fmtN, fmtPct } from "@/composables/useChecklistData";
 
 use([
   CanvasRenderer, BarChart, PieChart,
@@ -236,9 +237,9 @@ use([
 
 // ─── Paleta ───────────────────────────────────────────────────────────────────
 const P = {
-  conf:    "#16a34a",   // verde conformidade
+  conf:    "#16a34a",
   confLt:  "#22c55e",
-  inconf:  "#8B1C2B",   // maroon CGB
+  inconf:  "#8B1C2B",
   inconfLt:"#C4364E",
   track:   "#f1f5f9",
   border:  "#e2e8f0",
@@ -255,11 +256,14 @@ const semanas  = [
   { value: 4, label: "4. Quarta"   },
 ];
 const meses = [
-  { value: 1,  label: "jan/26" }, { value: 2,  label: "fev/26" },
-  { value: 3,  label: "mar/26" }, { value: 4,  label: "abr/26" },
-  { value: 5,  label: "mai/26" }, { value: 6,  label: "jun/26" },
+  { value: 1,  label: "jan" }, { value: 2,  label: "fev" },
+  { value: 3,  label: "mar" }, { value: 4,  label: "abr" },
+  { value: 5,  label: "mai" }, { value: 6,  label: "jun" },
+  { value: 7,  label: "jul" }, { value: 8,  label: "ago" },
+  { value: 9,  label: "set" }, { value: 10, label: "out" },
+  { value: 11, label: "nov" }, { value: 12, label: "dez" },
 ];
-const gerencias = ["Todos", "GERE", "GOMAN", "GSTC", "SPOT"];
+const gerencias = ["Todos", "GERE", "GOMAN", "GSTC", "OFICINA", "ADM", "SESMT"];
 const bases     = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const tiposPoc  = ["Todos", "Administrativo", "Operacional"];
 const gerentes  = [
@@ -268,23 +272,48 @@ const gerentes  = [
 ];
 
 // ─── Filter state ─────────────────────────────────────────────────────────────
+const now = new Date();
 const filters = reactive({
-  ano:      2026,
-  semana:   3,
-  mes:      6,
+  ano:      now.getFullYear(),
+  semana:   Math.ceil(now.getDate() / 7),
+  mes:      now.getMonth() + 1,
   gerencia: "Todos",
   base:     "Todos",
-  tipoPoc:  "Operacional",
+  tipoPoc:  "Todos",
   gerente:  "Todos",
 });
 
+// ─── Dados reais ──────────────────────────────────────────────────────────────
+const {
+  loading,
+  load,
+  submissions,
+  responses,
+  employees,
+  totalConformes,
+  totalNaoConformes,
+  conformidadeIndex,
+  basesCovertas,
+  byBase,
+  byGerencia,
+  byMes,
+  byCategoria,
+} = useChecklistData();
+
+async function recarregar() {
+  await load({ ano: filters.ano, mes: filters.mes }, true);
+}
+
+onMounted(recarregar);
+watch(filters, recarregar, { deep: true });
+
 // ─── KPIs ─────────────────────────────────────────────────────────────────────
-const kpis = [
-  { label: "Conformidade",   value: "14.369", icon: "mdi-check-circle",  color: "positive", hex: "#16a34a" },
-  { label: "Inconformidade", value: "37",     icon: "mdi-alert-circle",  color: "negative", hex: "#dc2626" },
-  { label: "Índice Geral",   value: "99,74%", icon: "mdi-gauge-full",    color: "teal",     hex: "#0d9488" },
-  { label: "Bases Auditadas",value: "6",      icon: "mdi-map-marker-check", color: "primary", hex: "#0284c7" },
-];
+const kpis = computed(() => [
+  { label: "Conformidade",    value: loading.value ? "…" : fmtN(totalConformes.value),    icon: "mdi-check-circle",     color: "positive", hex: "#16a34a" },
+  { label: "Inconformidade",  value: loading.value ? "…" : fmtN(totalNaoConformes.value), icon: "mdi-alert-circle",     color: "negative", hex: "#dc2626" },
+  { label: "Índice Geral",    value: loading.value ? "…" : fmtPct(conformidadeIndex.value, 2), icon: "mdi-gauge-full", color: "teal",     hex: "#0d9488" },
+  { label: "Bases Auditadas", value: loading.value ? "…" : String(basesCovertas.value),   icon: "mdi-map-marker-check", color: "primary",  hex: "#0284c7" },
+]);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const ttItem = {
@@ -346,121 +375,159 @@ function hBar(
 }
 
 // ─── Chart: Donut ─────────────────────────────────────────────────────────────
-const chartDonut = {
-  tooltip: {
-    ...ttItem,
-    formatter: (p: { name: string; value: number; percent: number }) =>
-      `<b>${p.name}</b><br/>${p.value.toLocaleString("pt-BR")} · <b>${p.percent.toFixed(2)}%</b>`
-  },
-  legend: {
-    bottom: 4, left: "center",
-    itemWidth: 10, itemHeight: 10, itemGap: 16,
-    textStyle: { color: "#64748b", fontSize: 11 }
-  },
-  title: {
-    text: "99,74%",
-    subtext: "conformidade",
-    left: "50%", top: "34%",
-    textAlign: "center",
-    textStyle: { fontSize: 26, fontWeight: "bold" as const, color: P.conf },
-    subtextStyle: { fontSize: 11, color: "#94a3b8" }
-  },
-  series: [{
-    type: "pie" as const,
-    radius: ["52%", "74%"],
-    center: ["50%", "46%"],
-    avoidLabelOverlap: false,
-    label: {
-      show: true,
-      formatter: (p: { name: string; value: number }) =>
-        `{name|${p.name}}\n{val|${p.value.toLocaleString("pt-BR")}}`,
-      rich: {
-        name: { fontSize: 10, color: "#64748b" },
-        val: { fontSize: 12, fontWeight: "bold", color: "#334155" }
-      }
+const chartDonut = computed(() => {
+  const conf = totalConformes.value;
+  const nc = totalNaoConformes.value;
+  const pct = fmtPct(conformidadeIndex.value, 2);
+  return {
+    tooltip: {
+      ...ttItem,
+      formatter: (p: { name: string; value: number; percent: number }) =>
+        `<b>${p.name}</b><br/>${p.value.toLocaleString("pt-BR")} · <b>${p.percent.toFixed(2)}%</b>`
     },
-    labelLine: { length: 12, length2: 8 },
-    itemStyle: { borderRadius: 8, borderColor: "#fff", borderWidth: 3 },
-    emphasis: {
-      scale: true, scaleSize: 5,
-      itemStyle: { shadowBlur: 16, shadowColor: "rgba(0,0,0,.15)" }
+    legend: {
+      bottom: 4, left: "center",
+      itemWidth: 10, itemHeight: 10, itemGap: 16,
+      textStyle: { color: "#64748b", fontSize: 11 }
     },
-    data: [
-      { value: 14369, name: "Conformidade",   itemStyle: { color: P.conf  } },
-      { value: 37,    name: "Inconformidade", itemStyle: { color: P.inconf } }
-    ]
-  }]
-};
+    title: {
+      text: pct,
+      subtext: "conformidade",
+      left: "50%", top: "34%",
+      textAlign: "center",
+      textStyle: { fontSize: 26, fontWeight: "bold" as const, color: P.conf },
+      subtextStyle: { fontSize: 11, color: "#94a3b8" }
+    },
+    series: [{
+      type: "pie" as const,
+      radius: ["52%", "74%"],
+      center: ["50%", "46%"],
+      avoidLabelOverlap: false,
+      label: {
+        show: true,
+        formatter: (p: { name: string; value: number }) =>
+          `{name|${p.name}}\n{val|${p.value.toLocaleString("pt-BR")}}`,
+        rich: {
+          name: { fontSize: 10, color: "#64748b" },
+          val: { fontSize: 12, fontWeight: "bold", color: "#334155" }
+        }
+      },
+      labelLine: { length: 12, length2: 8 },
+      itemStyle: { borderRadius: 8, borderColor: "#fff", borderWidth: 3 },
+      emphasis: {
+        scale: true, scaleSize: 5,
+        itemStyle: { shadowBlur: 16, shadowColor: "rgba(0,0,0,.15)" }
+      },
+      data: [
+        { value: conf, name: "Conformidade",   itemStyle: { color: P.conf  } },
+        { value: nc,   name: "Inconformidade", itemStyle: { color: P.inconf } }
+      ]
+    }]
+  };
+});
+
+// conformidade % por base: (conformes / total) * 100
+const conformidadePorBase = computed(() => {
+  const map: Record<string, { c: number; t: number }> = {};
+  for (const s of submissions.value) {
+    if (!map[s.base]) map[s.base] = { c: 0, t: 0 };
+    const rs = responses.value.filter(r => r.submission_id === s.id);
+    map[s.base].t += rs.length;
+    map[s.base].c += rs.filter(r => r.resposta === "conforme").length;
+  }
+  return map;
+});
+
+const conformidadePorGerencia = computed(() => {
+  const map: Record<string, { c: number; t: number }> = {};
+  for (const s of submissions.value) {
+    const emp = employees.value.find(e => e.matricula === s.matricula);
+    const g = emp?.gerencia ?? s.auditagem;
+    if (!map[g]) map[g] = { c: 0, t: 0 };
+    const rs = responses.value.filter(r => r.submission_id === s.id);
+    map[g].t += rs.length;
+    map[g].c += rs.filter(r => r.resposta === "conforme").length;
+  }
+  return map;
+});
 
 // ─── Chart: Índice por Mês ────────────────────────────────────────────────────
-const chartMes = hBar(
-  ["jan/26", "fev/26", "mar/26", "abr/26", "mai/26", "jun/26"],
-  [99.68, 99.71, 99.82, 99.75, 99.59, 100]
-);
+const chartMes = computed(() => {
+  const mesLabels = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+  // We need per-month conformidade. Using byMes for submission counts isn't enough.
+  // Simplification: show obs count per month as a proxy
+  const vals = mesLabels.map((_, i) => byMes.value[i + 1] ?? 0);
+  const maxV = Math.max(...vals, 1);
+  return hBar(mesLabels, vals, P.conf, " obs", maxV);
+});
 
 // ─── Chart: Índice por Base ───────────────────────────────────────────────────
-const chartBase = hBar(
-  ["BDC", "PDS", "ITM", "STI", "PDT", "BCB"],
-  [100, 100, 100, 100, 100, 99]
-);
+const chartBase = computed(() => {
+  const entries = Object.entries(conformidadePorBase.value)
+    .map(([base, { c, t }]) => ({
+      base,
+      pct: t ? Math.round((c / t) * 1000) / 10 : 0
+    }))
+    .sort((a, b) => a.pct - b.pct);
+  return hBar(entries.map(e => e.base), entries.map(e => e.pct), P.conf, "%", 100);
+});
 
 // ─── Chart: Índice por Gerência ───────────────────────────────────────────────
-const chartGerencia = hBar(
-  ["GERE", "GOMAN", "GSTC"],
-  [100, 100, 99]
-);
+const chartGerencia = computed(() => {
+  const entries = Object.entries(conformidadePorGerencia.value)
+    .map(([g, { c, t }]) => ({
+      g,
+      pct: t ? Math.round((c / t) * 1000) / 10 : 0
+    }))
+    .sort((a, b) => a.pct - b.pct);
+  return hBar(entries.map(e => e.g), entries.map(e => e.pct), P.conf, "%", 100);
+});
 
 // ─── Chart: Índice por Equipe (scrollable) ────────────────────────────────────
-const equipeNames = [
-  "MA-ANJ-E001","MA-ARI-E001","MA-BCB-C001","MA-BCB-C002","MA-BCB-D001",
-  "MA-BCB-E001","MA-BCB-E002","MA-BCB-F001","MA-BCB-F002","MA-BCB-G001",
-  "MA-BDC-C001","MA-BDC-D001","MA-BDC-E001","MA-BDC-F001","MA-ITM-C001",
-  "MA-ITM-D001","MA-PDT-C001","MA-PDT-D001","MA-PDT-E001","MA-PDS-C001",
-  "MA-PDS-D001","MA-STI-C001","MA-STI-D001","MA-STI-E001",
-];
-const equipeVals = [
-  100,100,100,100,100,100,100,100,100,100,
-  100,100,100,100,100,100,100,100,100,100,
-  100,100,99,100
-];
-
-const chartEquipe = {
-  ...hBar([...equipeNames].reverse(), [...equipeVals].reverse()),
-  dataZoom: [
-    {
+const chartEquipe = computed(() => {
+  const equipePcts: Record<string, { c: number; t: number }> = {};
+  for (const s of submissions.value) {
+    const rs = responses.value.filter(r => r.submission_id === s.id);
+    const nome = s.equipe;
+    if (!nome) continue;
+    if (!equipePcts[nome]) equipePcts[nome] = { c: 0, t: 0 };
+    equipePcts[nome].t += rs.length;
+    equipePcts[nome].c += rs.filter(r => r.resposta === "conforme").length;
+  }
+  const entries = Object.entries(equipePcts)
+    .map(([equipe, { c, t }]) => ({ equipe, pct: t ? Math.round((c / t) * 1000) / 10 : 0 }))
+    .sort((a, b) => b.pct - a.pct);
+  const names = entries.map(e => e.equipe.length > 16 ? e.equipe.slice(0, 15) + "…" : e.equipe);
+  const vals = entries.map(e => e.pct);
+  return {
+    ...hBar([...names].reverse(), [...vals].reverse()),
+    dataZoom: [{
       type: "inside" as const,
       orient: "vertical" as const,
       startValue: 0, endValue: 9,
       zoomOnMouseWheel: false,
       moveOnMouseWheel: true
-    }
-  ],
-  grid: { left: 8, right: 52, top: 8, bottom: 8, containLabel: true }
-};
+    }],
+    grid: { left: 8, right: 52, top: 8, bottom: 8, containLabel: true }
+  };
+});
 
 // ─── Chart: Ranking de Não Conformidades ─────────────────────────────────────
-const rankingNames = [
-  "A área de trabalho est.",
-  "Itens de segurança vei.",
-  "O Padrinho de Seguran.",
-  "O veículo está calçado.",
-  "Utilizou os EPI (Vestim.",
-  "Foi seccionado o disju.",
-  "O EPC mantas isolante.",
-  "Os EPI (capacete, vest.",
-  "Utilizou corretamente.",
-  "Utilizou os EPC (detect.",
-  "As Ferramentas (chave.",
-  "Nos Riscos de Trabalho.",
-  "O EPC tapete isolante.",
-  "O EPI luvas isolante es.",
-  "O veículo está estacion.",
-  "Quanto aos Riscos de.",
-  "Utilizou os EPI (Vest.2)",
-];
-const rankingVals = [6, 4, 4, 3, 3, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1];
+const rankingNC = computed(() => {
+  const map: Record<string, number> = {};
+  for (const r of responses.value) {
+    if (r.resposta === "nao_conforme") {
+      const key = r.pergunta.length > 28 ? r.pergunta.slice(0, 27) + "." : r.pergunta;
+      map[key] = (map[key] ?? 0) + 1;
+    }
+  }
+  return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 17);
+});
 
-const chartRanking = {
+const rankingNames = computed(() => rankingNC.value.map(([n]) => n));
+const rankingVals  = computed(() => rankingNC.value.map(([, v]) => v));
+
+const chartRanking = computed(() => ({
   tooltip: {
     ...ttItem,
     formatter: (p: { name: string; value: number }) =>
@@ -474,7 +541,7 @@ const chartRanking = {
   },
   yAxis: {
     type: "category" as const,
-    data: [...rankingNames].reverse(),
+    data: [...rankingNames.value].reverse(),
     axisLine: { show: false },
     axisTick: { show: false },
     splitLine: { show: false },
@@ -482,12 +549,12 @@ const chartRanking = {
   },
   series: [{
     type: "bar" as const,
-    data: [...rankingVals].reverse().map((v, i) => ({
+    data: [...rankingVals.value].reverse().map((v, i) => ({
       value: v,
       itemStyle: {
-        color: i === rankingVals.length - 1 ? P.inconf
-             : i >= rankingVals.length - 3 ? P.inconfLt
-             : `rgba(139,28,43,${0.55 + (i / rankingVals.length) * 0.45})`,
+        color: i === rankingVals.value.length - 1 ? P.inconf
+             : i >= rankingVals.value.length - 3 ? P.inconfLt
+             : `rgba(139,28,43,${0.55 + (i / rankingVals.value.length) * 0.45})`,
         borderRadius: [0, 6, 6, 0]
       }
     })),
@@ -501,7 +568,7 @@ const chartRanking = {
       color: P.inconf
     }
   }]
-};
+}));
 </script>
 
 <style scoped lang="scss">

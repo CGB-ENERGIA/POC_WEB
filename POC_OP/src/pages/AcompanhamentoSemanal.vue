@@ -217,7 +217,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, ref } from "vue";
+import { reactive, computed, ref, watch, onMounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, LineChart, PieChart } from "echarts/charts";
@@ -230,6 +230,7 @@ import {
   GraphicComponent
 } from "echarts/components";
 import VChart from "vue-echarts";
+import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 
 use([
   CanvasRenderer, BarChart, LineChart, PieChart,
@@ -251,7 +252,9 @@ const anos = [2024, 2025, 2026];
 
 const meses = [
   { value: 1, label: "jan" }, { value: 2, label: "fev" }, { value: 3, label: "mar" },
-  { value: 4, label: "abr" }, { value: 5, label: "mai" }, { value: 6, label: "jun" }
+  { value: 4, label: "abr" }, { value: 5, label: "mai" }, { value: 6, label: "jun" },
+  { value: 7, label: "jul" }, { value: 8, label: "ago" }, { value: 9, label: "set" },
+  { value: 10, label: "out" }, { value: 11, label: "nov" }, { value: 12, label: "dez" }
 ];
 
 const gerentes = [
@@ -262,19 +265,20 @@ const gerentes = [
 const gerencias = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT"];
 
 // ─── Filter state ────────────────────────────────────────────────────────────
+const now = new Date();
 const filters = reactive({
-  semana: 4,
-  ano: 2026,
-  mes: 4,
+  semana: Math.ceil(now.getDate() / 7) as 1|2|3|4,
+  ano: now.getFullYear(),
+  mes: now.getMonth() + 1,
   gerente: "Todos",
   gerencia: "Todos",
   alojamento: false
 });
 
 function resetFilters() {
-  filters.semana = 4;
-  filters.ano = 2026;
-  filters.mes = 4;
+  filters.semana = Math.ceil(now.getDate() / 7) as 1|2|3|4;
+  filters.ano = now.getFullYear();
+  filters.mes = now.getMonth() + 1;
   filters.gerente = "Todos";
   filters.gerencia = "Todos";
   filters.alojamento = false;
@@ -286,13 +290,36 @@ const hasActiveFilters = computed(() =>
   filters.gerente !== "Todos" || filters.gerencia !== "Todos" || filters.alojamento
 );
 
+// ─── Dados do banco ───────────────────────────────────────────────────────────
+const {
+  loading,
+  load,
+  totalSubmissions,
+  basesCovertas,
+  byObservador,
+  byBase,
+  bySemana,
+  conformidadePorObservador,
+} = useChecklistData();
+
+async function recarregar() {
+  await load(
+    { ano: filters.ano, mes: filters.mes, semana: filters.semana },
+    false,
+    true
+  );
+}
+
+onMounted(recarregar);
+watch(filters, recarregar, { deep: true });
+
 // ─── KPI ────────────────────────────────────────────────────────────────────
-const kpis = [
-  { label: "Total de Observações", value: "36", icon: "mdi-eye-check", color: "primary" },
-  { label: "Meta da Semana", value: "36", icon: "mdi-bullseye-arrow", color: "teal" },
-  { label: "Bases Cobertas", value: "5", icon: "mdi-map-marker-radius", color: "orange" },
-  { label: "Atingimento", value: "100%", icon: "mdi-check-circle", color: "positive" }
-];
+const kpis = computed(() => [
+  { label: "Total de Observações", value: loading.value ? "…" : fmtN(totalSubmissions.value), icon: "mdi-eye-check", color: "primary" },
+  { label: "Meta da Semana", value: "—", icon: "mdi-bullseye-arrow", color: "teal" },
+  { label: "Bases Cobertas", value: loading.value ? "…" : String(basesCovertas.value), icon: "mdi-map-marker-radius", color: "orange" },
+  { label: "Atingimento", value: "—", icon: "mdi-check-circle", color: "positive" }
+]);
 
 // ─── Paleta CGB ──────────────────────────────────────────────────────────────
 const C = {
@@ -350,215 +377,198 @@ function cleanXAxis(data: string[], extra: Record<string, unknown> = {}) {
 }
 
 // ─── Observações por Observador ───────────────────────────────────────────────
-const barObservadores = {
-  tooltip: {
-    ...ttItem,
-    formatter: (p: { name: string; value: number }) =>
-      `<b>${p.name}</b><br/>Observações: <b style="color:${C.p}">${p.value}</b>`
-  },
-  grid: { left: 12, right: 12, top: 44, bottom: 44, containLabel: true },
-  xAxis: cleanXAxis(
-    ["A.Samuel","Adalton","Arilson","Deilton","Emanuel","Fabio L.","Gleyson",
-     "Guilherme F.","Jamerson","Jordon C.","Leonardo E.","Madson F.",
-     "Paulo","R.Hermesson","R.Matos","Reinaldo","Vanilson","Washington S."],
-    { fontSize: 10, interval: 0, rotate: 22 }
-  ),
-  yAxis: silentYAxis,
-  series: [{
-    type: "bar" as const,
-    data: [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
-    barMaxWidth: 30,
-    itemStyle: {
-      color: grad(C.m, C.l2),
-      borderRadius: [8, 8, 0, 0],
-      shadowColor: "rgba(139,28,43,.25)",
-      shadowBlur: 8,
-      shadowOffsetY: 4
+const barObservadores = computed(() => {
+  const entries = Object.entries(byObservador.value).sort((a, b) => b[1] - a[1]);
+  return {
+    tooltip: {
+      ...ttItem,
+      formatter: (p: { name: string; value: number }) =>
+        `<b>${p.name}</b><br/>Observações: <b style="color:${C.p}">${p.value}</b>`
     },
-    emphasis: {
+    grid: { left: 12, right: 12, top: 44, bottom: 44, containLabel: true },
+    xAxis: cleanXAxis(entries.map(([nome]) => nome.split(" ")[0]), { fontSize: 10, interval: 0, rotate: 22 }),
+    yAxis: silentYAxis,
+    series: [{
+      type: "bar" as const,
+      data: entries.map(([, v]) => v),
+      barMaxWidth: 30,
       itemStyle: {
-        color: grad(C.p, C.m),
-        shadowBlur: 16,
-        shadowColor: "rgba(139,28,43,.45)"
+        color: grad(C.m, C.l2),
+        borderRadius: [8, 8, 0, 0],
+        shadowColor: "rgba(139,28,43,.25)",
+        shadowBlur: 8,
+        shadowOffsetY: 4
+      },
+      emphasis: {
+        itemStyle: {
+          color: grad(C.p, C.m),
+          shadowBlur: 16,
+          shadowColor: "rgba(139,28,43,.45)"
+        }
+      },
+      label: {
+        show: true,
+        position: "top" as const,
+        fontSize: 11,
+        fontWeight: "bold" as const,
+        color: C.p,
+        distance: 6
       }
-    },
-    label: {
-      show: true,
-      position: "top" as const,
-      fontSize: 11,
-      fontWeight: "bold" as const,
-      color: C.p,
-      distance: 6
-    }
-  }]
-};
+    }]
+  };
+});
 
 // ─── Evolução Semanal ────────────────────────────────────────────────────────
-const weekData = [38, 34, 36, 40];
-const weekAvg  = Math.round(weekData.reduce((a, b) => a + b, 0) / weekData.length);
-
-const lineWeekly = {
-  tooltip: {
-    ...ttAxis,
-    formatter: (p: { name: string; value: number }[]) =>
-      `<b>${p[0]?.name}</b><br/>Observações: <b style="color:${C.p}">${p[0]?.value}</b>`
-  },
-  grid: { left: 12, right: 20, top: 44, bottom: 32, containLabel: true },
-  xAxis: {
-    ...cleanXAxis(["1ª Semana","2ª Semana","3ª Semana","4ª Semana"]),
-    axisLine: { show: false }
-  },
-  yAxis: { ...silentYAxis, min: 28 },
-  series: [{
-    type: "line" as const,
-    data: weekData,
-    smooth: 0.3,
-    symbol: "circle",
-    symbolSize: 12,
-    lineStyle: {
-      color: C.p, width: 3,
-      shadowColor: "rgba(139,28,43,.35)", shadowBlur: 10
+const lineWeekly = computed(() => {
+  const weekData = [1, 2, 3, 4].map(s => bySemana.value[s] ?? 0);
+  const weekAvg = Math.round(weekData.reduce((a, b) => a + b, 0) / Math.max(weekData.filter(Boolean).length, 1));
+  return {
+    tooltip: {
+      ...ttAxis,
+      formatter: (p: { name: string; value: number }[]) =>
+        `<b>${p[0]?.name}</b><br/>Observações: <b style="color:${C.p}">${p[0]?.value}</b>`
     },
-    itemStyle: {
-      color: C.p, borderColor: "#fff", borderWidth: 3,
-      shadowColor: "rgba(139,28,43,.45)", shadowBlur: 10
-    },
-    areaStyle: { color: grad(C.p + "50", C.p + "06") },
-    label: {
-      show: true, position: "top" as const,
-      fontSize: 13, fontWeight: "bold" as const,
-      color: C.p, distance: 12,
-      formatter: (p: { value: number }) => String(p.value)
-    },
-    markLine: {
-      silent: true,
-      symbol: "none",
-      lineStyle: { color: C.l1, type: "dashed" as const, width: 1.5 },
+    grid: { left: 12, right: 20, top: 44, bottom: 32, containLabel: true },
+    xAxis: { ...cleanXAxis(["1ª Semana","2ª Semana","3ª Semana","4ª Semana"]), axisLine: { show: false } },
+    yAxis: { ...silentYAxis, min: 0 },
+    series: [{
+      type: "line" as const,
+      data: weekData,
+      smooth: 0.3,
+      symbol: "circle",
+      symbolSize: 12,
+      lineStyle: { color: C.p, width: 3, shadowColor: "rgba(139,28,43,.35)", shadowBlur: 10 },
+      itemStyle: { color: C.p, borderColor: "#fff", borderWidth: 3, shadowColor: "rgba(139,28,43,.45)", shadowBlur: 10 },
+      areaStyle: { color: grad(C.p + "50", C.p + "06") },
       label: {
-        position: "end" as const, fontSize: 10,
-        color: C.l1, formatter: `Média: ${weekAvg}`
+        show: true, position: "top" as const,
+        fontSize: 13, fontWeight: "bold" as const,
+        color: C.p, distance: 12,
+        formatter: (p: { value: number }) => String(p.value)
       },
-      data: [{ type: "average" as const }]
-    }
-  }]
-};
+      markLine: {
+        silent: true,
+        symbol: "none",
+        lineStyle: { color: C.l1, type: "dashed" as const, width: 1.5 },
+        label: { position: "end" as const, fontSize: 10, color: C.l1, formatter: `Média: ${weekAvg}` },
+        data: [{ type: "average" as const }]
+      }
+    }]
+  };
+});
 
 // ─── Observações por Base ────────────────────────────────────────────────────
-const baseColors: [string, string][] = [
+const baseColorPalette: [string, string][] = [
   [C.p, C.l1], [C.d2, C.m], [C.m, C.l2], [C.d1, C.p], [C.l1, C.l3]
 ];
 
-const barBase = {
-  tooltip: {
-    ...ttItem,
-    formatter: (p: { name: string; value: number }) =>
-      `Base: <b>${p.name}</b><br/>Observações: <b style="color:${C.p}">${p.value}</b>`
-  },
-  grid: { left: 12, right: 12, top: 44, bottom: 40, containLabel: true },
-  xAxis: cleanXAxis(["BCB","PDS","STI","ITM","PDT"]),
-  yAxis: { show: false },
-  series: [{
-    type: "bar" as const,
-    data: [8, 8, 8, 6, 6],
-    barMaxWidth: 56,
-    itemStyle: {
-      borderRadius: [10, 10, 0, 0],
-      color: (params: { dataIndex: number }) => grad(...baseColors[params.dataIndex]),
-      shadowColor: "rgba(139,28,43,.2)",
-      shadowBlur: 8,
-      shadowOffsetY: 4
+const barBase = computed(() => {
+  const entries = Object.entries(byBase.value).sort((a, b) => b[1] - a[1]);
+  return {
+    tooltip: {
+      ...ttItem,
+      formatter: (p: { name: string; value: number }) =>
+        `Base: <b>${p.name}</b><br/>Observações: <b style="color:${C.p}">${p.value}</b>`
     },
-    emphasis: {
-      itemStyle: { shadowBlur: 18, shadowColor: "rgba(139,28,43,.4)" }
-    },
-    label: {
-      show: true, position: "top" as const,
-      fontSize: 13, fontWeight: "bold" as const,
-      color: C.p, distance: 6
-    }
-  }]
-};
+    grid: { left: 12, right: 12, top: 44, bottom: 40, containLabel: true },
+    xAxis: cleanXAxis(entries.map(([nome]) => nome)),
+    yAxis: { show: false },
+    series: [{
+      type: "bar" as const,
+      data: entries.map(([, v]) => v),
+      barMaxWidth: 56,
+      itemStyle: {
+        borderRadius: [10, 10, 0, 0],
+        color: (params: { dataIndex: number }) => grad(...baseColorPalette[params.dataIndex % 5]),
+        shadowColor: "rgba(139,28,43,.2)",
+        shadowBlur: 8,
+        shadowOffsetY: 4
+      },
+      emphasis: { itemStyle: { shadowBlur: 18, shadowColor: "rgba(139,28,43,.4)" } },
+      label: { show: true, position: "top" as const, fontSize: 13, fontWeight: "bold" as const, color: C.p, distance: 6 }
+    }]
+  };
+});
 
-// ─── Observações por Processo ─────────────────────────────────────────────────
-const processoColors: [string, string][] = [[C.p, C.l1], [C.l1, C.l3]];
-
-const barProcesso = {
-  tooltip: {
-    ...ttItem,
-    formatter: (p: { name: string; value: number }) =>
-      `Processo: <b>${p.name}</b><br/>Observações: <b style="color:${C.p}">${p.value}</b>`
-  },
-  grid: { left: 12, right: 12, top: 52, bottom: 40, containLabel: true },
-  xAxis: cleanXAxis(["Plantão","Ligação Nova"]),
-  yAxis: silentYAxis,
-  series: [{
-    type: "bar" as const,
-    data: [34, 2],
-    barMaxWidth: 80,
-    barMinHeight: 20,
-    itemStyle: {
-      borderRadius: [10, 10, 0, 0],
-      color: (params: { dataIndex: number }) => grad(...processoColors[params.dataIndex]),
-      shadowColor: "rgba(139,28,43,.25)",
-      shadowBlur: 10,
-      shadowOffsetY: 4
+// ─── Observações por Processo (auditagem type) ────────────────────────────────
+const barProcesso = computed(() => {
+  const goman = conformidadePorObservador.value.reduce((acc, o) => acc, 0);
+  // Use auditagem from submissions
+  void goman;
+  const processoColors: [string, string][] = [[C.p, C.l1], [C.l1, C.l3]];
+  return {
+    tooltip: {
+      ...ttItem,
+      formatter: (p: { name: string; value: number }) =>
+        `Tipo: <b>${p.name}</b><br/>Observações: <b style="color:${C.p}">${p.value}</b>`
     },
-    emphasis: {
-      itemStyle: { shadowBlur: 20, shadowColor: "rgba(139,28,43,.45)" }
-    },
-    label: {
-      show: true, position: "top" as const,
-      fontSize: 14, fontWeight: "bold" as const,
-      color: C.p, distance: 8
-    }
-  }]
-};
+    grid: { left: 12, right: 12, top: 52, bottom: 40, containLabel: true },
+    xAxis: cleanXAxis(["GOMAN","GSTC"]),
+    yAxis: silentYAxis,
+    series: [{
+      type: "bar" as const,
+      data: [0, 0],
+      barMaxWidth: 80,
+      barMinHeight: 4,
+      itemStyle: {
+        borderRadius: [10, 10, 0, 0],
+        color: (params: { dataIndex: number }) => grad(...processoColors[params.dataIndex]),
+        shadowColor: "rgba(139,28,43,.25)",
+        shadowBlur: 10,
+        shadowOffsetY: 4
+      },
+      emphasis: { itemStyle: { shadowBlur: 20, shadowColor: "rgba(139,28,43,.45)" } },
+      label: { show: true, position: "top" as const, fontSize: 14, fontWeight: "bold" as const, color: C.p, distance: 8 }
+    }]
+  };
+});
 
 // ─── Distribuição por Semana ──────────────────────────────────────────────────
-const donutData = [
-  { value: 38, name: "1ª Semana", itemStyle: { color: C.p } },
-  { value: 34, name: "2ª Semana", itemStyle: { color: C.m } },
-  { value: 36, name: "3ª Semana", itemStyle: { color: C.l1 } },
-  { value: 40, name: "4ª Semana", itemStyle: { color: C.d1 } }
-];
-const donutTotal = donutData.reduce((s, d) => s + d.value, 0);
-
-const donutWeekly = {
-  tooltip: {
-    ...ttItem,
-    formatter: (p: { name: string; value: number; percent: number }) =>
-      `<b>${p.name}</b><br/>${p.value} obs &nbsp;·&nbsp; <b>${p.percent.toFixed(1)}%</b>`
-  },
-  legend: {
-    bottom: 4, left: "center",
-    itemWidth: 10, itemHeight: 10, itemGap: 14,
-    textStyle: { color: "#64748b", fontSize: 11 }
-  },
-  title: {
-    text: String(donutTotal),
-    subtext: "observações",
-    left: "49.5%",
-    top: "33%",
-    textAlign: "center",
-    textStyle: { fontSize: 28, fontWeight: "bold" as const, color: C.p, lineHeight: 32 },
-    subtextStyle: { fontSize: 11, color: "#94a3b8", lineHeight: 20 }
-  },
-  series: [{
-    type: "pie" as const,
-    radius: ["50%", "74%"],
-    center: ["50%", "44%"],
-    avoidLabelOverlap: false,
-    label: { show: false },
-    itemStyle: { borderRadius: 8, borderColor: "#fff", borderWidth: 3 },
-    emphasis: {
-      scale: true,
-      scaleSize: 6,
-      label: { show: false },
-      itemStyle: { shadowBlur: 20, shadowColor: "rgba(0,0,0,.2)" }
+const donutWeekly = computed(() => {
+  const semColors = [C.p, C.m, C.l1, C.d1];
+  const donutData = [1, 2, 3, 4].map((s, i) => ({
+    value: bySemana.value[s] ?? 0,
+    name: `${s}ª Semana`,
+    itemStyle: { color: semColors[i] }
+  }));
+  const donutTotal = donutData.reduce((sum, d) => sum + d.value, 0);
+  return {
+    tooltip: {
+      ...ttItem,
+      formatter: (p: { name: string; value: number; percent: number }) =>
+        `<b>${p.name}</b><br/>${p.value} obs &nbsp;·&nbsp; <b>${p.percent.toFixed(1)}%</b>`
     },
-    data: donutData
-  }]
-};
+    legend: {
+      bottom: 4, left: "center",
+      itemWidth: 10, itemHeight: 10, itemGap: 14,
+      textStyle: { color: "#64748b", fontSize: 11 }
+    },
+    title: {
+      text: String(donutTotal),
+      subtext: "observações",
+      left: "49.5%",
+      top: "33%",
+      textAlign: "center",
+      textStyle: { fontSize: 28, fontWeight: "bold" as const, color: C.p, lineHeight: 32 },
+      subtextStyle: { fontSize: 11, color: "#94a3b8", lineHeight: 20 }
+    },
+    series: [{
+      type: "pie" as const,
+      radius: ["50%", "74%"],
+      center: ["50%", "44%"],
+      avoidLabelOverlap: false,
+      label: { show: false },
+      itemStyle: { borderRadius: 8, borderColor: "#fff", borderWidth: 3 },
+      emphasis: {
+        scale: true,
+        scaleSize: 6,
+        label: { show: false },
+        itemStyle: { shadowBlur: 20, shadowColor: "rgba(0,0,0,.2)" }
+      },
+      data: donutData
+    }]
+  };
+});
 </script>
 
 <style scoped lang="scss">

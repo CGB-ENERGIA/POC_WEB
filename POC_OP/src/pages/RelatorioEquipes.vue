@@ -1,9 +1,10 @@
-<template>
+﻿<template>
   <q-page class="relatorio-page">
+    <q-linear-progress v-if="loading" indeterminate color="negative" style="position:sticky;top:0;z-index:200" />
 
-    <!-- ══════════════════════════════════════════════════════
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
          FILTER BAR
-    ══════════════════════════════════════════════════════ -->
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
     <div class="filter-bar">
       <div class="filter-fab-wrap">
         <button
@@ -17,10 +18,10 @@
       <div class="filter-collapsible" :class="{ 'is-hidden': !showFilters }">
       <div class="filter-bar__inner">
 
-        <!-- Row 1: Mês · Ano · Base · Gerente -->
+        <!-- Row 1: MÃªs Â· Ano Â· Base Â· Gerente -->
         <div class="filter-row">
           <div class="fgroup">
-            <span class="fgroup__label">Mês</span>
+            <span class="fgroup__label">MÃªs</span>
             <div class="pill-group">
               <button v-for="m in mesesOpts" :key="m"
                 :class="['pill', filters.mes === m && 'pill--active']"
@@ -58,10 +59,10 @@
           </div>
         </div>
 
-        <!-- Row 2: Gerência · Tipo de POC · Função -->
+        <!-- Row 2: GerÃªncia Â· Tipo de POC Â· FunÃ§Ã£o -->
         <div class="filter-row">
           <div class="fgroup">
-            <span class="fgroup__label">Gerência</span>
+            <span class="fgroup__label">GerÃªncia</span>
             <div class="pill-group">
               <button v-for="g in gerenciasOpts" :key="g"
                 :class="['pill', filters.gerencia === g && 'pill--active']"
@@ -79,7 +80,7 @@
           </div>
           <div class="filter-divider" />
           <div class="fgroup">
-            <span class="fgroup__label">Função</span>
+            <span class="fgroup__label">FunÃ§Ã£o</span>
             <div class="pill-group">
               <button v-for="f in funcaoOpts" :key="f"
                 :class="['pill', filters.funcao === f && 'pill--active']"
@@ -112,9 +113,9 @@
       </div>
     </div>
 
-    <!-- ══════════════════════════════════════════════════════
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
          CONTENT
-    ══════════════════════════════════════════════════════ -->
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
     <div class="q-pa-md">
 
       <!-- KPI Row -->
@@ -128,7 +129,7 @@
               </div>
               <div class="kpi-stat-value" style="color:#0284c7">844</div>
               <div class="kpi-stat-label">Visitas Recebidas</div>
-              <div class="kpi-stat-sub">no período selecionado</div>
+              <div class="kpi-stat-sub">no perÃ­odo selecionado</div>
             </q-card-section>
           </q-card>
         </div>
@@ -154,7 +155,7 @@
               </div>
               <div class="kpi-stat-value" style="color:#16a34a">186</div>
               <div class="kpi-stat-label">Equipes Visitadas</div>
-              <div class="kpi-stat-sub">8 equipes não visitadas</div>
+              <div class="kpi-stat-sub">8 equipes nÃ£o visitadas</div>
             </q-card-section>
           </q-card>
         </div>
@@ -188,11 +189,11 @@
           </q-card>
         </div>
 
-        <!-- Col 2: Equipes Não Visitadas -->
+        <!-- Col 2: Equipes NÃ£o Visitadas -->
         <div class="col-12 col-md-2">
           <q-card flat bordered>
             <q-card-section class="q-pb-xs">
-              <div class="text-subtitle1 text-weight-bold">Equipes Não Visitadas</div>
+              <div class="text-subtitle1 text-weight-bold">Equipes NÃ£o Visitadas</div>
               <div class="text-h5 text-weight-bold" style="color:#dc2626">{{ naoVisitadas.length }}</div>
             </q-card-section>
             <q-card-section class="q-pt-xs">
@@ -208,7 +209,7 @@
         <div class="col-12 col-md-3">
           <q-card flat bordered class="q-mb-md">
             <q-card-section class="q-pb-xs">
-              <div class="text-subtitle1 text-weight-bold">Ranking de Equipes com Não Conformidades</div>
+              <div class="text-subtitle1 text-weight-bold">Ranking de Equipes com NÃ£o Conformidades</div>
             </q-card-section>
             <q-card-section class="q-pt-none">
               <v-chart :option="chartRankingNcEq" autoresize style="height:220px" />
@@ -216,7 +217,7 @@
           </q-card>
           <q-card flat bordered>
             <q-card-section class="q-pb-xs">
-              <div class="text-subtitle1 text-weight-bold">Não Conformidades por Categoria</div>
+              <div class="text-subtitle1 text-weight-bold">NÃ£o Conformidades por Categoria</div>
             </q-card-section>
             <q-card-section class="q-pt-none">
               <v-chart :option="chartNcCat" autoresize style="height:196px" />
@@ -228,7 +229,7 @@
         <div class="col-12 col-md-4">
           <q-card flat bordered>
             <q-card-section class="q-pb-xs">
-              <div class="text-subtitle1 text-weight-bold">Ranking Geral de Não Conformidades</div>
+              <div class="text-subtitle1 text-weight-bold">Ranking Geral de NÃ£o Conformidades</div>
             </q-card-section>
             <q-card-section class="q-pt-none">
               <v-chart :option="chartRankingGeralNc" autoresize style="height:460px" />
@@ -243,7 +244,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, ref } from "vue";
+import { reactive, computed, ref, watch, onMounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, GaugeChart } from "echarts/charts";
@@ -253,33 +254,60 @@ import {
   DataZoomComponent,
 } from "echarts/components";
 import VChart from "vue-echarts";
+import { useChecklistData, fmtPct } from "@/composables/useChecklistData";
 
 use([CanvasRenderer, BarChart, GaugeChart, GridComponent, TooltipComponent, DataZoomComponent]);
 
-// ─── Colors ───────────────────────────────────────────────────────────────────
+const {
+  loading, error,
+  totalSubmissions, conformidadeIndex, byCategoria, responses, submissions,
+  load,
+} = useChecklistData();
+
+// â”€â”€â”€ Colors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const G = { green: "#16a34a", brand: "#8B1C2B", brandLt: "#C4364E" };
 
-// ─── Filter options ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Filter options â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const showFilters = ref(false);
 
-const mesesOpts    = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26"];
+const now = new Date();
+const MONTH_MAP: Record<string, number> = {
+  "jan": 1, "fev": 2, "mar": 3, "abr": 4, "mai": 5, "jun": 6,
+  "jul": 7, "ago": 8, "set": 9, "out": 10, "nov": 11, "dez": 12,
+};
+
+const mesesOpts    = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26","jul/26","ago/26","set/26","out/26","nov/26","dez/26"];
 const anosOpts     = ["2024","2025","2026"];
-const categoriasOpts = ["Todos","Procedimento","Padrinho de Segurança","Veículos e Equipamentos","EPI/EPC","APR","Trabalho em Altura","Regras de Ouro"];
+const categoriasOpts = ["Todos","Procedimento","Padrinho de SeguranÃ§a","VeÃ­culos e Equipamentos","EPI/EPC","APR","Trabalho em Altura","Regras de Ouro"];
 const basesOpts    = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 const gerenciasOpts = ["Todos","GERE","GOMAN","GSTC","SPOT"];
 const gerentesOpts = ["Todos","Afonso","Jackson","Julio C.","Marcos","Paulo","Pryscilla","Rafaela","Ricardo"];
 const observadorOpts = ["Todos"];
-const funcaoOpts   = ["Todos","Eletricista","Motorista","Operador","Técnico"];
+const funcaoOpts   = ["Todos","Eletricista","Motorista","Operador","TÃ©cnico"];
 const tiposPoc     = ["Administrativo","Operacional","Alojamento"];
 
+const curMesLabel = mesesOpts[now.getMonth()] ?? "jan/26";
+
 const filters = reactive({
-  mes: "jun/26", ano: "2026", categoria: "Todos",
+  mes: curMesLabel, ano: String(now.getFullYear()), categoria: "Todos",
   base: "Todos", prefixo: "Todos", gerencia: "Todos",
   gerente: "Todos", observador: "Todos", funcao: "Todos",
   tipoPoc: "Operacional",
 });
 
-// ─── Full prefix list ─────────────────────────────────────────────────────────
+async function recarregar() {
+  const mesNum = MONTH_MAP[filters.mes.slice(0, 3)] ?? (now.getMonth() + 1);
+  await load({
+    ano: Number(filters.ano),
+    mes: mesNum,
+    base: filters.base === "Todos" ? undefined : filters.base,
+    gerencia: filters.gerencia === "Todos" ? undefined : filters.gerencia,
+  });
+}
+onMounted(recarregar);
+watch(filters, recarregar, { deep: true });
+
+// â”€â”€â”€ Full prefix list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const allPrefixes: string[] = [
   "MA-BCB-E001M","MA-BCB-E002M","MA-PDT-P002M","MA-BDC-E002M",
   "MA-PDT-M001M","MA-BDC-C001M","MA-PDT-O035M","MA-BDC-F001M",
@@ -339,42 +367,28 @@ function filterPrefixo(val: string, update: (fn: () => void) => void) {
   });
 }
 
-// ─── Não Visitadas ────────────────────────────────────────────────────────────
-const naoVisitadas = [
-  "MA-BCB-F020M","MA-BCB-F021M","MA-BCB-H001M","MA-BCB-O007M",
-  "MA-PDS-F006M","MA-PDT-F005M","MA-SDM-E001M","MA-STI-F008M",
-];
-const naoVisSet = new Set(naoVisitadas);
+// â”€â”€â”€ Visit count from real data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const visitadasSorted = computed(() => {
+  const counts: Record<string, number> = {};
+  for (const sub of submissions.value) {
+    const equipes: string[] = Array.isArray(sub.membros)
+      ? (sub.membros as string[])
+      : sub.equipe ? [sub.equipe] : [];
+    for (const eq of equipes) {
+      counts[eq] = (counts[eq] ?? 0) + 1;
+    }
+  }
+  return Object.entries(counts)
+    .map(([nome, v]) => ({ nome, v }))
+    .sort((a, b) => b.v - a.v);
+});
 
-// ─── Visit count generation ───────────────────────────────────────────────────
-const knownVisits: Record<string, number> = {
-  "MA-BDC-V001M": 18, "MA-BCB-P002M": 14, "MA-PDS-O001M": 13,
-  "MA-BCB-C001M": 12, "MA-BDC-O003M": 12, "MA-PDS-E001M": 12,
-  "MA-BCB-E001M": 11, "MA-PDS-O003M": 11, "MA-PDS-P002M": 11,
-  "MA-STI-O002M": 11, "MA-BCB-P001M": 10, "MA-BDC-O005M": 10,
-  "MA-PDS-V001M": 10, "MA-PDT-V001M": 10, "MA-BCB-O001M":  9,
-  "MA-BDC-O001M":  9, "MA-BCB-O004M":  9, "MA-ITM-O001M":  9,
-};
+const naoVisitadas = computed(() => {
+  const visited = new Set(visitadasSorted.value.map(e => e.nome));
+  return allPrefixes.filter(p => !visited.has(p));
+});
 
-function hash(s: string): number {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = (h * 0x01000193) >>> 0; }
-  return h;
-}
-
-function getVisitas(p: string): number {
-  if (knownVisits[p] !== undefined) return knownVisits[p];
-  return 1 + (hash(p) % 8);
-}
-
-const visitadasSorted = computed(() =>
-  allPrefixes
-    .filter(p => !naoVisSet.has(p))
-    .map(p => ({ nome: p, v: getVisitas(p) }))
-    .sort((a, b) => b.v - a.v)
-);
-
-// ─── Tooltip helper ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Tooltip helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ttItem = {
   trigger: "item" as const,
   backgroundColor: "rgba(255,255,255,.97)",
@@ -383,8 +397,8 @@ const ttItem = {
   extraCssText: "box-shadow:0 8px 24px rgba(0,0,0,.12);border-radius:10px;padding:10px 14px;",
 };
 
-// ─── Gauge ────────────────────────────────────────────────────────────────────
-const gaugeOpt = {
+// â”€â”€â”€ Gauge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const gaugeOpt = computed(() => ({
   series: [{
     type: "gauge" as const,
     startAngle: 210, endAngle: -30,
@@ -409,11 +423,11 @@ const gaugeOpt = {
       color: G.brand,
       offsetCenter: [0, "-8%"],
     },
-    data: [{ value: 96 }],
+    data: [{ value: Math.round(conformidadeIndex.value * 100) }],
   }],
-};
+}));
 
-// ─── Equipes Visitadas chart ──────────────────────────────────────────────────
+// â”€â”€â”€ Equipes Visitadas chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const chartVisitadas = computed(() => {
   const data = visitadasSorted.value;
   const cats = data.map(e => e.nome);
@@ -452,132 +466,149 @@ const chartVisitadas = computed(() => {
   };
 });
 
-// ─── Ranking NC Equipes ───────────────────────────────────────────────────────
-const rankingNcEqCats = ["MA-PDT-E001M","MA-MRA-E001M","MA-BCB-F009M","MA-BCB-E001M","MA-VRF-E001M","MA-PDS-E001M","MA-BCB-O001M","MA-PLR-E001M","MA-SMT-E001M"];
-const rankingNcEqVals = [4, 4, 4, 5, 6, 7, 7, 8, 11];
+// â”€â”€â”€ NC per equipe from real data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const ncPerEquipe = computed(() => {
+  const ncPerSub: Record<string, number> = {};
+  for (const r of responses.value) {
+    if (r.resposta === "nao_conforme") {
+      ncPerSub[r.submission_id] = (ncPerSub[r.submission_id] ?? 0) + 1;
+    }
+  }
+  const counts: Record<string, number> = {};
+  for (const sub of submissions.value) {
+    const nc = ncPerSub[sub.id] ?? 0;
+    if (nc === 0) continue;
+    const equipes: string[] = Array.isArray(sub.membros)
+      ? (sub.membros as string[])
+      : sub.equipe ? [sub.equipe] : [];
+    for (const eq of equipes) {
+      counts[eq] = (counts[eq] ?? 0) + nc;
+    }
+  }
+  return Object.entries(counts)
+    .map(([name, v]) => ({ name, v }))
+    .sort((a, b) => a.v - b.v);
+});
 
-const chartRankingNcEq = {
-  tooltip: {
-    ...ttItem,
-    formatter: (p: { name: string; value: number }) =>
-      `<b>${p.name}</b><br/>NC: <b style="color:${G.brand}">${p.value}</b>`,
-  },
-  grid: { left: 8, right: 28, top: 4, bottom: 4, containLabel: true },
-  xAxis: { type: "value" as const, show: false, splitLine: { show: false } },
-  yAxis: {
-    type: "category" as const, data: rankingNcEqCats,
-    axisLine: { show: false }, axisTick: { show: false },
-    splitLine: { show: false }, axisLabel: { color: "#334155", fontSize: 10 },
-  },
-  series: [{
-    type: "bar" as const,
-    data: rankingNcEqVals,
-    barMaxWidth: 22,
-    itemStyle: { color: G.brand, borderRadius: [0, 6, 6, 0] },
-    emphasis: { itemStyle: { opacity: .8 } },
-    label: {
-      show: true, position: "right" as const,
-      fontSize: 11, fontWeight: "bold" as const, color: G.brand,
-      formatter: (p: { value: number }) => `${p.value}`,
+// â”€â”€â”€ Ranking NC Equipes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const chartRankingNcEq = computed(() => {
+  const data = ncPerEquipe.value;
+  return {
+    tooltip: {
+      ...ttItem,
+      formatter: (p: { name: string; value: number }) =>
+        `<b>${p.name}</b><br/>NC: <b style="color:${G.brand}">${p.value}</b>`,
     },
-  }],
-};
-
-// ─── NC por Categoria ─────────────────────────────────────────────────────────
-const ncCatCats = ["Trabalho em Alt.","APR","Padrinho de Seg.","Epi, Epc e Ferra.","Veículos e Equip.","Procedimento"];
-const ncCatVals = [6, 15, 20, 23, 24, 37];
-
-const chartNcCat = {
-  tooltip: {
-    ...ttItem,
-    formatter: (p: { name: string; value: number }) =>
-      `<b>${p.name}</b><br/>Ocorrências: <b style="color:${G.brand}">${p.value}</b>`,
-  },
-  grid: { left: 8, right: 28, top: 4, bottom: 4, containLabel: true },
-  xAxis: { type: "value" as const, show: false, splitLine: { show: false } },
-  yAxis: {
-    type: "category" as const, data: ncCatCats,
-    axisLine: { show: false }, axisTick: { show: false },
-    splitLine: { show: false }, axisLabel: { color: "#334155", fontSize: 10 },
-  },
-  series: [{
-    type: "bar" as const,
-    data: ncCatVals,
-    barMaxWidth: 28,
-    itemStyle: { color: G.brand, borderRadius: [0, 6, 6, 0] },
-    emphasis: { itemStyle: { opacity: .8 } },
-    label: {
-      show: true, position: "right" as const,
-      fontSize: 11, fontWeight: "bold" as const, color: G.brand,
-      formatter: (p: { value: number }) => `${p.value}`,
+    grid: { left: 8, right: 28, top: 4, bottom: 4, containLabel: true },
+    xAxis: { type: "value" as const, show: false, splitLine: { show: false } },
+    yAxis: {
+      type: "category" as const, data: data.map(e => e.name),
+      axisLine: { show: false }, axisTick: { show: false },
+      splitLine: { show: false }, axisLabel: { color: "#334155", fontSize: 10 },
     },
-  }],
-};
-
-// ─── Ranking Geral NC ─────────────────────────────────────────────────────────
-const rgCats = [
-  "Os EPC (cones, fita de sinalização, etc.) est...",
-  "O Padrinho de Segurança está supervisio...",
-  "Fez a amarração correta da escada no cen...",
-  "Cumpriu o procedimento de movimentação...",
-  "A documentação do veículo/equipamento (...",
-  "A cabine e carroceria do veículo estão lim...",
-  "Foi preenchido os riscos de choque elétri...",
-  "Utilizou corretamente o cinto de segurança...",
-  "Foram analisados os Riscos de Trabalho e...",
-  "Foi seccionado o disjuntor e fez o teste de...",
-  "Utilizou os EPC (detector de ausência de t...",
-  "O veículo está estacionado corretamente?",
-  "O Padrinho de Segurança se comunica e or...",
-  "Utilizou os EPI (Vestimenta, capacete de se...",
-  "Os EPI (capacete, vestimenta, bota de segu...",
-  "Os EPC escadas extensiva e singela estão...",
-  "Utilizou os EPI (Vestimenta, capacete de se...",
-  "O EPC mantas isolantes estão em condição...",
-  "Itens de segurança veicular estão em con...",
-  "A área de trabalho está sinalizada e delimi...",
-  "O veículo está calçado, freado e sinalizado ...",
-  "O Padrinho de Segurança interviu para evi...",
-];
-const rgVals = [2,2,2,2,2,2,2,3,3,3,4,4,4,5,5,5,6,7,7,11,12,14];
-
-const chartRankingGeralNc = {
-  tooltip: {
-    ...ttItem,
-    formatter: (p: { name: string; value: number }) =>
-      `${p.name}<br/>NC: <b style="color:${G.brand}">${p.value}</b>`,
-  },
-  grid: { left: 8, right: 28, top: 4, bottom: 4, containLabel: true },
-  xAxis: { type: "value" as const, show: false, splitLine: { show: false } },
-  yAxis: {
-    type: "category" as const, data: rgCats, inverse: false,
-    axisLine: { show: false }, axisTick: { show: false },
-    splitLine: { show: false },
-    axisLabel: { color: "#334155", fontSize: 10, width: 200, overflow: "truncate" as const },
-  },
-  dataZoom: [{
-    type: "inside" as const, orient: "vertical" as const,
-    startValue: 0, endValue: rgCats.length - 1,
-    zoomOnMouseWheel: false, moveOnMouseWheel: true,
-  }],
-  series: [{
-    type: "bar" as const,
-    data: rgVals.map((v, i) => ({
-      value: v,
-      itemStyle: {
-        color: `rgba(139,28,43,${0.45 + (i / rgVals.length) * 0.55})`,
-        borderRadius: [0, 6, 6, 0],
+    series: [{
+      type: "bar" as const,
+      data: data.map(e => e.v),
+      barMaxWidth: 22,
+      itemStyle: { color: G.brand, borderRadius: [0, 6, 6, 0] },
+      emphasis: { itemStyle: { opacity: .8 } },
+      label: {
+        show: true, position: "right" as const,
+        fontSize: 11, fontWeight: "bold" as const, color: G.brand,
+        formatter: (p: { value: number }) => `${p.value}`,
       },
-    })),
-    barMaxWidth: 22,
-    emphasis: { itemStyle: { opacity: .8 } },
-    label: {
-      show: true, position: "right" as const,
-      fontSize: 11, fontWeight: "bold" as const, color: G.brand,
-      formatter: (p: { value: number }) => `${p.value}`,
+    }],
+  };
+});
+
+// â”€â”€â”€ NC por Categoria â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const chartNcCat = computed(() => {
+  const entries = Object.entries(byCategoria.value)
+    .map(([cat, d]) => ({ cat, nc: d.nc }))
+    .filter(e => e.nc > 0)
+    .sort((a, b) => a.nc - b.nc);
+  return {
+    tooltip: {
+      ...ttItem,
+      formatter: (p: { name: string; value: number }) =>
+        `<b>${p.name}</b><br/>OcorrÃªncias: <b style="color:${G.brand}">${p.value}</b>`,
     },
-  }],
-};
+    grid: { left: 8, right: 28, top: 4, bottom: 4, containLabel: true },
+    xAxis: { type: "value" as const, show: false, splitLine: { show: false } },
+    yAxis: {
+      type: "category" as const, data: entries.map(e => e.cat),
+      axisLine: { show: false }, axisTick: { show: false },
+      splitLine: { show: false }, axisLabel: { color: "#334155", fontSize: 10 },
+    },
+    series: [{
+      type: "bar" as const,
+      data: entries.map(e => e.nc),
+      barMaxWidth: 28,
+      itemStyle: { color: G.brand, borderRadius: [0, 6, 6, 0] },
+      emphasis: { itemStyle: { opacity: .8 } },
+      label: {
+        show: true, position: "right" as const,
+        fontSize: 11, fontWeight: "bold" as const, color: G.brand,
+        formatter: (p: { value: number }) => `${p.value}`,
+      },
+    }],
+  };
+});
+
+// â”€â”€â”€ Ranking Geral NC â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const rgData = computed(() => {
+  const counts: Record<string, number> = {};
+  for (const r of responses.value) {
+    if (r.resposta === "nao_conforme") {
+      const key = (r.pergunta ?? "Sem descriÃ§Ã£o").slice(0, 50) + "...";
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+  }
+  return Object.entries(counts)
+    .map(([q, v]) => ({ q, v }))
+    .sort((a, b) => a.v - b.v);
+});
+
+const chartRankingGeralNc = computed(() => {
+  const data = rgData.value;
+  return {
+    tooltip: {
+      ...ttItem,
+      formatter: (p: { name: string; value: number }) =>
+        `${p.name}<br/>NC: <b style="color:${G.brand}">${p.value}</b>`,
+    },
+    grid: { left: 8, right: 28, top: 4, bottom: 4, containLabel: true },
+    xAxis: { type: "value" as const, show: false, splitLine: { show: false } },
+    yAxis: {
+      type: "category" as const, data: data.map(e => e.q), inverse: false,
+      axisLine: { show: false }, axisTick: { show: false },
+      splitLine: { show: false },
+      axisLabel: { color: "#334155", fontSize: 10, width: 200, overflow: "truncate" as const },
+    },
+    dataZoom: [{
+      type: "inside" as const, orient: "vertical" as const,
+      startValue: 0, endValue: data.length - 1,
+      zoomOnMouseWheel: false, moveOnMouseWheel: true,
+    }],
+    series: [{
+      type: "bar" as const,
+      data: data.map((e, i) => ({
+        value: e.v,
+        itemStyle: {
+          color: `rgba(139,28,43,${0.45 + (i / (data.length || 1)) * 0.55})`,
+          borderRadius: [0, 6, 6, 0],
+        },
+      })),
+      barMaxWidth: 22,
+      emphasis: { itemStyle: { opacity: .8 } },
+      label: {
+        show: true, position: "right" as const,
+        fontSize: 11, fontWeight: "bold" as const, color: G.brand,
+        formatter: (p: { value: number }) => `${p.value}`,
+      },
+    }],
+  };
+});
 </script>
 
 <style scoped lang="scss">
@@ -590,7 +621,7 @@ $inactive-text:#475569;
 
 .relatorio-page { background: #f8fafc; min-height: 100vh; }
 
-// ── Filter bar ────────────────────────────────────────────────────────────────
+// â”€â”€ Filter bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .filter-bar {
   background: #fff;
   border-bottom: 1px solid $border;
@@ -608,7 +639,7 @@ $inactive-text:#475569;
   letter-spacing: .8px; color: $label-color; line-height: 1;
 }
 
-// ── Pills ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Pills â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .pill-group { display: flex; gap: 4px; flex-wrap: wrap; }
 .pill {
   display: inline-flex; align-items: center;
@@ -630,7 +661,7 @@ $inactive-text:#475569;
   }
 }
 
-// ── Select (Gerente / Categoria / Prefixo / Observador) ───────────────────────
+// â”€â”€ Select (Gerente / Categoria / Prefixo / Observador) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .fgroup--gerente { min-width: 150px; }
 .gerente-select {
   height: 30px;
@@ -656,13 +687,13 @@ $inactive-text:#475569;
 :global(.gerente-popup .q-item) { font-size: 12px; min-height: 32px; padding: 4px 12px; }
 :global(.gerente-popup .q-item--active) { color: $brand !important; font-weight: 600; }
 
-// ── Divider ───────────────────────────────────────────────────────────────────
+// â”€â”€ Divider â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .filter-divider {
   width: 1px; height: 36px; background: $border;
   flex-shrink: 0; align-self: flex-end; margin: 0 4px;
 }
 
-/* ─── KPI cards ─────────────────────────────────────────────────── */
+/* â”€â”€â”€ KPI cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .kpi-card {
   border-radius: 12px;
   height: 100%;
@@ -729,7 +760,7 @@ $inactive-text:#475569;
   letter-spacing: .01em;
 }
 
-/* ─── Equipes Não Visitadas list ────────────────────────────────── */
+/* â”€â”€â”€ Equipes NÃ£o Visitadas list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .nv-row {
   display: flex;
   align-items: center;
@@ -745,7 +776,7 @@ $inactive-text:#475569;
   padding: 1px 8px; min-width: 28px; text-align: center;
 }
 
-// ── Dark mode ─────────────────────────────────────────────────────────────────
+// â”€â”€ Dark mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 .body--dark {
   .relatorio-page { background: #0f172a; }
   .filter-bar { background: #1e293b; border-bottom-color: #334155; }
@@ -765,3 +796,4 @@ $inactive-text:#475569;
   .kpi-stat-sub { color: #64748b; }
 }
 </style>
+
