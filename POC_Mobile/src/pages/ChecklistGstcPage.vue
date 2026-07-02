@@ -341,6 +341,24 @@
             @click="abrirCameraNc"
           />
 
+          <div v-if="fotosLocal.length" class="q-mb-md">
+            <div class="field-label q-mb-xs">Fotos do local da auditagem</div>
+            <div class="fotos-local-picker">
+              <div
+                v-for="(foto, i) in fotosLocal"
+                :key="i"
+                class="foto-local-thumb"
+                :class="{ 'foto-local-thumb--ativa': modalFotoPreview === foto }"
+                @click="usarFotoLocal(foto)"
+              >
+                <img :src="foto" alt="" />
+                <div v-if="modalFotoPreview === foto" class="foto-local-thumb__check">
+                  <q-icon name="mdi-check-circle" size="20px" />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <q-input
             v-model="modalObservacao"
             type="textarea"
@@ -583,6 +601,10 @@ function abrirCameraNc() {
   cameraNcAberta.value = true;
 }
 
+function usarFotoLocal(foto: string) {
+  modalFotoPreview.value = foto;
+}
+
 async function onFotoNcCapturada(base64: string) {
   try {
     modalFotoPreview.value = await compressBase64(base64);
@@ -796,5 +818,45 @@ async function onSubmit() {
   border-color: var(--q-primary);
   opacity: 0.7;
   cursor: wait;
+}
+
+.fotos-local-picker {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.foto-local-thumb {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  cursor: pointer;
+  border: 2.5px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.foto-local-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.foto-local-thumb--ativa {
+  border-color: var(--q-primary);
+}
+
+.foto-local-thumb__check {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(122, 18, 37, 0.38);
+  color: #fff;
 }
 </style>

@@ -819,4 +819,44 @@ async function onSubmit() {
   opacity: 0.7;
   cursor: wait;
 }
+
+.fotos-local-picker {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.foto-local-thumb {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  cursor: pointer;
+  border: 2.5px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.foto-local-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.foto-local-thumb--ativa {
+  border-color: var(--q-primary);
+}
+
+.foto-local-thumb__check {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(122, 18, 37, 0.38);
+  color: #fff;
+}
 </style>
