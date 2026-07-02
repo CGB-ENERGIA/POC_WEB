@@ -455,6 +455,10 @@ function abrirModalFotosLocal() {
 }
 
 function abrirCameraLocal() {
+  if (!equipe.value.trim()) {
+    $q.notify({ type: "warning", message: "Informe o nome da equipe antes de tirar a foto", position: "top" });
+    return;
+  }
   cameraLocalAberta.value = true;
 }
 
@@ -598,6 +602,10 @@ function abrirModalNaoConforme(pergunta: PerguntaGoman) {
 }
 
 function abrirCameraNc() {
+  if (!equipe.value.trim()) {
+    $q.notify({ type: "warning", message: "Informe o nome da equipe antes de tirar a foto", position: "top" });
+    return;
+  }
   cameraNcAberta.value = true;
 }
 

@@ -23,7 +23,14 @@
           <div class="shutter-btn__ring" />
           <div class="shutter-btn__inner" />
         </button>
-        <div style="width: 52px" />
+        <q-btn
+          flat round
+          icon="mdi-camera-flip-outline"
+          color="white"
+          size="lg"
+          :disable="!pronto || virandoCamera"
+          @click="virarCamera"
+        />
       </div>
     </div>
   </q-dialog>
@@ -38,12 +45,15 @@ const emit = defineEmits<{ (e: "captured", base64: string): void }>();
 const videoRef = ref<HTMLVideoElement | null>(null);
 const pronto = ref(false);
 const erro = ref("");
+const virandoCamera = ref(false);
+const facingMode = ref<"environment" | "user">("environment");
 let stream: MediaStream | null = null;
 
 watch(isOpen, async (val) => {
   if (val) {
     erro.value = "";
     pronto.value = false;
+    facingMode.value = "environment";
     await nextTick();
     await iniciarCamera();
   } else {
@@ -54,7 +64,7 @@ watch(isOpen, async (val) => {
 async function iniciarCamera() {
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 } },
+      video: { facingMode: { ideal: facingMode.value }, width: { ideal: 1920 } },
       audio: false,
     });
     const video = videoRef.value;
@@ -70,6 +80,15 @@ function pararCamera() {
   stream?.getTracks().forEach((t) => t.stop());
   stream = null;
   pronto.value = false;
+}
+
+async function virarCamera() {
+  virandoCamera.value = true;
+  facingMode.value = facingMode.value === "environment" ? "user" : "environment";
+  pararCamera();
+  await nextTick();
+  await iniciarCamera();
+  virandoCamera.value = false;
 }
 
 function capturar() {
