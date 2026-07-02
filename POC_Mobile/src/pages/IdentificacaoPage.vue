@@ -12,7 +12,7 @@
       </div>
 
       <q-card flat class="mobile-card q-pa-lg relative-position" style="z-index: 1">
-        <div class="section-title q-mb-xs">Entrar no checklist</div>
+        <div class="section-title q-mb-xs">Entrar no POC</div>
         <div class="section-subtitle q-mb-lg">
           Informe sua matrícula para iniciar a auditagem
         </div>
