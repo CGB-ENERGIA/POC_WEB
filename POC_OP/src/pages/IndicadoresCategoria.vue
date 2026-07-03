@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <q-page class="indicadores-page">
     <q-linear-progress v-if="loading" indeterminate color="negative" style="position:sticky;top:0;z-index:200" />
 
@@ -18,10 +18,10 @@
       <div class="filter-collapsible" :class="{ 'is-hidden': !showFilters }">
       <div class="filter-bar__inner">
 
-        <!-- Row 1: MÃªs Â· Ano Â· Base Â· GerÃªncia -->
+        <!-- Row 1: Mês · Ano · Base · Gerência -->
         <div class="filter-row">
           <div class="fgroup">
-            <span class="fgroup__label">MÃªs</span>
+            <span class="fgroup__label">Mês</span>
             <div class="pill-group">
               <button v-for="m in mesesOpts" :key="m"
                 :class="['pill', filters.mes === m && 'pill--active']"
@@ -48,7 +48,7 @@
           </div>
           <div class="filter-divider" />
           <div class="fgroup">
-            <span class="fgroup__label">GerÃªncia</span>
+            <span class="fgroup__label">Gerência</span>
             <div class="pill-group">
               <button v-for="g in gerenciasOpts" :key="g"
                 :class="['pill', filters.gerencia === g && 'pill--active']"
@@ -57,7 +57,7 @@
           </div>
         </div>
 
-        <!-- Row 2: Semana Â· Gerente Â· Prefixo Â· Tipo de POC -->
+        <!-- Row 2: Semana · Gerente · Prefixo · Tipo de POC -->
         <div class="filter-row">
           <div class="fgroup fgroup--gerente" style="min-width:140px">
             <span class="fgroup__label">Semana</span>
@@ -115,7 +115,7 @@
               <div class="kpi-stat-value" style="color:#16a34a">
                 {{ totalConf.toLocaleString('pt-BR') }}
               </div>
-              <div class="kpi-stat-label">Total Conformidade</div>
+              <div class="kpi-stat-label">Total conformidade</div>
               <div class="kpi-stat-sub">jan â€“ jun 2026</div>
             </q-card-section>
           </q-card>
@@ -140,7 +140,7 @@
         <div class="col-12 col-md-4">
           <q-card flat bordered class="kpi-card kpi-gauge-card">
             <q-card-section class="q-pa-md kpi-gauge-section">
-              <div class="kpi-gauge-label">% Conformidade</div>
+              <div class="kpi-gauge-label">% conformidade</div>
               <div class="kpi-gauge-wrap">
                 <v-chart :option="gaugeOpt" autoresize class="kpi-gauge-chart" />
                 <div class="kpi-gauge-sub">
@@ -157,7 +157,7 @@
       <!-- Section title -->
       <div class="operacional-title">OPERACIONAL</div>
 
-      <!-- Top row: APR Â· Regras de Ouro Â· Procedimento -->
+      <!-- Top row: APR · Regras de Ouro · Procedimento -->
       <div class="row q-col-gutter-md q-mb-md">
         <div v-for="cat in topCharts" :key="cat.id" class="col-12 col-md-4">
           <q-card flat bordered class="cat-card">
@@ -264,9 +264,9 @@ const CAT_DEFS = [
   { key: "apr",      label: "APR",                     match: "APR" },
   { key: "regraOuro",label: "Regras de Ouro",           match: "Regras de Ouro" },
   { key: "procedim", label: "Procedimento",             match: "Procedimento" },
-  { key: "padrinho", label: "Padrinho de SeguranÃ§a",    match: "Padrinho" },
+  { key: "padrinho", label: "Padrinho de Segurança",    match: "Padrinho" },
   { key: "alturas",  label: "Trabalho em Altura",       match: "Altura" },
-  { key: "veiculos", label: "VeÃ­culos e Equipamentos",  match: "VeÃ­culo" },
+  { key: "veiculos", label: "Veículos e Equipamentos",  match: "Veículo" },
   { key: "epi",      label: "Epi, Epc e Ferramentas",   match: "EPI" },
 ];
 
@@ -328,7 +328,7 @@ function makeCatChart(data: { conf: number[]; inc: number[] }) {
         const i = params[0]?.dataIndex ?? 0;
         return (
           `<b>${months[i]}</b><br/>` +
-          `<span style="color:${G.green}">â— Conformidade: ${data.conf[i].toLocaleString("pt-BR")}</span><br/>` +
+          `<span style="color:${G.green}">â— conformidade: ${data.conf[i].toLocaleString("pt-BR")}</span><br/>` +
           `<span style="color:${G.brand}">â— Inconformidade: ${data.inc[i]}</span><br/>` +
           `<b>% Conf: ${pct[i]}%</b>`
         );
@@ -338,9 +338,9 @@ function makeCatChart(data: { conf: number[]; inc: number[] }) {
       top: 2,
       left: "center",
       data: [
-        { name: "Conformidade",    icon: "circle" },
+        { name: "conformidade",    icon: "circle" },
         { name: "Inconformidade",  icon: "circle" },
-        { name: "% Conformidade",  icon: "circle" },
+        { name: "% conformidade",  icon: "circle" },
       ],
       textStyle: { fontSize: 9.5, color: "#64748b" },
       itemWidth: 7,
@@ -358,7 +358,7 @@ function makeCatChart(data: { conf: number[]; inc: number[] }) {
         fontSize: 10,
         // Show month + inconformidade value on second line
         formatter: (_val: string, idx: number) =>
-          `{m|${months[idx]}}\n{i|${data.inc[idx] > 0 ? data.inc[idx] : "Â·"}}`,
+          `{m|${months[idx]}}\n{i|${data.inc[idx] > 0 ? data.inc[idx] : "·"}}`,
         rich: {
           m: { color: "#64748b", fontSize: 10, lineHeight: 14 },
           i: { color: G.brand, fontSize: 9, fontWeight: "bold", lineHeight: 13 },
@@ -372,7 +372,7 @@ function makeCatChart(data: { conf: number[]; inc: number[] }) {
     },
     series: [
       {
-        name: "Conformidade",
+        name: "conformidade",
         type: "bar" as const,
         stack: "total",
         barMaxWidth: 52,
@@ -409,7 +409,7 @@ function makeCatChart(data: { conf: number[]; inc: number[] }) {
       },
       {
         // legend placeholder only
-        name: "% Conformidade",
+        name: "% conformidade",
         type: "bar" as const,
         itemStyle: { color: "#475569" },
         data: [],

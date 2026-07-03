@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <q-page class="tz-page">
     <q-linear-progress v-if="loading" indeterminate color="negative" style="position:sticky;top:0;z-index:200" />
 
@@ -18,7 +18,7 @@
       <div class="filter-collapsible" :class="{ 'is-hidden': !showFilters }">
       <div class="filter-bar__inner">
 
-        <!-- Row 1: Ano Â· Categoria Â· Gerente Final Â· Observador -->
+        <!-- Row 1: Ano · Categoria · Gerente Final · Observador -->
         <div class="filter-row">
           <div class="fgroup">
             <span class="fgroup__label">Ano</span>
@@ -61,10 +61,10 @@
           </div>
         </div>
 
-        <!-- Row 2: MÃªs Â· Semana Â· Base Â· GerÃªncia da Equipe Â· Prefixo -->
+        <!-- Row 2: Mês · Semana · Base · Gerência da Equipe · Prefixo -->
         <div class="filter-row">
           <div class="fgroup fgroup--select">
-            <span class="fgroup__label">MÃªs</span>
+            <span class="fgroup__label">Mês</span>
             <q-select v-model="filters.mes" :options="mesesOpts"
               dense outlined hide-bottom-space class="fselect"
               popup-content-class="fselect-popup" />
@@ -91,7 +91,7 @@
           <div class="filter-divider" />
 
           <div class="fgroup fgroup--select" style="min-width:160px">
-            <span class="fgroup__label">GerÃªncia da Equipe</span>
+            <span class="fgroup__label">Gerência da Equipe</span>
             <q-select v-model="filters.gerencia" :options="gerenciasOpts"
               dense outlined hide-bottom-space class="fselect"
               popup-content-class="fselect-popup" />
@@ -139,8 +139,8 @@
                 <table class="rank-table">
                   <thead>
                     <tr>
-                      <th class="rh-q">NÃ£o Conformidade</th>
-                      <th class="rh-v">Qnt NÃ£o Conforme</th>
+                      <th class="rh-q">Não conformidade</th>
+                      <th class="rh-v">Qnt Não Conforme</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -165,7 +165,7 @@
         <div class="col-12 col-md-4">
           <q-card flat bordered class="chart-card full-height">
             <q-card-section class="q-pb-xs">
-              <div class="chart-title">Ranking de Equipes com NÃ£o Conformidades</div>
+              <div class="chart-title">Ranking de Equipes com Não conformidades</div>
             </q-card-section>
             <q-card-section class="q-pt-none" style="padding-bottom:0">
               <v-chart :option="chartRankingEq" autoresize style="height:460px" />
@@ -200,7 +200,7 @@ const {
 const showFilters = ref(false);
 
 const anos         = ["2024", "2025", "2026"];
-const categorias   = ["Todos", "APR", "Padrinho de SeguranÃ§a", "Procedimento", "Regras de Ouro"];
+const categorias   = ["Todos", "APR", "Padrinho de Segurança", "Procedimento", "Regras de Ouro"];
 const gerentesFinal = ["Todos","Afonso","Jamerson","JoÃ£o F.","Julio C.","Leandro","Marcos","Paulo","Pryscilla"];
 const bases        = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const mesesOpts    = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26"];
@@ -302,12 +302,12 @@ const treemapData = computed(() => {
     .filter(e => e.value > 0)
     .sort((a, b) => b.value - a.value);
   return entries.length ? entries : [
-    { name: "Padrinho de SeguranÃ§a", value: 20 },
+    { name: "Padrinho de Segurança", value: 20 },
     { name: "Procedimento",          value: 19 },
     { name: "APR",                   value: 11 },
     { name: "Trabalho em Altura",    value:  6 },
     { name: "Regras de Ouro",        value:  5 },
-    { name: "VeÃ­culos e Equip.",     value:  4 },
+    { name: "Veículos e Equip.",     value:  4 },
   ];
 });
 

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <q-page class="icit-page">
     <q-linear-progress v-if="loading" indeterminate color="negative" style="position:sticky;top:0;z-index:200" />
 
@@ -18,7 +18,7 @@
       <div class="filter-collapsible" :class="{ 'is-hidden': !showFilters }">
       <div class="filter-bar__inner">
 
-        <!-- Row 1: Ano Â· Semana Â· Gerente -->
+        <!-- Row 1: Ano · Semana · Gerente -->
         <div class="filter-row">
 
           <div class="fgroup">
@@ -56,11 +56,11 @@
 
         </div>
 
-        <!-- Row 2: MÃªs Â· GerÃªncia -->
+        <!-- Row 2: Mês · Gerência -->
         <div class="filter-row">
 
           <div class="fgroup">
-            <span class="fgroup__label">MÃªs</span>
+            <span class="fgroup__label">Mês</span>
             <div class="pill-group">
               <button v-for="m in meses" :key="m.value"
                 :class="['pill', { 'pill--active': filters.mes === m.value }]"
@@ -71,7 +71,7 @@
           <div class="filter-divider" />
 
           <div class="fgroup">
-            <span class="fgroup__label">GerÃªncia</span>
+            <span class="fgroup__label">Gerência</span>
             <div class="pill-group">
               <button v-for="g in gerencias" :key="g"
                 :class="['pill', { 'pill--active': filters.gerencia === g }]"
@@ -81,7 +81,7 @@
 
         </div>
 
-        <!-- Row 3: Base Â· SeguranÃ§a Â· Tipo de POC -->
+        <!-- Row 3: Base · Segurança · Tipo de POC -->
         <div class="filter-row">
 
           <div class="fgroup">
@@ -96,7 +96,7 @@
           <div class="filter-divider" />
 
           <div class="fgroup">
-            <span class="fgroup__label">SeguranÃ§a</span>
+            <span class="fgroup__label">Segurança</span>
             <div class="pill-group">
               <button v-for="s in segurancas" :key="s"
                 :class="['pill', { 'pill--active': filters.seguranca === s }]"
@@ -164,12 +164,12 @@
         <!-- LEFT: 3Ã—2 grid -->
         <div class="col-12 col-md-9">
 
-          <!-- Row 1: Donut Â· MÃªs Â· GerÃªncia -->
+          <!-- Row 1: Donut · Mês · Gerência -->
           <div class="row q-col-gutter-md q-mb-md">
             <div class="col-12 col-md-4">
               <q-card flat bordered>
                 <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Ãndice Geral de Conformidade</div>
+                  <div class="text-subtitle1 text-weight-bold">Ãndice Geral de conformidade</div>
                 </q-card-section>
                 <q-card-section>
                   <v-chart :option="chartDonut" autoresize style="height:260px" />
@@ -179,7 +179,7 @@
             <div class="col-12 col-md-4">
               <q-card flat bordered>
                 <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Ãndice de Conformidade por MÃªs</div>
+                  <div class="text-subtitle1 text-weight-bold">Ãndice de conformidade por Mês</div>
                   <div class="text-caption text-grey-6">% acumulada</div>
                 </q-card-section>
                 <q-card-section>
@@ -190,7 +190,7 @@
             <div class="col-12 col-md-4">
               <q-card flat bordered>
                 <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Ãndice de Conformidade por GerÃªncia</div>
+                  <div class="text-subtitle1 text-weight-bold">Ãndice de conformidade por Gerência</div>
                 </q-card-section>
                 <q-card-section>
                   <v-chart :option="chartGerencia" autoresize style="height:260px" />
@@ -199,12 +199,12 @@
             </div>
           </div>
 
-          <!-- Row 2: Base Â· NÃ£o Conformidades por Categoria -->
+          <!-- Row 2: Base · Não conformidades por Categoria -->
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-4">
               <q-card flat bordered>
                 <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Ãndice de Conformidade por Base</div>
+                  <div class="text-subtitle1 text-weight-bold">Ãndice de conformidade por Base</div>
                 </q-card-section>
                 <q-card-section>
                   <v-chart :option="chartBase" autoresize style="height:240px" />
@@ -214,8 +214,8 @@
             <div class="col-12 col-md-8">
               <q-card flat bordered>
                 <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">NÃ£o Conformidades por Categoria</div>
-                  <div class="text-caption text-grey-6">OcorrÃªncias no perÃ­odo</div>
+                  <div class="text-subtitle1 text-weight-bold">Não conformidades por Categoria</div>
+                  <div class="text-caption text-grey-6">OcorrÃªncias no Período</div>
                 </q-card-section>
                 <q-card-section>
                   <v-chart :option="chartCategoria" autoresize style="height:240px" />
@@ -230,7 +230,7 @@
         <div class="col-12 col-md-3 equipe-col">
           <q-card flat bordered class="equipe-card">
             <q-card-section class="q-pb-none">
-              <div class="text-subtitle1 text-weight-bold">Ãndice de Conformidade por Equipe</div>
+              <div class="text-subtitle1 text-weight-bold">Ãndice de conformidade por Equipe</div>
               <div class="text-caption text-grey-6">Role para ver mais</div>
             </q-card-section>
             <q-card-section>
@@ -302,7 +302,7 @@ const meses = [
 ];
 const gerencias  = ["Todos", "GERE", "GOMAN", "GSTC", "SPOT"];
 const bases      = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
-const segurancas = ["Todos", "SeguranÃ§a"];
+const segurancas = ["Todos", "Segurança"];
 const tiposPoc   = ["Todos", "Administrativo", "Operacional"];
 const gerentes   = [
   "Todos", "Afonso", "Jamerson", "JoÃ£o F.", "Julio C.", "Leandro",
@@ -316,7 +316,7 @@ const filters = reactive({
   mes:       now.getMonth() + 1,
   gerencia:  "Todos",
   base:      "Todos",
-  seguranca: "SeguranÃ§a",
+  seguranca: "Segurança",
   tipoPoc:   "Operacional",
   gerente:   "Todos",
 });
@@ -329,7 +329,7 @@ watch(filters, recarregar, { deep: true });
 
 // â”€â”€â”€ KPIs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const kpis = computed(() => [
-  { label: "Conformidade",     value: fmtN(totalConformes.value),   icon: "mdi-check-circle",  color: "positive", hex: "#16a34a" },
+  { label: "conformidade",     value: fmtN(totalConformes.value),   icon: "mdi-check-circle",  color: "positive", hex: "#16a34a" },
   { label: "Inconformidade",   value: fmtN(totalNaoConformes.value), icon: "mdi-alert-circle",  color: "negative", hex: "#dc2626" },
   { label: "Ãndice Geral",     value: fmtPct(conformidadeIndex.value), icon: "mdi-gauge",       color: "teal",     hex: "#0d9488" },
   { label: "Equipes Auditadas",value: fmtN(basesCovertas.value),    icon: "mdi-account-group", color: "primary",  hex: "#0284c7" },
@@ -385,7 +385,7 @@ const chartDonut = computed(() => ({
   tooltip: {
     ...ttItem,
     formatter: (p: { name: string; value: number; percent: number }) =>
-      `<b>${p.name}</b><br/>${p.value} Â· <b>${p.percent.toFixed(0)}%</b>`
+      `<b>${p.name}</b><br/>${p.value} · <b>${p.percent.toFixed(0)}%</b>`
   },
   legend: {
     bottom: 4, left: "center", itemWidth: 10, itemHeight: 10, itemGap: 16,
@@ -415,13 +415,13 @@ const chartDonut = computed(() => ({
     itemStyle: { borderRadius: 8, borderColor: "#fff", borderWidth: 3 },
     emphasis: { scale: true, scaleSize: 5, itemStyle: { shadowBlur: 16, shadowColor: "rgba(0,0,0,.15)" } },
     data: [
-      { value: totalConformes.value, name: "Conformidade",   itemStyle: { color: P.conf   } },
+      { value: totalConformes.value, name: "conformidade",   itemStyle: { color: P.conf   } },
       { value: totalNaoConformes.value, name: "Inconformidade", itemStyle: { color: P.inconf } }
     ]
   }]
 }));
 
-// â”€â”€â”€ Chart: Por MÃªs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€â”€ Chart: Por Mês â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const chartMes = computed(() => {
   const mesLabels = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
   const entries = Object.entries(byMes.value).sort((a, b) => Number(a[0]) - Number(b[0]));
@@ -431,7 +431,7 @@ const chartMes = computed(() => {
   );
 });
 
-// â”€â”€â”€ Chart: Por GerÃªncia â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€â”€ Chart: Por Gerência â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const chartGerencia = computed(() => {
   const entries = Object.entries(byGerencia.value).sort((a, b) => a[1] - b[1]);
   return hBar(entries.map(([k]) => k), entries.map(([, v]) => v), P.conf, "", Math.max(...entries.map(([,v]) => v), 1));
@@ -443,7 +443,7 @@ const chartBase = computed(() => {
   return hBar(entries.map(([k]) => k), entries.map(([, v]) => v), P.conf, "", Math.max(...entries.map(([,v]) => v), 1));
 });
 
-// â”€â”€â”€ Chart: NÃ£o Conformidades por Categoria â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€â”€ Chart: Não conformidades por Categoria â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const chartCategoria = computed(() => {
   const catEntries = Object.entries(byCategoria.value)
     .map(([cat, d]) => ({ cat, nc: d.nc }))

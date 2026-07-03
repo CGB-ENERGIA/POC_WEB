@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <q-page class="mapa-mensal-page">
     <q-linear-progress v-if="loading" indeterminate color="negative" style="position:sticky;top:0;z-index:200" />
 
@@ -16,7 +16,7 @@
       <div class="filter-collapsible" :class="{ 'is-hidden': !showFilters }">
       <div class="filter-bar__inner">
 
-        <!-- Row 1: Semana Â· MÃªs Â· GerÃªncia -->
+        <!-- Row 1: Semana · Mês · Gerência -->
         <div class="filter-row">
           <div class="fgroup">
             <span class="fgroup__label">Semana</span>
@@ -28,7 +28,7 @@
           </div>
           <div class="filter-divider" />
           <div class="fgroup">
-            <span class="fgroup__label">MÃªs</span>
+            <span class="fgroup__label">Mês</span>
             <div class="pill-group">
               <button v-for="m in mesesOpts" :key="m"
                 :class="['pill', filters.mes === m && 'pill--active']"
@@ -37,7 +37,7 @@
           </div>
           <div class="filter-divider" />
           <div class="fgroup">
-            <span class="fgroup__label">GerÃªncia</span>
+            <span class="fgroup__label">Gerência</span>
             <div class="pill-group">
               <button v-for="g in gerenciasOpts" :key="g"
                 :class="['pill', filters.gerencia === g && 'pill--active']"
@@ -46,7 +46,7 @@
           </div>
         </div>
 
-        <!-- Row 2: Ano Â· Gerente -->
+        <!-- Row 2: Ano · Gerente -->
         <div class="filter-row">
           <div class="fgroup">
             <span class="fgroup__label">Ano</span>
@@ -67,7 +67,7 @@
           </div>
         </div>
 
-        <!-- Row 3: Base Â· Tipo de POC -->
+        <!-- Row 3: Base · Tipo de POC -->
         <div class="filter-row">
           <div class="fgroup">
             <span class="fgroup__label">Base</span>
@@ -108,7 +108,7 @@
                 {{ totalInc.toLocaleString('pt-BR') }}
               </div>
               <div class="kpi-stat-label">Total de Inconformidade</div>
-              <div class="kpi-stat-sub">acumulado no perÃ­odo</div>
+              <div class="kpi-stat-sub">acumulado no Período</div>
             </q-card-section>
           </q-card>
         </div>
@@ -283,11 +283,11 @@ const catData = computed(() => {
   const cats = [
     "APR",
     "Epi, Epc e Ferramentas",
-    "Padrinho de SeguranÃ§a",
+    "Padrinho de Segurança",
     "Procedimento",
     "Regras de Ouro",
     "Trabalho em Altura",
-    "VeÃ­culos e Equipamentos",
+    "Veículos e Equipamentos",
   ];
   const rows = cats.map(label => ({ label, values: Array(12).fill(0) as number[] }));
   const rowMap: Record<string, number[]> = {};
@@ -304,11 +304,11 @@ const catData = computed(() => {
   return rows.some(r => r.values.some(v => v > 0)) ? rows : [
     { label: "APR",                    values: [11, 15, 25,  9, 19, 26, 0, 0, 0, 0, 0, 0] },
     { label: "Epi, Epc e Ferramentas", values: [22, 42, 22, 59, 40, 37, 0, 0, 0, 0, 0, 0] },
-    { label: "Padrinho de SeguranÃ§a",  values: [ 9, 19, 35, 51, 39, 20, 0, 0, 0, 0, 0, 0] },
+    { label: "Padrinho de Segurança",  values: [ 9, 19, 35, 51, 39, 20, 0, 0, 0, 0, 0, 0] },
     { label: "Procedimento",           values: [52, 40, 59, 54, 49, 37, 0, 0, 0, 0, 0, 0] },
     { label: "Regras de Ouro",         values: [ 1,  1,  1,  0,  2,  0, 0, 0, 0, 0, 0, 0] },
     { label: "Trabalho em Altura",     values: [10,  9, 25, 20, 19,  6, 0, 0, 0, 0, 0, 0] },
-    { label: "VeÃ­culos e Equipamentos",values: [33, 33, 30, 37, 34, 37, 0, 0, 0, 0, 0, 0] },
+    { label: "Veículos e Equipamentos",values: [33, 33, 30, 37, 34, 37, 0, 0, 0, 0, 0, 0] },
   ];
 });
 

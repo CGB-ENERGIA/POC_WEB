@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <q-page class="hist-page">
     <q-linear-progress v-if="loading" indeterminate color="negative" style="position:sticky;top:0;z-index:200" />
 
@@ -12,7 +12,7 @@
         <div class="hist-title">HISTÃ“RICO - ICIT</div>
         <div class="hist-date">
           <span>22/06/2026 13:54:55</span>
-          <span class="text-grey-5"> Â· Ãšltima AtualizaÃ§Ã£o</span>
+          <span class="text-grey-5"> · Ãšltima AtualizaÃ§Ã£o</span>
         </div>
         <div class="filtrar-por">
           <span class="filtrar-label">Filtrar por</span>
@@ -64,7 +64,7 @@
         <div class="frow">
 
           <div class="fgroup">
-            <span class="fgroup__label">MÃªs</span>
+            <span class="fgroup__label">Mês</span>
             <div class="pill-group">
               <button v-for="m in meses" :key="m.v"
                 :class="['pill', filters.mes === m.v && 'pill--active']"
@@ -85,7 +85,7 @@
           <div class="filter-divider" />
 
           <div class="fgroup">
-            <span class="fgroup__label">GerÃªncia</span>
+            <span class="fgroup__label">Gerência</span>
             <div class="pill-group">
               <button v-for="g in gerencias" :key="g"
                 :class="['pill', filters.gerencia === g && 'pill--active']"

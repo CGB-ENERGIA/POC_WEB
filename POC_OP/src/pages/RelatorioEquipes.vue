@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <q-page class="relatorio-page">
     <q-linear-progress v-if="loading" indeterminate color="negative" style="position:sticky;top:0;z-index:200" />
 
@@ -18,10 +18,10 @@
       <div class="filter-collapsible" :class="{ 'is-hidden': !showFilters }">
       <div class="filter-bar__inner">
 
-        <!-- Row 1: MÃªs Â· Ano Â· Base Â· Gerente -->
+        <!-- Row 1: Mês · Ano · Base · Gerente -->
         <div class="filter-row">
           <div class="fgroup">
-            <span class="fgroup__label">MÃªs</span>
+            <span class="fgroup__label">Mês</span>
             <div class="pill-group">
               <button v-for="m in mesesOpts" :key="m"
                 :class="['pill', filters.mes === m && 'pill--active']"
@@ -59,10 +59,10 @@
           </div>
         </div>
 
-        <!-- Row 2: GerÃªncia Â· Tipo de POC Â· FunÃ§Ã£o -->
+        <!-- Row 2: Gerência · Tipo de POC · Função -->
         <div class="filter-row">
           <div class="fgroup">
-            <span class="fgroup__label">GerÃªncia</span>
+            <span class="fgroup__label">Gerência</span>
             <div class="pill-group">
               <button v-for="g in gerenciasOpts" :key="g"
                 :class="['pill', filters.gerencia === g && 'pill--active']"
@@ -80,7 +80,7 @@
           </div>
           <div class="filter-divider" />
           <div class="fgroup">
-            <span class="fgroup__label">FunÃ§Ã£o</span>
+            <span class="fgroup__label">Função</span>
             <div class="pill-group">
               <button v-for="f in funcaoOpts" :key="f"
                 :class="['pill', filters.funcao === f && 'pill--active']"
@@ -127,9 +127,9 @@
               <div class="kpi-stat-icon-wrap" style="background:rgba(2,132,199,.1)">
                 <q-icon name="mdi-eye-check" size="24px" style="color:#0284c7" />
               </div>
-              <div class="kpi-stat-value" style="color:#0284c7">844</div>
+              <div class="kpi-stat-value" style="color:#0284c7">{{ totalSubmissions }}</div>
               <div class="kpi-stat-label">Visitas Recebidas</div>
-              <div class="kpi-stat-sub">no perÃ­odo selecionado</div>
+              <div class="kpi-stat-sub">no período selecionado</div>
             </q-card-section>
           </q-card>
         </div>
@@ -140,7 +140,7 @@
               <div class="kpi-stat-icon-wrap" style="background:rgba(234,88,12,.1)">
                 <q-icon name="mdi-account-group" size="24px" style="color:#ea580c" />
               </div>
-              <div class="kpi-stat-value" style="color:#ea580c">194</div>
+              <div class="kpi-stat-value" style="color:#ea580c">{{ allPrefixes.length }}</div>
               <div class="kpi-stat-label">Total de Equipes</div>
               <div class="kpi-stat-sub">equipes monitoradas</div>
             </q-card-section>
@@ -153,9 +153,9 @@
               <div class="kpi-stat-icon-wrap" style="background:rgba(22,163,74,.1)">
                 <q-icon name="mdi-check-decagram" size="24px" style="color:#16a34a" />
               </div>
-              <div class="kpi-stat-value" style="color:#16a34a">186</div>
+              <div class="kpi-stat-value" style="color:#16a34a">{{ visitadasSorted.length }}</div>
               <div class="kpi-stat-label">Equipes Visitadas</div>
-              <div class="kpi-stat-sub">8 equipes nÃ£o visitadas</div>
+              <div class="kpi-stat-sub">{{ naoVisitadas.length }} equipes não visitadas</div>
             </q-card-section>
           </q-card>
         </div>
@@ -166,7 +166,7 @@
               <div class="kpi-gauge-label">Taxa de Contato</div>
               <div class="kpi-gauge-wrap">
                 <v-chart :option="gaugeOpt" autoresize class="kpi-gauge-chart" />
-                <div class="kpi-gauge-sub">186 de 194 equipes</div>
+                <div class="kpi-gauge-sub">{{ visitadasSorted.length }} de {{ allPrefixes.length }} equipes</div>
               </div>
             </q-card-section>
           </q-card>
@@ -189,11 +189,11 @@
           </q-card>
         </div>
 
-        <!-- Col 2: Equipes NÃ£o Visitadas -->
+        <!-- Col 2: Equipes Não Visitadas -->
         <div class="col-12 col-md-2">
           <q-card flat bordered>
             <q-card-section class="q-pb-xs">
-              <div class="text-subtitle1 text-weight-bold">Equipes NÃ£o Visitadas</div>
+              <div class="text-subtitle1 text-weight-bold">Equipes Não Visitadas</div>
               <div class="text-h5 text-weight-bold" style="color:#dc2626">{{ naoVisitadas.length }}</div>
             </q-card-section>
             <q-card-section class="q-pt-xs">
@@ -209,7 +209,7 @@
         <div class="col-12 col-md-3">
           <q-card flat bordered class="q-mb-md">
             <q-card-section class="q-pb-xs">
-              <div class="text-subtitle1 text-weight-bold">Ranking de Equipes com NÃ£o Conformidades</div>
+              <div class="text-subtitle1 text-weight-bold">Ranking de Equipes com Não Conformidades</div>
             </q-card-section>
             <q-card-section class="q-pt-none">
               <v-chart :option="chartRankingNcEq" autoresize style="height:220px" />
@@ -217,7 +217,7 @@
           </q-card>
           <q-card flat bordered>
             <q-card-section class="q-pb-xs">
-              <div class="text-subtitle1 text-weight-bold">NÃ£o Conformidades por Categoria</div>
+              <div class="text-subtitle1 text-weight-bold">Não Conformidades por Categoria</div>
             </q-card-section>
             <q-card-section class="q-pt-none">
               <v-chart :option="chartNcCat" autoresize style="height:196px" />
@@ -229,7 +229,7 @@
         <div class="col-12 col-md-4">
           <q-card flat bordered>
             <q-card-section class="q-pb-xs">
-              <div class="text-subtitle1 text-weight-bold">Ranking Geral de NÃ£o Conformidades</div>
+              <div class="text-subtitle1 text-weight-bold">Ranking Geral de Não Conformidades</div>
             </q-card-section>
             <q-card-section class="q-pt-none">
               <v-chart :option="chartRankingGeralNc" autoresize style="height:460px" />
@@ -278,7 +278,7 @@ const MONTH_MAP: Record<string, number> = {
 
 const mesesOpts    = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26","jul/26","ago/26","set/26","out/26","nov/26","dez/26"];
 const anosOpts     = ["2024","2025","2026"];
-const categoriasOpts = ["Todos","Procedimento","Padrinho de SeguranÃ§a","VeÃ­culos e Equipamentos","EPI/EPC","APR","Trabalho em Altura","Regras de Ouro"];
+const categoriasOpts = ["Todos","Procedimento","Padrinho de Segurança","Veículos e Equipamentos","EPI/EPC","APR","Trabalho em Altura","Regras de Ouro"];
 const basesOpts    = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 const gerenciasOpts = ["Todos","GERE","GOMAN","GSTC","SPOT"];
 const gerentesOpts = ["Todos","Afonso","Jackson","Julio C.","Marcos","Paulo","Pryscilla","Rafaela","Ricardo"];
@@ -760,7 +760,7 @@ $inactive-text:#475569;
   letter-spacing: .01em;
 }
 
-/* â”€â”€â”€ Equipes NÃ£o Visitadas list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â”€â”€â”€ Equipes Não Visitadas list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .nv-row {
   display: flex;
   align-items: center;

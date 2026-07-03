@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <q-page class="mapa-page">
     <q-linear-progress v-if="loading" indeterminate color="negative" style="position:sticky;top:0;z-index:200" />
 
@@ -16,7 +16,7 @@
       <div class="filter-collapsible" :class="{ 'is-hidden': !showFilters }">
       <div class="filter-bar__inner">
 
-        <!-- Row 1: Semana Â· MÃªs Â· Ano Â· GerÃªncia -->
+        <!-- Row 1: Semana · Mês · Ano · Gerência -->
         <div class="filter-row">
           <div class="fgroup">
             <span class="fgroup__label">Semana</span>
@@ -28,7 +28,7 @@
           </div>
           <div class="filter-divider" />
           <div class="fgroup">
-            <span class="fgroup__label">MÃªs</span>
+            <span class="fgroup__label">Mês</span>
             <div class="pill-group">
               <button v-for="m in mesesOpts" :key="m"
                 :class="['pill', filters.mes === m && 'pill--active']"
@@ -46,7 +46,7 @@
           </div>
           <div class="filter-divider" />
           <div class="fgroup">
-            <span class="fgroup__label">GerÃªncia</span>
+            <span class="fgroup__label">Gerência</span>
             <div class="pill-group">
               <button v-for="g in gerenciasOpts" :key="g"
                 :class="['pill', filters.gerencia === g && 'pill--active']"
@@ -55,7 +55,7 @@
           </div>
         </div>
 
-        <!-- Row 2: Gerente Â· Base -->
+        <!-- Row 2: Gerente · Base -->
         <div class="filter-row">
           <div class="fgroup">
             <span class="fgroup__label">Gerente</span>
@@ -96,7 +96,7 @@
                 {{ totalInc.toLocaleString('pt-BR') }}
               </div>
               <div class="kpi-stat-label">Inconformidades</div>
-              <div class="kpi-stat-sub">acumulado no perÃ­odo</div>
+              <div class="kpi-stat-sub">acumulado no Período</div>
             </q-card-section>
           </q-card>
         </div>
@@ -111,7 +111,7 @@
                 {{ maxCell.value }}
               </div>
               <div class="kpi-stat-label">Pior CÃ©lula</div>
-              <div class="kpi-stat-sub">{{ maxCell.base }} Â· {{ maxCell.cat }}</div>
+              <div class="kpi-stat-sub">{{ maxCell.base }} · {{ maxCell.cat }}</div>
             </q-card-section>
           </q-card>
         </div>
@@ -225,11 +225,11 @@ watch(filters, recarregar, { deep: true });
 const categories = [
   "APR",
   "Epi, Epc e Ferramentas",
-  "Padrinho de SeguranÃ§a",
+  "Padrinho de Segurança",
   "Procedimento",
   "Regras de Ouro",
   "Trabalho em Altura",
-  "VeÃ­culos e Equipamentos",
+  "Veículos e Equipamentos",
 ];
 
 // â”€â”€â”€ NC Matrix base Ã— category from real data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
