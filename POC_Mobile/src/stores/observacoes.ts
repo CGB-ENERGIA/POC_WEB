@@ -171,19 +171,22 @@ export const useObservacoesStore = defineStore("observacoes", {
       return "local";
     },
 
-    async reenviar(id: string, employee: Employee) {
+    async reenviar(id: string, employee: Employee): Promise<string | null> {
       const item = this.items.find((o) => o.id === id);
-      if (!item || !isChecklist(item)) return;
+      if (!item || !isChecklist(item)) return "Registro não encontrado";
       item.syncStatus = "pending";
       this.persist();
       try {
         await syncChecklistToRemote(item, employee);
         item.syncStatus = "synced";
         await refreshServerTimeSync();
-      } catch {
+        this.persist();
+        return null;
+      } catch (err) {
         item.syncStatus = "failed";
+        this.persist();
+        return err instanceof Error ? err.message : "Erro desconhecido";
       }
-      this.persist();
     },
 
     updateChecklist(id: string, updates: Partial<ObservacaoChecklist>) {

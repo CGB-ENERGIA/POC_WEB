@@ -227,15 +227,12 @@ function syncIcon(obs: ObservacaoChecklist) {
 async function reenviar(obs: ObservacaoChecklist) {
   if (!session.employee) return;
   reenviando.value = obs.id;
-  try {
-    await observacoes.reenviar(obs.id, session.employee);
-    if (obs.syncStatus === "synced") {
-      $q.notify({ type: "positive", message: "Checklist enviado com sucesso!", position: "top" });
-    } else {
-      $q.notify({ type: "negative", message: "Falha ao enviar. Verifique a conexão.", position: "top" });
-    }
-  } finally {
-    reenviando.value = null;
+  const erro = await observacoes.reenviar(obs.id, session.employee);
+  reenviando.value = null;
+  if (!erro) {
+    $q.notify({ type: "positive", message: "Checklist enviado com sucesso!", position: "top" });
+  } else {
+    $q.notify({ type: "negative", message: `Falha: ${erro}`, position: "top", timeout: 6000 });
   }
 }
 
