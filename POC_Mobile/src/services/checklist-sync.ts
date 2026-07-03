@@ -55,8 +55,12 @@ export async function syncChecklistToRemote(
   if (r2Available) {
     for (let i = 0; i < entry.fotosLocal.length; i++) {
       const key = buildChecklistPhotoKey(entry.id, "local", String(i));
-      await uploadImageToR2(key, entry.fotosLocal[i]);
-      localPhotoKeys.push({ key, sortOrder: i });
+      try {
+        await uploadImageToR2(key, entry.fotosLocal[i]);
+        localPhotoKeys.push({ key, sortOrder: i });
+      } catch {
+        // foto perdida, dados salvos sem ela
+      }
     }
   }
 
@@ -64,8 +68,12 @@ export async function syncChecklistToRemote(
   for (const r of entry.respostas) {
     let fotoKey: string | null = null;
     if (r.foto && r2Available) {
-      fotoKey = buildChecklistPhotoKey(entry.id, "nc", r.perguntaId);
-      await uploadImageToR2(fotoKey, r.foto);
+      try {
+        fotoKey = buildChecklistPhotoKey(entry.id, "nc", r.perguntaId);
+        await uploadImageToR2(fotoKey, r.foto);
+      } catch {
+        fotoKey = null; // foto perdida, NC salva sem evidência
+      }
     }
 
     responseRows.push({
