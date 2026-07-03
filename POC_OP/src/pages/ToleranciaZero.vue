@@ -301,14 +301,7 @@ const treemapData = computed(() => {
     .map(([name, d]) => ({ name, value: d.nc }))
     .filter(e => e.value > 0)
     .sort((a, b) => b.value - a.value);
-  return entries.length ? entries : [
-    { name: "Padrinho de Segurança", value: 20 },
-    { name: "Procedimento",          value: 19 },
-    { name: "APR",                   value: 11 },
-    { name: "Trabalho em Altura",    value:  6 },
-    { name: "Regras de Ouro",        value:  5 },
-    { name: "Veículos e Equip.",     value:  4 },
-  ];
+  return entries;
 });
 
 const tmPalette = ["#6b1321","#8B1C2B","#a32636","#c43d52","#e8889a","#f9c5cb"];
