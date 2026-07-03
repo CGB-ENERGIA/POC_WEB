@@ -328,7 +328,7 @@ const filteredRows = computed<Row[]>(() => {
   if (filters.tipo === ">80%")      rows = rows.filter(r => r.total.pct >= 80);
   else if (filters.tipo === "<80%") rows = rows.filter(r => r.total.pct < 80);
 
-  // Sort: most reincidÃªncias first, then worst % first
+  // Sort: most reincidências first, then worst % first
   return [...rows].sort((a, b) => {
     if (b.total.reinc !== a.total.reinc) return b.total.reinc - a.total.reinc;
     return a.total.pct - b.total.pct;

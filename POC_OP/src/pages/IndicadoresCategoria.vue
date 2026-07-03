@@ -116,7 +116,7 @@
                 {{ totalConf.toLocaleString('pt-BR') }}
               </div>
               <div class="kpi-stat-label">Total conformidade</div>
-              <div class="kpi-stat-sub">jan â€“ jun 2026</div>
+              <div class="kpi-stat-sub">jan – jun 2026</div>
             </q-card-section>
           </q-card>
         </div>
@@ -132,7 +132,7 @@
                 {{ totalInc.toLocaleString('pt-BR') }}
               </div>
               <div class="kpi-stat-label">Total Inconformidade</div>
-              <div class="kpi-stat-sub">jan â€“ jun 2026</div>
+              <div class="kpi-stat-sub">jan – jun 2026</div>
             </q-card-section>
           </q-card>
         </div>
@@ -217,7 +217,7 @@ const MONTH_MAP: Record<string, number> = {
 const mesesOpts    = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26","jul/26","ago/26","set/26","out/26","nov/26","dez/26"];
 const anosOpts     = ["2024","2025","2026"];
 const basesOpts    = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
-const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","LOGÃSTICA"];
+const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","LOGÍSTICA"];
 const gerentesOpts  = ["Todos","Afonso","Jackson","Jamerson","Julio C.","Marcos","Paulo","Pryscilla","Rafaela","Ricardo"];
 const semanasOpts   = ["Todos","Semana 1","Semana 2","Semana 3","Semana 4"];
 const tiposOpts     = ["Todos","Administrativo","Operacional","Alojamento"];
@@ -429,7 +429,7 @@ const topCharts = computed(() => [
 const bottomCharts = computed(() => [
   { id: "padrinho", title: "PADRINHO DE SEGURANÇA",   option: makeCatChart(rawData.value.padrinho) },
   { id: "altura",   title: "TRABALHO EM ALTURA",      option: makeCatChart(rawData.value.alturas) },
-  { id: "veiculos", title: "VEÃCULOS E EQUIPAMENTOS", option: makeCatChart(rawData.value.veiculos) },
+  { id: "veiculos", title: "VEÍCULOS E EQUIPAMENTOS", option: makeCatChart(rawData.value.veiculos) },
   { id: "epi",      title: "EPI, EPC E FERRAMENTA",   option: makeCatChart(rawData.value.epi) },
 ]);
 

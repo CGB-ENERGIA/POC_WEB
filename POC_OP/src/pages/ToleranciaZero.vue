@@ -204,7 +204,7 @@ const categorias   = ["Todos", "APR", "Padrinho de Segurança", "Procedimento", 
 const gerentesFinal = ["Todos","Afonso","Jamerson","João F.","Julio C.","Leandro","Marcos","Paulo","Pryscilla"];
 const bases        = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const mesesOpts    = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26"];
-const semanasOpts  = ["Todos","1Âª Semana","2Âª Semana","3Âª Semana","4Âª Semana"];
+const semanasOpts  = ["Todos","1ª Semana","2ª Semana","3ª Semana","4ª Semana"];
 const gerenciasOpts = ["Todos","GERE","GOMAN","GSTC","SPOT"];
 const observadorOpts = ["Todos"];
 
@@ -352,7 +352,7 @@ const rankingNc = computed(() => {
   const counts: Record<string, number> = {};
   for (const r of responses.value) {
     if (r.resposta === "nao_conforme") {
-      const key = r.pergunta ?? "Sem descriÃ§Ã£o";
+      const key = r.pergunta ?? "Sem descrição";
       counts[key] = (counts[key] ?? 0) + 1;
     }
   }

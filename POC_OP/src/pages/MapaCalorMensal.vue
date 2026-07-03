@@ -255,7 +255,7 @@ const filters = reactive({
 });
 
 async function recarregar() {
-  // Load full year â€” heatmap shows all months
+  // Load full year – heatmap shows all months
   await load({
     ano: Number(filters.ano),
     base: filters.base === "Todos" ? undefined : filters.base,
@@ -365,10 +365,10 @@ function cellTextColor(v: number): string {
 
 const legendLevels = [
   { color: "#000",    label: "0"     },
-  { color: "#22c55e", label: "1â€“19"  },
-  { color: "#eab308", label: "20â€“39" },
-  { color: "#f97316", label: "40â€“59" },
-  { color: "#dc2626", label: "60â€“99" },
+  { color: "#22c55e", label: "1–19"  },
+  { color: "#eab308", label: "20–39" },
+  { color: "#f97316", label: "40–59" },
+  { color: "#dc2626", label: "60–99" },
   { color: "#7f1d1d", label: "100+"  },
 ];
 </script>

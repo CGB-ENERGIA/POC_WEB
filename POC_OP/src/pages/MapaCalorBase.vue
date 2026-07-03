@@ -300,11 +300,11 @@ function cellTextColor(v: number): string {
 
 const legendLevels = [
   { color: "#22c55e", label: "0" },
-  { color: "#4ade80", label: "1â€“5" },
-  { color: "#86efac", label: "6â€“9" },
-  { color: "#eab308", label: "10â€“14" },
-  { color: "#f97316", label: "15â€“19" },
-  { color: "#ef4444", label: "20â€“24" },
+  { color: "#4ade80", label: "1–5" },
+  { color: "#86efac", label: "6–9" },
+  { color: "#eab308", label: "10–14" },
+  { color: "#f97316", label: "15–19" },
+  { color: "#ef4444", label: "20–24" },
   { color: "#991b1b", label: "25+" },
 ];
 </script>

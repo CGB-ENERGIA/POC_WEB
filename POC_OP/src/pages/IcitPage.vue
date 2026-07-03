@@ -169,7 +169,7 @@
             <div class="col-12 col-md-4">
               <q-card flat bordered>
                 <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Ãndice Geral de conformidade</div>
+                  <div class="text-subtitle1 text-weight-bold">Índice Geral de conformidade</div>
                 </q-card-section>
                 <q-card-section>
                   <v-chart :option="chartDonut" autoresize style="height:260px" />
@@ -179,7 +179,7 @@
             <div class="col-12 col-md-4">
               <q-card flat bordered>
                 <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Ãndice de conformidade por Mês</div>
+                  <div class="text-subtitle1 text-weight-bold">Índice de conformidade por Mês</div>
                   <div class="text-caption text-grey-6">% acumulada</div>
                 </q-card-section>
                 <q-card-section>
@@ -190,7 +190,7 @@
             <div class="col-12 col-md-4">
               <q-card flat bordered>
                 <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Ãndice de conformidade por Gerência</div>
+                  <div class="text-subtitle1 text-weight-bold">Índice de conformidade por Gerência</div>
                 </q-card-section>
                 <q-card-section>
                   <v-chart :option="chartGerencia" autoresize style="height:260px" />
@@ -204,7 +204,7 @@
             <div class="col-12 col-md-4">
               <q-card flat bordered>
                 <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Ãndice de conformidade por Base</div>
+                  <div class="text-subtitle1 text-weight-bold">Índice de conformidade por Base</div>
                 </q-card-section>
                 <q-card-section>
                   <v-chart :option="chartBase" autoresize style="height:240px" />
@@ -230,7 +230,7 @@
         <div class="col-12 col-md-3 equipe-col">
           <q-card flat bordered class="equipe-card">
             <q-card-section class="q-pb-none">
-              <div class="text-subtitle1 text-weight-bold">Ãndice de conformidade por Equipe</div>
+              <div class="text-subtitle1 text-weight-bold">Índice de conformidade por Equipe</div>
               <div class="text-caption text-grey-6">Role para ver mais</div>
             </q-card-section>
             <q-card-section>
@@ -331,7 +331,7 @@ watch(filters, recarregar, { deep: true });
 const kpis = computed(() => [
   { label: "conformidade",     value: fmtN(totalConformes.value),   icon: "mdi-check-circle",  color: "positive", hex: "#16a34a" },
   { label: "Inconformidade",   value: fmtN(totalNaoConformes.value), icon: "mdi-alert-circle",  color: "negative", hex: "#dc2626" },
-  { label: "Ãndice Geral",     value: fmtPct(conformidadeIndex.value), icon: "mdi-gauge",       color: "teal",     hex: "#0d9488" },
+  { label: "Índice Geral",     value: fmtPct(conformidadeIndex.value), icon: "mdi-gauge",       color: "teal",     hex: "#0d9488" },
   { label: "Equipes Auditadas",value: fmtN(basesCovertas.value),    icon: "mdi-account-group", color: "primary",  hex: "#0284c7" },
 ]);
 

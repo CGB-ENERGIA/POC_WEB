@@ -283,7 +283,7 @@ const basesOpts    = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 const gerenciasOpts = ["Todos","GERE","GOMAN","GSTC","SPOT"];
 const gerentesOpts = ["Todos","Afonso","Jackson","Julio C.","Marcos","Paulo","Pryscilla","Rafaela","Ricardo"];
 const observadorOpts = ["Todos"];
-const funcaoOpts   = ["Todos","Eletricista","Motorista","Operador","TÃ©cnico"];
+const funcaoOpts   = ["Todos","Eletricista","Motorista","Operador","Técnico"];
 const tiposPoc     = ["Administrativo","Operacional","Alojamento"];
 
 const curMesLabel = mesesOpts[now.getMonth()] ?? "jan/26";
@@ -560,7 +560,7 @@ const rgData = computed(() => {
   const counts: Record<string, number> = {};
   for (const r of responses.value) {
     if (r.resposta === "nao_conforme") {
-      const key = (r.pergunta ?? "Sem descriÃ§Ã£o").slice(0, 50) + "...";
+      const key = (r.pergunta ?? "Sem descrição").slice(0, 50) + "...";
       counts[key] = (counts[key] ?? 0) + 1;
     }
   }
