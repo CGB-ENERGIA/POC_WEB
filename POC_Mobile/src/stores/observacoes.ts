@@ -4,7 +4,7 @@ import { LocalStorage } from "quasar";
 import type { AuditagemCategoria } from "@/data/auditagem";
 import type { Employee } from "@/data/employees";
 import type { ChecklistResumo, ObservacaoChecklist, RespostaSalva } from "@/types/checklist";
-import { isRemoteSyncEnabled } from "@/lib/config";
+import { isRemoteSyncEnabled, isSupabaseSyncEnabled } from "@/lib/config";
 import { syncChecklistToRemote } from "@/services/checklist-sync";
 import { syncObservacaoLivreToRemote } from "@/services/observacao-sync";
 import { refreshServerTimeSync } from "@/utils/server-time";
@@ -127,13 +127,13 @@ export const useObservacoesStore = defineStore("observacoes", {
         fotosLocal: payload.fotosLocal,
         respostas: payload.respostas,
         resumo,
-        syncStatus: isRemoteSyncEnabled() ? "pending" : undefined,
+        syncStatus: isSupabaseSyncEnabled() ? "pending" : undefined,
       };
 
       this.items.unshift(entry);
       this.persist();
 
-      if (isRemoteSyncEnabled()) {
+      if (isSupabaseSyncEnabled()) {
         void syncChecklistToRemote(entry, payload.employee)
           .then(async () => {
             entry.syncStatus = "synced";

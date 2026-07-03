@@ -1,6 +1,6 @@
 import type { Employee } from "@/data/employees";
 import { getSupabase } from "@/lib/supabase";
-import { isRemoteSyncEnabled } from "@/lib/config";
+import { isSupabaseSyncEnabled, isR2Configured } from "@/lib/config";
 import type { ObservacaoChecklist } from "@/types/checklist";
 import { buildChecklistPhotoKey, uploadImageToR2 } from "@/services/r2-upload";
 
@@ -35,7 +35,7 @@ export async function syncChecklistToRemote(
   entry: ObservacaoChecklist,
   employee: Employee
 ): Promise<void> {
-  if (!isRemoteSyncEnabled() || !navigator.onLine) return;
+  if (!isSupabaseSyncEnabled() || !navigator.onLine) return;
 
   await ensureEmployee(employee);
 
@@ -49,17 +49,21 @@ export async function syncChecklistToRemote(
 
   if (existing) return;
 
+  const r2Available = isR2Configured();
+
   const localPhotoKeys: { key: string; sortOrder: number }[] = [];
-  for (let i = 0; i < entry.fotosLocal.length; i++) {
-    const key = buildChecklistPhotoKey(entry.id, "local", String(i));
-    await uploadImageToR2(key, entry.fotosLocal[i]);
-    localPhotoKeys.push({ key, sortOrder: i });
+  if (r2Available) {
+    for (let i = 0; i < entry.fotosLocal.length; i++) {
+      const key = buildChecklistPhotoKey(entry.id, "local", String(i));
+      await uploadImageToR2(key, entry.fotosLocal[i]);
+      localPhotoKeys.push({ key, sortOrder: i });
+    }
   }
 
   const responseRows = [];
   for (const r of entry.respostas) {
     let fotoKey: string | null = null;
-    if (r.foto) {
+    if (r.foto && r2Available) {
       fotoKey = buildChecklistPhotoKey(entry.id, "nc", r.perguntaId);
       await uploadImageToR2(fotoKey, r.foto);
     }

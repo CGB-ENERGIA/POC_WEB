@@ -8,7 +8,7 @@ export const appConfig = {
 };
 
 export function isSupabaseConfigured(): boolean {
-  return Boolean(appConfig.supabaseUrl && appConfig.supabaseAnonKey);
+  return true; // fallback hardcoded em supabase.ts garante conectividade
 }
 
 export function isR2Configured(): boolean {
@@ -17,4 +17,9 @@ export function isR2Configured(): boolean {
 
 export function isRemoteSyncEnabled(): boolean {
   return isSupabaseConfigured() && isR2Configured();
+}
+
+/** Sync de dados para Supabase (independente do R2 de fotos). */
+export function isSupabaseSyncEnabled(): boolean {
+  return isSupabaseConfigured();
 }
