@@ -148,6 +148,12 @@
                 </tr>
               </thead>
               <tbody>
+                <tr v-if="!matrixData.length">
+                  <td :colspan="categories.length + 1" class="td-empty">
+                    <q-icon name="mdi-check-circle-outline" size="28px" color="positive" />
+                    Sem inconformidades no período
+                  </td>
+                </tr>
                 <tr v-for="row in matrixData" :key="row.base">
                   <td class="td-base">{{ row.base }}</td>
                   <td v-for="(val, i) in row.values" :key="i"
@@ -254,14 +260,7 @@ const matrixData = computed(() => {
     if (!rowMap[sub.base]) { rowMap[sub.base] = categories.map(() => 0); rows.push({ base: sub.base, values: rowMap[sub.base] }); }
     rowMap[sub.base][ci]++;
   }
-  return rows.length ? rows : [
-    { base: "BCB", values: [6,  7, 17, 28,  0, 10,  5] },
-    { base: "BDC", values: [0,  1,  3,  2,  0,  2,  3] },
-    { base: "ITM", values: [1,  4,  2,  4,  0,  1,  6] },
-    { base: "PDS", values: [3, 13,  1,  2,  0,  2,  4] },
-    { base: "PDT", values: [9,  7,  7,  8,  0,  1,  5] },
-    { base: "STI", values: [0,  9, 10, 14,  2,  3, 13] },
-  ];
+  return rows;
 });
 
 // â”€â”€â”€ Computed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -439,6 +438,11 @@ $inactive-text:#475569;
     letter-spacing: .5px;
   }
 
+  .td-empty {
+    padding: 48px 16px; text-align: center;
+    color: #94a3b8; font-size: 14px; font-weight: 500;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
   .td-cell {
     padding: 12px 16px; text-align: center;
     font-weight: 700; font-size: 15px;
