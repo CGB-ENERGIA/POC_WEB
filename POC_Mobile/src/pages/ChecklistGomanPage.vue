@@ -401,10 +401,10 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { LocalStorage, useQuasar } from "quasar";
 import { useSessionStore } from "@/stores/session";
-import { useObservacoesStore } from "@/stores/observacoes";
+import { useObservacoesStore, isChecklist } from "@/stores/observacoes";
 import { basesOperacionais } from "@/data/checklist";
 import {
   gomanChecklist,
@@ -427,8 +427,11 @@ interface NaoConformeDetalhe {
 
 const $q = useQuasar();
 const router = useRouter();
+const route = useRoute();
 const session = useSessionStore();
 const observacoes = useObservacoesStore();
+
+const editId = route.query.editId as string | undefined;
 
 const base = ref(session.employee?.base ?? "");
 const equipe = ref("");
@@ -441,6 +444,32 @@ const cameraLocalAberta = ref(false)
 const carregandoFotoLocal = ref(false)
 
 onMounted(() => {
+  // Modo edição: pré-preenche com dados existentes
+  if (editId) {
+    const existing = observacoes.items.find(o => o.id === editId);
+    if (existing && isChecklist(existing)) {
+      base.value = existing.base;
+      equipe.value = existing.equipe;
+      fotosLocal.value = [...existing.fotosLocal];
+      // Membros
+      const existingMembros = existing.membros.length > 0 ? existing.membros : [];
+      membros.value = [
+        ...existingMembros.map(m => ({ nome: m.nome, matricula: m.matricula })),
+        ...Array.from({ length: Math.max(0, 6 - existingMembros.length) }, () => ({ nome: "", matricula: "" })),
+      ];
+      // Respostas e detalhes
+      for (const r of existing.respostas) {
+        respostas[r.perguntaId] = r.resposta as "conforme" | "nao_conforme";
+        if (r.resposta === "nao_conforme" && (r.observacao || r.foto)) {
+          detalhesMap[r.perguntaId] = {
+            observacao: r.observacao ?? "",
+            foto: r.foto ?? "",
+          };
+        }
+      }
+    }
+    return;
+  }
   const saved = LocalStorage.getItem<string[]>(draftKey)
   if (saved?.length) fotosLocal.value = saved
 })
@@ -705,6 +734,9 @@ async function onSubmit() {
       });
     }
   }
+
+  // No modo edição remove o registro anterior antes de salvar o novo
+  if (editId) observacoes.remove(editId);
 
   observacoes.addChecklist({
     auditagem: "GOMAN",

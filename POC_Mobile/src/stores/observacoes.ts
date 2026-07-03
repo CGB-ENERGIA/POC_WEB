@@ -9,6 +9,8 @@ import { syncChecklistToRemote } from "@/services/checklist-sync";
 import { syncObservacaoLivreToRemote } from "@/services/observacao-sync";
 import { refreshServerTimeSync } from "@/utils/server-time";
 
+export type SyncStatus = "pending" | "synced" | "failed" | "local";
+
 const STORAGE_KEY = "cgb-observacoes";
 
 /** Registro legado (formulário livre) — mantido para GSTC e registros antigos. */
@@ -159,6 +161,35 @@ export const useObservacoesStore = defineStore("observacoes", {
 
     remove(id: string) {
       this.items = this.items.filter((o) => o.id !== id);
+      this.persist();
+    },
+
+    getSyncStatus(item: ObservacaoChecklist): SyncStatus {
+      if (item.syncStatus === "synced") return "synced";
+      if (item.syncStatus === "failed") return "failed";
+      if (item.syncStatus === "pending") return "pending";
+      return "local";
+    },
+
+    async reenviar(id: string, employee: Employee) {
+      const item = this.items.find((o) => o.id === id);
+      if (!item || !isChecklist(item)) return;
+      item.syncStatus = "pending";
+      this.persist();
+      try {
+        await syncChecklistToRemote(item, employee);
+        item.syncStatus = "synced";
+        await refreshServerTimeSync();
+      } catch {
+        item.syncStatus = "failed";
+      }
+      this.persist();
+    },
+
+    updateChecklist(id: string, updates: Partial<ObservacaoChecklist>) {
+      const item = this.items.find((o) => o.id === id);
+      if (!item || !isChecklist(item)) return;
+      Object.assign(item, updates);
       this.persist();
     },
   },
