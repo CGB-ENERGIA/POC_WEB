@@ -531,7 +531,7 @@ const chartNcCat = computed(() => {
     tooltip: {
       ...ttItem,
       formatter: (p: { name: string; value: number }) =>
-        `<b>${p.name}</b><br/>OcorrÃªncias: <b style="color:${G.brand}">${p.value}</b>`,
+        `<b>${p.name}</b><br/>Ocorrências: <b style="color:${G.brand}">${p.value}</b>`,
     },
     grid: { left: 8, right: 28, top: 4, bottom: 4, containLabel: true },
     xAxis: { type: "value" as const, show: false, splitLine: { show: false } },

@@ -145,7 +145,7 @@
                 <v-chart :option="gaugeOpt" autoresize class="kpi-gauge-chart" />
                 <div class="kpi-gauge-sub">
                   {{ totalConf.toLocaleString('pt-BR') }} de
-                  {{ (totalConf + totalInc).toLocaleString('pt-BR') }} observaÃ§Ãµes
+                  {{ (totalConf + totalInc).toLocaleString('pt-BR') }} observações
                 </div>
               </div>
             </q-card-section>
@@ -427,7 +427,7 @@ const topCharts = computed(() => [
 ]);
 
 const bottomCharts = computed(() => [
-  { id: "padrinho", title: "PADRINHO DE SEGURANÃ‡A",   option: makeCatChart(rawData.value.padrinho) },
+  { id: "padrinho", title: "PADRINHO DE SEGURANÇA",   option: makeCatChart(rawData.value.padrinho) },
   { id: "altura",   title: "TRABALHO EM ALTURA",      option: makeCatChart(rawData.value.alturas) },
   { id: "veiculos", title: "VEÃCULOS E EQUIPAMENTOS", option: makeCatChart(rawData.value.veiculos) },
   { id: "epi",      title: "EPI, EPC E FERRAMENTA",   option: makeCatChart(rawData.value.epi) },

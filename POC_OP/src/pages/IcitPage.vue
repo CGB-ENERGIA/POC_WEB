@@ -140,7 +140,7 @@
             </q-card-section>
           </q-card>
         </div>
-        <!-- HistÃ³rico button -->
+        <!-- Histórico button -->
         <div class="col-6 col-md-4">
           <q-card flat bordered class="kpi-card historico-card cursor-pointer"
             @click="$router.push('/historico-icit')">
@@ -148,7 +148,7 @@
               <div class="row items-center justify-between no-wrap full-height">
                 <div>
                   <div class="text-caption text-grey-6">Visualizar</div>
-                  <div class="text-subtitle1 text-weight-bold" style="color:#8B1C2B">HistÃ³rico ICIT</div>
+                  <div class="text-subtitle1 text-weight-bold" style="color:#8B1C2B">Histórico ICIT</div>
                   <div class="text-caption text-grey-5">Clique aqui para seguir</div>
                 </div>
                 <q-icon name="mdi-chart-timeline-variant" size="48px" color="deep-orange-8" style="opacity:.7" />
@@ -215,7 +215,7 @@
               <q-card flat bordered>
                 <q-card-section class="q-pb-none">
                   <div class="text-subtitle1 text-weight-bold">Não conformidades por Categoria</div>
-                  <div class="text-caption text-grey-6">OcorrÃªncias no Período</div>
+                  <div class="text-caption text-grey-6">Ocorrências no Período</div>
                 </q-card-section>
                 <q-card-section>
                   <v-chart :option="chartCategoria" autoresize style="height:240px" />
@@ -305,7 +305,7 @@ const bases      = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const segurancas = ["Todos", "Segurança"];
 const tiposPoc   = ["Todos", "Administrativo", "Operacional"];
 const gerentes   = [
-  "Todos", "Afonso", "Jamerson", "JoÃ£o F.", "Julio C.", "Leandro",
+  "Todos", "Afonso", "Jamerson", "João F.", "Julio C.", "Leandro",
   "Marcos", "Paulo", "Rafaela", "Ricardo", "Valvick", "Waldir"
 ];
 
@@ -456,7 +456,7 @@ const chartCategoria = computed(() => {
     tooltip: {
       ...ttItem,
       formatter: (p: { name: string; value: number }) =>
-        `<b>${p.name}</b><br/>OcorrÃªncias: <b style="color:${P.inconf}">${p.value}</b>`
+        `<b>${p.name}</b><br/>Ocorrências: <b style="color:${P.inconf}">${p.value}</b>`
     },
     grid: { left: 8, right: 36, top: 8, bottom: 8, containLabel: true },
     xAxis: { type: "value" as const, show: false, splitLine: { show: false } },

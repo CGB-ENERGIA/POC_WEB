@@ -9,10 +9,10 @@
 
       <!-- Left: title, date, filtrar por -->
       <div class="hist-header__left">
-        <div class="hist-title">HISTÃ“RICO - ICIT</div>
+        <div class="hist-title">HISTÓRICO - ICIT</div>
         <div class="hist-date">
           <span>22/06/2026 13:54:55</span>
-          <span class="text-grey-5"> · Ãšltima AtualizaÃ§Ã£o</span>
+          <span class="text-grey-5"> · Última Atualização</span>
         </div>
         <div class="filtrar-por">
           <span class="filtrar-label">Filtrar por</span>
@@ -121,7 +121,7 @@
               :style="cell ? cellBg(cell) : {}">
               <template v-if="cell">
                 <div v-if="cell.reinc" class="cell-inner">
-                  <span class="cell-reinc">ReincidÃªncia: {{ cell.reinc }}</span>
+                  <span class="cell-reinc">Reincidência: {{ cell.reinc }}</span>
                   <span class="cell-pct">{{ fmtPct(cell.pct) }}</span>
                 </div>
                 <div v-else class="cell-inner cell-inner--single">{{ fmtPct(cell.pct) }}</div>
@@ -129,7 +129,7 @@
             </td>
             <td class="td-total">
               <div class="cell-inner">
-                <span class="total-reinc">ReincidÃªncia: {{ row.total.reinc }}</span>
+                <span class="total-reinc">Reincidência: {{ row.total.reinc }}</span>
                 <span class="total-pct" :style="{ color: totalColor(row.total.pct) }">{{ fmtPct(row.total.pct) }}</span>
               </div>
             </td>
@@ -172,7 +172,7 @@ const filtroTipos = [
 ];
 
 const monthNames = [
-  "janeiro","fevereiro","marÃ§o","abril",
+  "janeiro","fevereiro","março","abril",
   "maio","junho","julho","agosto",
   "setembro","outubro","novembro","dezembro",
 ];

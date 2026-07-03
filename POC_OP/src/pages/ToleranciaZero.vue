@@ -201,7 +201,7 @@ const showFilters = ref(false);
 
 const anos         = ["2024", "2025", "2026"];
 const categorias   = ["Todos", "APR", "Padrinho de Segurança", "Procedimento", "Regras de Ouro"];
-const gerentesFinal = ["Todos","Afonso","Jamerson","JoÃ£o F.","Julio C.","Leandro","Marcos","Paulo","Pryscilla"];
+const gerentesFinal = ["Todos","Afonso","Jamerson","João F.","Julio C.","Leandro","Marcos","Paulo","Pryscilla"];
 const bases        = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const mesesOpts    = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26"];
 const semanasOpts  = ["Todos","1Âª Semana","2Âª Semana","3Âª Semana","4Âª Semana"];
@@ -320,7 +320,7 @@ const chartTreemap = computed(() => ({
     textStyle: { color: "#334155", fontSize: 12 },
     extraCssText: "box-shadow:0 8px 24px rgba(0,0,0,.12);border-radius:10px;padding:10px 14px;",
     formatter: (p: { name: string; value: number }) =>
-      `<b>${p.name}</b><br/>OcorrÃªncias: <b style="color:#8B1C2B">${p.value}</b>`,
+      `<b>${p.name}</b><br/>Ocorrências: <b style="color:#8B1C2B">${p.value}</b>`,
   },
   series: [{
     type: "treemap" as const,

@@ -110,7 +110,7 @@
               <div class="kpi-stat-value" style="color:#dc2626">
                 {{ maxCell.value }}
               </div>
-              <div class="kpi-stat-label">Pior CÃ©lula</div>
+              <div class="kpi-stat-label">Pior Célula</div>
               <div class="kpi-stat-sub">{{ maxCell.base }} · {{ maxCell.cat }}</div>
             </q-card-section>
           </q-card>
@@ -192,7 +192,7 @@ const MONTH_MAP: Record<string, number> = {
 const semanasOpts = [
   { v: "todos", l: "Todos" },
   { v: "s1", l: "1. Segunda" },
-  { v: "s2", l: "2. TerÃ§a" },
+  { v: "s2", l: "2. Terça" },
   { v: "s3", l: "3. Quarta" },
   { v: "s4", l: "4. Quinta" },
 ];
