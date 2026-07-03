@@ -123,7 +123,12 @@
               <div class="chart-title">Risco de Alto Potencial por Categoria</div>
             </q-card-section>
             <q-card-section class="q-pt-none" style="padding-bottom:0">
-              <v-chart :option="chartTreemap" autoresize style="height:460px" />
+              <v-chart v-if="treemapData.length" :option="chartTreemap" autoresize style="height:460px" />
+              <div v-else class="empty-chart" style="height:460px">
+                <q-icon name="mdi-check-circle-outline" size="48px" color="positive" />
+                <div class="empty-chart__title">Sem Não Conformidades</div>
+                <div class="empty-chart__sub">Nenhum registro no período selecionado</div>
+              </div>
             </q-card-section>
           </q-card>
         </div>
@@ -516,6 +521,12 @@ $inactive-text:#475569;
 }
 .chart-title {
   font-size: 14px; font-weight: 700; color: #1e293b;
+}
+.empty-chart {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 8px;
+  &__title { font-size: 15px; font-weight: 700; color: #334155; }
+  &__sub   { font-size: 12px; color: #94a3b8; }
 }
 
 // â”€â”€ Ranking table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
