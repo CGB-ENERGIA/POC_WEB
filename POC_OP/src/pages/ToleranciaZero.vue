@@ -12,7 +12,7 @@
           class="filter-fab"
           :class="{ 'filter-fab--active': showFilters }"
           @click="showFilters = !showFilters">
-          <q-icon name="mdi-tune" size="20px" />
+          <q-icon :name="showFilters ? `mdi-chevron-up` : `mdi-tune`" size="20px" />
         </button>
       </div>
       <div class="filter-collapsible" :class="{ 'is-hidden': !showFilters }">
