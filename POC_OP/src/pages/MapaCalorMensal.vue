@@ -147,6 +147,12 @@
                     </tr>
                   </thead>
                   <tbody>
+                    <tr v-if="!totalInc">
+                      <td :colspan="months.length + 2" class="td-empty">
+                        <q-icon name="mdi-check-circle-outline" size="24px" color="positive" />
+                        Sem inconformidades no período
+                      </td>
+                    </tr>
                     <tr v-for="row in catData" :key="row.label">
                       <td class="td-label">{{ row.label }}</td>
                       <td v-for="(v, i) in row.values" :key="i"
@@ -193,6 +199,12 @@
                     </tr>
                   </thead>
                   <tbody>
+                    <tr v-if="!totalInc">
+                      <td :colspan="months.length + 2" class="td-empty">
+                        <q-icon name="mdi-check-circle-outline" size="24px" color="positive" />
+                        Sem inconformidades no período
+                      </td>
+                    </tr>
                     <tr v-for="row in baseData" :key="row.label">
                       <td class="td-label">{{ row.label }}</td>
                       <td v-for="(v, i) in row.values" :key="i"
@@ -301,28 +313,12 @@ const catData = computed(() => {
     if (!cat) continue;
     rowMap[cat][mes - 1]++;
   }
-  return rows.some(r => r.values.some(v => v > 0)) ? rows : [
-    { label: "APR",                    values: [11, 15, 25,  9, 19, 26, 0, 0, 0, 0, 0, 0] },
-    { label: "Epi, Epc e Ferramentas", values: [22, 42, 22, 59, 40, 37, 0, 0, 0, 0, 0, 0] },
-    { label: "Padrinho de Segurança",  values: [ 9, 19, 35, 51, 39, 20, 0, 0, 0, 0, 0, 0] },
-    { label: "Procedimento",           values: [52, 40, 59, 54, 49, 37, 0, 0, 0, 0, 0, 0] },
-    { label: "Regras de Ouro",         values: [ 1,  1,  1,  0,  2,  0, 0, 0, 0, 0, 0, 0] },
-    { label: "Trabalho em Altura",     values: [10,  9, 25, 20, 19,  6, 0, 0, 0, 0, 0, 0] },
-    { label: "Veículos e Equipamentos",values: [33, 33, 30, 37, 34, 37, 0, 0, 0, 0, 0, 0] },
-  ];
+  return rows;
 });
 
 // Build NC by (base, month) matrix
 const baseData = computed(() => {
   const basesInData = [...new Set(submissions.value.map(s => s.base).filter(Boolean))].sort();
-  if (!basesInData.length) return [
-    { label: "BCB", values: [ 33, 54, 105, 100, 66, 59, 0, 0, 0, 0, 0, 0] },
-    { label: "BDC", values: [ 13, 20,   7,  18, 11,  4, 0, 0, 0, 0, 0, 0] },
-    { label: "ITM", values: [ 19, 23,  23,  30, 18, 10, 0, 0, 0, 0, 0, 0] },
-    { label: "PDS", values: [ 23, 19,  11,  47, 21, 67, 0, 0, 0, 0, 0, 0] },
-    { label: "PDT", values: [ 14, 26,  23,  14, 37, 12, 0, 0, 0, 0, 0, 0] },
-    { label: "STI", values: [ 36, 17,  28,  21, 49, 11, 0, 0, 0, 0, 0, 0] },
-  ];
   const rows = basesInData.map(label => ({ label, values: Array(12).fill(0) as number[] }));
   const rowMap: Record<string, number[]> = {};
   rows.forEach(r => { rowMap[r.label] = r.values; });
@@ -480,6 +476,12 @@ $inactive-text:#475569;
 
   tbody tr:hover td { filter: brightness(.9); }
 
+  .td-empty {
+    padding: 40px 16px; text-align: center;
+    color: #6b7280; font-size: 13px; font-weight: 500;
+    background: #111827;
+    .q-icon { vertical-align: middle; margin-right: 6px; }
+  }
   .td-label {
     background: #111827; color: #fff;
     font-weight: 700; font-size: 11px;
