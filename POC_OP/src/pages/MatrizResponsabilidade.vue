@@ -281,10 +281,13 @@ async function recarregar() {
 onMounted(recarregar);
 watch(filters, recarregar, { deep: true });
 
-// ─── R2 photo URL helper ──────────────────────────────────────────────────────
+// ─── Photo URL helper ─────────────────────────────────────────────────────────
+// foto_r2_key pode ser: URL completa (Supabase Storage) ou chave R2 relativa.
 const R2_BASE = (import.meta.env.VITE_R2_PUBLIC_BASE_URL as string | undefined ?? "").replace(/\/$/, "");
 function fotoUrl(key: string | null): string | null {
-  if (!key || !R2_BASE) return null;
+  if (!key) return null;
+  if (key.startsWith("https://") || key.startsWith("http://")) return key;
+  if (!R2_BASE) return null;
   return `${R2_BASE}/${key}`;
 }
 

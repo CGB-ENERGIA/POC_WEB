@@ -3,6 +3,7 @@ import { getSupabase } from "@/lib/supabase";
 import { isSupabaseSyncEnabled, isR2Configured } from "@/lib/config";
 import type { ObservacaoChecklist } from "@/types/checklist";
 import { buildChecklistPhotoKey, uploadImageToR2 } from "@/services/r2-upload";
+import { uploadPhotoToStorage } from "@/services/supabase-storage";
 
 export class ChecklistSyncError extends Error {
   constructor(message: string) {
@@ -28,7 +29,8 @@ async function ensureEmployee(employee: Employee): Promise<void> {
 }
 
 /**
- * Sincroniza checklist + fotos (R2) + respostas (Supabase).
+ * Sincroniza checklist + fotos + respostas (Supabase).
+ * Fotos: usa R2 se configurado, senão Supabase Storage.
  * Idempotente via client_id = id local do registro.
  */
 export async function syncChecklistToRemote(
@@ -67,12 +69,22 @@ export async function syncChecklistToRemote(
   const responseRows = [];
   for (const r of entry.respostas) {
     let fotoKey: string | null = null;
-    if (r.foto && r2Available) {
-      try {
-        fotoKey = buildChecklistPhotoKey(entry.id, "nc", r.perguntaId);
-        await uploadImageToR2(fotoKey, r.foto);
-      } catch {
-        fotoKey = null; // foto perdida, NC salva sem evidência
+    if (r.foto) {
+      const key = buildChecklistPhotoKey(entry.id, "nc", r.perguntaId);
+      if (r2Available) {
+        try {
+          await uploadImageToR2(key, r.foto);
+          fotoKey = key;
+        } catch {
+          // foto perdida, NC salva sem evidência
+        }
+      } else {
+        try {
+          // Supabase Storage: retorna a URL pública completa
+          fotoKey = await uploadPhotoToStorage(key, r.foto);
+        } catch {
+          // foto perdida, NC salva sem evidência
+        }
       }
     }
 
