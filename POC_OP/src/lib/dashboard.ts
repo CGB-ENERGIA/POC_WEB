@@ -47,6 +47,7 @@ export interface ResponseRow {
   peso: number;
   resposta: "conforme" | "nao_conforme";
   observacao: string | null;
+  foto_r2_key: string | null;
 }
 
 export interface EmployeeRow {
@@ -100,7 +101,7 @@ export async function fetchResponses(submissionIds: string[]): Promise<ResponseR
   if (!submissionIds.length) return [];
   const { data, error } = await supabase
     .from("checklist_responses")
-    .select("submission_id,pergunta_id,categoria,pergunta,gravidade,peso,resposta,observacao")
+    .select("submission_id,pergunta_id,categoria,pergunta,gravidade,peso,resposta,observacao,foto_r2_key")
     .in("submission_id", submissionIds);
   if (error) throw error;
   return (data ?? []) as ResponseRow[];

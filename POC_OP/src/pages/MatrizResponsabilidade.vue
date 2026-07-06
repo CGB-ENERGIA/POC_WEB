@@ -145,13 +145,16 @@
                   <th class="col-equipe">Equipe</th>
                   <th class="col-cat">Categoria</th>
                   <th class="col-inc">Inconformidade da categoria</th>
+                  <th class="col-ev">Evidência</th>
                   <th class="col-res">Resolvido</th>
                   <th class="col-dres">Data de resolução</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="(row, i) in filteredData" :key="i"
-                  :class="{ 'tr-resolved': row.resolvido === 'Sim' }">
+                  class="tr-clickable"
+                  :class="{ 'tr-resolved': row.resolvido === 'Sim' }"
+                  @click="abrirDetalhe(row)">
                   <td class="col-data td-mono">{{ row.data }}</td>
                   <td class="col-base">
                     <span class="base-badge">{{ row.base }}</span>
@@ -162,6 +165,16 @@
                     <span class="cat-badge" :class="catClass(row.categoria)">{{ row.categoria }}</span>
                   </td>
                   <td class="col-inc">{{ row.inconformidade }}</td>
+                  <td class="col-ev">
+                    <q-icon
+                      v-if="row.fotoUrl"
+                      name="mdi-camera"
+                      size="18px"
+                      color="primary"
+                      title="Ver foto"
+                    />
+                    <q-icon v-else name="mdi-camera-off" size="16px" color="grey-4" />
+                  </td>
                   <td class="col-res">
                     <span class="res-badge" :class="row.resolvido === 'Sim' ? 'res-sim' : 'res-nao'">
                       {{ row.resolvido }}
@@ -170,7 +183,7 @@
                   <td class="col-dres td-mono">{{ row.dataResolucao || '—' }}</td>
                 </tr>
                 <tr v-if="filteredData.length === 0">
-                  <td colspan="8" class="td-empty">Nenhum registro encontrado.</td>
+                  <td colspan="9" class="td-empty">Nenhum registro encontrado.</td>
                 </tr>
               </tbody>
             </table>
@@ -180,8 +193,56 @@
           </div>
         </q-card-section>
       </q-card>
-
     </div>
+
+    <!-- ═══════════════════════════ DETAIL DIALOG ═══════════════════════════ -->
+    <q-dialog v-model="dialogOpen" max-width="560px">
+      <q-card v-if="detalhe" style="min-width:320px;max-width:560px;width:100%">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="col">
+            <div class="text-subtitle1 text-weight-bold" style="color:#8B1C2B">Detalhe da Não Conformidade</div>
+            <div class="text-caption text-grey-6">{{ detalhe.data }} · {{ detalhe.base }} · {{ detalhe.equipe }}</div>
+          </div>
+          <q-btn flat round dense icon="mdi-close" v-close-popup />
+        </q-card-section>
+
+        <q-separator class="q-mt-sm" />
+
+        <q-card-section class="q-pt-sm q-pb-xs">
+          <div class="row items-center q-gutter-xs q-mb-sm">
+            <span class="cat-badge" :class="catClass(detalhe.categoria)">{{ detalhe.categoria }}</span>
+            <span class="res-badge" :class="detalhe.resolvido === 'Sim' ? 'res-sim' : 'res-nao'">{{ detalhe.resolvido }}</span>
+          </div>
+
+          <div class="text-caption text-grey-6 text-uppercase q-mb-xs" style="letter-spacing:.5px">Pergunta do checklist</div>
+          <div class="text-body2 text-weight-medium q-mb-md" style="color:#334155">{{ detalhe.pergunta }}</div>
+
+          <template v-if="detalhe.observacao">
+            <div class="text-caption text-grey-6 text-uppercase q-mb-xs" style="letter-spacing:.5px">Observação do auditor</div>
+            <div class="obs-box q-mb-md">{{ detalhe.observacao }}</div>
+          </template>
+
+          <div class="text-caption text-grey-6 text-uppercase q-mb-xs" style="letter-spacing:.5px">Observador · Equipe</div>
+          <div class="text-body2 q-mb-md" style="color:#334155">{{ detalhe.observador }} · {{ detalhe.equipe }}</div>
+        </q-card-section>
+
+        <!-- Foto -->
+        <q-card-section v-if="detalhe.fotoUrl" class="q-pt-none">
+          <div class="text-caption text-grey-6 text-uppercase q-mb-xs" style="letter-spacing:.5px">Evidência fotográfica</div>
+          <img :src="detalhe.fotoUrl" class="foto-evidencia" alt="Evidência" />
+        </q-card-section>
+        <q-card-section v-else class="q-pt-none">
+          <div class="sem-foto">
+            <q-icon name="mdi-camera-off" size="28px" color="grey-4" />
+            <span class="text-caption text-grey-5 q-ml-sm">Sem foto de evidência</span>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Fechar" color="grey-7" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -222,10 +283,19 @@ async function recarregar() {
 onMounted(recarregar);
 watch(filters, recarregar, { deep: true });
 
+// ─── R2 photo URL helper ──────────────────────────────────────────────────────
+const R2_BASE = (import.meta.env.VITE_R2_PUBLIC_BASE_URL as string | undefined ?? "").replace(/\/$/, "");
+function fotoUrl(key: string | null): string | null {
+  if (!key || !R2_BASE) return null;
+  return `${R2_BASE}/${key}`;
+}
+
 // ─── Data ────────────────────────────────────────────────────────────────────
 type Row = {
   data: string; base: string; observador: string; equipe: string;
-  categoria: string; inconformidade: string; resolvido: "Sim" | "Não"; dataResolucao: string;
+  categoria: string; pergunta: string; inconformidade: string;
+  observacao: string | null; fotoUrl: string | null;
+  resolvido: "Sim" | "Não"; dataResolucao: string;
 };
 
 const allData = computed<Row[]>(() => {
@@ -242,13 +312,25 @@ const allData = computed<Row[]>(() => {
       observador: sub.observador,
       equipe: sub.equipe,
       categoria: r.categoria,
+      pergunta: r.pergunta,
       inconformidade: r.observacao ?? r.pergunta,
+      observacao: r.observacao,
+      fotoUrl: fotoUrl(r.foto_r2_key),
       resolvido: "Não",
       dataResolucao: "",
     });
   }
   return rows.sort((a, b) => b.data.localeCompare(a.data));
 });
+
+// ─── Dialog de detalhe ────────────────────────────────────────────────────────
+const dialogOpen = ref(false);
+const detalhe = ref<Row | null>(null);
+
+function abrirDetalhe(row: Row) {
+  detalhe.value = row;
+  dialogOpen.value = true;
+}
 
 // legacy static rows kept for reference
 const _staticRows: Row[] = [
@@ -569,6 +651,7 @@ $header-bg:    #fce4e8;
       &:nth-child(even) { background: #f8fafc; }
       &:hover { background: rgba($brand,.04); }
     }
+    .tr-clickable { cursor: pointer; }
     .tr-resolved {
       background: #f0fdf4 !important;
       &:hover { background: rgba(22,163,74,.08) !important; }
@@ -584,6 +667,7 @@ $header-bg:    #fce4e8;
   .col-equipe  { min-width: 120px; font-size: 11px; }
   .col-cat     { min-width: 130px; }
   .col-inc     { min-width: 300px; max-width: 420px; text-align: left; font-size: 11.5px; color: #334155; line-height: 1.5; white-space: pre-line; }
+  .col-ev      { min-width: 70px; }
   .col-res     { min-width: 90px; }
   .col-dres    { min-width: 120px; font-size: 11px; }
   .td-mono     { font-variant-numeric: tabular-nums; color: #475569; }
@@ -620,6 +704,22 @@ $header-bg:    #fce4e8;
 }
 .res-sim { background: #dcfce7; color: #15803d; }
 .res-nao { background: #fee2e2; color: #991b1b; }
+
+// ── Dialog ────────────────────────────────────────────────────────────────────
+.obs-box {
+  background: #f8fafc; border-left: 3px solid #dc2626;
+  border-radius: 0 6px 6px 0; padding: 8px 12px;
+  font-size: 13px; color: #334155; line-height: 1.6; white-space: pre-line;
+}
+.foto-evidencia {
+  width: 100%; max-height: 340px;
+  object-fit: contain; border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+.sem-foto {
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; border: 1px dashed #e2e8f0; border-radius: 8px;
+}
 
 // ── Dark mode ─────────────────────────────────────────────────────────────────
 .body--dark {
