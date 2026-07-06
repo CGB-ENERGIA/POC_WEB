@@ -166,14 +166,12 @@
                   </td>
                   <td class="col-inc">{{ row.inconformidade }}</td>
                   <td class="col-ev">
-                    <q-icon
-                      v-if="row.fotoUrl"
-                      name="mdi-camera"
-                      size="18px"
-                      color="primary"
-                      title="Ver foto"
-                    />
-                    <q-icon v-else name="mdi-camera-off" size="16px" color="grey-4" />
+                    <span v-if="row.fotoUrl" class="ev-badge ev-com-foto" title="Tem foto">
+                      <q-icon name="mdi-camera" size="14px" />
+                    </span>
+                    <span v-else class="ev-badge ev-sem-foto" title="Sem foto">
+                      <q-icon name="mdi-camera-off" size="14px" />
+                    </span>
                   </td>
                   <td class="col-res">
                     <span class="res-badge" :class="row.resolvido === 'Sim' ? 'res-sim' : 'res-nao'">
@@ -704,6 +702,14 @@ $header-bg:    #fce4e8;
 }
 .res-sim { background: #dcfce7; color: #15803d; }
 .res-nao { background: #fee2e2; color: #991b1b; }
+
+// ── Evidência badge ───────────────────────────────────────────────────────────
+.ev-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 6px;
+}
+.ev-com-foto { background: rgba(37,99,235,.12); color: #2563eb; }
+.ev-sem-foto { background: rgba(148,163,184,.12); color: #94a3b8; }
 
 // ── Dialog ────────────────────────────────────────────────────────────────────
 .obs-box {
