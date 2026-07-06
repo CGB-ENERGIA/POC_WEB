@@ -29,8 +29,28 @@ async function ensureEmployee(employee: Employee): Promise<void> {
 }
 
 /**
+ * Tenta upload da foto: R2 primeiro (se configurado), Supabase Storage como fallback.
+ * Retorna a chave R2 ou a URL pública do Supabase Storage, ou null se ambos falharem.
+ */
+async function uploadFoto(key: string, base64: string, r2Available: boolean): Promise<string | null> {
+  if (r2Available) {
+    try {
+      await uploadImageToR2(key, base64);
+      return key;
+    } catch {
+      // R2 falhou, tentar Supabase Storage
+    }
+  }
+  try {
+    return await uploadPhotoToStorage(key, base64);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Sincroniza checklist + fotos + respostas (Supabase).
- * Fotos: usa R2 se configurado, senão Supabase Storage.
+ * Fotos: R2 como primário (se configurado), Supabase Storage como fallback.
  * Idempotente via client_id = id local do registro.
  */
 export async function syncChecklistToRemote(
@@ -54,16 +74,10 @@ export async function syncChecklistToRemote(
   const r2Available = isR2Configured();
 
   const localPhotoKeys: { key: string; sortOrder: number }[] = [];
-  if (r2Available) {
-    for (let i = 0; i < entry.fotosLocal.length; i++) {
-      const key = buildChecklistPhotoKey(entry.id, "local", String(i));
-      try {
-        await uploadImageToR2(key, entry.fotosLocal[i]);
-        localPhotoKeys.push({ key, sortOrder: i });
-      } catch {
-        // foto perdida, dados salvos sem ela
-      }
-    }
+  for (let i = 0; i < entry.fotosLocal.length; i++) {
+    const key = buildChecklistPhotoKey(entry.id, "local", String(i));
+    const result = await uploadFoto(key, entry.fotosLocal[i], r2Available);
+    if (result) localPhotoKeys.push({ key: result, sortOrder: i });
   }
 
   const responseRows = [];
@@ -71,21 +85,7 @@ export async function syncChecklistToRemote(
     let fotoKey: string | null = null;
     if (r.foto) {
       const key = buildChecklistPhotoKey(entry.id, "nc", r.perguntaId);
-      if (r2Available) {
-        try {
-          await uploadImageToR2(key, r.foto);
-          fotoKey = key;
-        } catch {
-          // foto perdida, NC salva sem evidência
-        }
-      } else {
-        try {
-          // Supabase Storage: retorna a URL pública completa
-          fotoKey = await uploadPhotoToStorage(key, r.foto);
-        } catch {
-          // foto perdida, NC salva sem evidência
-        }
-      }
+      fotoKey = await uploadFoto(key, r.foto, r2Available);
     }
 
     responseRows.push({
