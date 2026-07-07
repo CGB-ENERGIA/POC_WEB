@@ -373,12 +373,7 @@ const rankEquipes = computed(() => {
   for (const sub of submissions.value) {
     const nc = ncPerSub[sub.id] ?? 0;
     if (nc === 0) continue;
-    const equipes: string[] = Array.isArray(sub.membros)
-      ? (sub.membros as string[])
-      : sub.equipe ? [sub.equipe] : [];
-    for (const eq of equipes) {
-      counts[eq] = (counts[eq] ?? 0) + nc;
-    }
+    if (sub.equipe) counts[sub.equipe] = (counts[sub.equipe] ?? 0) + nc;
   }
   return Object.entries(counts)
     .map(([name, v]) => ({ name, v }))
