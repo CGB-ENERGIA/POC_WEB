@@ -159,7 +159,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useQuasar } from "quasar";
 import { useSessionStore } from "@/stores/session";
@@ -173,6 +173,10 @@ const $q = useQuasar();
 const router = useRouter();
 const session = useSessionStore();
 const observacoes = useObservacoesStore();
+
+onMounted(() => {
+  if (session.matricula) void observacoes.fetchSynced(session.matricula);
+});
 
 const items = computed(() => observacoes.byMatricula(session.matricula));
 const reenviando = ref<string | null>(null);

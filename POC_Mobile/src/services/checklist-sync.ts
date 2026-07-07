@@ -122,6 +122,19 @@ export async function syncChecklistToRemote(
 
   const submissionId = submission.id;
 
+  // Grava em user_observations (35 dias de retenção, para Minhas Observações no PWA)
+  await supabase.from("user_observations").upsert({
+    id: entry.id,
+    matricula: entry.matricula,
+    observador: entry.observador,
+    auditagem: entry.auditagem,
+    data: entry.data,
+    base: entry.base,
+    equipe: entry.equipe,
+    resumo: entry.resumo,
+    sync_status: "synced",
+  }, { onConflict: "id" });
+
   if (responseRows.length) {
     const { error: respErr } = await supabase.from("checklist_responses").insert(
       responseRows.map((row) => ({
