@@ -13,7 +13,6 @@ import { getSupabase } from "@/lib/supabase";
 export type SyncStatus = "pending" | "synced" | "failed" | "local";
 
 const STORAGE_KEY = "cgb-observacoes";
-const RETENTION_DAYS = 35;
 
 /** Registro legado (formulário livre) — mantido para GSTC e registros antigos. */
 export interface Observacao {
@@ -40,12 +39,7 @@ interface ObservacoesState {
 }
 
 function loadItems(): RegistroObservacao[] {
-  const all = LocalStorage.getItem<RegistroObservacao[]>(STORAGE_KEY) ?? [];
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - RETENTION_DAYS);
-  const recent = all.filter((item) => new Date(item.data) >= cutoff);
-  if (recent.length < all.length) LocalStorage.set(STORAGE_KEY, recent);
-  return recent;
+  return LocalStorage.getItem<RegistroObservacao[]>(STORAGE_KEY) ?? [];
 }
 
 export function isChecklist(item: RegistroObservacao): item is ObservacaoChecklist {
