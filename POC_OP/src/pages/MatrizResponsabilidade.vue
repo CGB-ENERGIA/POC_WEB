@@ -461,14 +461,13 @@ const filters = reactive({
 });
 
 // ─── Dados reais ──────────────────────────────────────────────────────────────
-const { loading, load, submissions, responses } = useChecklistData();
+const { loading, load, submissions, responses, employees } = useChecklistData();
 const resolucoes = ref<ResolucaoRow[]>([]);
 
 async function recarregar() {
   const mes = MONTH_MAP[filters.mes];
   const ano = Number(filters.ano);
   await load({ ano, mes, base: filters.base !== "Todos" ? filters.base : undefined });
-  // Busca resoluções para os submissions carregados
   resolucoes.value = await fetchResolucoes(submissions.value.map((s) => s.id));
 }
 
@@ -504,8 +503,10 @@ type NcRow = {
 
 type SubRow = {
   submissionId: string;
+  matricula: string;
   data: string;
   base: string;
+  gerencia: string;
   observador: string;
   equipe: string;
   ncs: NcRow[];
@@ -520,14 +521,19 @@ const allData = computed<SubRow[]>(() => {
     resolucaoMap.set(`${r.submission_id}:${r.pergunta_id}`, r);
   }
 
+  const empMap = new Map(employees.value.map((e) => [e.matricula, e]));
+
   const subMap = new Map<string, SubRow>();
   for (const sub of submissions.value) {
     const dt = new Date(sub.data);
     const fmt = `${dt.toLocaleDateString("pt-BR")} ${dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+    const emp = empMap.get(sub.matricula);
     subMap.set(sub.id, {
       submissionId: sub.id,
+      matricula: sub.matricula,
       data: fmt,
       base: sub.base,
+      gerencia: emp?.gerencia ?? sub.auditagem ?? "",
       observador: sub.observador,
       equipe: sub.equipe,
       ncs: [],
@@ -576,9 +582,18 @@ function isExpanded(id: string) { return !!expanded[id]; }
 
 // ─── Filtrado ─────────────────────────────────────────────────────────────────
 const filteredData = computed<SubRow[]>(() => {
+  let data = allData.value;
+
+  if (filters.gerencia !== "Todos") {
+    data = data.filter((s) => s.gerencia === filters.gerencia);
+  }
+  if (filters.gerente !== "Todos") {
+    data = data.filter((s) => s.observador === filters.gerente);
+  }
+
   const q = search.value.toLowerCase();
-  if (!q) return allData.value;
-  return allData.value.filter((s) => {
+  if (!q) return data;
+  return data.filter((s) => {
     const base = `${s.data} ${s.base} ${s.observador} ${s.equipe}`.toLowerCase();
     if (base.includes(q)) return true;
     return s.ncs.some((nc) =>
