@@ -43,7 +43,7 @@
         </q-circular-progress>
         <div class="col">
           <div class="text-subtitle2 text-weight-bold">
-            {{ totalPeriodo }} deste{{ periodo === "semana" ? "a semana" : " mês" }}
+            {{ totalPeriodo }} {{ periodo === "semana" ? "desta semana" : "deste mês" }}
           </div>
           <div class="text-caption" style="opacity: 0.82">
             {{ totalGeral }} {{ totalGeral === 1 ? "registro" : "registros" }} no total
