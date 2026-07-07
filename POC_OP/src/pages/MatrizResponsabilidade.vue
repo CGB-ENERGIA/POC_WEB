@@ -139,55 +139,84 @@
             <table class="matriz-table">
               <thead>
                 <tr>
+                  <th class="col-toggle"></th>
                   <th class="col-data">Data</th>
                   <th class="col-base">Base</th>
                   <th class="col-obs">Observador</th>
                   <th class="col-equipe">Equipe</th>
-                  <th class="col-cat">Categoria</th>
-                  <th class="col-inc">Inconformidade da categoria</th>
-                  <th class="col-ev">Evidência</th>
-                  <th class="col-res">Resolvido</th>
-                  <th class="col-dres">Data de resolução</th>
+                  <th class="col-nc">Não Conformidades</th>
+                  <th class="col-status">Status</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(row, i) in filteredData" :key="i"
-                  class="tr-clickable"
-                  :class="{ 'tr-resolved': row.resolvido === 'Sim' }"
-                  @click="abrirDetalhe(row)">
-                  <td class="col-data td-mono">{{ row.data }}</td>
-                  <td class="col-base">
-                    <span class="base-badge">{{ row.base }}</span>
-                  </td>
-                  <td class="col-obs">{{ row.observador }}</td>
-                  <td class="col-equipe td-mono">{{ row.equipe }}</td>
-                  <td class="col-cat">
-                    <span class="cat-badge" :class="catClass(row.categoria)">{{ row.categoria }}</span>
-                  </td>
-                  <td class="col-inc">{{ row.inconformidade }}</td>
-                  <td class="col-ev">
-                    <span v-if="row.fotoUrl" class="ev-badge ev-com-foto" title="Tem foto">
-                      <q-icon name="mdi-camera" size="14px" />
-                    </span>
-                    <span v-else class="ev-badge ev-sem-foto" title="Sem foto">
-                      <q-icon name="mdi-camera-off" size="14px" />
-                    </span>
-                  </td>
-                  <td class="col-res">
-                    <span class="res-badge" :class="row.resolvido === 'Sim' ? 'res-sim' : 'res-nao'">
-                      {{ row.resolvido }}
-                    </span>
-                  </td>
-                  <td class="col-dres td-mono">{{ row.dataResolucao || '—' }}</td>
-                </tr>
+                <template v-for="sub in filteredData" :key="sub.submissionId">
+                  <!-- Linha principal do checklist -->
+                  <tr
+                    class="tr-main tr-clickable"
+                    :class="{ 'tr-expanded-open': isExpanded(sub.submissionId) }"
+                    @click="toggleExpand(sub.submissionId)"
+                  >
+                    <td class="col-toggle">
+                      <q-icon
+                        :name="isExpanded(sub.submissionId) ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+                        size="18px" color="grey-6"
+                      />
+                    </td>
+                    <td class="col-data td-mono">{{ sub.data }}</td>
+                    <td class="col-base">
+                      <span class="base-badge">{{ sub.base }}</span>
+                    </td>
+                    <td class="col-obs">{{ sub.observador }}</td>
+                    <td class="col-equipe td-mono">{{ sub.equipe }}</td>
+                    <td class="col-nc">
+                      <span class="nc-count-badge">{{ sub.totalNc }}</span>
+                    </td>
+                    <td class="col-status">
+                      <span v-if="sub.naoResolvidos > 0" class="res-badge res-nao">
+                        {{ sub.naoResolvidos }} pendente{{ sub.naoResolvidos !== 1 ? 's' : '' }}
+                      </span>
+                      <span v-else class="res-badge res-sim">Resolvido</span>
+                    </td>
+                  </tr>
+
+                  <!-- Linhas expandidas: NCs do checklist -->
+                  <tr v-if="isExpanded(sub.submissionId)" class="tr-nc-container">
+                    <td colspan="7" class="td-nc-container">
+                      <div class="nc-list">
+                        <div
+                          v-for="(nc, i) in sub.ncs"
+                          :key="i"
+                          class="nc-item"
+                          @click.stop="abrirDetalhe(sub, nc)"
+                        >
+                          <span class="nc-item__num">{{ i + 1 }}</span>
+                          <span class="cat-badge" :class="catClass(nc.categoria)">{{ nc.categoria }}</span>
+                          <span class="nc-item__desc">{{ nc.inconformidade }}</span>
+                          <div class="nc-item__actions">
+                            <span v-if="nc.fotoUrl" class="ev-badge ev-com-foto" title="Tem foto">
+                              <q-icon name="mdi-camera" size="14px" />
+                            </span>
+                            <span v-else class="ev-badge ev-sem-foto" title="Sem foto">
+                              <q-icon name="mdi-camera-off" size="14px" />
+                            </span>
+                            <span class="res-badge" :class="nc.resolvido === 'Sim' ? 'res-sim' : 'res-nao'">
+                              {{ nc.resolvido }}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+
                 <tr v-if="filteredData.length === 0">
-                  <td colspan="9" class="td-empty">Nenhum registro encontrado.</td>
+                  <td colspan="7" class="td-empty">Nenhum registro encontrado.</td>
                 </tr>
               </tbody>
             </table>
           </div>
           <div class="q-mt-xs q-px-xs row items-center">
-            <span class="table-count">{{ filteredData.length }} registro{{ filteredData.length !== 1 ? 's' : '' }}</span>
+            <span class="table-count">{{ filteredData.length }} checklist{{ filteredData.length !== 1 ? 's' : '' }}</span>
           </div>
         </q-card-section>
       </q-card>
@@ -199,7 +228,7 @@
         <q-card-section class="row items-center q-pb-none">
           <div class="col">
             <div class="text-subtitle1 text-weight-bold" style="color:#8B1C2B">Detalhe da Não Conformidade</div>
-            <div class="text-caption text-grey-6">{{ detalhe.data }} · {{ detalhe.base }} · {{ detalhe.equipe }}</div>
+            <div class="text-caption text-grey-6">{{ detalhe.sub.data }} · {{ detalhe.sub.base }} · {{ detalhe.sub.equipe }}</div>
           </div>
           <q-btn flat round dense icon="mdi-close" v-close-popup />
         </q-card-section>
@@ -208,26 +237,26 @@
 
         <q-card-section class="q-pt-sm q-pb-xs">
           <div class="row items-center q-gutter-xs q-mb-sm">
-            <span class="cat-badge" :class="catClass(detalhe.categoria)">{{ detalhe.categoria }}</span>
-            <span class="res-badge" :class="detalhe.resolvido === 'Sim' ? 'res-sim' : 'res-nao'">{{ detalhe.resolvido }}</span>
+            <span class="cat-badge" :class="catClass(detalhe.nc.categoria)">{{ detalhe.nc.categoria }}</span>
+            <span class="res-badge" :class="detalhe.nc.resolvido === 'Sim' ? 'res-sim' : 'res-nao'">{{ detalhe.nc.resolvido }}</span>
           </div>
 
           <div class="text-caption text-grey-6 text-uppercase q-mb-xs" style="letter-spacing:.5px">Pergunta do checklist</div>
-          <div class="text-body2 text-weight-medium q-mb-md" style="color:#334155">{{ detalhe.pergunta }}</div>
+          <div class="text-body2 text-weight-medium q-mb-md" style="color:#334155">{{ detalhe.nc.pergunta }}</div>
 
-          <template v-if="detalhe.observacao">
+          <template v-if="detalhe.nc.observacao">
             <div class="text-caption text-grey-6 text-uppercase q-mb-xs" style="letter-spacing:.5px">Observação do auditor</div>
-            <div class="obs-box q-mb-md">{{ detalhe.observacao }}</div>
+            <div class="obs-box q-mb-md">{{ detalhe.nc.observacao }}</div>
           </template>
 
           <div class="text-caption text-grey-6 text-uppercase q-mb-xs" style="letter-spacing:.5px">Observador · Equipe</div>
-          <div class="text-body2 q-mb-md" style="color:#334155">{{ detalhe.observador }} · {{ detalhe.equipe }}</div>
+          <div class="text-body2 q-mb-md" style="color:#334155">{{ detalhe.sub.observador }} · {{ detalhe.sub.equipe }}</div>
         </q-card-section>
 
         <!-- Foto -->
-        <q-card-section v-if="detalhe.fotoUrl" class="q-pt-none">
+        <q-card-section v-if="detalhe.nc.fotoUrl" class="q-pt-none">
           <div class="text-caption text-grey-6 text-uppercase q-mb-xs" style="letter-spacing:.5px">Evidência fotográfica</div>
-          <img :src="detalhe.fotoUrl" class="foto-evidencia" alt="Evidência" />
+          <img :src="detalhe.nc.fotoUrl" class="foto-evidencia" alt="Evidência" />
         </q-card-section>
         <q-card-section v-else class="q-pt-none">
           <div class="sem-foto">
@@ -282,7 +311,6 @@ onMounted(recarregar);
 watch(filters, recarregar, { deep: true });
 
 // ─── Photo URL helper ─────────────────────────────────────────────────────────
-// foto_r2_key pode ser: URL completa (Supabase Storage) ou chave R2 relativa.
 const R2_BASE = (import.meta.env.VITE_R2_PUBLIC_BASE_URL as string | undefined ?? "").replace(/\/$/, "");
 function fotoUrl(key: string | null): string | null {
   if (!key) return null;
@@ -291,27 +319,43 @@ function fotoUrl(key: string | null): string | null {
   return `${R2_BASE}/${key}`;
 }
 
-// ─── Data ────────────────────────────────────────────────────────────────────
-type Row = {
-  data: string; base: string; observador: string; equipe: string;
+// ─── Types ────────────────────────────────────────────────────────────────────
+type NcRow = {
   categoria: string; pergunta: string; inconformidade: string;
   observacao: string | null; fotoUrl: string | null;
   resolvido: "Sim" | "Não"; dataResolucao: string;
 };
 
-const allData = computed<Row[]>(() => {
-  const rows: Row[] = [];
-  for (const r of responses.value) {
-    if (r.resposta !== "nao_conforme") continue;
-    const sub = submissions.value.find(s => s.id === r.submission_id);
-    if (!sub) continue;
+type SubRow = {
+  submissionId: string; data: string; base: string;
+  observador: string; equipe: string;
+  ncs: NcRow[]; totalNc: number; naoResolvidos: number;
+};
+
+// ─── Dados agrupados por checklist ───────────────────────────────────────────
+const allData = computed<SubRow[]>(() => {
+  const subMap = new Map<string, SubRow>();
+
+  for (const sub of submissions.value) {
     const dt = new Date(sub.data);
-    const fmt = `${dt.toLocaleDateString("pt-BR")} ${dt.toLocaleTimeString("pt-BR")}`;
-    rows.push({
+    const fmt = `${dt.toLocaleDateString("pt-BR")} ${dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+    subMap.set(sub.id, {
+      submissionId: sub.id,
       data: fmt,
       base: sub.base,
       observador: sub.observador,
       equipe: sub.equipe,
+      ncs: [],
+      totalNc: 0,
+      naoResolvidos: 0,
+    });
+  }
+
+  for (const r of responses.value) {
+    if (r.resposta !== "nao_conforme") continue;
+    const sub = subMap.get(r.submission_id);
+    if (!sub) continue;
+    sub.ncs.push({
       categoria: r.categoria,
       pergunta: r.pergunta,
       inconformidade: r.observacao ?? r.pergunta,
@@ -320,214 +364,61 @@ const allData = computed<Row[]>(() => {
       resolvido: "Não",
       dataResolucao: "",
     });
+    sub.totalNc++;
+    sub.naoResolvidos++;
   }
-  return rows.sort((a, b) => b.data.localeCompare(a.data));
+
+  return Array.from(subMap.values())
+    .filter(s => s.totalNc > 0)
+    .sort((a, b) => b.data.localeCompare(a.data));
 });
+
+// ─── Expand / collapse ────────────────────────────────────────────────────────
+const expanded = reactive<Record<string, boolean>>({});
+
+function toggleExpand(id: string) { expanded[id] = !expanded[id]; }
+function isExpanded(id: string) { return !!expanded[id]; }
 
 // ─── Dialog de detalhe ────────────────────────────────────────────────────────
 const dialogOpen = ref(false);
-const detalhe = ref<Row | null>(null);
+const detalhe = ref<{ sub: SubRow; nc: NcRow } | null>(null);
 
-function abrirDetalhe(row: Row) {
-  detalhe.value = row;
+function abrirDetalhe(sub: SubRow, nc: NcRow) {
+  detalhe.value = { sub, nc };
   dialogOpen.value = true;
 }
 
-// legacy static rows kept for reference
-const _staticRows: Row[] = [
-  {
-    data: "02/06/2026 15:11:36", base: "STI", observador: "Jorden C.", equipe: "ALOJ74",
-    categoria: "Repúblicas",
-    inconformidade: "BOTIJÃO ESTA DENTRO DA COZINHA.",
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "02/06/2026 15:43:30", base: "STI", observador: "Madson F.", equipe: "ALOJ32",
-    categoria: "Repúblicas",
-    inconformidade: "FORTE VAZAMENTO DE ÁGUA NO REGISTRO DO CHUVEIRO NO BANHEIRO",
-    resolvido: "Sim", dataResolucao: "10/06/2026",
-  },
-  {
-    data: "03/06/2026 15:16:21", base: "BCB", observador: "Normam", equipe: "ALOJ04",
-    categoria: "Repúblicas",
-    inconformidade: "NÃO ESTÁ LIMPA, E DUAS LÂMPADAS COM DEFEITOS",
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "03/06/2026 16:31:05", base: "PDS", observador: "Josielington", equipe: "MA-PDS-V001M",
-    categoria: "Procedimentos",
-    inconformidade: "ENCARREGADO SUBSTITUTO NÃO POSSUI ABRAÇADEIRA DE GUARDIÃO E TAMBÉM NÃO APRESENTOU CARTA DE AUTORIZAÇÃO PARA A ATIVIDADE QUE EXERCIA. FEITO FEEDBACK E SOLICITADO ADEQUAÇÃO.",
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "03/06/2026 16:40:19", base: "PDS", observador: "Josielington", equipe: "MA-PDS-F004M",
-    categoria: "EPI, EPC e Ferramentas",
-    inconformidade: "ESCADA SINGELA COM FISSURA NO MONTANTE. FEITO FEEDBACK E SOLICITADO SUBSTITUIÇÃO.",
-    resolvido: "Sim", dataResolucao: "15/06/2026",
-  },
-  {
-    data: "03/06/2026 16:49:58", base: "PDS", observador: "Everton S.", equipe: "MA-PDS-E002M",
-    categoria: "EPI, EPC e Ferramentas",
-    inconformidade: "VEÍCULO COM A LUZ DO FREIO COM PROBLEMAS, PAINEL DO VEÍCULO MOSTRANDO ERRO, EPC BOLSA DA VARA DE MANOBRA DANIFICADO.",
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "03/06/2026 17:21:45", base: "PDT", observador: "Veronica", equipe: "ALOJ27",
-    categoria: "Repúblicas",
-    inconformidade: "PINTURA. AGUARDANDO PEDREIRO DA EMPRESA PARA RESOLVER.",
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "03/06/2026 17:48:39", base: "STI", observador: "Madson F.", equipe: "MA-STI-C001M",
-    categoria: "EPI, EPC e Ferramentas",
-    inconformidade: "ESCADA EXTENSIVA DANIFICADA",
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "04/06/2026 09:14:43", base: "BCB", observador: "Leandro", equipe: "ALOJ02",
-    categoria: "Repúblicas",
-    inconformidade: 'PONTO DE ATENÇÃO: O USO DE ADAPTADORES DO TIPO "T" (BENJAMIM) É PROIBIDO, POIS PODE PROVOCAR SOBRECARGA ELÉTRICA, AUMENTANDO SIGNIFICATIVAMENTE O RISCO DE CURTO-CIRCUITO, SUPERAQUECIMENTO E INCÊNDIO. UTILIZE APENAS DISPOSITIVOS E EXTENSÕES ADEQUADOS À CAPACIDADE DA INSTALAÇÃO ELÉTRICA, GARANTINDO A SEGURANÇA DAS PESSOAS E DO PATRIMÔNIO.',
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "04/06/2026 09:52:24", base: "BCB", observador: "Leandro", equipe: "MA-BCB-D001M",
-    categoria: "Procedimentos",
-    inconformidade: "FOI CONSTATADO O NÃO CUMPRIMENTO DO PROCEDIMENTO POP.00245.EQTL – EXECUÇÃO DO CORTE EM UNIDADE CONSUMIDORA DO GRUPO B, ESPECIFICAMENTE NO PASSO 04, QUE DETERMINA O DESLIGAMENTO DO DISJUNTOR, QUANDO ACESSÍVEL, DURANTE A EXECUÇÃO DO CORTE. DURANTE A ATIVIDADE OBSERVADA, O DISJUNTOR NÃO FOI DESLIGADO, APESAR DE ESTAR ACESSÍVEL. ADICIONALMENTE, O PADRINHO DE SEGURANÇA NÃO REALIZOU A ORIENTAÇÃO NECESSÁRIA QUANTO AO CUMPRIMENTO DO PROCEDIMENTO E AO TRATAMENTO DO DESVIO IDENTIFICADO. OS COLABORADORES FORAM ORIENTADOS NO MOMENTO DA OBSERVAÇÃO SOBRE A CORRETA EXECUÇÃO DA ATIVIDADE, REFORÇANDO A IMPORTÂNCIA DO CUMPRIMENTO INTEGRAL DO PROCEDIMENTO OPERACIONAL E DA ATUAÇÃO PREVENTIVA DO PADRINHO DE SEGURANÇA. ITEM DO POC SOBRE O RISCO DE CHOQUE E ARCO ELÉTRICO, FOI ANALISADO SE EXISTE O RISCO DE CURTO-CIRCUITO E/OU ARCO ELÉTRICO? SE EXISTIR, FORAM ADOTADAS AS MEDIDAS DE CONTROLE?",
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "04/06/2026 18:01:10", base: "ITM", observador: "Lucilene", equipe: "ALOJ46",
-    categoria: "Procedimentos",
-    inconformidade: "A GELADEIRA DA REPÚBLICA ESTÁ EM MANUTENÇÃO",
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "05/06/2026 12:49:08", base: "BDC", observador: "Nilo", equipe: "MA-BDC-O004M",
-    categoria: "Veículos e Equipamentos",
-    inconformidade: "PLACA DO VEÍCULO ESTÁ QUEBRADA. PRECISA SER SUBSTITUÍDA",
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "06/06/2026 13:18:52", base: "STI", observador: "Madson F.", equipe: "ALOJ32",
-    categoria: "Repúblicas",
-    inconformidade: "REGISTRO DO BANHEIRO VAZANDO ÁGUA E FECHADURA DO PORTÃO DANIFICADA",
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "07/06/2026 08:33:31", base: "PDS", observador: "Everton S.", equipe: "MA-PLR-E001M",
-    categoria: "Procedimentos",
-    inconformidade: "EQUIPES DESCUMPRIU POP 0110, 0111",
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "08/06/2026 17:33:21", base: "STI", observador: "Joise", equipe: "ALOJ39",
-    categoria: "Repúblicas",
-    inconformidade: "DESCARGA DO SANITÁRIO DO BANHEIRO SOCIAL NÃO ESTÁ FUNCIONANDO. PIA DO BANHEIRO QUEBRADA",
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "09/06/2026 09:10:33", base: "BDC", observador: "Nilo", equipe: "MA-BDC-F002M",
-    categoria: "EPI, EPC e Ferramentas",
-    inconformidade: "ESCADA SINGELA COM O DEGRAU DANIFICADO, SOLICITAMOS A SUBSTITUIÇÃO",
-    resolvido: "Sim", dataResolucao: "16/06/2026",
-  },
-  {
-    data: "09/06/2026 11:11:24", base: "BCB", observador: "Gleyson", equipe: "MA-BCB-E002M",
-    categoria: "EPI, EPC e Ferramentas",
-    inconformidade: "ESCADA EXTENSIVA RACHADA, EQUIPE VOLTOU A BASE PARA SUBSTITUIR.",
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "09/06/2026 14:56:12", base: "BCB", observador: "Everton S.", equipe: "MA-SMT-E001M",
-    categoria: "EPI, EPC e Ferramentas",
-    inconformidade: "MANTAS ISOLANTES PENDENTES DE SUBSTITUIÇÃO",
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "10/06/2026 17:05:46", base: "STI", observador: "Weyderson", equipe: "ALOJ32",
-    categoria: "Repúblicas",
-    inconformidade: "QUINTAL COM MATO ALTO",
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "11/06/2026 17:15:36", base: "STI", observador: "Gercilene", equipe: "ALOJ73",
-    categoria: "Repúblicas",
-    inconformidade: "BOTIJÃO NA ÁREA INTERNA",
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "12/06/2026 05:36:21", base: "PDS", observador: "Heloyse", equipe: "ALOJ54",
-    categoria: "Repúblicas",
-    inconformidade: "PRECISAR TROCAR LÂMPADA DO CORREDOR, ANDAR DE CIMA, MAIS PROVIDENCIANDO A SUBSTITUIÇÃO DA MESMA",
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "12/06/2026 08:20:25", base: "STI", observador: "Weyderson", equipe: "ALOJ39",
-    categoria: "Repúblicas",
-    inconformidade: "NAO POSSUI CHUVEIRO ELETRICO",
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "15/06/2026 20:32:08", base: "ITM", observador: "Leandro", equipe: "MA-MRA-E001M",
-    categoria: "Veículos e Equipamentos",
-    inconformidade: "ITENS OBSERVADOS:\n• DOCUMENTAÇÃO DO VEÍCULO COM EXERCÍCIO/LICENCIAMENTO REFERENTE AO ANO DE 2025;\n• ESCADA SINGELA SEM FITA (FITA EUREKA);\n• VEÍCULO ESTACIONADO \"CALÇO, SÓ COM UM DOS LADOS\".\n\nPROCEDIMENTOS:\n1. TRABALHO EM ALTURA\nREALIZAR RECICLAGEM NO PROCEDIMENTO POP.00111.EQTL - ATIVIDADES PRELIMINARES DE SEGURANÇA PARA TRABALHO EM ALTURA EM POSTE DE REDE DE DISTRIBUIÇÃO (RD), REFORÇANDO:\n• INSPEÇÃO E PREPARAÇÃO DOS EQUIPAMENTOS ANTES DO USO;\n• PROCEDIMENTO CORRETO DE AMARRAÇÃO DA ESCADA A PARTIR DO SOLO;\n• POSICIONAMENTO ADEQUADO DO TRAVA-QUEDAS DURANTE A SUBIDA E DESCIDA NA ESCADA.\n\n2. ATIVIDADES PRELIMINARES DE SEGURANÇA\nREALIZAR TREINAMENTO DE REFORÇO NO POP.00110.EQTL - ATIVIDADES PRELIMINARES DE SEGURANÇA, ABORDANDO:\n• AVALIAÇÃO PRÉVIA DO LOCAL DE TRABALHO, ASSEGURANDO CONDIÇÕES ADEQUADAS PARA EXECUÇÃO DAS ATIVIDADES COM SEGURANÇA E SAÍDA DE EMERGÊNCIA EM LOCAL SEGURO, SEM DESNÍVEL E OBSTÁCULOS.",
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "15/06/2026 20:43:32", base: "BCB", observador: "Jackson", equipe: "ADM001",
-    categoria: "Estruturas e Instalações Prediais",
-    inconformidade: "ALMOXARIFADO PRECISANDO DE REFORMA",
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "15/06/2026 20:47:05", base: "BCB", observador: "Jackson", equipe: "LOG001",
-    categoria: "Procedimentos",
-    inconformidade: "FALTA EQUIPE REORGANIZAR MATERIAIS EM CONTATO COM SOLO",
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "16/06/2026 13:19:28", base: "BCB", observador: "M. Protasio", equipe: "MA-BCB-P002M",
-    categoria: "EPI, EPC e Ferramentas",
-    inconformidade: "TROCA CALÇA MOTOSSERRISTA",
-    resolvido: "Não", dataResolucao: "",
-  },
-  {
-    data: "16/06/2026 16:21:58", base: "PDS", observador: "Josielington", equipe: "MA-LDP-C001M",
-    categoria: "EPI, EPC e Ferramentas",
-    inconformidade: "EQUIPE NÃO POSSUI TODOS OS CONES DE SINALIZAÇÃO E DELIMITAÇÃO CONFORME POP110, FALTA 1 CONE PARA A EQUIPE. FEITO FEEDBACK E SOLICITADO ADEQUAÇÃO.",
-    resolvido: "Não", dataResolucao: "",
-  },
-];
-void _staticRows;
-
-// ─── Computed ─────────────────────────────────────────────────────────────────
-const filteredData = computed(() => {
+// ─── Computed filtrado ────────────────────────────────────────────────────────
+const filteredData = computed<SubRow[]>(() => {
   const q = search.value.toLowerCase();
-  return allData.value.filter(r => {
-    if (q && !Object.values(r).join(" ").toLowerCase().includes(q)) return false;
-    return true;
+  if (!q) return allData.value;
+  return allData.value.filter(s => {
+    const base = `${s.data} ${s.base} ${s.observador} ${s.equipe}`.toLowerCase();
+    if (base.includes(q)) return true;
+    return s.ncs.some(nc => `${nc.categoria} ${nc.inconformidade} ${nc.pergunta}`.toLowerCase().includes(q));
   });
 });
 
 void loading;
 
-const naoResolvidos = computed(() => filteredData.value.filter(r => r.resolvido === "Não").length);
-const resolvidos    = computed(() => filteredData.value.filter(r => r.resolvido === "Sim").length);
-const totalInc      = computed(() => filteredData.value.length);
+// ─── KPIs (contagem de NCs individuais) ──────────────────────────────────────
+const naoResolvidos = computed(() => filteredData.value.reduce((acc, s) => acc + s.naoResolvidos, 0));
+const resolvidos    = computed(() => filteredData.value.reduce((acc, s) => acc + (s.totalNc - s.naoResolvidos), 0));
+const totalInc      = computed(() => filteredData.value.reduce((acc, s) => acc + s.totalNc, 0));
 const taxaResolucao = computed(() => totalInc.value === 0 ? 0 : Math.round((resolvidos.value / totalInc.value) * 100));
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function catClass(cat: string): string {
   const m: Record<string, string> = {
-    "Repúblicas":           "cat-rep",
-    "Procedimentos":        "cat-proc",
-    "EPI, EPC e Ferramentas": "cat-epi",
-    "APR":                  "cat-apr",
-    "Regras de Ouro":       "cat-regra",
-    "Trabalho em Altura":   "cat-altura",
-    "Veículos e Equipamentos": "cat-veic",
-    "Padrinho de Segurança":             "cat-pad",
-    "Estruturas e Instalações Prediais": "cat-struct",
+    "Repúblicas":                       "cat-rep",
+    "Procedimentos":                    "cat-proc",
+    "EPI, EPC e Ferramentas":           "cat-epi",
+    "APR":                              "cat-apr",
+    "Regras de Ouro":                   "cat-regra",
+    "Trabalho em Altura":               "cat-altura",
+    "Veículos e Equipamentos":          "cat-veic",
+    "Padrinho de Segurança":            "cat-pad",
+    "Estruturas e Instalações Prediais":"cat-struct",
   };
   return m[cat] ?? "";
 }
@@ -620,14 +511,13 @@ $header-bg:    #fce4e8;
 }
 .search-input {
   :deep(.q-field__control) {
-    height: 32px; min-height: 32px; border-radius: 8px;
-    border-color: $border;
+    height: 32px; min-height: 32px; border-radius: 8px; border-color: $border;
   }
   :deep(.q-field__native) { font-size: 12px; }
   :deep(.q-field__prepend) { height: 32px; }
 }
 .matriz-table-wrap {
-  overflow: auto; max-height: 560px;
+  overflow: auto; max-height: 620px;
   border: 1px solid $border; border-radius: 8px;
 }
 .table-count { font-size: 11px; color: #94a3b8; padding: 2px 4px; }
@@ -642,37 +532,82 @@ $header-bg:    #fce4e8;
     text-align: center; white-space: nowrap;
     position: sticky; top: 0; z-index: 1;
     border-bottom: 2px solid rgba($brand,.2);
-    &:first-child, &.col-inc { text-align: left; }
+    &:first-child, &.col-obs { text-align: left; }
   }
 
   tbody {
-    tr {
+    .tr-main {
       border-bottom: 1px solid $border;
       transition: background .15s;
-      &:nth-child(even) { background: #f8fafc; }
+      &:nth-child(4n+1), &:nth-child(4n+2) { background: #f8fafc; }
       &:hover { background: rgba($brand,.04); }
+      &.tr-expanded-open {
+        background: rgba($brand,.06) !important;
+        border-bottom: none;
+      }
     }
     .tr-clickable { cursor: pointer; }
-    .tr-resolved {
-      background: #f0fdf4 !important;
-      &:hover { background: rgba(22,163,74,.08) !important; }
+    .tr-nc-container {
+      border-bottom: 1px solid $border;
     }
   }
 
   td {
-    padding: 7px 10px; vertical-align: top; text-align: center;
+    padding: 8px 10px; vertical-align: middle; text-align: center;
   }
-  .col-data    { min-width: 150px; font-size: 11px; text-align: left; }
+  .col-toggle  { width: 32px; padding: 8px 4px; }
+  .col-data    { min-width: 140px; font-size: 11px; text-align: left; }
   .col-base    { min-width: 60px; }
   .col-obs     { min-width: 110px; font-weight: 600; color: #1e293b; text-align: left; }
-  .col-equipe  { min-width: 120px; font-size: 11px; }
-  .col-cat     { min-width: 130px; }
-  .col-inc     { min-width: 300px; max-width: 420px; text-align: left; font-size: 11.5px; color: #334155; line-height: 1.5; white-space: pre-line; }
-  .col-ev      { min-width: 70px; }
-  .col-res     { min-width: 90px; }
-  .col-dres    { min-width: 120px; font-size: 11px; }
+  .col-equipe  { min-width: 140px; font-size: 11px; }
+  .col-nc      { min-width: 80px; }
+  .col-status  { min-width: 110px; }
   .td-mono     { font-variant-numeric: tabular-nums; color: #475569; }
   .td-empty    { text-align: center; padding: 32px; color: #94a3b8; font-style: italic; }
+
+  .td-nc-container {
+    padding: 0 !important;
+    background: #f8fafc;
+  }
+}
+
+// ── NC count badge ────────────────────────────────────────────────────────────
+.nc-count-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 24px; height: 24px; padding: 0 7px;
+  border-radius: 999px;
+  background: rgba($brand,.12); color: $brand;
+  font-size: 12px; font-weight: 700;
+}
+
+// ── Expanded NC list ──────────────────────────────────────────────────────────
+.nc-list {
+  display: flex; flex-direction: column;
+  padding: 6px 12px 8px 44px;
+  gap: 4px;
+}
+.nc-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid $border;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  &:hover { background: #fef2f2; border-color: rgba($brand,.25); }
+}
+.nc-item__num {
+  font-size: 10px; font-weight: 700; color: #94a3b8;
+  min-width: 16px; text-align: right;
+}
+.nc-item__desc {
+  flex: 1; font-size: 11.5px; color: #334155;
+  line-height: 1.4; white-space: pre-line;
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.nc-item__actions {
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
 }
 
 // ── Badges ────────────────────────────────────────────────────────────────────
@@ -684,7 +619,7 @@ $header-bg:    #fce4e8;
 }
 
 .cat-badge {
-  display: inline-block;
+  display: inline-block; flex-shrink: 0;
   padding: 2px 8px; border-radius: 999px;
   font-size: 10.5px; font-weight: 600; white-space: nowrap;
 }
@@ -701,12 +636,11 @@ $header-bg:    #fce4e8;
 .res-badge {
   display: inline-block;
   padding: 3px 10px; border-radius: 999px;
-  font-size: 11px; font-weight: 700;
+  font-size: 11px; font-weight: 700; white-space: nowrap;
 }
 .res-sim { background: #dcfce7; color: #15803d; }
 .res-nao { background: #fee2e2; color: #991b1b; }
 
-// ── Evidência badge ───────────────────────────────────────────────────────────
 .ev-badge {
   display: inline-flex; align-items: center; justify-content: center;
   width: 26px; height: 26px; border-radius: 6px;
@@ -748,13 +682,21 @@ $header-bg:    #fce4e8;
   .matriz-table {
     thead th { background: #4a1525; color: #fca5a5; border-bottom-color: #7f1d2e; }
     tbody {
-      tr { border-bottom-color: #334155; &:nth-child(even) { background: #162032; } }
-      .tr-resolved { background: rgba(22,163,74,.08) !important; }
+      .tr-main {
+        border-bottom-color: #334155;
+        &:nth-child(4n+1), &:nth-child(4n+2) { background: #162032; }
+        &.tr-expanded-open { background: rgba($brand,.12) !important; }
+      }
+      .tr-nc-container { border-bottom-color: #334155; }
       td { color: #cbd5e1; }
       .col-obs { color: #f1f5f9; }
-      .col-inc { color: #94a3b8; }
     }
-    .matriz-table-wrap { border-color: #334155; }
+    .td-nc-container { background: #131e2e; }
+    .nc-item {
+      background: #1e293b; border-color: #334155;
+      .nc-item__desc { color: #94a3b8; }
+      &:hover { background: rgba($brand,.12); border-color: rgba($brand,.3); }
+    }
   }
 }
 </style>
