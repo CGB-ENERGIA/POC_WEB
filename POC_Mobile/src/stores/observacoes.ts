@@ -36,8 +36,17 @@ interface ObservacoesState {
   items: RegistroObservacao[];
 }
 
+const RETENTION_DAYS = 35;
+
 function loadItems(): RegistroObservacao[] {
-  return LocalStorage.getItem<RegistroObservacao[]>(STORAGE_KEY) ?? [];
+  const all = LocalStorage.getItem<RegistroObservacao[]>(STORAGE_KEY) ?? [];
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - RETENTION_DAYS);
+  const recent = all.filter((item) => new Date(item.data) >= cutoff);
+  if (recent.length < all.length) {
+    LocalStorage.set(STORAGE_KEY, recent);
+  }
+  return recent;
 }
 
 export function isChecklist(item: RegistroObservacao): item is ObservacaoChecklist {
