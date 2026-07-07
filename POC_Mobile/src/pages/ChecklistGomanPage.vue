@@ -51,14 +51,19 @@
           </div>
           <div class="col-6">
             <div class="row items-start no-wrap" style="gap: 6px">
-              <q-input
+              <q-select
                 v-model="equipe"
+                :options="equipesFiltered"
                 class="col"
                 outlined
                 dense
                 label="Equipe / Prefixo"
-                placeholder="Ex: ALOJ74"
+                use-input
+                input-debounce="0"
+                hide-selected
+                fill-input
                 :rules="[required]"
+                @filter="filterEquipes"
               />
               <q-btn
                 flat
@@ -406,6 +411,7 @@ import { LocalStorage, useQuasar } from "quasar";
 import { useSessionStore } from "@/stores/session";
 import { useObservacoesStore, isChecklist } from "@/stores/observacoes";
 import { basesOperacionais } from "@/data/checklist";
+import { equipesPorBase } from "@/data/equipes";
 import {
   gomanChecklist,
   totalPerguntasGoman,
@@ -435,6 +441,24 @@ const editId = route.query.editId as string | undefined;
 
 const base = ref(session.employee?.base ?? "");
 const equipe = ref("");
+
+const equipesOptions = computed(() => equipesPorBase(base.value, "GOMAN"));
+const equipesFiltered = ref<string[]>([]);
+
+watch(equipesOptions, (opts) => { equipesFiltered.value = opts; }, { immediate: true });
+
+watch(base, () => {
+  if (!equipesOptions.value.includes(equipe.value)) equipe.value = "";
+});
+
+function filterEquipes(val: string, update: (fn: () => void) => void) {
+  update(() => {
+    const needle = val.toLowerCase();
+    equipesFiltered.value = needle
+      ? equipesOptions.value.filter((e) => e.toLowerCase().includes(needle))
+      : equipesOptions.value;
+  });
+}
 
 // ── Fotos do local com timestamp de servidor ──────────────────────────────────
 const draftKey = `cgb-fotos-local-${session.employee?.matricula ?? "anon"}`
