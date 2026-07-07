@@ -299,14 +299,10 @@ watch(filters, recarregar, { deep: true });
 
 // â”€â”€â”€ Treemap â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const treemapData = computed(() => {
-  const gravs = byGravidade.value;
-  const cats = byCategoria.value;
-  // Build treemap from NC per category (tolerÃ¢ncia zero focus)
-  const entries = Object.entries(cats)
-    .map(([name, d]) => ({ name, value: d.nc }))
-    .filter(e => e.value > 0)
+  return byCategoria.value
+    .map((d) => ({ name: d.categoria, value: d.total - d.conformes }))
+    .filter((e) => e.value > 0)
     .sort((a, b) => b.value - a.value);
-  return entries;
 });
 
 const tmPalette = ["#6b1321","#8B1C2B","#a32636","#c43d52","#e8889a","#f9c5cb"];

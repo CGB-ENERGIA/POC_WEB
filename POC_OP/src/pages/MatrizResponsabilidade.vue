@@ -179,7 +179,7 @@
                     </td>
                   </tr>
 
-                  <!-- Linhas expandidas: NCs do checklist -->
+                  <!-- NCs expandidas -->
                   <tr v-if="isExpanded(sub.submissionId)" class="tr-nc-container">
                     <td colspan="7" class="td-nc-container">
                       <div class="nc-list">
@@ -187,6 +187,7 @@
                           v-for="(nc, i) in sub.ncs"
                           :key="i"
                           class="nc-item"
+                          :class="{ 'nc-item--resolved': nc.resolucao }"
                           @click.stop="abrirDetalhe(sub, nc)"
                         >
                           <span class="nc-item__num">{{ i + 1 }}</span>
@@ -199,8 +200,8 @@
                             <span v-else class="ev-badge ev-sem-foto" title="Sem foto">
                               <q-icon name="mdi-camera-off" size="14px" />
                             </span>
-                            <span class="res-badge" :class="nc.resolvido === 'Sim' ? 'res-sim' : 'res-nao'">
-                              {{ nc.resolvido }}
+                            <span class="res-badge" :class="nc.resolucao ? 'res-sim' : 'res-nao'">
+                              {{ nc.resolucao ? 'Resolvido' : 'Pendente' }}
                             </span>
                           </div>
                         </div>
@@ -220,11 +221,60 @@
           </div>
         </q-card-section>
       </q-card>
+
+      <!-- ═══ HISTÓRICO DE RESOLUÇÕES ═══ -->
+      <q-card v-if="historicoResolvidos.length > 0" flat bordered class="matriz-card q-mt-md">
+        <q-card-section class="q-pa-sm q-pb-xs">
+          <div class="row items-center">
+            <q-icon name="mdi-check-circle-outline" size="18px" color="positive" class="q-mr-xs" />
+            <div class="matriz-card-title" style="color:#16a34a">Histórico de Resoluções</div>
+            <q-badge color="positive" :label="historicoResolvidos.length" class="q-ml-sm" />
+          </div>
+        </q-card-section>
+        <q-card-section class="q-pa-sm q-pt-xs">
+          <div class="hist-list">
+            <div
+              v-for="(item, i) in historicoResolvidos"
+              :key="i"
+              class="hist-item"
+              @click="abrirDetalhe(item.sub, item.nc)"
+            >
+              <div class="hist-item__foto-wrap">
+                <img
+                  v-if="item.nc.resolucao?.fotoUrl"
+                  :src="item.nc.resolucao.fotoUrl"
+                  class="hist-item__foto"
+                  alt=""
+                />
+                <div v-else class="hist-item__foto-placeholder">
+                  <q-icon name="mdi-image-off-outline" size="18px" color="grey-4" />
+                </div>
+              </div>
+              <div class="hist-item__body">
+                <div class="row items-center q-gutter-xs q-mb-xs">
+                  <span class="cat-badge" :class="catClass(item.nc.categoria)">{{ item.nc.categoria }}</span>
+                  <span class="base-badge">{{ item.sub.base }}</span>
+                  <span class="td-mono" style="font-size:10px;color:#94a3b8">{{ item.sub.equipe }}</span>
+                </div>
+                <div class="hist-item__desc">{{ item.nc.inconformidade }}</div>
+                <div class="hist-item__meta">
+                  <q-icon name="mdi-check-circle" size="12px" color="positive" class="q-mr-xs" />
+                  {{ item.nc.resolucao?.dataResolucao }}
+                  <span class="hist-item__por">por {{ item.nc.resolucao?.resolvidoPor }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
+
     </div>
 
     <!-- ═══════════════════════════ DETAIL DIALOG ═══════════════════════════ -->
-    <q-dialog v-model="dialogOpen" max-width="560px">
-      <q-card v-if="detalhe" style="min-width:320px;max-width:560px;width:100%">
+    <q-dialog v-model="dialogOpen" max-width="580px">
+      <q-card v-if="detalhe" style="min-width:320px;max-width:580px;width:100%">
+
+        <!-- Header -->
         <q-card-section class="row items-center q-pb-none">
           <div class="col">
             <div class="text-subtitle1 text-weight-bold" style="color:#8B1C2B">Detalhe da Não Conformidade</div>
@@ -235,10 +285,13 @@
 
         <q-separator class="q-mt-sm" />
 
+        <!-- NC info -->
         <q-card-section class="q-pt-sm q-pb-xs">
           <div class="row items-center q-gutter-xs q-mb-sm">
             <span class="cat-badge" :class="catClass(detalhe.nc.categoria)">{{ detalhe.nc.categoria }}</span>
-            <span class="res-badge" :class="detalhe.nc.resolvido === 'Sim' ? 'res-sim' : 'res-nao'">{{ detalhe.nc.resolvido }}</span>
+            <span class="res-badge" :class="detalhe.nc.resolucao ? 'res-sim' : 'res-nao'">
+              {{ detalhe.nc.resolucao ? 'Resolvido' : 'Pendente' }}
+            </span>
           </div>
 
           <div class="text-caption text-grey-6 text-uppercase q-mb-xs" style="letter-spacing:.5px">Pergunta do checklist</div>
@@ -250,24 +303,114 @@
           </template>
 
           <div class="text-caption text-grey-6 text-uppercase q-mb-xs" style="letter-spacing:.5px">Observador · Equipe</div>
-          <div class="text-body2 q-mb-md" style="color:#334155">{{ detalhe.sub.observador }} · {{ detalhe.sub.equipe }}</div>
+          <div class="text-body2 q-mb-xs" style="color:#334155">{{ detalhe.sub.observador }} · {{ detalhe.sub.equipe }}</div>
         </q-card-section>
 
-        <!-- Foto -->
-        <q-card-section v-if="detalhe.nc.fotoUrl" class="q-pt-none">
-          <div class="text-caption text-grey-6 text-uppercase q-mb-xs" style="letter-spacing:.5px">Evidência fotográfica</div>
+        <!-- Foto de evidência (ocorrência) -->
+        <q-card-section v-if="detalhe.nc.fotoUrl" class="q-pt-none q-pb-sm">
+          <div class="text-caption text-grey-6 text-uppercase q-mb-xs" style="letter-spacing:.5px">Foto de Evidência (Ocorrência)</div>
           <img :src="detalhe.nc.fotoUrl" class="foto-evidencia" alt="Evidência" />
         </q-card-section>
-        <q-card-section v-else class="q-pt-none">
+        <q-card-section v-else class="q-pt-none q-pb-sm">
           <div class="sem-foto">
             <q-icon name="mdi-camera-off" size="28px" color="grey-4" />
             <span class="text-caption text-grey-5 q-ml-sm">Sem foto de evidência</span>
           </div>
         </q-card-section>
 
-        <q-card-actions align="right">
-          <q-btn flat label="Fechar" color="grey-7" v-close-popup />
-        </q-card-actions>
+        <q-separator />
+
+        <!-- ── JÁ RESOLVIDO ── -->
+        <template v-if="detalhe.nc.resolucao">
+          <q-card-section class="q-pb-xs">
+            <div class="resolucao-header">
+              <q-icon name="mdi-check-circle" color="positive" size="22px" />
+              <span class="resolucao-titulo">Resolução Registrada</span>
+            </div>
+            <div class="resolucao-meta q-mt-sm">
+              <div class="resolucao-meta-item">
+                <span class="resolucao-label">Resolvido por</span>
+                <span class="resolucao-valor">{{ detalhe.nc.resolucao.resolvidoPor }}</span>
+              </div>
+              <div class="resolucao-meta-item">
+                <span class="resolucao-label">Data / Hora</span>
+                <span class="resolucao-valor">{{ detalhe.nc.resolucao.dataResolucao }}</span>
+              </div>
+            </div>
+          </q-card-section>
+          <q-card-section v-if="detalhe.nc.resolucao.fotoUrl" class="q-pt-none">
+            <div class="text-caption text-grey-6 text-uppercase q-mb-xs" style="letter-spacing:.5px">Foto da Resolução</div>
+            <img :src="detalhe.nc.resolucao.fotoUrl" class="foto-evidencia" alt="Foto da resolução" />
+          </q-card-section>
+          <q-card-actions align="right">
+            <q-btn flat label="Fechar" color="grey-7" v-close-popup />
+          </q-card-actions>
+        </template>
+
+        <!-- ── FORM DE RESOLUÇÃO ── -->
+        <template v-else>
+          <q-card-section class="q-pb-sm">
+            <div class="resolver-header q-mb-md">
+              <q-icon name="mdi-wrench-check-outline" color="grey-6" size="20px" />
+              <span class="resolver-titulo">Registrar Resolução</span>
+            </div>
+
+            <q-input
+              v-model="resolverForm.por"
+              outlined dense
+              label="Resolvido por (nome)"
+              placeholder="Nome do responsável"
+              class="q-mb-sm"
+              :disable="resolverForm.saving"
+            />
+
+            <!-- Seleção de foto -->
+            <input
+              ref="fotoInput"
+              type="file"
+              accept="image/*"
+              style="display:none"
+              @change="onFotoChange"
+            />
+            <div v-if="resolverForm.fotoBase64" class="foto-preview-wrap q-mb-sm">
+              <img :src="resolverForm.fotoBase64" class="foto-preview" alt="Preview" />
+              <q-btn
+                flat round dense
+                icon="mdi-close-circle"
+                color="grey-6"
+                class="foto-preview-remove"
+                :disable="resolverForm.saving"
+                @click="resolverForm.fotoBase64 = null"
+              />
+            </div>
+            <q-btn
+              v-else
+              outline color="grey-7"
+              icon="mdi-camera-plus-outline"
+              label="Adicionar Foto da Resolução *"
+              class="full-width q-mb-xs"
+              :disable="resolverForm.saving"
+              @click="fotoInput?.click()"
+            />
+
+            <div v-if="resolverForm.error" class="text-negative text-caption q-mt-xs q-px-xs">
+              <q-icon name="mdi-alert-circle-outline" size="14px" /> {{ resolverForm.error }}
+            </div>
+          </q-card-section>
+
+          <q-card-actions align="right" class="q-pt-none q-px-md q-pb-md">
+            <q-btn flat label="Fechar" color="grey-7" v-close-popup :disable="resolverForm.saving" />
+            <q-btn
+              unelevated color="positive"
+              icon="mdi-check"
+              label="Marcar como Resolvido"
+              :loading="resolverForm.saving"
+              :disable="!resolverForm.por.trim() || !resolverForm.fotoBase64"
+              @click="resolverNc"
+            />
+          </q-card-actions>
+        </template>
+
       </q-card>
     </q-dialog>
   </q-page>
@@ -276,6 +419,25 @@
 <script setup lang="ts">
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
+import { fetchResolucoes, inserirResolucao, type ResolucaoRow } from "@/lib/dashboard";
+
+// ─── R2 upload ────────────────────────────────────────────────────────────────
+const R2_UPLOAD_URL = (import.meta.env.VITE_R2_UPLOAD_URL as string ?? "").replace(/\/$/, "");
+const R2_UPLOAD_TOKEN = import.meta.env.VITE_R2_UPLOAD_TOKEN as string ?? "";
+const R2_PUBLIC_BASE = (import.meta.env.VITE_R2_PUBLIC_BASE_URL as string ?? "").replace(/\/$/, "");
+
+async function uploadToR2(key: string, base64: string): Promise<string> {
+  const idx = base64.indexOf(",");
+  const data = idx >= 0 ? base64.slice(idx + 1) : base64;
+  const res = await fetch(`${R2_UPLOAD_URL}/upload`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${R2_UPLOAD_TOKEN}` },
+    body: JSON.stringify({ key, contentType: "image/jpeg", data }),
+  });
+  if (!res.ok) throw new Error(`Upload falhou (${res.status})`);
+  const body = (await res.json()) as { key?: string };
+  return body.key ?? key;
+}
 
 // ─── Filters ──────────────────────────────────────────────────────────────────
 const showFilters = ref(false);
@@ -300,42 +462,65 @@ const filters = reactive({
 
 // ─── Dados reais ──────────────────────────────────────────────────────────────
 const { loading, load, submissions, responses } = useChecklistData();
+const resolucoes = ref<ResolucaoRow[]>([]);
 
 async function recarregar() {
   const mes = MONTH_MAP[filters.mes];
   const ano = Number(filters.ano);
   await load({ ano, mes, base: filters.base !== "Todos" ? filters.base : undefined });
+  // Busca resoluções para os submissions carregados
+  resolucoes.value = await fetchResolucoes(submissions.value.map((s) => s.id));
 }
 
 onMounted(recarregar);
 watch(filters, recarregar, { deep: true });
 
 // ─── Photo URL helper ─────────────────────────────────────────────────────────
-const R2_BASE = (import.meta.env.VITE_R2_PUBLIC_BASE_URL as string | undefined ?? "").replace(/\/$/, "");
 function fotoUrl(key: string | null): string | null {
   if (!key) return null;
   if (key.startsWith("https://") || key.startsWith("http://")) return key;
-  if (!R2_BASE) return null;
-  return `${R2_BASE}/${key}`;
+  if (!R2_PUBLIC_BASE) return null;
+  return `${R2_PUBLIC_BASE}/${key}`;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+type Resolucao = {
+  id: string;
+  resolvidoPor: string;
+  dataResolucaoIso: string;
+  dataResolucao: string;
+  fotoUrl: string | null;
+};
+
 type NcRow = {
-  categoria: string; pergunta: string; inconformidade: string;
-  observacao: string | null; fotoUrl: string | null;
-  resolvido: "Sim" | "Não"; dataResolucao: string;
+  perguntaId: string;
+  categoria: string;
+  pergunta: string;
+  inconformidade: string;
+  observacao: string | null;
+  fotoUrl: string | null;
+  resolucao: Resolucao | null;
 };
 
 type SubRow = {
-  submissionId: string; data: string; base: string;
-  observador: string; equipe: string;
-  ncs: NcRow[]; totalNc: number; naoResolvidos: number;
+  submissionId: string;
+  data: string;
+  base: string;
+  observador: string;
+  equipe: string;
+  ncs: NcRow[];
+  totalNc: number;
+  naoResolvidos: number;
 };
 
 // ─── Dados agrupados por checklist ───────────────────────────────────────────
 const allData = computed<SubRow[]>(() => {
-  const subMap = new Map<string, SubRow>();
+  const resolucaoMap = new Map<string, ResolucaoRow>();
+  for (const r of resolucoes.value) {
+    resolucaoMap.set(`${r.submission_id}:${r.pergunta_id}`, r);
+  }
 
+  const subMap = new Map<string, SubRow>();
   for (const sub of submissions.value) {
     const dt = new Date(sub.data);
     const fmt = `${dt.toLocaleDateString("pt-BR")} ${dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
@@ -355,29 +540,79 @@ const allData = computed<SubRow[]>(() => {
     if (r.resposta !== "nao_conforme") continue;
     const sub = subMap.get(r.submission_id);
     if (!sub) continue;
+    const raw = resolucaoMap.get(`${r.submission_id}:${r.pergunta_id}`);
+    const resolucao: Resolucao | null = raw
+      ? {
+          id: raw.id,
+          resolvidoPor: raw.resolvido_por,
+          dataResolucaoIso: raw.data_resolucao,
+          dataResolucao: new Date(raw.data_resolucao).toLocaleString("pt-BR"),
+          fotoUrl: fotoUrl(raw.foto_r2_key),
+        }
+      : null;
+
     sub.ncs.push({
+      perguntaId: r.pergunta_id,
       categoria: r.categoria,
       pergunta: r.pergunta,
       inconformidade: r.observacao ?? r.pergunta,
       observacao: r.observacao,
       fotoUrl: fotoUrl(r.foto_r2_key),
-      resolvido: "Não",
-      dataResolucao: "",
+      resolucao,
     });
     sub.totalNc++;
-    sub.naoResolvidos++;
+    if (!resolucao) sub.naoResolvidos++;
   }
 
   return Array.from(subMap.values())
-    .filter(s => s.totalNc > 0)
+    .filter((s) => s.totalNc > 0)
     .sort((a, b) => b.data.localeCompare(a.data));
 });
 
 // ─── Expand / collapse ────────────────────────────────────────────────────────
 const expanded = reactive<Record<string, boolean>>({});
-
 function toggleExpand(id: string) { expanded[id] = !expanded[id]; }
 function isExpanded(id: string) { return !!expanded[id]; }
+
+// ─── Filtrado ─────────────────────────────────────────────────────────────────
+const filteredData = computed<SubRow[]>(() => {
+  const q = search.value.toLowerCase();
+  if (!q) return allData.value;
+  return allData.value.filter((s) => {
+    const base = `${s.data} ${s.base} ${s.observador} ${s.equipe}`.toLowerCase();
+    if (base.includes(q)) return true;
+    return s.ncs.some((nc) =>
+      `${nc.categoria} ${nc.inconformidade} ${nc.pergunta}`.toLowerCase().includes(q)
+    );
+  });
+});
+
+// ─── Histórico de resoluções ──────────────────────────────────────────────────
+const historicoResolvidos = computed(() => {
+  const items: { sub: SubRow; nc: NcRow }[] = [];
+  for (const sub of allData.value) {
+    for (const nc of sub.ncs) {
+      if (nc.resolucao) items.push({ sub, nc });
+    }
+  }
+  return items.sort((a, b) =>
+    b.nc.resolucao!.dataResolucaoIso.localeCompare(a.nc.resolucao!.dataResolucaoIso)
+  );
+});
+
+// ─── KPIs ─────────────────────────────────────────────────────────────────────
+const naoResolvidos = computed(() =>
+  filteredData.value.reduce((acc, s) => acc + s.naoResolvidos, 0)
+);
+const resolvidos = computed(() =>
+  filteredData.value.reduce((acc, s) => acc + (s.totalNc - s.naoResolvidos), 0)
+);
+const totalInc = computed(() =>
+  filteredData.value.reduce((acc, s) => acc + s.totalNc, 0)
+);
+const taxaResolucao = computed(() =>
+  totalInc.value === 0 ? 0 : Math.round((resolvidos.value / totalInc.value) * 100)
+);
 
 // ─── Dialog de detalhe ────────────────────────────────────────────────────────
 const dialogOpen = ref(false);
@@ -385,27 +620,58 @@ const detalhe = ref<{ sub: SubRow; nc: NcRow } | null>(null);
 
 function abrirDetalhe(sub: SubRow, nc: NcRow) {
   detalhe.value = { sub, nc };
+  resolverForm.por = "";
+  resolverForm.fotoBase64 = null;
+  resolverForm.error = null;
   dialogOpen.value = true;
 }
 
-// ─── Computed filtrado ────────────────────────────────────────────────────────
-const filteredData = computed<SubRow[]>(() => {
-  const q = search.value.toLowerCase();
-  if (!q) return allData.value;
-  return allData.value.filter(s => {
-    const base = `${s.data} ${s.base} ${s.observador} ${s.equipe}`.toLowerCase();
-    if (base.includes(q)) return true;
-    return s.ncs.some(nc => `${nc.categoria} ${nc.inconformidade} ${nc.pergunta}`.toLowerCase().includes(q));
-  });
+// ─── Form de resolução ────────────────────────────────────────────────────────
+const fotoInput = ref<HTMLInputElement | null>(null);
+const resolverForm = reactive({
+  por: "",
+  fotoBase64: null as string | null,
+  saving: false,
+  error: null as string | null,
 });
 
-void loading;
+function onFotoChange(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => { resolverForm.fotoBase64 = e.target?.result as string; };
+  reader.readAsDataURL(file);
+  // Reset input so selecting same file again triggers change
+  (event.target as HTMLInputElement).value = "";
+}
 
-// ─── KPIs (contagem de NCs individuais) ──────────────────────────────────────
-const naoResolvidos = computed(() => filteredData.value.reduce((acc, s) => acc + s.naoResolvidos, 0));
-const resolvidos    = computed(() => filteredData.value.reduce((acc, s) => acc + (s.totalNc - s.naoResolvidos), 0));
-const totalInc      = computed(() => filteredData.value.reduce((acc, s) => acc + s.totalNc, 0));
-const taxaResolucao = computed(() => totalInc.value === 0 ? 0 : Math.round((resolvidos.value / totalInc.value) * 100));
+async function resolverNc() {
+  if (!detalhe.value || !resolverForm.por.trim() || !resolverForm.fotoBase64) return;
+  resolverForm.saving = true;
+  resolverForm.error = null;
+  try {
+    const { sub, nc } = detalhe.value;
+    const key = `resolucoes/${sub.submissionId}/${nc.perguntaId}_${Date.now()}.jpg`;
+    const r2Key = await uploadToR2(key, resolverForm.fotoBase64);
+    const nova = await inserirResolucao({
+      submission_id: sub.submissionId,
+      pergunta_id: nc.perguntaId,
+      resolvido_por: resolverForm.por.trim(),
+      data_resolucao: new Date().toISOString(),
+      foto_r2_key: r2Key,
+    });
+    // Atualiza lista local sem recarregar tudo
+    resolucoes.value = [...resolucoes.value, nova];
+    // Fecha dialog após pequena pausa para o usuário ver o sucesso
+    dialogOpen.value = false;
+  } catch (e) {
+    resolverForm.error = (e as Error).message;
+  } finally {
+    resolverForm.saving = false;
+  }
+}
+
+void loading;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function catClass(cat: string): string {
@@ -547,9 +813,7 @@ $header-bg:    #fce4e8;
       }
     }
     .tr-clickable { cursor: pointer; }
-    .tr-nc-container {
-      border-bottom: 1px solid $border;
-    }
+    .tr-nc-container { border-bottom: 1px solid $border; }
   }
 
   td {
@@ -595,6 +859,12 @@ $header-bg:    #fce4e8;
   cursor: pointer;
   transition: background .15s, border-color .15s;
   &:hover { background: #fef2f2; border-color: rgba($brand,.25); }
+  &--resolved {
+    background: #f0fdf4;
+    border-color: rgba(22,163,74,.25);
+    &:hover { background: #dcfce7; border-color: rgba(22,163,74,.4); }
+    .nc-item__desc { color: #166534; }
+  }
 }
 .nc-item__num {
   font-size: 10px; font-weight: 700; color: #94a3b8;
@@ -648,6 +918,47 @@ $header-bg:    #fce4e8;
 .ev-com-foto { background: rgba(37,99,235,.12); color: #2563eb; }
 .ev-sem-foto { background: rgba(148,163,184,.12); color: #94a3b8; }
 
+// ── Histórico de resoluções ────────────────────────────────────────────────────
+.hist-list {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.hist-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f0fdf4;
+  border: 1px solid rgba(22,163,74,.2);
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  &:hover { background: #dcfce7; border-color: rgba(22,163,74,.4); }
+}
+.hist-item__foto-wrap {
+  flex-shrink: 0; width: 56px; height: 56px; border-radius: 8px; overflow: hidden;
+  background: #e2e8f0;
+}
+.hist-item__foto {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.hist-item__foto-placeholder {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background: #f1f5f9;
+}
+.hist-item__body { flex: 1; min-width: 0; }
+.hist-item__desc {
+  font-size: 12px; color: #166534; line-height: 1.4;
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  margin-bottom: 4px;
+}
+.hist-item__meta {
+  display: flex; align-items: center;
+  font-size: 11px; color: #16a34a; gap: 2px;
+}
+.hist-item__por {
+  margin-left: 4px; font-weight: 600; color: #15803d;
+}
+
 // ── Dialog ────────────────────────────────────────────────────────────────────
 .obs-box {
   background: #f8fafc; border-left: 3px solid #dc2626;
@@ -655,13 +966,56 @@ $header-bg:    #fce4e8;
   font-size: 13px; color: #334155; line-height: 1.6; white-space: pre-line;
 }
 .foto-evidencia {
-  width: 100%; max-height: 340px;
+  width: 100%; max-height: 300px;
   object-fit: contain; border-radius: 8px;
   border: 1px solid #e2e8f0;
 }
 .sem-foto {
   display: flex; align-items: center; justify-content: center;
   padding: 20px; border: 1px dashed #e2e8f0; border-radius: 8px;
+}
+
+// ── Resolução (dialog) ────────────────────────────────────────────────────────
+.resolucao-header {
+  display: flex; align-items: center; gap: 8px;
+}
+.resolucao-titulo {
+  font-size: 14px; font-weight: 700; color: #15803d;
+}
+.resolucao-meta {
+  display: flex; flex-direction: column; gap: 6px;
+  background: #f0fdf4; border-radius: 8px;
+  padding: 10px 14px;
+  border: 1px solid rgba(22,163,74,.2);
+}
+.resolucao-meta-item {
+  display: flex; align-items: baseline; gap: 8px;
+}
+.resolucao-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .5px; color: #86efac; min-width: 90px;
+}
+.resolucao-valor { font-size: 13px; color: #14532d; font-weight: 500; }
+
+.resolver-header {
+  display: flex; align-items: center; gap: 8px;
+}
+.resolver-titulo {
+  font-size: 13px; font-weight: 700; color: #475569;
+  text-transform: uppercase; letter-spacing: .5px;
+}
+
+.foto-preview-wrap {
+  position: relative; border-radius: 8px; overflow: hidden;
+  border: 1px solid $border;
+}
+.foto-preview {
+  width: 100%; max-height: 200px; object-fit: cover; display: block;
+}
+.foto-preview-remove {
+  position: absolute; top: 4px; right: 4px;
+  background: rgba(255,255,255,.85) !important;
+  border-radius: 50%;
 }
 
 // ── Dark mode ─────────────────────────────────────────────────────────────────
@@ -696,7 +1050,24 @@ $header-bg:    #fce4e8;
       background: #1e293b; border-color: #334155;
       .nc-item__desc { color: #94a3b8; }
       &:hover { background: rgba($brand,.12); border-color: rgba($brand,.3); }
+      &--resolved {
+        background: #052e16; border-color: rgba(22,163,74,.3);
+        .nc-item__desc { color: #86efac; }
+        &:hover { background: #064e3b; }
+      }
     }
   }
+  .hist-item {
+    background: #052e16; border-color: rgba(22,163,74,.25);
+    &:hover { background: #064e3b; }
+    .hist-item__desc { color: #86efac; }
+    .hist-item__meta { color: #4ade80; }
+    .hist-item__por { color: #86efac; }
+  }
+  .resolucao-meta {
+    background: #052e16; border-color: rgba(22,163,74,.25);
+  }
+  .resolucao-label { color: #4ade80; }
+  .resolucao-valor { color: #bbf7d0; }
 }
 </style>

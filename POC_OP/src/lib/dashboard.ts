@@ -183,6 +183,39 @@ export function ncPorGravidade(responses: ResponseRow[]): Record<string, number>
     }, {});
 }
 
+// ─── Resolução de NCs ────────────────────────────────────────────────────────
+
+export interface ResolucaoRow {
+  id: string;
+  submission_id: string;
+  pergunta_id: string;
+  resolvido_por: string;
+  data_resolucao: string;
+  foto_r2_key: string;
+}
+
+export async function fetchResolucoes(submissionIds: string[]): Promise<ResolucaoRow[]> {
+  if (!submissionIds.length) return [];
+  const { data, error } = await supabase
+    .from("nc_resolucoes")
+    .select("id,submission_id,pergunta_id,resolvido_por,data_resolucao,foto_r2_key")
+    .in("submission_id", submissionIds);
+  if (error) throw error;
+  return (data ?? []) as ResolucaoRow[];
+}
+
+export async function inserirResolucao(
+  row: Omit<ResolucaoRow, "id">
+): Promise<ResolucaoRow> {
+  const { data, error } = await supabase
+    .from("nc_resolucoes")
+    .insert(row)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as ResolucaoRow;
+}
+
 /** Filtra gerência de employee lookup. */
 export function filterByGerencia(
   subs: SubmissionRow[],
