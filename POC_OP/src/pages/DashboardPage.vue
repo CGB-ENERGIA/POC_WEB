@@ -285,9 +285,9 @@ const kpis = computed(() => [
     value:      loading.value ? "…" : fmtPct(pctPerfeitas.value),
     icon:       "mdi-star-circle-outline",
     accent:     YELLOW,
-    trend:      "sem nenhuma NC",
-    trendIcon:  "mdi-star",
-    trendColor: pctPerfeitas.value >= 0.5 ? GREEN : YELLOW,
+    trend:      pctPerfeitas.value > 0 ? "obs. sem nenhuma NC" : "nenhuma obs. perfeita",
+    trendIcon:  pctPerfeitas.value > 0 ? "mdi-star" : "mdi-star-off-outline",
+    trendColor: pctPerfeitas.value >= 0.5 ? GREEN : pctPerfeitas.value > 0 ? YELLOW : RED,
   },
   {
     label:      "Bases Cobertas",
