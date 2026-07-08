@@ -323,11 +323,16 @@ const {
 
 async function recarregar() {
   const mes = MONTH_MAP[filters.mes] ?? undefined;
-  await load({ ano: Number(filters.ano), mes, base: filters.base !== "Todos" ? filters.base : undefined });
+  await load({
+    ano: Number(filters.ano),
+    mes,
+    base: filters.base !== "Todos" ? filters.base : undefined,
+    gerencia: filters.gerencia !== "Todos" ? filters.gerencia : undefined,
+  });
 }
 
 onMounted(recarregar);
-watch(filters, recarregar, { deep: true });
+watch(() => [filters.ano, filters.mes, filters.base, filters.gerencia], recarregar);
 
 // ─── Table data ───────────────────────────────────────────────────────────────
 type ObsRow = { nome: string; funcao: string; base: string; obs: number; obs100: number; conf: number; inc: number };
@@ -351,9 +356,19 @@ const rawRows = computed<ObsRow[]>(() =>
   })
 );
 
-const tableDataSorted = computed(() =>
-  [...rawRows.value].sort((a, b) => rowPct(b) - rowPct(a))
-);
+const tableDataSorted = computed(() => {
+  let rows = [...rawRows.value];
+  if (filters.funcao !== "Todos") {
+    rows = rows.filter(r => r.funcao === filters.funcao);
+  }
+  if (filters.gerente !== "Todos") {
+    rows = rows.filter(r => r.nome === filters.gerente);
+  }
+  if (filters.observador !== "Todos") {
+    rows = rows.filter(r => r.nome === filters.observador);
+  }
+  return rows.sort((a, b) => rowPct(b) - rowPct(a));
+});
 
 function rowPct(row: ObsRow): number {
   const t = row.conf + row.inc;

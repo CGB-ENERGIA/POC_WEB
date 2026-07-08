@@ -314,21 +314,98 @@ const filters = reactive({
 const {
   loading,
   load,
-  totalSubmissions,
-  basesCovertas,
-  byObservador,
-  byBase,
-  bySemana,
-  byGerencia,
-  conformidadePorObservador,
+  submissions,
+  responses,
+  employees,
 } = useChecklistData();
 
 async function recarregar() {
-  await load({ ano: filters.ano, mes: filters.mes, base: filters.base !== "Todos" ? filters.base : undefined });
+  await load({
+    ano: filters.ano,
+    mes: filters.mes,
+    base: filters.base !== "Todos" ? filters.base : undefined,
+    gerencia: filters.gerencia !== "Todos" ? filters.gerencia : undefined,
+  });
 }
 
 onMounted(recarregar);
-watch(filters, recarregar, { deep: true });
+watch(() => [filters.ano, filters.mes, filters.base, filters.gerencia], recarregar);
+
+const filteredSubs = computed(() => {
+  let s = submissions.value;
+  if (filters.semana) {
+    s = s.filter(sub => Math.ceil(new Date(sub.data).getDate() / 7) === filters.semana);
+  }
+  if (filters.gerente !== "Todos") {
+    s = s.filter(sub => sub.observador === filters.gerente);
+  }
+  if (filters.funcao !== "Todos") {
+    s = s.filter(sub => {
+      const emp = employees.value.find(e => e.matricula === sub.matricula);
+      return emp?.funcao === filters.funcao;
+    });
+  }
+  return s;
+});
+
+const totalSubmissions = computed(() => filteredSubs.value.length);
+const basesCovertas = computed(() => new Set(filteredSubs.value.map(s => s.base)).size);
+
+const byBase = computed(() => {
+  const m: Record<string, number> = {};
+  for (const s of filteredSubs.value) m[s.base] = (m[s.base] ?? 0) + 1;
+  return m;
+});
+
+const bySemana = computed(() => {
+  const m: Record<number, number> = {};
+  for (const s of filteredSubs.value) {
+    const sem = Math.ceil(new Date(s.data).getDate() / 7);
+    m[sem] = (m[sem] ?? 0) + 1;
+  }
+  return m;
+});
+
+const byObservador = computed(() => {
+  const m: Record<string, number> = {};
+  for (const s of filteredSubs.value) m[s.observador] = (m[s.observador] ?? 0) + 1;
+  return m;
+});
+
+const byGerencia = computed(() => {
+  const m: Record<string, number> = {};
+  for (const s of filteredSubs.value) {
+    const emp = employees.value.find(e => e.matricula === s.matricula);
+    const g = emp?.gerencia ?? s.auditagem;
+    m[g] = (m[g] ?? 0) + 1;
+  }
+  return m;
+});
+
+const conformidadePorObservador = computed(() => {
+  const filteredIds = new Set(filteredSubs.value.map(s => s.id));
+  const filteredResps = responses.value.filter(r => filteredIds.has(r.submission_id));
+  const map: Record<string, { nome: string; total: number; conformes: number }> = {};
+  for (const s of filteredSubs.value) {
+    if (!map[s.matricula]) map[s.matricula] = { nome: s.observador, total: 0, conformes: 0 };
+  }
+  for (const r of filteredResps) {
+    const sub = filteredSubs.value.find(s => s.id === r.submission_id);
+    if (!sub) continue;
+    if (!map[sub.matricula]) map[sub.matricula] = { nome: sub.observador, total: 0, conformes: 0 };
+    map[sub.matricula].total++;
+    if (r.resposta === "conforme") map[sub.matricula].conformes++;
+  }
+  return Object.entries(map)
+    .map(([matricula, d]) => ({
+      matricula,
+      nome: d.nome,
+      totalObs: filteredSubs.value.filter(s => s.matricula === matricula).length,
+      total: d.total,
+      conformes: d.conformes,
+    }))
+    .sort((a, b) => b.totalObs - a.totalObs);
+});
 
 const mesLabel = computed(() => meses.find(m => m.value === filters.mes)?.label ?? "");
 

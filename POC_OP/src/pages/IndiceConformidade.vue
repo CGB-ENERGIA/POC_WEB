@@ -301,11 +301,32 @@ const {
 } = useChecklistData();
 
 async function recarregar() {
-  await load({ ano: filters.ano, mes: filters.mes }, true);
+  await load({
+    ano: filters.ano,
+    mes: filters.mes,
+    base: filters.base !== "Todos" ? filters.base : undefined,
+    gerencia: filters.gerencia !== "Todos" ? filters.gerencia : undefined,
+  }, true);
 }
 
 onMounted(recarregar);
-watch(filters, recarregar, { deep: true });
+watch(() => [filters.ano, filters.mes, filters.base, filters.gerencia], recarregar);
+
+const filteredSubs = computed(() => {
+  let s = submissions.value;
+  if (filters.semana) {
+    s = s.filter(sub => Math.ceil(new Date(sub.data).getDate() / 7) === filters.semana);
+  }
+  if (filters.gerente !== "Todos") {
+    s = s.filter(sub => sub.observador === filters.gerente);
+  }
+  return s;
+});
+
+const filteredResps = computed(() => {
+  const ids = new Set(filteredSubs.value.map(s => s.id));
+  return responses.value.filter(r => ids.has(r.submission_id));
+});
 
 // ─── KPIs ─────────────────────────────────────────────────────────────────────
 const kpis = computed(() => [
@@ -429,9 +450,9 @@ const chartDonut = computed(() => {
 // conformidade % por base: (conformes / total) * 100
 const conformidadePorBase = computed(() => {
   const map: Record<string, { c: number; t: number }> = {};
-  for (const s of submissions.value) {
+  for (const s of filteredSubs.value) {
     if (!map[s.base]) map[s.base] = { c: 0, t: 0 };
-    const rs = responses.value.filter(r => r.submission_id === s.id);
+    const rs = filteredResps.value.filter(r => r.submission_id === s.id);
     map[s.base].t += rs.length;
     map[s.base].c += rs.filter(r => r.resposta === "conforme").length;
   }
@@ -440,11 +461,11 @@ const conformidadePorBase = computed(() => {
 
 const conformidadePorGerencia = computed(() => {
   const map: Record<string, { c: number; t: number }> = {};
-  for (const s of submissions.value) {
+  for (const s of filteredSubs.value) {
     const emp = employees.value.find(e => e.matricula === s.matricula);
     const g = emp?.gerencia ?? s.auditagem;
     if (!map[g]) map[g] = { c: 0, t: 0 };
-    const rs = responses.value.filter(r => r.submission_id === s.id);
+    const rs = filteredResps.value.filter(r => r.submission_id === s.id);
     map[g].t += rs.length;
     map[g].c += rs.filter(r => r.resposta === "conforme").length;
   }
@@ -486,8 +507,8 @@ const chartGerencia = computed(() => {
 // ─── Chart: Índice por Equipe (scrollable) ────────────────────────────────────
 const chartEquipe = computed(() => {
   const equipePcts: Record<string, { c: number; t: number }> = {};
-  for (const s of submissions.value) {
-    const rs = responses.value.filter(r => r.submission_id === s.id);
+  for (const s of filteredSubs.value) {
+    const rs = filteredResps.value.filter(r => r.submission_id === s.id);
     const nome = s.equipe;
     if (!nome) continue;
     if (!equipePcts[nome]) equipePcts[nome] = { c: 0, t: 0 };
@@ -515,7 +536,7 @@ const chartEquipe = computed(() => {
 // ─── Chart: Ranking de Não Conformidades ─────────────────────────────────────
 const rankingNC = computed(() => {
   const map: Record<string, number> = {};
-  for (const r of responses.value) {
+  for (const r of filteredResps.value) {
     if (r.resposta === "nao_conforme") {
       const key = r.pergunta.length > 28 ? r.pergunta.slice(0, 27) + "." : r.pergunta;
       map[key] = (map[key] ?? 0) + 1;

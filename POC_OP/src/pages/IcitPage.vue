@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <q-page class="icit-page">
     <q-linear-progress v-if="loading" indeterminate color="negative" style="position:sticky;top:0;z-index:200" />
 
@@ -273,7 +273,7 @@ const {
   load,
 } = useChecklistData();
 
-// â”€â”€â”€ Paleta â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€ Paleta â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const P = {
   conf:    "#16a34a",
   confLt:  "#22c55e",
@@ -281,7 +281,7 @@ const P = {
   inconfLt:"#C4364E",
 };
 
-// â”€â”€â”€ Filter options â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€ Filter options â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const showFilters = ref(false);
 
 const now = new Date();
@@ -309,7 +309,7 @@ const gerentes   = [
   "Marcos", "Paulo", "Rafaela", "Ricardo", "Valvick", "Waldir"
 ];
 
-// â”€â”€â”€ Filter state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€ Filter state â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const filters = reactive({
   ano:       now.getFullYear(),
   semana:    Math.ceil(now.getDate() / 7),
@@ -325,9 +325,20 @@ async function recarregar() {
   await load({ ano: filters.ano, mes: filters.mes, base: filters.base === "Todos" ? undefined : filters.base, gerencia: filters.gerencia === "Todos" ? undefined : filters.gerencia }, true);
 }
 onMounted(recarregar);
-watch(filters, recarregar, { deep: true });
+watch(() => [filters.ano, filters.mes, filters.base, filters.gerencia], recarregar);
 
-// â”€â”€â”€ KPIs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const filteredSubs = computed(() => {
+  let s = submissions.value;
+  if (filters.semana) {
+    s = s.filter(sub => Math.ceil(new Date(sub.data).getDate() / 7) === filters.semana);
+  }
+  if (filters.gerente !== "Todos") {
+    s = s.filter(sub => sub.observador === filters.gerente);
+  }
+  return s;
+});
+
+// â"€â"€â"€ KPIs â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const kpis = computed(() => [
   { label: "conformidade",     value: fmtN(totalConformes.value),   icon: "mdi-check-circle",  color: "positive", hex: "#16a34a" },
   { label: "Inconformidade",   value: fmtN(totalNaoConformes.value), icon: "mdi-alert-circle",  color: "negative", hex: "#dc2626" },
@@ -335,7 +346,7 @@ const kpis = computed(() => [
   { label: "Equipes Auditadas",value: fmtN(basesCovertas.value),    icon: "mdi-account-group", color: "primary",  hex: "#0284c7" },
 ]);
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€ Helpers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const ttItem = {
   trigger: "item" as const,
   backgroundColor: "rgba(255,255,255,0.97)",
@@ -380,7 +391,7 @@ function hBar(
   };
 }
 
-// â”€â”€â”€ Chart: Donut â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€ Chart: Donut â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const chartDonut = computed(() => ({
   tooltip: {
     ...ttItem,
@@ -421,7 +432,7 @@ const chartDonut = computed(() => ({
   }]
 }));
 
-// â”€â”€â”€ Chart: Por Mês â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€ Chart: Por Mês â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const chartMes = computed(() => {
   const mesLabels = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
   const entries = Object.entries(byMes.value).sort((a, b) => Number(a[0]) - Number(b[0]));
@@ -431,19 +442,19 @@ const chartMes = computed(() => {
   );
 });
 
-// â”€â”€â”€ Chart: Por Gerência â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€ Chart: Por Gerência â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const chartGerencia = computed(() => {
   const entries = Object.entries(byGerencia.value).sort((a, b) => a[1] - b[1]);
   return hBar(entries.map(([k]) => k), entries.map(([, v]) => v), P.conf, "", Math.max(...entries.map(([,v]) => v), 1));
 });
 
-// â”€â”€â”€ Chart: Por Base â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€ Chart: Por Base â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const chartBase = computed(() => {
   const entries = Object.entries(byBase.value).sort((a, b) => a[1] - b[1]);
   return hBar(entries.map(([k]) => k), entries.map(([, v]) => v), P.conf, "", Math.max(...entries.map(([,v]) => v), 1));
 });
 
-// â”€â”€â”€ Chart: Não conformidades por Categoria â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€ Chart: Não conformidades por Categoria â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const chartCategoria = computed(() => {
   const catEntries = Object.entries(byCategoria.value)
     .map(([cat, d]) => ({ cat, nc: d.nc }))
@@ -487,10 +498,10 @@ const chartCategoria = computed(() => {
   };
 });
 
-// â”€â”€â”€ Chart: Por Equipe (scrollable vertical) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€ Chart: Por Equipe (scrollable vertical) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const equipePct = computed(() => {
   const map: Record<string, { conf: number; total: number }> = {};
-  for (const sub of submissions.value) {
+  for (const sub of filteredSubs.value) {
     const equipes: string[] = Array.isArray(sub.membros)
       ? (sub.membros as string[])
       : sub.equipe ? [sub.equipe] : [];
