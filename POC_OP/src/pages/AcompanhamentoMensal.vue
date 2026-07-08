@@ -250,6 +250,7 @@ import {
 import VChart from "vue-echarts";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 import { filterByGerencia } from "@/lib/dashboard";
+import { useGoals } from "@/composables/useGoals";
 
 use([
   CanvasRenderer, BarChart, LineChart,
@@ -409,15 +410,27 @@ const conformidadePorObservador = computed(() => {
 
 const mesLabel = computed(() => meses.find(m => m.value === filters.mes)?.label ?? "");
 
-// ─── Meta mensal (2 obs/sem × 4 semanas = 8/mês por observador) ───────────────
-const GOAL_WEEKLY   = 2;
-const GOAL_MONTHLY  = GOAL_WEEKLY * 4; // 8
+// ─── Meta mensal (semanal × 4 semanas, por perfil de observador) ──────────────
+const { normaisMensal, goalForGerencia } = useGoals();
 
 const numObservadores = computed(() => Object.keys(byObservador.value).length);
-const metaMensal      = computed(() => numObservadores.value * GOAL_MONTHLY);
-const obsNoMeta       = computed(() =>
-  Object.values(byObservador.value).filter(v => v >= GOAL_MONTHLY).length
+
+const metaMensal = computed(() =>
+  Object.keys(byObservador.value).reduce((total, obsName) => {
+    const sub = filteredSubs.value.find(s => s.observador === obsName);
+    const emp = employees.value.find(e => e.matricula === sub?.matricula);
+    return total + goalForGerencia(emp?.gerencia).mensal;
+  }, 0)
 );
+
+const obsNoMeta = computed(() =>
+  Object.entries(byObservador.value).filter(([obsName, count]) => {
+    const sub = filteredSubs.value.find(s => s.observador === obsName);
+    const emp = employees.value.find(e => e.matricula === sub?.matricula);
+    return count >= goalForGerencia(emp?.gerencia).mensal;
+  }).length
+);
+
 const atingimento = computed(() => {
   if (numObservadores.value === 0) return "—";
   return `${Math.round((obsNoMeta.value / numObservadores.value) * 100)}%`;
@@ -513,8 +526,8 @@ const chartMetaSemana = computed(() => ({
     markLine: {
       silent: true, symbol: "none",
       lineStyle: { color: "#0ea5e9", type: "dashed" as const, width: 2 },
-      label: { position: "insideEndTop" as const, fontSize: 11, fontWeight: "bold" as const, color: "#0ea5e9", formatter: `Meta: ${numObservadores.value * GOAL_WEEKLY}` },
-      data: [{ yAxis: numObservadores.value * GOAL_WEEKLY }]
+      label: { position: "insideEndTop" as const, fontSize: 11, fontWeight: "bold" as const, color: "#0ea5e9", formatter: `Meta: ${metaMensal.value / 4}` },
+      data: [{ yAxis: metaMensal.value / 4 }]
     }
   }]
 }));
@@ -609,8 +622,8 @@ const chartObservador = computed(() => {
       markLine: {
         silent: true, symbol: "none",
         lineStyle: { color: "#0ea5e9", type: "dashed" as const, width: 2 },
-        label: { position: "insideEndTop" as const, fontSize: 11, fontWeight: "bold" as const, color: "#0ea5e9", formatter: `Meta: ${GOAL_MONTHLY}` },
-        data: [{ yAxis: GOAL_MONTHLY }]
+        label: { position: "insideEndTop" as const, fontSize: 11, fontWeight: "bold" as const, color: "#0ea5e9", formatter: `Meta: ${normaisMensal.value}` },
+        data: [{ yAxis: normaisMensal.value }]
       }
     }]
   };

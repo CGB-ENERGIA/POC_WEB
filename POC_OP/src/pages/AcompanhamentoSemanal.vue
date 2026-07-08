@@ -232,6 +232,8 @@ import {
 import VChart from "vue-echarts";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 import { filterByGerencia } from "@/lib/dashboard";
+import { useGoals } from "@/composables/useGoals";
+const { normaisSemanal, goalForGerencia } = useGoals();
 
 use([
   CanvasRenderer, BarChart, LineChart, PieChart,
@@ -373,13 +375,25 @@ const conformidadePorObservador = computed(() => {
 });
 
 // ─── Meta ────────────────────────────────────────────────────────────────────
-const GOAL_PER_OBS = 2;
 
 const numObservadores = computed(() => Object.keys(byObservador.value).length);
-const metaTotal = computed(() => numObservadores.value * GOAL_PER_OBS);
-const obsNoMeta = computed(() =>
-  Object.values(byObservador.value).filter(v => v >= GOAL_PER_OBS).length
+
+const metaTotal = computed(() =>
+  Object.keys(byObservador.value).reduce((total, obsName) => {
+    const sub = filteredSubs.value.find(s => s.observador === obsName);
+    const emp = employees.value.find(e => e.matricula === sub?.matricula);
+    return total + goalForGerencia(emp?.gerencia).semanal;
+  }, 0)
 );
+
+const obsNoMeta = computed(() =>
+  Object.entries(byObservador.value).filter(([obsName, count]) => {
+    const sub = filteredSubs.value.find(s => s.observador === obsName);
+    const emp = employees.value.find(e => e.matricula === sub?.matricula);
+    return count >= goalForGerencia(emp?.gerencia).semanal;
+  }).length
+);
+
 const atingimento = computed(() => {
   if (numObservadores.value === 0) return "—";
   return `${Math.round((obsNoMeta.value / numObservadores.value) * 100)}%`;
@@ -495,9 +509,9 @@ const barObservadores = computed(() => {
           fontSize: 11,
           fontWeight: "bold" as const,
           color: "#0ea5e9",
-          formatter: `Meta: ${GOAL_PER_OBS}`
+          formatter: `Meta: ${normaisSemanal.value}`
         },
-        data: [{ yAxis: GOAL_PER_OBS }]
+        data: [{ yAxis: normaisSemanal.value }]
       }
     }]
   };

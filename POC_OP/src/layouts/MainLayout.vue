@@ -143,6 +143,11 @@ const linksList: EssentialLinkProps[] = [
     label: "Matriz de Responsabilidade",
     icon: "mdi-clipboard-list",
     link: "/matriz-responsabilidade"
+  },
+  {
+    label: "Configurar Metas",
+    icon: "mdi-bullseye-arrow",
+    link: "/config-metas"
   }
 ];
 
