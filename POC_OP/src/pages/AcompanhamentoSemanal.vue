@@ -302,24 +302,28 @@ const {
 
 async function recarregar() {
   await load(
-    {
-      ano: filters.ano,
-      mes: filters.mes,
-      semana: filters.semana,
-    },
+    { ano: filters.ano, mes: filters.mes },
     false,
     true
   );
 }
 
 onMounted(recarregar);
-watch(() => [filters.ano, filters.mes, filters.semana], recarregar);
+watch(() => [filters.ano, filters.mes], recarregar);
 
-const filteredSubs = computed(() => {
+// Todos os subs do mês após filtros de gerência/gerente (sem filtro de semana)
+const allMonthSubs = computed(() => {
   let s = filterByGerencia(submissions.value, employees.value, filters.gerencia);
   if (filters.gerente !== "Todos") s = s.filter(sub => sub.observador === filters.gerente);
   return s;
 });
+
+// Subs filtrados pela semana selecionada (client-side)
+const filteredSubs = computed(() =>
+  allMonthSubs.value.filter(sub =>
+    Math.ceil(new Date(sub.data).getDate() / 7) === filters.semana
+  )
+);
 
 const totalSubmissions = computed(() => filteredSubs.value.length);
 const basesCovertas = computed(() => new Set(filteredSubs.value.map(s => s.base)).size);
@@ -332,7 +336,7 @@ const byBase = computed(() => {
 
 const bySemana = computed(() => {
   const m: Record<number, number> = {};
-  for (const s of filteredSubs.value) {
+  for (const s of allMonthSubs.value) {
     const sem = Math.ceil(new Date(s.data).getDate() / 7);
     m[sem] = (m[sem] ?? 0) + 1;
   }
@@ -572,11 +576,19 @@ const barBase = computed(() => {
 });
 
 // ─── Observações por Processo (auditagem type) ────────────────────────────────
+const byProcesso = computed(() => {
+  const m: Record<string, number> = {};
+  for (const s of filteredSubs.value) {
+    const tipo = (s.auditagem ?? "Outro").toUpperCase();
+    m[tipo] = (m[tipo] ?? 0) + 1;
+  }
+  return m;
+});
+
 const barProcesso = computed(() => {
-  const goman = conformidadePorObservador.value.reduce((acc, o) => acc, 0);
-  // Use auditagem from submissions
-  void goman;
   const processoColors: [string, string][] = [[C.p, C.l1], [C.l1, C.l3]];
+  const labels = ["GOMAN", "GSTC"];
+  const data = labels.map(l => byProcesso.value[l] ?? 0);
   return {
     tooltip: {
       ...ttItem,
@@ -584,11 +596,11 @@ const barProcesso = computed(() => {
         `Tipo: <b>${p.name}</b><br/>Observações: <b style="color:${C.p}">${p.value}</b>`
     },
     grid: { left: 12, right: 12, top: 52, bottom: 40, containLabel: true },
-    xAxis: cleanXAxis(["GOMAN","GSTC"]),
+    xAxis: cleanXAxis(labels),
     yAxis: silentYAxis,
     series: [{
       type: "bar" as const,
-      data: [0, 0],
+      data,
       barMaxWidth: 80,
       barMinHeight: 4,
       itemStyle: {
