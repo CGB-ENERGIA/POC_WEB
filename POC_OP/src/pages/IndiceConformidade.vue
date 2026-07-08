@@ -251,6 +251,7 @@ const showFilters = ref(false);
 
 const anos     = [2024, 2025, 2026];
 const semanas  = [
+  { value: 0, label: "Todas"       },
   { value: 1, label: "1. Primeira" },
   { value: 2, label: "2. Segunda"  },
   { value: 3, label: "3. Terceira" },
@@ -276,7 +277,7 @@ const gerentes  = [
 const now = new Date();
 const filters = reactive({
   ano:      now.getFullYear(),
-  semana:   Math.ceil(now.getDate() / 7),
+  semana:   0,
   mes:      now.getMonth() + 1,
   gerencia: "Todos",
   base:     "Todos",
