@@ -197,10 +197,11 @@ import {
 } from "echarts/components";
 import VChart from "vue-echarts";
 import { useChecklistData } from "@/composables/useChecklistData";
+import { filterByGerencia } from "@/lib/dashboard";
 
 use([CanvasRenderer, BarChart, GaugeChart, GridComponent, TooltipComponent, LegendComponent]);
 
-const { loading, error, submissions, responses, totalConformes, totalNaoConformes, conformidadeIndex, load } = useChecklistData();
+const { loading, error, submissions, responses, employees, load } = useChecklistData();
 
 // â"€â"€â"€ Colors â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const G = { green: "#16a34a", brand: "#8B1C2B" };
@@ -250,14 +251,13 @@ async function recarregar() {
     ano: Number(filters.ano),
     mes: mesNum,
     base: filters.base === "Todos" ? undefined : filters.base,
-    gerencia: filters.gerencia === "Todos" ? undefined : filters.gerencia,
   }, true); // loadYear=true for monthly breakdown
 }
 onMounted(recarregar);
-watch(() => [filters.ano, filters.mes, filters.base, filters.gerencia], recarregar);
+watch(() => [filters.ano, filters.mes, filters.base], recarregar);
 
 const filteredSubs = computed(() => {
-  let s = submissions.value;
+  let s = filterByGerencia(submissions.value, employees.value, filters.gerencia);
   if (filters.semana !== "Todos") {
     const semNum = Number(filters.semana.replace(/\D/g, "")) || 0;
     if (semNum) s = s.filter(sub => Math.ceil(new Date(sub.data).getDate() / 7) === semNum);
@@ -454,6 +454,13 @@ const bottomCharts = computed(() => [
 ]);
 
 // â"€â"€â"€ KPI totals â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+const totalConformes    = computed(() => filteredResps.value.filter(r => r.resposta === "conforme").length);
+const totalNaoConformes = computed(() => filteredResps.value.filter(r => r.resposta === "nao_conforme").length);
+const conformidadeIndex = computed(() => {
+  const t = filteredResps.value.length;
+  return t ? totalConformes.value / t : 0;
+});
+
 const totalConf = totalConformes;
 const totalInc  = totalNaoConformes;
 const pctGlobal = computed(() => Math.round(conformidadeIndex.value * 100));

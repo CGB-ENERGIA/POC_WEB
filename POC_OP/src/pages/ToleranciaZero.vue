@@ -192,12 +192,13 @@ import { BarChart, TreemapChart } from "echarts/charts";
 import { TooltipComponent, GridComponent, DataZoomComponent } from "echarts/components";
 import VChart from "vue-echarts";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
+import { filterByGerencia } from "@/lib/dashboard";
 
 use([CanvasRenderer, BarChart, TreemapChart, TooltipComponent, GridComponent, DataZoomComponent]);
 
 const {
   loading, error,
-  totalNaoConformes, byCategoria, byGravidade, submissions, responses,
+  byCategoria, byGravidade, submissions, responses, employees,
   load,
 } = useChecklistData();
 
@@ -291,14 +292,13 @@ async function recarregar() {
     ano: Number(filters.ano),
     mes: mesNum,
     base: filters.base === "Todos" ? undefined : filters.base,
-    gerencia: filters.gerencia === "Todos" ? undefined : filters.gerencia,
   });
 }
 onMounted(recarregar);
-watch(() => [filters.ano, filters.mes, filters.base, filters.gerencia], recarregar);
+watch(() => [filters.ano, filters.mes, filters.base], recarregar);
 
 const filteredSubs = computed(() => {
-  let s = submissions.value;
+  let s = filterByGerencia(submissions.value, employees.value, filters.gerencia);
   if (filters.semana !== "Todos") {
     const semNum = Number(filters.semana.replace(/\D/g, "")) || 0;
     if (semNum) s = s.filter(sub => Math.ceil(new Date(sub.data).getDate() / 7) === semNum);

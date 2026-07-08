@@ -255,12 +255,13 @@ import {
 } from "echarts/components";
 import VChart from "vue-echarts";
 import { useChecklistData, fmtPct } from "@/composables/useChecklistData";
+import { filterByGerencia } from "@/lib/dashboard";
 
 use([CanvasRenderer, BarChart, GaugeChart, GridComponent, TooltipComponent, DataZoomComponent]);
 
 const {
   loading, error,
-  totalSubmissions, conformidadeIndex, byCategoria, responses, submissions,
+  byCategoria, responses, submissions, employees,
   load,
 } = useChecklistData();
 
@@ -301,14 +302,13 @@ async function recarregar() {
     ano: Number(filters.ano),
     mes: mesNum,
     base: filters.base === "Todos" ? undefined : filters.base,
-    gerencia: filters.gerencia === "Todos" ? undefined : filters.gerencia,
   });
 }
 onMounted(recarregar);
-watch(() => [filters.ano, filters.mes, filters.base, filters.gerencia], recarregar);
+watch(() => [filters.ano, filters.mes, filters.base], recarregar);
 
 const filteredSubs = computed(() => {
-  let s = submissions.value;
+  let s = filterByGerencia(submissions.value, employees.value, filters.gerencia);
   if (filters.gerente !== "Todos") {
     s = s.filter(sub => sub.observador === filters.gerente);
   }
@@ -328,6 +328,12 @@ const filteredResps = computed(() => {
     r = r.filter(resp => resp.categoria === filters.categoria);
   }
   return r;
+});
+
+const totalSubmissions = computed(() => filteredSubs.value.length);
+const conformidadeIndex = computed(() => {
+  const t = filteredResps.value.length;
+  return t ? filteredResps.value.filter(r => r.resposta === "conforme").length / t : 0;
 });
 
 // â"€â"€â"€ Full prefix list â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€

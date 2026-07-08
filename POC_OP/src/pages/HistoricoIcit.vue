@@ -144,8 +144,9 @@
 <script setup lang="ts">
 import { reactive, computed, ref, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
+import { filterByGerencia } from "@/lib/dashboard";
 
-const { loading, error, submissions, responses, load } = useChecklistData();
+const { loading, error, submissions, responses, employees, load } = useChecklistData();
 
 // â"€â"€â"€ Types â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 interface Cell { reinc?: number; pct: number }
@@ -192,11 +193,10 @@ async function recarregar() {
   await load({
     ano: filters.ano,
     base: filters.base || undefined,
-    gerencia: filters.gerencia || undefined,
   });
 }
 onMounted(recarregar);
-watch(() => [filters.ano, filters.base, filters.gerencia], recarregar);
+watch(() => [filters.ano, filters.base], recarregar);
 
 // â"€â"€â"€ Full prefix list (191 entries) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const allPrefixes: string[] = [
@@ -252,9 +252,8 @@ const allPrefixes: string[] = [
 
 // â"€â"€â"€ Real data: per-equipe per-month ICIT â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const rawRows = computed<Row[]>(() => {
-  const subs = filters.gerente
-    ? submissions.value.filter(s => s.observador === filters.gerente)
-    : submissions.value;
+  let subs = filterByGerencia(submissions.value, employees.value, filters.gerencia || "Todos");
+  if (filters.gerente) subs = subs.filter(s => s.observador === filters.gerente);
   const subIds = new Set(subs.map(s => s.id));
 
   // Map submission_id â†’ { month, conf, total }

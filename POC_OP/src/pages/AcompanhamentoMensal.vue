@@ -249,6 +249,7 @@ import {
 } from "echarts/components";
 import VChart from "vue-echarts";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
+import { filterByGerencia } from "@/lib/dashboard";
 
 use([
   CanvasRenderer, BarChart, LineChart,
@@ -324,15 +325,14 @@ async function recarregar() {
     ano: filters.ano,
     mes: filters.mes,
     base: filters.base !== "Todos" ? filters.base : undefined,
-    gerencia: filters.gerencia !== "Todos" ? filters.gerencia : undefined,
   });
 }
 
 onMounted(recarregar);
-watch(() => [filters.ano, filters.mes, filters.base, filters.gerencia], recarregar);
+watch(() => [filters.ano, filters.mes, filters.base], recarregar);
 
 const filteredSubs = computed(() => {
-  let s = submissions.value;
+  let s = filterByGerencia(submissions.value, employees.value, filters.gerencia);
   if (filters.semana) {
     s = s.filter(sub => Math.ceil(new Date(sub.data).getDate() / 7) === filters.semana);
   }

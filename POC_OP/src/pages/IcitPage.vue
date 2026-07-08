@@ -259,6 +259,7 @@ import {
 } from "echarts/components";
 import VChart from "vue-echarts";
 import { useChecklistData, fmtPct, fmtN } from "@/composables/useChecklistData";
+import { filterByGerencia } from "@/lib/dashboard";
 
 use([
   CanvasRenderer, BarChart, PieChart,
@@ -268,8 +269,7 @@ use([
 
 const {
   loading, error,
-  totalConformes, totalNaoConformes, conformidadeIndex, basesCovertas,
-  byCategoria, byBase, byGerencia, byMes, submissions,
+  byCategoria, byBase, byGerencia, byMes, submissions, responses, employees,
   load,
 } = useChecklistData();
 
@@ -322,13 +322,13 @@ const filters = reactive({
 });
 
 async function recarregar() {
-  await load({ ano: filters.ano, mes: filters.mes, base: filters.base === "Todos" ? undefined : filters.base, gerencia: filters.gerencia === "Todos" ? undefined : filters.gerencia }, true);
+  await load({ ano: filters.ano, mes: filters.mes, base: filters.base === "Todos" ? undefined : filters.base }, true);
 }
 onMounted(recarregar);
-watch(() => [filters.ano, filters.mes, filters.base, filters.gerencia], recarregar);
+watch(() => [filters.ano, filters.mes, filters.base], recarregar);
 
 const filteredSubs = computed(() => {
-  let s = submissions.value;
+  let s = filterByGerencia(submissions.value, employees.value, filters.gerencia);
   if (filters.semana) {
     s = s.filter(sub => Math.ceil(new Date(sub.data).getDate() / 7) === filters.semana);
   }
@@ -339,6 +339,19 @@ const filteredSubs = computed(() => {
 });
 
 // â"€â"€â"€ KPIs â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+const filteredResps = computed(() => {
+  const ids = new Set(filteredSubs.value.map(s => s.id));
+  return responses.value.filter(r => ids.has(r.submission_id));
+});
+
+const totalConformes    = computed(() => filteredResps.value.filter(r => r.resposta === "conforme").length);
+const totalNaoConformes = computed(() => filteredResps.value.filter(r => r.resposta === "nao_conforme").length);
+const conformidadeIndex = computed(() => {
+  const t = filteredResps.value.length;
+  return t ? totalConformes.value / t : 0;
+});
+const basesCovertas = computed(() => new Set(filteredSubs.value.map(s => s.base)).size);
+
 const kpis = computed(() => [
   { label: "conformidade",     value: fmtN(totalConformes.value),   icon: "mdi-check-circle",  color: "positive", hex: "#16a34a" },
   { label: "Inconformidade",   value: fmtN(totalNaoConformes.value), icon: "mdi-alert-circle",  color: "negative", hex: "#dc2626" },

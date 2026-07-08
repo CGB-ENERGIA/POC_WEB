@@ -270,6 +270,7 @@ import { BarChart, GaugeChart, PieChart } from "echarts/charts";
 import { GridComponent, TooltipComponent, LegendComponent } from "echarts/components";
 import VChart from "vue-echarts";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
+import { filterByGerencia } from "@/lib/dashboard";
 
 use([CanvasRenderer, BarChart, GaugeChart, PieChart, GridComponent, TooltipComponent, LegendComponent]);
 
@@ -313,9 +314,6 @@ const {
   responses,
   employees,
   conformidadePorObservador,
-  totalSubmissions,
-  totalConformes,
-  totalNaoConformes,
   pctPerfeitas,
   byGerencia,
   byCategoria,
@@ -327,12 +325,11 @@ async function recarregar() {
     ano: Number(filters.ano),
     mes,
     base: filters.base !== "Todos" ? filters.base : undefined,
-    gerencia: filters.gerencia !== "Todos" ? filters.gerencia : undefined,
   });
 }
 
 onMounted(recarregar);
-watch(() => [filters.ano, filters.mes, filters.base, filters.gerencia], recarregar);
+watch(() => [filters.ano, filters.mes, filters.base], recarregar);
 
 // ─── Table data ───────────────────────────────────────────────────────────────
 type ObsRow = { nome: string; funcao: string; base: string; obs: number; obs100: number; conf: number; inc: number };
@@ -356,8 +353,20 @@ const rawRows = computed<ObsRow[]>(() =>
   })
 );
 
+const gerenciaSet = computed(() =>
+  filters.gerencia !== "Todos"
+    ? new Set(employees.value.filter(e => e.gerencia === filters.gerencia).map(e => e.matricula))
+    : null
+);
+
 const tableDataSorted = computed(() => {
   let rows = [...rawRows.value];
+  if (gerenciaSet.value) {
+    rows = rows.filter(r => {
+      const emp = employees.value.find(e => e.nome === r.nome || e.nome_completo === r.nome);
+      return emp ? gerenciaSet.value!.has(emp.matricula) : false;
+    });
+  }
   if (filters.funcao !== "Todos") {
     rows = rows.filter(r => r.funcao === filters.funcao);
   }
@@ -384,10 +393,10 @@ function pctColor(pct: number): string {
 }
 
 // ─── KPI totals ───────────────────────────────────────────────────────────────
-const totalObs    = totalSubmissions;
-const totalConf   = totalConformes;
-const totalInc    = totalNaoConformes;
-const totalObs100 = computed(() => rawRows.value.reduce((s, r) => s + r.obs100, 0));
+const totalObs    = computed(() => tableDataSorted.value.reduce((s, r) => s + r.obs, 0));
+const totalConf   = computed(() => tableDataSorted.value.reduce((s, r) => s + r.conf, 0));
+const totalInc    = computed(() => tableDataSorted.value.reduce((s, r) => s + r.inc, 0));
+const totalObs100 = computed(() => tableDataSorted.value.reduce((s, r) => s + r.obs100, 0));
 const obsDesvio   = computed(() => totalObs.value - totalObs100.value);
 const globalPct   = computed(() => {
   const t = totalConf.value + totalInc.value;

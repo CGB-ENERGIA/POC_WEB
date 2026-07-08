@@ -231,6 +231,7 @@ import {
 } from "echarts/components";
 import VChart from "vue-echarts";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
+import { filterByGerencia } from "@/lib/dashboard";
 
 use([
   CanvasRenderer, BarChart, LineChart, PieChart,
@@ -305,7 +306,6 @@ async function recarregar() {
       ano: filters.ano,
       mes: filters.mes,
       semana: filters.semana,
-      gerencia: filters.gerencia !== "Todos" ? filters.gerencia : undefined,
     },
     false,
     true
@@ -313,11 +313,12 @@ async function recarregar() {
 }
 
 onMounted(recarregar);
-watch(() => [filters.ano, filters.mes, filters.semana, filters.gerencia], recarregar);
+watch(() => [filters.ano, filters.mes, filters.semana], recarregar);
 
 const filteredSubs = computed(() => {
-  if (filters.gerente === "Todos") return submissions.value;
-  return submissions.value.filter(s => s.observador === filters.gerente);
+  let s = filterByGerencia(submissions.value, employees.value, filters.gerencia);
+  if (filters.gerente !== "Todos") s = s.filter(sub => sub.observador === filters.gerente);
+  return s;
 });
 
 const totalSubmissions = computed(() => filteredSubs.value.length);

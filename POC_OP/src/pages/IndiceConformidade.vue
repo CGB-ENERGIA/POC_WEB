@@ -228,6 +228,7 @@ import {
 } from "echarts/components";
 import VChart from "vue-echarts";
 import { useChecklistData, fmtN, fmtPct } from "@/composables/useChecklistData";
+import { filterByGerencia } from "@/lib/dashboard";
 
 use([
   CanvasRenderer, BarChart, PieChart,
@@ -290,10 +291,6 @@ const {
   submissions,
   responses,
   employees,
-  totalConformes,
-  totalNaoConformes,
-  conformidadeIndex,
-  basesCovertas,
   byBase,
   byGerencia,
   byMes,
@@ -305,15 +302,14 @@ async function recarregar() {
     ano: filters.ano,
     mes: filters.mes,
     base: filters.base !== "Todos" ? filters.base : undefined,
-    gerencia: filters.gerencia !== "Todos" ? filters.gerencia : undefined,
   }, true);
 }
 
 onMounted(recarregar);
-watch(() => [filters.ano, filters.mes, filters.base, filters.gerencia], recarregar);
+watch(() => [filters.ano, filters.mes, filters.base], recarregar);
 
 const filteredSubs = computed(() => {
-  let s = submissions.value;
+  let s = filterByGerencia(submissions.value, employees.value, filters.gerencia);
   if (filters.semana) {
     s = s.filter(sub => Math.ceil(new Date(sub.data).getDate() / 7) === filters.semana);
   }
@@ -327,6 +323,14 @@ const filteredResps = computed(() => {
   const ids = new Set(filteredSubs.value.map(s => s.id));
   return responses.value.filter(r => ids.has(r.submission_id));
 });
+
+const totalConformes    = computed(() => filteredResps.value.filter(r => r.resposta === "conforme").length);
+const totalNaoConformes = computed(() => filteredResps.value.filter(r => r.resposta === "nao_conforme").length);
+const conformidadeIndex = computed(() => {
+  const t = filteredResps.value.length;
+  return t ? totalConformes.value / t : 0;
+});
+const basesCovertas = computed(() => new Set(filteredSubs.value.map(s => s.base)).size);
 
 // ─── KPIs ─────────────────────────────────────────────────────────────────────
 const kpis = computed(() => [

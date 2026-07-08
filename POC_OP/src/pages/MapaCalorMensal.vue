@@ -239,8 +239,9 @@
 <script setup lang="ts">
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
+import { filterByGerencia } from "@/lib/dashboard";
 
-const { loading, error, submissions, responses, load } = useChecklistData();
+const { loading, error, submissions, responses, employees, load } = useChecklistData();
 
 // â"€â"€â"€ Filters â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const showFilters = ref(false);
@@ -271,15 +272,15 @@ async function recarregar() {
   await load({
     ano: Number(filters.ano),
     base: filters.base === "Todos" ? undefined : filters.base,
-    gerencia: filters.gerencia === "Todos" ? undefined : filters.gerencia,
   });
 }
 onMounted(recarregar);
-watch(() => [filters.ano, filters.base, filters.gerencia], recarregar);
+watch(() => [filters.ano, filters.base], recarregar);
 
 const filteredSubs = computed(() => {
-  if (filters.gerente === "Todos") return submissions.value;
-  return submissions.value.filter(s => s.observador === filters.gerente);
+  let s = filterByGerencia(submissions.value, employees.value, filters.gerencia);
+  if (filters.gerente !== "Todos") s = s.filter(sub => sub.observador === filters.gerente);
+  return s;
 });
 
 // â"€â"€â"€ Data â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
