@@ -368,12 +368,25 @@ const conformidadePorObservador = computed(() => {
     .sort((a, b) => b.totalObs - a.totalObs);
 });
 
+// ─── Meta ────────────────────────────────────────────────────────────────────
+const GOAL_PER_OBS = 2;
+
+const numObservadores = computed(() => Object.keys(byObservador.value).length);
+const metaTotal = computed(() => numObservadores.value * GOAL_PER_OBS);
+const obsNoMeta = computed(() =>
+  Object.values(byObservador.value).filter(v => v >= GOAL_PER_OBS).length
+);
+const atingimento = computed(() => {
+  if (numObservadores.value === 0) return "—";
+  return `${Math.round((obsNoMeta.value / numObservadores.value) * 100)}%`;
+});
+
 // ─── KPI ────────────────────────────────────────────────────────────────────
 const kpis = computed(() => [
   { label: "Total de Observações", value: loading.value ? "…" : fmtN(totalSubmissions.value), icon: "mdi-eye-check", color: "primary" },
-  { label: "Meta da Semana", value: "—", icon: "mdi-bullseye-arrow", color: "teal" },
+  { label: "Meta da Semana", value: loading.value ? "…" : String(metaTotal.value), icon: "mdi-bullseye-arrow", color: "teal" },
   { label: "Bases Cobertas", value: loading.value ? "…" : String(basesCovertas.value), icon: "mdi-map-marker-radius", color: "orange" },
-  { label: "Atingimento", value: "—", icon: "mdi-check-circle", color: "positive" }
+  { label: "Atingimento", value: loading.value ? "…" : atingimento.value, icon: "mdi-check-circle", color: "positive" }
 ]);
 
 // ─── Paleta CGB ──────────────────────────────────────────────────────────────
@@ -468,6 +481,19 @@ const barObservadores = computed(() => {
         fontWeight: "bold" as const,
         color: C.p,
         distance: 6
+      },
+      markLine: {
+        silent: true,
+        symbol: "none",
+        lineStyle: { color: "#0ea5e9", type: "dashed" as const, width: 2 },
+        label: {
+          position: "insideEndTop" as const,
+          fontSize: 11,
+          fontWeight: "bold" as const,
+          color: "#0ea5e9",
+          formatter: `Meta: ${GOAL_PER_OBS}`
+        },
+        data: [{ yAxis: GOAL_PER_OBS }]
       }
     }]
   };
