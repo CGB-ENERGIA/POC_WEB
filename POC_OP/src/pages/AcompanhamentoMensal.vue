@@ -409,12 +409,26 @@ const conformidadePorObservador = computed(() => {
 
 const mesLabel = computed(() => meses.find(m => m.value === filters.mes)?.label ?? "");
 
+// ─── Meta mensal (2 obs/sem × 4 semanas = 8/mês por observador) ───────────────
+const GOAL_WEEKLY   = 2;
+const GOAL_MONTHLY  = GOAL_WEEKLY * 4; // 8
+
+const numObservadores = computed(() => Object.keys(byObservador.value).length);
+const metaMensal      = computed(() => numObservadores.value * GOAL_MONTHLY);
+const obsNoMeta       = computed(() =>
+  Object.values(byObservador.value).filter(v => v >= GOAL_MONTHLY).length
+);
+const atingimento = computed(() => {
+  if (numObservadores.value === 0) return "—";
+  return `${Math.round((obsNoMeta.value / numObservadores.value) * 100)}%`;
+});
+
 // ─── KPIs ─────────────────────────────────────────────────────────────────────
 const kpis = computed(() => [
   { label: "Total Realizado",  value: loading.value ? "…" : fmtN(totalSubmissions.value), icon: "mdi-eye-check",        color: "positive" },
-  { label: "Meta do Mês",      value: "—",   icon: "mdi-bullseye-arrow",    color: "primary"  },
-  { label: "Atingimento",      value: "—",   icon: "mdi-check-decagram",    color: "teal"     },
-  { label: "Bases Ativas",     value: loading.value ? "…" : String(basesCovertas.value), icon: "mdi-map-marker-radius", color: "orange"   },
+  { label: "Meta do Mês",      value: loading.value ? "…" : String(metaMensal.value),      icon: "mdi-bullseye-arrow",    color: "primary"  },
+  { label: "Atingimento",      value: loading.value ? "…" : atingimento.value,             icon: "mdi-check-decagram",    color: "teal"     },
+  { label: "Bases Ativas",     value: loading.value ? "…" : String(basesCovertas.value),   icon: "mdi-map-marker-radius", color: "orange"   },
 ]);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -472,7 +486,15 @@ const chartMetaMes = computed(() => ({
   grid: { left: 12, right: 12, top: 12, bottom: 36, containLabel: true },
   xAxis: cleanXAxis([mesLabel.value]),
   yAxis: { show: false },
-  series: singleBar([mesLabel.value], [totalSubmissions.value])
+  series: [{
+    ...singleBar([mesLabel.value], [totalSubmissions.value])[0],
+    markLine: {
+      silent: true, symbol: "none",
+      lineStyle: { color: "#0ea5e9", type: "dashed" as const, width: 2 },
+      label: { position: "insideEndTop" as const, fontSize: 11, fontWeight: "bold" as const, color: "#0ea5e9", formatter: `Meta: ${metaMensal.value}` },
+      data: [{ yAxis: metaMensal.value }]
+    }
+  }]
 }));
 
 // ─── Chart: Obs Realizadas por Semana ─────────────────────────────────────────
@@ -486,7 +508,15 @@ const chartMetaSemana = computed(() => ({
   grid: { left: 12, right: 12, top: 12, bottom: 36, containLabel: true },
   xAxis: cleanXAxis(["1ª Sem", "2ª Sem", "3ª Sem", "4ª Sem"]),
   yAxis: { show: false },
-  series: singleBar(["1ª Sem","2ª Sem","3ª Sem","4ª Sem"], [1,2,3,4].map(s => bySemana.value[s] ?? 0))
+  series: [{
+    ...singleBar(["1ª Sem","2ª Sem","3ª Sem","4ª Sem"], [1,2,3,4].map(s => bySemana.value[s] ?? 0))[0],
+    markLine: {
+      silent: true, symbol: "none",
+      lineStyle: { color: "#0ea5e9", type: "dashed" as const, width: 2 },
+      label: { position: "insideEndTop" as const, fontSize: 11, fontWeight: "bold" as const, color: "#0ea5e9", formatter: `Meta: ${numObservadores.value * GOAL_WEEKLY}` },
+      data: [{ yAxis: numObservadores.value * GOAL_WEEKLY }]
+    }
+  }]
 }));
 
 // ─── Chart: Obs por Base ──────────────────────────────────────────────────────
@@ -575,7 +605,13 @@ const chartObservador = computed(() => {
       barMaxWidth: 28,
       itemStyle: { color: G.real, borderRadius: [4, 4, 0, 0], shadowColor: "rgba(22,163,74,.15)", shadowBlur: 4 },
       emphasis: { itemStyle: { color: G.light, shadowBlur: 10 } },
-      label: { show: true, position: "top" as const, fontSize: 10, fontWeight: "bold" as const, color: G.real, distance: 3 }
+      label: { show: true, position: "top" as const, fontSize: 10, fontWeight: "bold" as const, color: G.real, distance: 3 },
+      markLine: {
+        silent: true, symbol: "none",
+        lineStyle: { color: "#0ea5e9", type: "dashed" as const, width: 2 },
+        label: { position: "insideEndTop" as const, fontSize: 11, fontWeight: "bold" as const, color: "#0ea5e9", formatter: `Meta: ${GOAL_MONTHLY}` },
+        data: [{ yAxis: GOAL_MONTHLY }]
+      }
     }]
   };
 });
