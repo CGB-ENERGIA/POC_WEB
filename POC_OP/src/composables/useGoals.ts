@@ -1,4 +1,5 @@
 import { ref } from "vue";
+import { supabase } from "@/lib/supabase";
 
 const STORAGE_KEY = "cgb_metas_v2";
 
@@ -27,8 +28,35 @@ function loadStore(): GoalStore {
   }
 }
 
+function writeStore(s: GoalStore) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch { /* noop */ }
+}
+
 // Estado global compartilhado
 const store = ref<GoalStore>(loadStore());
+
+// Carrega do Supabase ao iniciar e atualiza o cache local
+async function syncFromSupabase(): Promise<void> {
+  try {
+    const { data, error } = await supabase
+      .from("metas")
+      .select("ano, mes, normais_semanal, seguranca_semanal");
+    if (error || !data) return;
+    const merged: GoalStore = { ...store.value };
+    for (const row of data) {
+      const key = monthKey(row.ano, row.mes);
+      merged[key] = {
+        normais_semanal:   Number(row.normais_semanal)   || DEFAULTS.normais_semanal,
+        seguranca_semanal: Number(row.seguranca_semanal) || DEFAULTS.seguranca_semanal,
+      };
+    }
+    store.value = merged;
+    writeStore(merged);
+  } catch { /* sem rede: usa cache local */ }
+}
+
+// Dispara na inicialização do módulo (não bloqueia)
+syncFromSupabase();
 
 export function useGoals() {
   function getMonthGoal(ano: number, mes: number): MonthGoal {
@@ -41,13 +69,17 @@ export function useGoals() {
     };
   }
 
-  function save(ano: number, mes: number, normaisSem: number, segurancaSem: number) {
+  async function save(ano: number, mes: number, normaisSem: number, segurancaSem: number) {
     const key = monthKey(ano, mes);
     store.value = {
       ...store.value,
       [key]: { normais_semanal: normaisSem, seguranca_semanal: segurancaSem },
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(store.value));
+    writeStore(store.value);
+    await supabase.from("metas").upsert(
+      { ano, mes, normais_semanal: normaisSem, seguranca_semanal: segurancaSem, updated_at: new Date().toISOString() },
+      { onConflict: "ano,mes" }
+    );
   }
 
   function goalForGerencia(

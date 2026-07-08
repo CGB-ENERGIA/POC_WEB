@@ -238,11 +238,10 @@ function decrement(tipo: "normais" | "seguranca") {
 
 const mesLabel = (mes: number) => meses.find(m => m.value === mes)?.label ?? "";
 
-function handleSave() {
+async function handleSave() {
   saving.value = true;
-  setTimeout(() => {
-    save(selectedAno.value, selectedMes.value, normaisInput.value, segurancaInput.value);
-    saving.value = false;
+  try {
+    await save(selectedAno.value, selectedMes.value, normaisInput.value, segurancaInput.value);
     $q.notify({
       type: "positive",
       message: `Metas de ${mesLabel(selectedMes.value)}/${selectedAno.value} salvas!`,
@@ -251,7 +250,9 @@ function handleSave() {
       position: "top-right",
       timeout: 3000,
     });
-  }, 400);
+  } finally {
+    saving.value = false;
+  }
 }
 
 function handleReset() {

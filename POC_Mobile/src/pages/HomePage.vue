@@ -125,14 +125,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, onMounted } from "vue";
 import { LocalStorage } from "quasar";
 import { useSessionStore } from "@/stores/session";
 import { useObservacoesStore } from "@/stores/observacoes";
 import { totalPerguntasGoman } from "@/data/goman-checklist";
 import { totalPerguntasGstc } from "@/data/gstc-checklist";
-import { getMetaMensal, getMetaSemanal, META_SEMANAL_PADRAO, diasUteisNoMes } from "@/data/employees";
 import { PERIODO_VISAO_STORAGE_KEY } from "@/constants/theme";
+import { useGoals } from "@/composables/useGoals";
 
 type PeriodoVisao = "semana" | "mes";
 
@@ -144,21 +144,25 @@ function loadPeriodoSalvo(): PeriodoVisao {
 const session = useSessionStore();
 const observacoes = useObservacoesStore();
 const periodo = ref<PeriodoVisao>(loadPeriodoSalvo());
+const { getGoal, ensureLoaded } = useGoals();
 
 watch(periodo, (valor) => {
   LocalStorage.set(PERIODO_VISAO_STORAGE_KEY, valor);
 });
 
+onMounted(() => { void ensureLoaded(); });
+
 const matricula = computed(() => session.matricula);
-const metaMensal = computed(() => {
-  const now = new Date()
-  if (session.employee) return getMetaMensal(session.employee, now)
-  const dias = diasUteisNoMes(now.getFullYear(), now.getMonth() + 1)
-  return Math.min(Math.round(META_SEMANAL_PADRAO * dias / 5), 20)
+
+const metaSemanal = computed(() => {
+  const now = new Date();
+  return getGoal(session.employee?.gerencia, now.getFullYear(), now.getMonth() + 1).semanal;
 });
-const metaSemanal = computed(() =>
-  session.employee ? getMetaSemanal(session.employee) : META_SEMANAL_PADRAO
-);
+
+const metaMensal = computed(() => {
+  const now = new Date();
+  return getGoal(session.employee?.gerencia, now.getFullYear(), now.getMonth() + 1).mensal;
+});
 
 const metaAtual = computed(() =>
   periodo.value === "semana" ? metaSemanal.value : metaMensal.value
