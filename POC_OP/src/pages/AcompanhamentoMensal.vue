@@ -411,7 +411,8 @@ const conformidadePorObservador = computed(() => {
 const mesLabel = computed(() => meses.find(m => m.value === filters.mes)?.label ?? "");
 
 // ─── Meta mensal (semanal × 4 semanas, por perfil de observador) ──────────────
-const { normaisMensal, goalForGerencia } = useGoals();
+const { getMonthGoal, goalForGerencia } = useGoals();
+const normaisMensal = computed(() => getMonthGoal(filters.ano, filters.mes).normais_semanal * 4);
 
 const numObservadores = computed(() => Object.keys(byObservador.value).length);
 
@@ -419,7 +420,7 @@ const metaMensal = computed(() =>
   Object.keys(byObservador.value).reduce((total, obsName) => {
     const sub = filteredSubs.value.find(s => s.observador === obsName);
     const emp = employees.value.find(e => e.matricula === sub?.matricula);
-    return total + goalForGerencia(emp?.gerencia).mensal;
+    return total + goalForGerencia(emp?.gerencia, filters.ano, filters.mes).mensal;
   }, 0)
 );
 
@@ -427,7 +428,7 @@ const obsNoMeta = computed(() =>
   Object.entries(byObservador.value).filter(([obsName, count]) => {
     const sub = filteredSubs.value.find(s => s.observador === obsName);
     const emp = employees.value.find(e => e.matricula === sub?.matricula);
-    return count >= goalForGerencia(emp?.gerencia).mensal;
+    return count >= goalForGerencia(emp?.gerencia, filters.ano, filters.mes).mensal;
   }).length
 );
 

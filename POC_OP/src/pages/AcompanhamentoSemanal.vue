@@ -233,7 +233,8 @@ import VChart from "vue-echarts";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 import { filterByGerencia } from "@/lib/dashboard";
 import { useGoals } from "@/composables/useGoals";
-const { normaisSemanal, goalForGerencia } = useGoals();
+const { getMonthGoal, goalForGerencia } = useGoals();
+const normaisSemanal = computed(() => getMonthGoal(filters.ano, filters.mes).normais_semanal);
 
 use([
   CanvasRenderer, BarChart, LineChart, PieChart,
@@ -382,7 +383,7 @@ const metaTotal = computed(() =>
   Object.keys(byObservador.value).reduce((total, obsName) => {
     const sub = filteredSubs.value.find(s => s.observador === obsName);
     const emp = employees.value.find(e => e.matricula === sub?.matricula);
-    return total + goalForGerencia(emp?.gerencia).semanal;
+    return total + goalForGerencia(emp?.gerencia, filters.ano, filters.mes).semanal;
   }, 0)
 );
 
@@ -390,7 +391,7 @@ const obsNoMeta = computed(() =>
   Object.entries(byObservador.value).filter(([obsName, count]) => {
     const sub = filteredSubs.value.find(s => s.observador === obsName);
     const emp = employees.value.find(e => e.matricula === sub?.matricula);
-    return count >= goalForGerencia(emp?.gerencia).semanal;
+    return count >= goalForGerencia(emp?.gerencia, filters.ano, filters.mes).semanal;
   }).length
 );
 

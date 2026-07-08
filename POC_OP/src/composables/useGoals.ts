@@ -1,62 +1,71 @@
-import { ref, computed } from "vue";
+import { ref } from "vue";
 
-const STORAGE_KEY = "cgb_metas_v1";
+const STORAGE_KEY = "cgb_metas_v2";
 
-interface GoalConfig {
+interface MonthGoal {
   normais_semanal: number;
   seguranca_semanal: number;
 }
 
-const DEFAULTS: GoalConfig = {
+type GoalStore = Record<string, MonthGoal>; // chave: "YYYY-MM"
+
+const DEFAULTS: MonthGoal = {
   normais_semanal: 2,
   seguranca_semanal: 5,
 };
 
-function loadConfig(): GoalConfig {
+function monthKey(ano: number, mes: number): string {
+  return `${ano}-${String(mes).padStart(2, "0")}`;
+}
+
+function loadStore(): GoalStore {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULTS };
-    const parsed = JSON.parse(raw) as Partial<GoalConfig>;
-    return {
-      normais_semanal:   Number(parsed.normais_semanal)   || DEFAULTS.normais_semanal,
-      seguranca_semanal: Number(parsed.seguranca_semanal) || DEFAULTS.seguranca_semanal,
-    };
+    return raw ? (JSON.parse(raw) as GoalStore) : {};
   } catch {
-    return { ...DEFAULTS };
+    return {};
   }
 }
 
-// Estado global compartilhado entre composables
-const config = ref<GoalConfig>(loadConfig());
+// Estado global compartilhado
+const store = ref<GoalStore>(loadStore());
 
 export function useGoals() {
-  const normaisSemanal   = computed(() => config.value.normais_semanal);
-  const normaisMensal    = computed(() => config.value.normais_semanal * 4);
-  const segurancaSemanal = computed(() => config.value.seguranca_semanal);
-  const segurancaMensal  = computed(() => config.value.seguranca_semanal * 4);
-
-  function save(normaisSem: number, segurancaSem: number) {
-    config.value = {
-      normais_semanal:   normaisSem,
-      seguranca_semanal: segurancaSem,
+  function getMonthGoal(ano: number, mes: number): MonthGoal {
+    const key = monthKey(ano, mes);
+    const entry = store.value[key];
+    if (!entry) return { ...DEFAULTS };
+    return {
+      normais_semanal:   Number(entry.normais_semanal)   || DEFAULTS.normais_semanal,
+      seguranca_semanal: Number(entry.seguranca_semanal) || DEFAULTS.seguranca_semanal,
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config.value));
   }
 
-  function goalForGerencia(gerencia: string | undefined): { semanal: number; mensal: number } {
+  function save(ano: number, mes: number, normaisSem: number, segurancaSem: number) {
+    const key = monthKey(ano, mes);
+    store.value = {
+      ...store.value,
+      [key]: { normais_semanal: normaisSem, seguranca_semanal: segurancaSem },
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(store.value));
+  }
+
+  function goalForGerencia(
+    gerencia: string | undefined,
+    ano: number,
+    mes: number
+  ): { semanal: number; mensal: number } {
+    const g = getMonthGoal(ano, mes);
     const isSesmt = gerencia === "SESMT";
     return {
-      semanal: isSesmt ? config.value.seguranca_semanal : config.value.normais_semanal,
-      mensal:  isSesmt ? config.value.seguranca_semanal * 4 : config.value.normais_semanal * 4,
+      semanal: isSesmt ? g.seguranca_semanal : g.normais_semanal,
+      mensal:  isSesmt ? g.seguranca_semanal * 4 : g.normais_semanal * 4,
     };
   }
 
-  return {
-    normaisSemanal,
-    normaisMensal,
-    segurancaSemanal,
-    segurancaMensal,
-    save,
-    goalForGerencia,
-  };
+  function hasGoalDefined(ano: number, mes: number): boolean {
+    return monthKey(ano, mes) in store.value;
+  }
+
+  return { getMonthGoal, save, goalForGerencia, hasGoalDefined };
 }
