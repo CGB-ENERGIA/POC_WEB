@@ -314,7 +314,9 @@ const filteredSubs = computed(() => {
 
 const filteredResps = computed(() => {
   const ids = new Set(filteredSubs.value.map(s => s.id));
-  let r = responses.value.filter(resp => ids.has(resp.submission_id));
+  let r = responses.value.filter(resp =>
+    ids.has(resp.submission_id) && resp.resposta === "nao_conforme" && resp.peso >= 5
+  );
   if (filters.categoria !== "Todos") {
     r = r.filter(resp => resp.categoria === filters.categoria);
   }
@@ -323,9 +325,14 @@ const filteredResps = computed(() => {
 
 // â"€â"€â"€ Treemap â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const treemapData = computed(() => {
-  return byCategoria.value
-    .map((d) => ({ name: d.categoria, value: d.total - d.conformes }))
-    .filter((e) => e.value > 0)
+  const map: Record<string, number> = {};
+  for (const r of filteredResps.value) {
+    const cat = r.categoria ?? "Sem categoria";
+    map[cat] = (map[cat] ?? 0) + 1;
+  }
+  return Object.entries(map)
+    .map(([name, value]) => ({ name, value }))
+    .filter(e => e.value > 0)
     .sort((a, b) => b.value - a.value);
 });
 
