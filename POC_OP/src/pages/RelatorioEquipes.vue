@@ -400,12 +400,7 @@ function filterPrefixo(val: string, update: (fn: () => void) => void) {
 const visitadasSorted = computed(() => {
   const counts: Record<string, number> = {};
   for (const sub of filteredSubs.value) {
-    const equipes: string[] = Array.isArray(sub.membros)
-      ? (sub.membros as string[])
-      : sub.equipe ? [sub.equipe] : [];
-    for (const eq of equipes) {
-      counts[eq] = (counts[eq] ?? 0) + 1;
-    }
+    if (sub.equipe) counts[sub.equipe] = (counts[sub.equipe] ?? 0) + 1;
   }
   return Object.entries(counts)
     .map(([nome, v]) => ({ nome, v }))
@@ -507,12 +502,7 @@ const ncPerEquipe = computed(() => {
   for (const sub of filteredSubs.value) {
     const nc = ncPerSub[sub.id] ?? 0;
     if (nc === 0) continue;
-    const equipes: string[] = Array.isArray(sub.membros)
-      ? (sub.membros as string[])
-      : sub.equipe ? [sub.equipe] : [];
-    for (const eq of equipes) {
-      counts[eq] = (counts[eq] ?? 0) + nc;
-    }
+    if (sub.equipe) counts[sub.equipe] = (counts[sub.equipe] ?? 0) + nc;
   }
   return Object.entries(counts)
     .map(([name, v]) => ({ name, v }))
@@ -552,8 +542,15 @@ const chartRankingNcEq = computed(() => {
 
 // â"€â"€â"€ NC por Categoria â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const chartNcCat = computed(() => {
-  const entries = Object.entries(byCategoria.value)
-    .map(([cat, d]) => ({ cat, nc: d.nc }))
+  const ncMap: Record<string, number> = {};
+  for (const r of filteredResps.value) {
+    if (r.resposta === "nao_conforme") {
+      const cat = r.categoria ?? "Sem categoria";
+      ncMap[cat] = (ncMap[cat] ?? 0) + 1;
+    }
+  }
+  const entries = Object.entries(ncMap)
+    .map(([cat, nc]) => ({ cat, nc }))
     .filter(e => e.nc > 0)
     .sort((a, b) => a.nc - b.nc);
   return {
