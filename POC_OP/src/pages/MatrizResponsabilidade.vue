@@ -373,11 +373,15 @@
               <span class="resolver-titulo">Registrar Resolução</span>
             </div>
 
+            <div class="resolver-email q-mb-sm">
+              <q-icon name="mdi-account-circle-outline" size="16px" color="grey-5" class="q-mr-xs" />
+              <span>{{ user?.email ?? '—' }}</span>
+            </div>
             <q-input
-              v-model="resolverForm.por"
-              outlined dense
-              label="Resolvido por (nome)"
-              placeholder="Nome do responsável"
+              v-model="resolverForm.obs"
+              outlined dense type="textarea" rows="3"
+              label="Observação"
+              placeholder="Descreva como a NC foi resolvida..."
               class="q-mb-sm"
               :disable="resolverForm.saving"
             />
@@ -423,7 +427,7 @@
               icon="mdi-send"
               label="Mandar para Análise"
               :loading="resolverForm.saving"
-              :disable="!resolverForm.por.trim()"
+              :disable="!user?.email"
               @click="resolverNc"
             />
           </q-card-actions>
@@ -438,6 +442,7 @@
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
 import { fetchResolucoes, inserirResolucao, type ResolucaoRow } from "@/lib/dashboard";
+import { useAuth } from "@/composables/useAuth";
 
 // ─── R2 upload ────────────────────────────────────────────────────────────────
 const R2_UPLOAD_URL = (import.meta.env.VITE_R2_UPLOAD_URL as string ?? "").replace(/\/$/, "");
@@ -659,16 +664,19 @@ const detalhe = ref<{ sub: SubRow; nc: NcRow } | null>(null);
 
 function abrirDetalhe(sub: SubRow, nc: NcRow) {
   detalhe.value = { sub, nc };
-  resolverForm.por = "";
+  resolverForm.obs = "";
   resolverForm.fotoBase64 = null;
   resolverForm.error = null;
   dialogOpen.value = true;
 }
 
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+const { user } = useAuth();
+
 // ─── Form de resolução ────────────────────────────────────────────────────────
 const fotoInput = ref<HTMLInputElement | null>(null);
 const resolverForm = reactive({
-  por: "",
+  obs: "",
   fotoBase64: null as string | null,
   saving: false,
   error: null as string | null,
@@ -685,7 +693,7 @@ function onFotoChange(event: Event) {
 }
 
 async function resolverNc() {
-  if (!detalhe.value || !resolverForm.por.trim()) return;
+  if (!detalhe.value || !user.value?.email) return;
   resolverForm.saving = true;
   resolverForm.error = null;
   try {
@@ -704,7 +712,8 @@ async function resolverNc() {
     const nova = await inserirResolucao({
       submission_id: sub.submissionId,
       pergunta_id: nc.perguntaId,
-      resolvido_por: resolverForm.por.trim(),
+      resolvido_por: user.value.email,
+      observacao: resolverForm.obs.trim() || undefined,
       data_resolucao: new Date().toISOString(),
       foto_r2_key: r2Key,
     });
@@ -1002,6 +1011,15 @@ $header-bg:    #fce4e8;
   0%, 100% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.4); }
   50%       { box-shadow: 0 0 0 5px rgba(217, 119, 6, 0); }
 }
+
+.resolver-email {
+  display: flex; align-items: center;
+  font-size: 12px; color: #64748b;
+  padding: 6px 10px;
+  background: rgba(0,0,0,.04);
+  border-radius: 8px;
+}
+.body--dark .resolver-email { background: rgba(255,255,255,.06); color: #94a3b8; }
 
 .ev-badge {
   display: inline-flex; align-items: center; justify-content: center;

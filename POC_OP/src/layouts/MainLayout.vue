@@ -37,6 +37,11 @@
         >
           <q-tooltip>{{ $q.dark.isActive ? "Modo claro" : "Modo escuro" }}</q-tooltip>
         </q-btn>
+
+        <span v-if="user" class="text-white text-caption gt-sm q-mx-sm" style="opacity:.7">{{ user.email }}</span>
+        <q-btn flat dense round icon="mdi-logout" color="white" @click.stop="logout">
+          <q-tooltip>Sair</q-tooltip>
+        </q-btn>
       </q-toolbar>
     </q-header>
 
@@ -75,13 +80,22 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
 import { useQuasar } from "quasar";
+import { useRouter } from "vue-router";
 import BrandLogo from "@/components/BrandLogo.vue";
 import { BRAND } from "@/constants/brand";
 import EssentialLink, {
   type EssentialLinkProps
 } from "@/components/EssentialLink.vue";
+import { useAuth } from "@/composables/useAuth";
 
 const $q = useQuasar();
+const router = useRouter();
+const { user, signOut } = useAuth();
+
+async function logout() {
+  await signOut();
+  await router.push("/login");
+}
 
 const linksList: EssentialLinkProps[] = [
   {

@@ -192,6 +192,7 @@ export interface ResolucaoRow {
   submission_id: string;
   pergunta_id: string;
   resolvido_por: string;
+  observacao?: string | null;
   data_resolucao: string;
   foto_r2_key: string;
   status: AnaliseStatus;
@@ -200,7 +201,7 @@ export interface ResolucaoRow {
   data_analise?: string | null;
 }
 
-const RESOLUCAO_FIELDS = "id,submission_id,pergunta_id,resolvido_por,data_resolucao,foto_r2_key,status,comentario_analise,analisado_por,data_analise";
+const RESOLUCAO_FIELDS = "id,submission_id,pergunta_id,resolvido_por,observacao,data_resolucao,foto_r2_key,status,comentario_analise,analisado_por,data_analise";
 
 export async function fetchResolucoes(submissionIds: string[]): Promise<ResolucaoRow[]> {
   if (!submissionIds.length) return [];
@@ -213,7 +214,7 @@ export async function fetchResolucoes(submissionIds: string[]): Promise<Resoluca
 }
 
 export async function inserirResolucao(
-  row: Omit<ResolucaoRow, "id" | "status" | "comentario_analise" | "analisado_por" | "data_analise">
+  row: Omit<ResolucaoRow, "id" | "status" | "comentario_analise" | "analisado_por" | "data_analise" | "observacao"> & { observacao?: string }
 ): Promise<ResolucaoRow> {
   const { data, error } = await supabase
     .from("nc_resolucoes")

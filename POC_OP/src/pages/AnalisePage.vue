@@ -136,9 +136,15 @@
               </div>
             </div>
 
+            <!-- Observação da resolução -->
+            <div v-if="item.observacao" class="analise-item__obs-resolucao">
+              <q-icon name="mdi-text-box-outline" size="14px" color="grey-5" class="q-mr-xs" />
+              {{ item.observacao }}
+            </div>
+
             <!-- Enviado por -->
             <div class="analise-item__enviado">
-              <q-icon name="mdi-account-outline" size="14px" color="grey-5" class="q-mr-xs" />
+              <q-icon name="mdi-email-outline" size="14px" color="grey-5" class="q-mr-xs" />
               Enviado por <strong>{{ item.resolvido_por }}</strong>
               <span v-if="item._sub?.observador"> · Observador: <strong>{{ item._sub.observador }}</strong></span>
             </div>
@@ -552,6 +558,14 @@ $inactive-text: #475569;
 .foto-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #94a3b8; }
 .analise-foto { width: 140px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid $border; cursor: zoom-in; transition: opacity .15s; &:hover { opacity: .85; } }
 
+.analise-item__obs-resolucao {
+  font-size: 12px; color: #475569;
+  background: #f8fafc; border-radius: 6px;
+  padding: 6px 10px;
+  border-left: 3px solid #cbd5e1;
+  display: flex; align-items: flex-start;
+}
+.body--dark .analise-item__obs-resolucao { background: #1e293b; color: #94a3b8; border-left-color: #334155; }
 .analise-item__enviado { font-size: 12px; color: #64748b; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 
 .analise-item__comentario {
