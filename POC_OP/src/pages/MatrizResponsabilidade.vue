@@ -187,7 +187,11 @@
                           v-for="(nc, i) in sub.ncs"
                           :key="i"
                           class="nc-item"
-                          :class="{ 'nc-item--resolved': nc.resolucao }"
+                          :class="{
+                            'nc-item--resolved':  nc.resolucao?.status === 'aprovado',
+                            'nc-item--analise':   nc.resolucao?.status === 'pendente',
+                            'nc-item--reprovado': nc.resolucao?.status === 'reprovado',
+                          }"
                           @click.stop="abrirDetalhe(sub, nc)"
                         >
                           <span class="nc-item__num">{{ i + 1 }}</span>
@@ -924,6 +928,24 @@ $header-bg:    #fce4e8;
     &:hover { background: #dcfce7; border-color: rgba(22,163,74,.4); }
     .nc-item__desc { color: #166534; }
   }
+  &--analise {
+    background: #fefce8;
+    border-color: rgba(217,119,6,.3);
+    animation: analise-row-pulse 2s ease-in-out infinite;
+    &:hover { background: #fef9c3; border-color: rgba(217,119,6,.5); }
+    .nc-item__desc { color: #92400e; }
+  }
+  &--reprovado {
+    background: #fef2f2;
+    border-color: rgba(220,38,38,.25);
+    &:hover { background: #fee2e2; border-color: rgba(220,38,38,.4); }
+    .nc-item__desc { color: #991b1b; }
+  }
+}
+
+@keyframes analise-row-pulse {
+  0%, 100% { border-color: rgba(217,119,6,.3); }
+  50%       { border-color: rgba(217,119,6,.7); }
 }
 .nc-item__num {
   font-size: 10px; font-weight: 700; color: #94a3b8;
@@ -1124,6 +1146,16 @@ $header-bg:    #fce4e8;
         background: #052e16; border-color: rgba(22,163,74,.3);
         .nc-item__desc { color: #86efac; }
         &:hover { background: #064e3b; }
+      }
+      &--analise {
+        background: #1c1a05; border-color: rgba(217,119,6,.4);
+        .nc-item__desc { color: #fcd34d; }
+        &:hover { background: #292207; }
+      }
+      &--reprovado {
+        background: #2d0a0a; border-color: rgba(220,38,38,.3);
+        .nc-item__desc { color: #fca5a5; }
+        &:hover { background: #450a0a; }
       }
     }
   }
