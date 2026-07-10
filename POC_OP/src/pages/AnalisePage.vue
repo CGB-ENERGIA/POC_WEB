@@ -60,6 +60,13 @@
         </div>
       </div>
 
+      <!-- Erro de carregamento -->
+      <q-banner v-if="loadError" class="bg-negative text-white q-mb-md" rounded>
+        <template #avatar><q-icon name="mdi-alert-circle-outline" /></template>
+        {{ loadError }}
+        <template #action><q-btn flat label="Tentar novamente" @click="recarregar" /></template>
+      </q-banner>
+
       <!-- Filtro de status -->
       <div class="row items-center q-mb-md q-gutter-sm">
         <button
@@ -286,31 +293,35 @@ type ItemAnalise = ResolucaoRow & {
 
 // ── Dados ─────────────────────────────────────────────────────────────────────
 const loading = ref(false);
+const loadError = ref<string | null>(null);
 const itens = ref<ItemAnalise[]>([]);
 
 async function recarregar() {
   loading.value = true;
+  loadError.value = null;
   try {
-    const rows = await fetchAnalisePendentes() as unknown as (ResolucaoRow & {
-      checklist_submissions?: { data: string; base: string; equipe: string; observador: string; auditagem: string };
-    })[];
+    const rows = await fetchAnalisePendentes();
 
-    // Buscar respostas para obter pergunta/categoria/foto
     const subIds = [...new Set(rows.map((r) => r.submission_id))];
-    let responses: ResponseRow[] = [];
-    if (subIds.length) {
-      const { data } = await supabase
-        .from("checklist_responses")
-        .select("submission_id,pergunta_id,pergunta,categoria,observacao,foto_r2_key")
-        .in("submission_id", subIds);
-      responses = (data ?? []) as ResponseRow[];
-    }
+
+    // Buscar submissions e respostas em paralelo
+    const [subsResult, respsResult] = await Promise.all([
+      subIds.length
+        ? supabase.from("checklist_submissions").select("id,data,base,equipe,observador,auditagem").in("id", subIds)
+        : Promise.resolve({ data: [], error: null }),
+      subIds.length
+        ? supabase.from("checklist_responses").select("submission_id,pergunta_id,pergunta,categoria,observacao,foto_r2_key").in("submission_id", subIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
+    const subMap = new Map<string, { id: string; data: string; base: string; equipe: string; observador: string; auditagem: string }>();
+    for (const s of (subsResult.data ?? [])) subMap.set(s.id, s);
 
     const respMap = new Map<string, ResponseRow>();
-    for (const r of responses) respMap.set(`${r.submission_id}:${r.pergunta_id}`, r);
+    for (const r of ((respsResult.data ?? []) as ResponseRow[])) respMap.set(`${r.submission_id}:${r.pergunta_id}`, r);
 
     itens.value = rows.map((row) => {
-      const sub = row.checklist_submissions;
+      const sub = subMap.get(row.submission_id);
       const resp = respMap.get(`${row.submission_id}:${row.pergunta_id}`);
       return {
         ...row,
@@ -323,6 +334,8 @@ async function recarregar() {
         } : undefined,
       };
     });
+  } catch (e) {
+    loadError.value = (e as Error).message;
   } finally {
     loading.value = false;
   }

@@ -227,10 +227,10 @@ export async function inserirResolucao(
 export async function fetchAnalisePendentes(): Promise<ResolucaoRow[]> {
   const { data, error } = await supabase
     .from("nc_resolucoes")
-    .select(`${RESOLUCAO_FIELDS},checklist_submissions(data,base,equipe,observador,auditagem)`)
+    .select(RESOLUCAO_FIELDS)
     .order("data_resolucao", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as unknown as ResolucaoRow[];
+  return (data ?? []) as ResolucaoRow[];
 }
 
 export async function atualizarStatusAnalise(
