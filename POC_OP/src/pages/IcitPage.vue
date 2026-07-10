@@ -469,14 +469,37 @@ const chartMes = computed(() => {
 
 // â"€â"€â"€ Chart: Por Gerência â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const chartGerencia = computed(() => {
-  const entries = Object.entries(byGerencia.value).sort((a, b) => a[1] - b[1]);
-  return hBar(entries.map(([k]) => k), entries.map(([, v]) => v), P.conf, "", Math.max(...entries.map(([,v]) => v), 1));
+  const map: Record<string, { conf: number; total: number }> = {};
+  const subMap = new Map(filteredSubs.value.map(s => {
+    const emp = employees.value.find(e => e.matricula === s.matricula);
+    return [s.id, emp?.gerencia ?? s.auditagem];
+  }));
+  for (const r of filteredResps.value) {
+    const g = subMap.get(r.submission_id) ?? "Outro";
+    if (!map[g]) map[g] = { conf: 0, total: 0 };
+    map[g].total++;
+    if (r.resposta === "conforme") map[g].conf++;
+  }
+  const entries = Object.entries(map)
+    .map(([k, d]) => ({ k, pct: d.total > 0 ? Math.round((d.conf / d.total) * 100) : 0 }))
+    .sort((a, b) => a.pct - b.pct);
+  return hBar(entries.map(e => e.k), entries.map(e => e.pct), P.conf, "%", 100);
 });
 
 // â"€â"€â"€ Chart: Por Base â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const chartBase = computed(() => {
-  const entries = Object.entries(byBase.value).sort((a, b) => a[1] - b[1]);
-  return hBar(entries.map(([k]) => k), entries.map(([, v]) => v), P.conf, "", Math.max(...entries.map(([,v]) => v), 1));
+  const map: Record<string, { conf: number; total: number }> = {};
+  const subMap = new Map(filteredSubs.value.map(s => [s.id, s.base]));
+  for (const r of filteredResps.value) {
+    const b = subMap.get(r.submission_id) ?? "Outro";
+    if (!map[b]) map[b] = { conf: 0, total: 0 };
+    map[b].total++;
+    if (r.resposta === "conforme") map[b].conf++;
+  }
+  const entries = Object.entries(map)
+    .map(([k, d]) => ({ k, pct: d.total > 0 ? Math.round((d.conf / d.total) * 100) : 0 }))
+    .sort((a, b) => a.pct - b.pct);
+  return hBar(entries.map(e => e.k), entries.map(e => e.pct), P.conf, "%", 100);
 });
 
 // â"€â"€â"€ Chart: Não conformidades por Categoria â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
