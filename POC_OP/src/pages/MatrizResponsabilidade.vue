@@ -969,7 +969,17 @@ $header-bg:    #fce4e8;
 }
 .res-sim     { background: #dcfce7; color: #15803d; }
 .res-nao     { background: #fee2e2; color: #991b1b; }
-.res-analise { background: #fef9c3; color: #854d0e; }
+.res-analise {
+  background: #fef9c3;
+  color: #854d0e;
+  animation: analise-pulse 1.8s ease-in-out infinite;
+  position: relative;
+}
+
+@keyframes analise-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.4); }
+  50%       { box-shadow: 0 0 0 5px rgba(217, 119, 6, 0); }
+}
 
 .ev-badge {
   display: inline-flex; align-items: center; justify-content: center;
