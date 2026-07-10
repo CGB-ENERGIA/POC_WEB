@@ -200,8 +200,8 @@
                             <span v-else class="ev-badge ev-sem-foto" title="Sem foto">
                               <q-icon name="mdi-camera-off" size="14px" />
                             </span>
-                            <span class="res-badge" :class="nc.resolucao ? 'res-sim' : 'res-nao'">
-                              {{ nc.resolucao ? 'Resolvido' : 'Pendente' }}
+                            <span class="res-badge" :class="ncStatusClass(nc.resolucao)">
+                              {{ ncStatusLabel(nc.resolucao) }}
                             </span>
                           </div>
                         </div>
@@ -289,8 +289,8 @@
         <q-card-section class="q-pt-sm q-pb-xs">
           <div class="row items-center q-gutter-xs q-mb-sm">
             <span class="cat-badge" :class="catClass(detalhe.nc.categoria)">{{ detalhe.nc.categoria }}</span>
-            <span class="res-badge" :class="detalhe.nc.resolucao ? 'res-sim' : 'res-nao'">
-              {{ detalhe.nc.resolucao ? 'Resolvido' : 'Pendente' }}
+            <span class="res-badge" :class="ncStatusClass(detalhe.nc.resolucao)">
+              {{ ncStatusLabel(detalhe.nc.resolucao) }}
             </span>
           </div>
 
@@ -320,21 +320,35 @@
 
         <q-separator />
 
-        <!-- ── JÁ RESOLVIDO ── -->
+        <!-- ── ENVIADO PARA ANÁLISE / APROVADO / REPROVADO ── -->
         <template v-if="detalhe.nc.resolucao">
           <q-card-section class="q-pb-xs">
             <div class="resolucao-header">
-              <q-icon name="mdi-check-circle" color="positive" size="22px" />
-              <span class="resolucao-titulo">Resolução Registrada</span>
+              <q-icon
+                :name="detalhe.nc.resolucao.status === 'aprovado' ? 'mdi-check-circle' : detalhe.nc.resolucao.status === 'reprovado' ? 'mdi-close-circle' : 'mdi-clock-outline'"
+                :color="detalhe.nc.resolucao.status === 'aprovado' ? 'positive' : detalhe.nc.resolucao.status === 'reprovado' ? 'negative' : 'warning'"
+                size="22px"
+              />
+              <span class="resolucao-titulo" :style="{ color: detalhe.nc.resolucao.status === 'aprovado' ? '#15803d' : detalhe.nc.resolucao.status === 'reprovado' ? '#991b1b' : '#92400e' }">
+                {{ detalhe.nc.resolucao.status === 'aprovado' ? 'Resolução Aprovada' : detalhe.nc.resolucao.status === 'reprovado' ? 'Resolução Reprovada' : 'Aguardando Análise' }}
+              </span>
             </div>
             <div class="resolucao-meta q-mt-sm">
               <div class="resolucao-meta-item">
-                <span class="resolucao-label">Resolvido por</span>
+                <span class="resolucao-label">Enviado por</span>
                 <span class="resolucao-valor">{{ detalhe.nc.resolucao.resolvidoPor }}</span>
               </div>
               <div class="resolucao-meta-item">
                 <span class="resolucao-label">Data / Hora</span>
                 <span class="resolucao-valor">{{ detalhe.nc.resolucao.dataResolucao }}</span>
+              </div>
+              <div v-if="detalhe.nc.resolucao.analisadoPor" class="resolucao-meta-item">
+                <span class="resolucao-label">Analisado por</span>
+                <span class="resolucao-valor">{{ detalhe.nc.resolucao.analisadoPor }}</span>
+              </div>
+              <div v-if="detalhe.nc.resolucao.comentario" class="resolucao-meta-item" style="flex-direction:column;gap:2px">
+                <span class="resolucao-label">Comentário</span>
+                <span class="resolucao-valor">{{ detalhe.nc.resolucao.comentario }}</span>
               </div>
             </div>
           </q-card-section>
@@ -401,9 +415,9 @@
           <q-card-actions align="right" class="q-pt-none q-px-md q-pb-md">
             <q-btn flat label="Fechar" color="grey-7" v-close-popup :disable="resolverForm.saving" />
             <q-btn
-              unelevated color="positive"
-              icon="mdi-check"
-              label="Marcar como Resolvido"
+              unelevated color="primary"
+              icon="mdi-send"
+              label="Mandar para Análise"
               :loading="resolverForm.saving"
               :disable="!resolverForm.por.trim() || !resolverForm.fotoBase64"
               @click="resolverNc"
@@ -489,6 +503,9 @@ type Resolucao = {
   dataResolucaoIso: string;
   dataResolucao: string;
   fotoUrl: string | null;
+  status: "pendente" | "aprovado" | "reprovado";
+  comentario: string | null;
+  analisadoPor: string | null;
 };
 
 type NcRow = {
@@ -554,6 +571,9 @@ const allData = computed<SubRow[]>(() => {
           dataResolucaoIso: raw.data_resolucao,
           dataResolucao: new Date(raw.data_resolucao).toLocaleString("pt-BR"),
           fotoUrl: fotoUrl(raw.foto_r2_key),
+          status: raw.status,
+          comentario: raw.comentario_analise ?? null,
+          analisadoPor: raw.analisado_por ?? null,
         }
       : null;
 
@@ -567,7 +587,7 @@ const allData = computed<SubRow[]>(() => {
       resolucao,
     });
     sub.totalNc++;
-    if (!resolucao) sub.naoResolvidos++;
+    if (!resolucao || resolucao.status !== "aprovado") sub.naoResolvidos++;
   }
 
   return Array.from(subMap.values())
@@ -689,6 +709,20 @@ async function resolverNc() {
 void loading;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+function ncStatusClass(resolucao: Resolucao | null): string {
+  if (!resolucao) return "res-nao";
+  if (resolucao.status === "aprovado") return "res-sim";
+  if (resolucao.status === "reprovado") return "res-nao";
+  return "res-analise";
+}
+
+function ncStatusLabel(resolucao: Resolucao | null): string {
+  if (!resolucao) return "Pendente";
+  if (resolucao.status === "aprovado") return "Resolvido";
+  if (resolucao.status === "reprovado") return "Reprovado";
+  return "Em Análise";
+}
+
 function catClass(cat: string): string {
   const m: Record<string, string> = {
     "Repúblicas":                       "cat-rep",
@@ -923,8 +957,9 @@ $header-bg:    #fce4e8;
   padding: 3px 10px; border-radius: 999px;
   font-size: 11px; font-weight: 700; white-space: nowrap;
 }
-.res-sim { background: #dcfce7; color: #15803d; }
-.res-nao { background: #fee2e2; color: #991b1b; }
+.res-sim     { background: #dcfce7; color: #15803d; }
+.res-nao     { background: #fee2e2; color: #991b1b; }
+.res-analise { background: #fef9c3; color: #854d0e; }
 
 .ev-badge {
   display: inline-flex; align-items: center; justify-content: center;

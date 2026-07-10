@@ -18,6 +18,7 @@ const routes: RouteRecordRaw[] = [
       { path: "mapa-calor-base",       component: () => import("@/pages/MapaCalorBase.vue")             },
       { path: "mapa-calor-mensal",     component: () => import("@/pages/MapaCalorMensal.vue")           },
       { path: "matriz-responsabilidade", component: () => import("@/pages/MatrizResponsabilidade.vue")  },
+      { path: "analise-nc",              component: () => import("@/pages/AnalisePage.vue")               },
       { path: "config-metas",           component: () => import("@/pages/ConfigMetas.vue")             },
       { path: "second", component: () => import("@/pages/SecondPage.vue") }
     ]

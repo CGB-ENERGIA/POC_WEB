@@ -185,6 +185,8 @@ export function ncPorGravidade(responses: ResponseRow[]): Record<string, number>
 
 // ─── Resolução de NCs ────────────────────────────────────────────────────────
 
+export type AnaliseStatus = "pendente" | "aprovado" | "reprovado";
+
 export interface ResolucaoRow {
   id: string;
   submission_id: string;
@@ -192,25 +194,75 @@ export interface ResolucaoRow {
   resolvido_por: string;
   data_resolucao: string;
   foto_r2_key: string;
+  status: AnaliseStatus;
+  comentario_analise?: string | null;
+  analisado_por?: string | null;
+  data_analise?: string | null;
 }
+
+const RESOLUCAO_FIELDS = "id,submission_id,pergunta_id,resolvido_por,data_resolucao,foto_r2_key,status,comentario_analise,analisado_por,data_analise";
 
 export async function fetchResolucoes(submissionIds: string[]): Promise<ResolucaoRow[]> {
   if (!submissionIds.length) return [];
   const { data, error } = await supabase
     .from("nc_resolucoes")
-    .select("id,submission_id,pergunta_id,resolvido_por,data_resolucao,foto_r2_key")
+    .select(RESOLUCAO_FIELDS)
     .in("submission_id", submissionIds);
   if (error) throw error;
   return (data ?? []) as ResolucaoRow[];
 }
 
 export async function inserirResolucao(
-  row: Omit<ResolucaoRow, "id">
+  row: Omit<ResolucaoRow, "id" | "status" | "comentario_analise" | "analisado_por" | "data_analise">
 ): Promise<ResolucaoRow> {
   const { data, error } = await supabase
     .from("nc_resolucoes")
-    .insert(row)
-    .select()
+    .insert({ ...row, status: "pendente" })
+    .select(RESOLUCAO_FIELDS)
+    .single();
+  if (error) throw error;
+  return data as ResolucaoRow;
+}
+
+export async function fetchAnalisePendentes(): Promise<ResolucaoRow[]> {
+  const { data, error } = await supabase
+    .from("nc_resolucoes")
+    .select(`${RESOLUCAO_FIELDS},checklist_submissions(data,base,equipe,observador,auditagem)`)
+    .order("data_resolucao", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as ResolucaoRow[];
+}
+
+export async function atualizarStatusAnalise(
+  id: string,
+  status: AnaliseStatus,
+  analisadoPor: string,
+  comentario?: string
+): Promise<ResolucaoRow> {
+  const { data, error } = await supabase
+    .from("nc_resolucoes")
+    .update({
+      status,
+      analisado_por: analisadoPor,
+      data_analise: new Date().toISOString(),
+      comentario_analise: comentario ?? null,
+    })
+    .eq("id", id)
+    .select(RESOLUCAO_FIELDS)
+    .single();
+  if (error) throw error;
+  return data as ResolucaoRow;
+}
+
+export async function editarAnalise(
+  id: string,
+  updates: { resolvido_por?: string; comentario_analise?: string }
+): Promise<ResolucaoRow> {
+  const { data, error } = await supabase
+    .from("nc_resolucoes")
+    .update(updates)
+    .eq("id", id)
+    .select(RESOLUCAO_FIELDS)
     .single();
   if (error) throw error;
   return data as ResolucaoRow;
