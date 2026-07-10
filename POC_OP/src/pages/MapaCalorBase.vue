@@ -261,7 +261,12 @@ const matrixData = computed(() => {
     if (r.resposta !== "nao_conforme") continue;
     const sub = subById.value[r.submission_id];
     if (!sub?.base) continue;
-    const ci = categories.findIndex(c => r.categoria?.includes(c) || c.includes(r.categoria ?? ""));
+    if (!r.categoria) continue;
+    const rc = r.categoria.toLowerCase();
+    const ci = categories.findIndex(c => {
+      const cc = c.toLowerCase();
+      return rc.includes(cc) || cc.includes(rc);
+    });
     if (ci < 0) continue;
     if (!rowMap[sub.base]) { rowMap[sub.base] = categories.map(() => 0); rows.push({ base: sub.base, values: rowMap[sub.base] }); }
     rowMap[sub.base][ci]++;
