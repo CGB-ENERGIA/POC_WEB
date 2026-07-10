@@ -1,12 +1,57 @@
+<!--
+  SQL MIGRATION — rode no Supabase SQL Editor antes de usar Face ID:
+
+  CREATE TABLE IF NOT EXISTS public.face_descriptors (
+    id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id    uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+    email      text NOT NULL,
+    descriptor float8[] NOT NULL,
+    face_token text NOT NULL,
+    created_at timestamptz DEFAULT now()
+  );
+
+  ALTER TABLE public.face_descriptors ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "anon select desc only" ON public.face_descriptors
+    FOR SELECT TO anon USING (true);
+  CREATE POLICY "owner manage" ON public.face_descriptors
+    FOR ALL TO authenticated USING (user_id = auth.uid());
+
+  CREATE OR REPLACE FUNCTION public.face_authenticate(input_descriptor float8[])
+  RETURNS json
+  LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+  DECLARE
+    rec       RECORD;
+    dist      float8;
+    best_dist float8 := 1.0;
+    best_row  public.face_descriptors;
+  BEGIN
+    FOR rec IN SELECT * FROM public.face_descriptors LOOP
+      SELECT sqrt(sum(pow(a.v - b.v, 2)))
+      INTO dist
+      FROM unnest(input_descriptor) WITH ORDINALITY AS a(v, i)
+      JOIN unnest(rec.descriptor) WITH ORDINALITY AS b(v, i) ON a.i = b.i;
+
+      IF dist < best_dist THEN
+        best_dist := dist;
+        best_row  := rec;
+      END IF;
+    END LOOP;
+
+    IF best_dist < 0.55 THEN
+      RETURN json_build_object('email', best_row.email, 'token', best_row.face_token);
+    END IF;
+    RETURN NULL;
+  END;
+  $$;
+  GRANT EXECUTE ON FUNCTION public.face_authenticate TO anon;
+-->
 <template>
   <div class="l-root">
 
-    <!-- Elementos decorativos fixos -->
     <div class="l-stripe" aria-hidden="true" />
     <div class="l-watermark" aria-hidden="true">CGB</div>
     <div class="l-grid" aria-hidden="true" />
 
-    <!-- Cabeçalho da marca -->
     <header class="l-header">
       <div class="l-brand-mark">
         <span class="l-brand-mark__name">CGB Engenharia</span>
@@ -16,124 +61,489 @@
       <div class="l-brand-mark__system">Sistema de Auditagem · v2.0</div>
     </header>
 
-    <!-- Área principal -->
     <main class="l-main">
 
-      <!-- Coluna da composição tipográfica -->
+      <!-- Coluna tipográfica -->
       <div class="l-title-col" aria-hidden="true">
-        <p class="l-eyebrow">Área restrita</p>
+        <p class="l-eyebrow">{{ title.eyebrow }}</p>
         <h1 class="l-display">
-          <span class="l-display__line l-display__line--em">Acesse</span>
-          <span class="l-display__line">o sistema.</span>
+          <span class="l-display__line l-display__line--em">{{ title.line1 }}</span>
+          <span class="l-display__line">{{ title.line2 }}</span>
         </h1>
         <div class="l-sep">
           <span class="l-sep__line" />
-          <span class="l-sep__label">Credenciais corporativas</span>
+          <span class="l-sep__label">{{ title.sub }}</span>
         </div>
       </div>
 
       <!-- Coluna do formulário -->
       <div class="l-form-col">
 
-        <div class="l-pane">
-          <p class="l-pane__label">IDENTIFICAÇÃO</p>
+        <!-- Abas de modo -->
+        <div class="l-tabs" role="tablist">
+          <button
+            v-for="t in TABS" :key="t.id"
+            role="tab"
+            :aria-selected="mode === t.id"
+            class="l-tab"
+            :class="{ 'l-tab--active': mode === t.id }"
+            @click="switchMode(t.id)"
+          >{{ t.label }}</button>
+        </div>
 
-          <!-- E-mail -->
-          <div class="l-field">
-            <label class="l-field__lbl" for="l-email">E-MAIL</label>
-            <input
-              id="l-email"
-              v-model="email"
-              type="email"
-              class="l-input"
-              placeholder="nome@cgbengenharia.com.br"
-              autocomplete="email"
-              :disabled="loading"
-              @keyup.enter="focusSenha"
-            />
+        <!-- ══ LOGIN ══ -->
+        <div v-if="mode === 'login'" class="l-pane">
+            <p class="l-pane__label">IDENTIFICAÇÃO</p>
+
+            <div class="l-field">
+              <label class="l-field__lbl" for="l-email">E-MAIL</label>
+              <input
+                id="l-email"
+                v-model="email"
+                type="email"
+                class="l-input"
+                placeholder="nome@cgbengenharia.com.br"
+                autocomplete="email"
+                :disabled="loading"
+                @keyup.enter="senhaRef?.focus()"
+              />
+            </div>
+
+            <div class="l-field">
+              <label class="l-field__lbl" for="l-senha">SENHA</label>
+              <div class="l-input-wrap">
+                <input
+                  id="l-senha"
+                  ref="senhaRef"
+                  v-model="senha"
+                  :type="showSenha ? 'text' : 'password'"
+                  class="l-input l-input--pw"
+                  placeholder="••••••••"
+                  autocomplete="current-password"
+                  :disabled="loading"
+                  @keyup.enter="entrar"
+                />
+                <button type="button" class="l-eye" :aria-label="showSenha ? 'Ocultar' : 'Mostrar'" @click="showSenha = !showSenha">
+                  <EyeIcon :crossed="showSenha" />
+                </button>
+              </div>
+            </div>
+
+            <Transition name="fade"><p v-if="loginErro" class="l-err" role="alert">{{ loginErro }}</p></Transition>
+
+            <button class="l-btn" :disabled="!email.trim() || !senha || loading" @click="entrar">
+              <template v-if="!loading">Entrar no sistema</template>
+              <span v-else class="l-spin" />
+            </button>
           </div>
 
-          <!-- Senha -->
-          <div class="l-field">
-            <label class="l-field__lbl" for="l-senha">SENHA</label>
-            <div class="l-input-wrap">
-              <input
-                id="l-senha"
-                ref="senhaRef"
-                v-model="senha"
-                :type="showSenha ? 'text' : 'password'"
-                class="l-input l-input--senha"
-                placeholder="••••••••"
-                autocomplete="current-password"
-                :disabled="loading"
-                @keyup.enter="entrar"
-              />
-              <button
-                type="button"
-                class="l-eye"
-                :aria-label="showSenha ? 'Ocultar senha' : 'Mostrar senha'"
-                @click="showSenha = !showSenha"
+        <!-- ══ FACE LOGIN ══ -->
+        <div v-else-if="mode === 'face'" class="l-pane">
+            <p class="l-pane__label">RECONHECIMENTO FACIAL</p>
+
+            <!-- Carregando modelos -->
+            <div v-if="faceStatus === 'loading'" class="l-face-loading">
+              <span class="l-spin l-spin--lg" />
+              <p class="l-face-hint">Carregando modelos de IA...</p>
+            </div>
+
+            <!-- Câmera / scan -->
+            <div v-else-if="faceStatus === 'scanning' || faceStatus === 'matched'" class="l-cam-area">
+              <div
+                class="l-cam-frame"
+                :class="{
+                  'l-cam-frame--detected': faceDetected && faceStatus === 'scanning',
+                  'l-cam-frame--matched': faceStatus === 'matched',
+                }"
               >
-                <svg v-if="!showSenha" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-                <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                  <line x1="1" y1="1" x2="23" y2="23"/>
-                </svg>
-              </button>
+                <video ref="faceVideoRef" autoplay playsinline muted class="l-cam" />
+                <!-- Cantos decorativos -->
+                <span class="l-corner l-corner--tl" />
+                <span class="l-corner l-corner--tr" />
+                <span class="l-corner l-corner--bl" />
+                <span class="l-corner l-corner--br" />
+              </div>
+              <p class="l-cam-status">
+                <template v-if="faceStatus === 'matched'">
+                  <span class="l-cam-status__icon">✓</span> Acesso liberado
+                </template>
+                <template v-else-if="faceDetected">Rosto identificado — aguardando...</template>
+                <template v-else>Posicione seu rosto na câmera</template>
+              </p>
+              <Transition name="fade"><p v-if="faceErro" class="l-err">{{ faceErro }}</p></Transition>
+            </div>
+
+            <!-- Erro de câmera / permissão -->
+            <div v-else-if="faceStatus === 'error'" class="l-face-err-block">
+              <p class="l-err">{{ faceErro }}</p>
+              <button class="l-btn l-btn--ghost" @click="startFaceScan">Tentar novamente</button>
             </div>
           </div>
 
-          <Transition name="fade">
-            <p v-if="erro" class="l-err" role="alert">{{ erro }}</p>
-          </Transition>
+        <!-- ══ CADASTRO ══ -->
+        <div v-else class="l-pane">
+            <p class="l-pane__label">NOVO ACESSO</p>
 
-          <button
-            class="l-btn"
-            :disabled="!email.trim() || !senha || loading"
-            @click="entrar"
-          >
-            <template v-if="!loading">Entrar no sistema</template>
-            <span v-else class="l-spin" />
-          </button>
-        </div>
+            <!-- Passo 1: dados -->
+            <div v-if="cadStep === 'form'">
+                <div class="l-field">
+                  <label class="l-field__lbl" for="cad-email">E-MAIL</label>
+                  <input
+                    id="cad-email"
+                    v-model="cadEmail"
+                    type="email"
+                    class="l-input"
+                    placeholder="nome@cgbengenharia.com.br"
+                    :disabled="cadLoading"
+                    @keyup.enter="avancarParaCamera"
+                  />
+                </div>
 
+                <Transition name="fade"><p v-if="cadErro" class="l-err">{{ cadErro }}</p></Transition>
+
+                <button class="l-btn" :disabled="!cadEmail.trim() || cadLoading" @click="avancarParaCamera">
+                  Próximo: capturar rosto
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:8px"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </button>
+              </div>
+
+            <!-- Passo 2: câmera -->
+            <div v-else-if="cadStep === 'camera'">
+                <div
+                  class="l-cam-area"
+                  :class="{ 'l-cam-area--sm': true }"
+                >
+                  <div
+                    class="l-cam-frame"
+                    :class="{ 'l-cam-frame--detected': cadFaceDetected }"
+                  >
+                    <video ref="cadVideoRef" autoplay playsinline muted class="l-cam" />
+                    <span class="l-corner l-corner--tl" />
+                    <span class="l-corner l-corner--tr" />
+                    <span class="l-corner l-corner--bl" />
+                    <span class="l-corner l-corner--br" />
+                  </div>
+                  <p class="l-cam-status">
+                    <template v-if="cadFaceDetected">Rosto detectado ✓</template>
+                    <template v-else>Posicione seu rosto</template>
+                  </p>
+                </div>
+
+                <Transition name="fade"><p v-if="cadErro" class="l-err">{{ cadErro }}</p></Transition>
+
+                <button
+                  class="l-btn"
+                  :disabled="!cadFaceDetected || cadLoading"
+                  @click="capturarECadastrar"
+                >
+                  <template v-if="!cadLoading">Capturar e cadastrar</template>
+                  <span v-else class="l-spin" />
+                </button>
+
+                <button class="l-back" @click="cadStep = 'form'">
+                  <BackArrow /> Voltar
+                </button>
+              </div>
+
+            <!-- Passo 3: concluído -->
+            <div v-else-if="cadStep === 'done'" class="l-done">
+              <div class="l-done__icon">✓</div>
+              <p class="l-done__msg">Cadastro concluído!<br>Redirecionando...</p>
+            </div>
+          </div>
       </div>
     </main>
 
-    <!-- Rodapé -->
     <footer class="l-footer">
       <span>BCB · BDC · ITM · PDS · PDT · STI</span>
       <span class="l-footer__sep">·</span>
       <span>GOMAN · GSTC</span>
     </footer>
-
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed, watch, onUnmounted, nextTick, defineComponent, h } from "vue";
 import { useRouter } from "vue-router";
 import { supabase } from "@/lib/supabase";
+import * as faceapi from "@vladmandic/face-api";
 
-const router    = useRouter();
+// ─── Ícones inline ────────────────────────────────────────────────────────────
+const EyeIcon = defineComponent({
+  props: { crossed: Boolean },
+  setup(p) {
+    return () => p.crossed
+      ? h("svg", { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "1.8", "stroke-linecap": "round", "stroke-linejoin": "round" }, [
+          h("path", { d: "M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" }),
+          h("line", { x1: 1, y1: 1, x2: 23, y2: 23 }),
+        ])
+      : h("svg", { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "1.8", "stroke-linecap": "round", "stroke-linejoin": "round" }, [
+          h("path", { d: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" }),
+          h("circle", { cx: 12, cy: 12, r: 3 }),
+        ]);
+  },
+});
+
+const BackArrow = defineComponent({
+  setup: () => () =>
+    h("svg", { width: 12, height: 12, viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", "stroke-width": "1.5", "stroke-linecap": "round", "stroke-linejoin": "round" },
+      [h("path", { d: "M7.5 2L3.5 6L7.5 10" })]),
+});
+
+// ─── Constantes ───────────────────────────────────────────────────────────────
+const MODEL_URL = "/models";
+const FACE_THRESHOLD = 0.55;
+const STABLE_NEEDED  = 25; // frames com rosto antes de autenticar
+
+const TABS = [
+  { id: "login",    label: "Entrar" },
+  { id: "face",     label: "Face ID" },
+  { id: "cadastro", label: "Cadastrar" },
+] as const;
+
+type Mode = typeof TABS[number]["id"];
+
+// ─── State ────────────────────────────────────────────────────────────────────
+const router = useRouter();
+const mode   = ref<Mode>("login");
+
+// login
 const email     = ref("");
 const senha     = ref("");
 const loading   = ref(false);
-const erro      = ref<string | null>(null);
+const loginErro = ref<string | null>(null);
 const showSenha = ref(false);
 const senhaRef  = ref<HTMLInputElement | null>(null);
 
-function focusSenha() {
-  senhaRef.value?.focus();
+// face login
+type FaceStatus = "idle" | "loading" | "scanning" | "matched" | "error";
+const faceStatus   = ref<FaceStatus>("idle");
+const faceDetected = ref(false);
+const faceErro     = ref<string | null>(null);
+const faceVideoRef = ref<HTMLVideoElement | null>(null);
+
+// cadastro
+type CadStep = "form" | "camera" | "done";
+const cadStep         = ref<CadStep>("form");
+const cadEmail        = ref("");
+const cadLoading      = ref(false);
+const cadErro         = ref<string | null>(null);
+const cadFaceDetected = ref(false);
+const cadVideoRef     = ref<HTMLVideoElement | null>(null);
+
+// câmera / modelos
+let faceStream: MediaStream | null = null;
+let cadStream:  MediaStream | null = null;
+let rafId: number | null = null;
+let cadRafId: number | null = null;
+let modelsLoaded = false;
+let stableFrames = 0;
+let isScanning   = false;
+let isCadCam     = false;
+
+// ─── Computed title ───────────────────────────────────────────────────────────
+const title = computed(() => {
+  if (mode.value === "face")     return { eyebrow: "Biometria facial",   line1: "Face",     line2: "ID.",         sub: "Reconhecimento automático"  };
+  if (mode.value === "cadastro") return { eyebrow: "Novo usuário",        line1: "Cadastre", line2: "seu acesso.", sub: "Registro com face"           };
+  return                                { eyebrow: "Área restrita",        line1: "Acesse",   line2: "o sistema.",  sub: "Credenciais corporativas"    };
+});
+
+// ─── Helpers face-api ─────────────────────────────────────────────────────────
+async function ensureModels() {
+  if (modelsLoaded) return;
+  await Promise.all([
+    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+    faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
+    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+  ]);
+  modelsLoaded = true;
 }
 
+const DETECT_OPTS = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
+
+async function detectOnce(video: HTMLVideoElement) {
+  return faceapi
+    .detectSingleFace(video, DETECT_OPTS)
+    .withFaceLandmarks(true)
+    .withFaceDescriptor();
+}
+
+// ─── Câmera ───────────────────────────────────────────────────────────────────
+async function openCamera(videoEl: HTMLVideoElement): Promise<MediaStream> {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+  });
+  videoEl.srcObject = stream;
+  await new Promise<void>((res) => { videoEl.onloadedmetadata = () => res(); });
+  return stream;
+}
+
+function stopStream(s: MediaStream | null) {
+  s?.getTracks().forEach((t) => t.stop());
+}
+
+// ─── Face LOGIN ──────────────────────────────────────────────────────────────
+async function startFaceScan() {
+  faceErro.value   = null;
+  faceDetected.value = false;
+  faceStatus.value   = "loading";
+  isScanning         = true;
+  stableFrames       = 0;
+
+  try {
+    await ensureModels();
+    faceStatus.value = "scanning";
+    await nextTick();
+
+    if (!faceVideoRef.value) throw new Error("Elemento de vídeo não encontrado");
+    faceStream = await openCamera(faceVideoRef.value);
+    faceDetectLoop();
+  } catch (e: unknown) {
+    faceStatus.value = "error";
+    faceErro.value   = (e as Error).message.includes("Permission")
+      ? "Permissão de câmera negada. Habilite nas configurações do navegador."
+      : "Não foi possível iniciar a câmera.";
+    isScanning = false;
+  }
+}
+
+function faceDetectLoop() {
+  if (!isScanning || !faceVideoRef.value) return;
+
+  detectOnce(faceVideoRef.value).then(async (result) => {
+    if (!isScanning) return;
+
+    if (result) {
+      faceDetected.value = true;
+      stableFrames++;
+
+      if (stableFrames >= STABLE_NEEDED) {
+        stableFrames = 0;
+        await tryFaceLogin(result.descriptor);
+      }
+    } else {
+      faceDetected.value = false;
+      stableFrames       = 0;
+    }
+
+    if (isScanning) {
+      rafId = requestAnimationFrame(faceDetectLoop);
+    }
+  });
+}
+
+async function tryFaceLogin(descriptor: Float32Array) {
+  const { data, error } = await supabase.rpc("face_authenticate", {
+    input_descriptor: Array.from(descriptor),
+  });
+
+  if (error || !data) {
+    faceErro.value = "Rosto não reconhecido. Tente novamente.";
+    return;
+  }
+
+  isScanning       = false;
+  faceStatus.value = "matched";
+  stopStream(faceStream);
+
+  const { error: authErr } = await supabase.auth.signInWithPassword({
+    email:    data.email,
+    password: data.token,
+  });
+
+  if (authErr) {
+    faceStatus.value = "error";
+    faceErro.value   = "Falha na autenticação. Contate o administrador.";
+    return;
+  }
+
+  setTimeout(() => router.replace("/"), 800);
+}
+
+// ─── Cadastro ─────────────────────────────────────────────────────────────────
+function avancarParaCamera() {
+  cadErro.value = null;
+  if (!cadEmail.value.trim()) return;
+  cadStep.value = "camera";
+}
+
+async function startCadCam() {
+  isCadCam           = true;
+  cadFaceDetected.value = false;
+
+  try {
+    await ensureModels();
+    await nextTick();
+    if (!cadVideoRef.value) return;
+    cadStream = await openCamera(cadVideoRef.value);
+    cadDetectLoop();
+  } catch {
+    cadErro.value = "Não foi possível acessar a câmera.";
+  }
+}
+
+function cadDetectLoop() {
+  if (!isCadCam || !cadVideoRef.value) return;
+
+  detectOnce(cadVideoRef.value).then((result) => {
+    if (!isCadCam) return;
+    cadFaceDetected.value = !!result;
+    cadRafId = requestAnimationFrame(cadDetectLoop);
+  });
+}
+
+async function capturarECadastrar() {
+  if (!cadVideoRef.value || !cadFaceDetected.value) return;
+  cadLoading.value = true;
+  cadErro.value    = null;
+
+  try {
+    const result = await detectOnce(cadVideoRef.value);
+    if (!result) throw new Error("Nenhum rosto detectado. Tente novamente.");
+
+    const descriptor = Array.from(result.descriptor);
+    const faceToken  = crypto.randomUUID();
+    const emailVal   = cadEmail.value.trim();
+
+    const { error: signUpErr } = await supabase.auth.signUp({
+      email:    emailVal,
+      password: faceToken,
+    });
+
+    if (signUpErr) throw new Error(signUpErr.message);
+
+    const { data: session } = await supabase.auth.signInWithPassword({
+      email:    emailVal,
+      password: faceToken,
+    });
+
+    if (!session?.user) throw new Error("Falha ao criar sessão.");
+
+    const { error: dbErr } = await supabase.from("face_descriptors").insert({
+      user_id:    session.user.id,
+      email:      emailVal,
+      descriptor,
+      face_token: faceToken,
+    });
+
+    if (dbErr) throw new Error("Erro ao salvar dados faciais: " + dbErr.message);
+
+    isCadCam  = false;
+    stopStream(cadStream);
+    cadStep.value = "done";
+    setTimeout(() => router.replace("/"), 1500);
+  } catch (e: unknown) {
+    cadErro.value = (e as Error).message;
+  } finally {
+    cadLoading.value = false;
+  }
+}
+
+// ─── Login normal ─────────────────────────────────────────────────────────────
 async function entrar() {
   if (!email.value.trim() || !senha.value || loading.value) return;
-  loading.value = true;
-  erro.value    = null;
+  loading.value   = true;
+  loginErro.value = null;
 
   const { error } = await supabase.auth.signInWithPassword({
     email:    email.value.trim(),
@@ -141,12 +551,46 @@ async function entrar() {
   });
 
   loading.value = false;
-  if (error) {
-    erro.value = "E-mail ou senha incorretos.";
-    return;
-  }
+  if (error) { loginErro.value = "E-mail ou senha incorretos."; return; }
   await router.replace("/");
 }
+
+// ─── Troca de modo ───────────────────────────────────────────────────────────
+function stopAll() {
+  isScanning = false;
+  isCadCam   = false;
+  if (rafId)    { cancelAnimationFrame(rafId);    rafId    = null; }
+  if (cadRafId) { cancelAnimationFrame(cadRafId); cadRafId = null; }
+  stopStream(faceStream); faceStream = null;
+  stopStream(cadStream);  cadStream  = null;
+}
+
+function switchMode(m: Mode) {
+  stopAll();
+  faceStatus.value    = "idle";
+  faceDetected.value  = false;
+  faceErro.value      = null;
+  cadStep.value       = "form";
+  cadFaceDetected.value = false;
+  cadErro.value       = null;
+  loginErro.value     = null;
+  mode.value          = m;
+}
+
+// Auto-inicia câmeras ao entrar nos modos
+watch(mode, (m) => {
+  if (m === "face") {
+    nextTick(() => startFaceScan());
+  }
+});
+
+watch(cadStep, (s) => {
+  if (s === "camera") {
+    nextTick(() => startCadCam());
+  }
+});
+
+onUnmounted(stopAll);
 </script>
 
 <style scoped lang="scss">
@@ -162,300 +606,309 @@ async function entrar() {
   overflow: hidden;
 }
 
-// ─── Fixed decorative elements ───────────────────────────────────────────────
+// ─── Decorativos ─────────────────────────────────────────────────────────────
 .l-stripe {
   position: fixed;
   top: 0; left: 0;
-  width: 3px;
-  height: 100%;
+  width: 3px; height: 100%;
   background: #8B1C2B;
   z-index: 10;
 }
-
 .l-grid {
-  position: fixed;
-  inset: 0;
+  position: fixed; inset: 0;
   background-image:
     linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px);
   background-size: 52px 52px;
-  pointer-events: none;
-  z-index: 0;
+  pointer-events: none; z-index: 0;
 }
-
 .l-watermark {
   position: fixed;
-  right: -0.08em;
-  bottom: -0.18em;
+  right: -0.08em; bottom: -0.18em;
   font-size: clamp(200px, 28vw, 360px);
   font-weight: 900;
   letter-spacing: -0.04em;
   color: rgba(255,255,255,0.038);
   line-height: 1;
-  user-select: none;
-  pointer-events: none;
-  z-index: 0;
+  user-select: none; pointer-events: none; z-index: 0;
 }
 
 // ─── Header ──────────────────────────────────────────────────────────────────
 .l-header {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  position: relative; z-index: 1;
+  display: flex; align-items: center; justify-content: space-between;
   padding: 28px 52px 0;
 }
+.l-brand-mark { display: flex; align-items: center; gap: 12px; }
+.l-brand-mark__name { font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #fff; }
+.l-brand-mark__sep  { display: block; width: 1px; height: 12px; background: rgba(255,255,255,.2); }
+.l-brand-mark__product { font-size: 10px; letter-spacing: .06em; color: rgba(255,255,255,.32); }
+.l-brand-mark__system  { font-size: 10px; letter-spacing: .12em; color: rgba(255,255,255,.2); text-transform: uppercase; }
 
-.l-brand-mark {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.l-brand-mark__name {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #fff;
-}
-.l-brand-mark__sep {
-  display: block;
-  width: 1px;
-  height: 12px;
-  background: rgba(255,255,255,0.2);
-}
-.l-brand-mark__product {
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  color: rgba(255,255,255,0.32);
-}
-.l-brand-mark__system {
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  color: rgba(255,255,255,0.2);
-  text-transform: uppercase;
-}
-
-// ─── Main layout ─────────────────────────────────────────────────────────────
+// ─── Main ────────────────────────────────────────────────────────────────────
 .l-main {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
+  position: relative; z-index: 1;
+  display: flex; align-items: center;
   gap: clamp(40px, 8vw, 120px);
-  padding: 0 52px;
-  min-height: 0;
+  padding: 0 52px; min-height: 0;
 }
 
-// ─── Title column ────────────────────────────────────────────────────────────
-.l-title-col {
-  flex: 1;
-  max-width: 480px;
-  padding-bottom: 8px;
-}
-
+// ─── Title col ───────────────────────────────────────────────────────────────
+.l-title-col { flex: 1; max-width: 480px; padding-bottom: 8px; }
 .l-eyebrow {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: #8B1C2B;
-  margin: 0 0 20px;
+  font-size: 10px; font-weight: 700; letter-spacing: .22em;
+  text-transform: uppercase; color: #8B1C2B; margin: 0 0 20px;
 }
-
 .l-display {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin: 0 0 36px;
-  line-height: 1;
+  display: flex; flex-direction: column; gap: 2px;
+  margin: 0 0 36px; line-height: 1;
 }
 .l-display__line {
   display: block;
   font-size: clamp(52px, 7.5vw, 92px);
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  color: #E4EAF3;
-  white-space: nowrap;
-
+  font-weight: 800; letter-spacing: -0.04em;
+  color: #E4EAF3; white-space: nowrap;
   &--em { color: #fff; }
 }
+.l-sep { display: flex; align-items: center; gap: 16px; }
+.l-sep__line  { display: block; width: 40px; height: 2px; background: #8B1C2B; flex-shrink: 0; }
+.l-sep__label { font-size: 10.5px; letter-spacing: .1em; color: rgba(255,255,255,.25); text-transform: uppercase; font-weight: 500; }
 
-.l-sep {
+// ─── Form col ────────────────────────────────────────────────────────────────
+.l-form-col { flex: 0 0 320px; }
+
+// ─── Abas ────────────────────────────────────────────────────────────────────
+.l-tabs {
   display: flex;
-  align-items: center;
-  gap: 16px;
-}
-.l-sep__line {
-  display: block;
-  width: 40px;
-  height: 2px;
-  background: #8B1C2B;
-  flex-shrink: 0;
-}
-.l-sep__label {
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
-  color: rgba(255,255,255,0.25);
-  text-transform: uppercase;
-  font-weight: 500;
-}
-
-// ─── Form column ─────────────────────────────────────────────────────────────
-.l-form-col {
-  flex: 0 0 320px;
-}
-
-.l-pane__label {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  color: rgba(255,255,255,0.2);
-  margin: 0 0 24px;
-}
-
-// ─── Fields ──────────────────────────────────────────────────────────────────
-.l-field {
+  gap: 0;
+  border-bottom: 1px solid rgba(255,255,255,.08);
   margin-bottom: 28px;
 }
-.l-field__lbl {
-  display: block;
-  font-size: 8.5px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  color: rgba(255,255,255,0.25);
-  margin-bottom: 10px;
-}
-
-.l-input-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.l-input {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  background: transparent;
-  border: none;
-  border-bottom: 1.5px solid rgba(255,255,255,0.14);
+.l-tab {
+  flex: 1;
   padding: 10px 0;
-  font-size: 14px;
-  font-family: inherit;
-  color: #E4EAF3;
-  outline: none;
-  transition: border-color 0.2s;
-
-  &::placeholder { color: rgba(255,255,255,0.18); }
-  &:focus        { border-bottom-color: #8B1C2B; }
-  &:disabled     { opacity: 0.4; cursor: not-allowed; }
-
-  &--senha { padding-right: 32px; }
-}
-
-.l-eye {
-  position: absolute;
-  right: 0;
   background: none;
   border: none;
-  padding: 4px;
-  color: rgba(255,255,255,0.28);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  transition: color 0.18s;
-
-  &:hover { color: rgba(255,255,255,0.6); }
-}
-
-// ─── Error ───────────────────────────────────────────────────────────────────
-.l-err {
-  font-size: 11.5px;
-  color: #E06070;
-  margin: 0 0 16px;
-  line-height: 1.4;
-}
-
-// ─── Button ──────────────────────────────────────────────────────────────────
-.l-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 44px;
-  background: #8B1C2B;
-  color: #fff;
-  font-size: 12.5px;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  border: none;
-  border-radius: 2px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.28);
   cursor: pointer;
-  transition: background 0.18s, opacity 0.18s, transform 0.1s;
-  outline: none;
+  transition: color .2s, border-color .2s;
   font-family: inherit;
 
+  &:hover { color: rgba(255,255,255,.55); }
+  &--active {
+    color: #fff;
+    border-bottom-color: #8B1C2B;
+  }
+}
+
+// ─── Pane ────────────────────────────────────────────────────────────────────
+.l-pane__label {
+  font-size: 9px; font-weight: 700; letter-spacing: .22em;
+  color: rgba(255,255,255,.2); margin: 0 0 24px;
+}
+
+// ─── Campos ──────────────────────────────────────────────────────────────────
+.l-field { margin-bottom: 28px; }
+.l-field__lbl {
+  display: block; font-size: 8.5px; font-weight: 700;
+  letter-spacing: .2em; color: rgba(255,255,255,.25); margin-bottom: 10px;
+}
+.l-input-wrap { position: relative; display: flex; align-items: center; }
+.l-input {
+  display: block; width: 100%; box-sizing: border-box;
+  background: transparent; border: none;
+  border-bottom: 1.5px solid rgba(255,255,255,.14);
+  padding: 10px 0; font-size: 14px; font-family: inherit;
+  color: #E4EAF3; outline: none; transition: border-color .2s;
+
+  &::placeholder { color: rgba(255,255,255,.18); }
+  &:focus        { border-bottom-color: #8B1C2B; }
+  &:disabled     { opacity: .4; cursor: not-allowed; }
+  &--pw          { padding-right: 32px; }
+}
+.l-eye {
+  position: absolute; right: 0; background: none; border: none;
+  padding: 4px; color: rgba(255,255,255,.28); cursor: pointer;
+  display: flex; align-items: center; transition: color .18s;
+  &:hover { color: rgba(255,255,255,.6); }
+}
+
+// ─── Câmera ──────────────────────────────────────────────────────────────────
+.l-cam-area {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 12px; margin-bottom: 20px;
+}
+
+.l-cam-frame {
+  position: relative;
+  width: 220px; height: 220px;
+  border-radius: 2px;
+  overflow: hidden;
+  border: 1.5px solid rgba(255,255,255,.1);
+  transition: border-color .3s;
+
+  &--detected { border-color: rgba(139,28,43,.7); }
+  &--matched  {
+    border-color: #2ECC71;
+    box-shadow: 0 0 24px rgba(46,204,113,.3);
+  }
+}
+
+.l-cam {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); // espelho
+  display: block;
+}
+
+// Cantos estilo HUD
+.l-corner {
+  position: absolute;
+  width: 14px; height: 14px;
+  border-color: #8B1C2B;
+  border-style: solid;
+  pointer-events: none;
+  transition: border-color .3s;
+
+  .l-cam-frame--detected & { border-color: #C0263A; }
+  .l-cam-frame--matched  & { border-color: #2ECC71; }
+
+  &--tl { top: 8px; left: 8px;   border-width: 2px 0 0 2px; }
+  &--tr { top: 8px; right: 8px;  border-width: 2px 2px 0 0; }
+  &--bl { bottom: 8px; left: 8px;  border-width: 0 0 2px 2px; }
+  &--br { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; }
+}
+
+.l-cam-status {
+  font-size: 11px; letter-spacing: .06em;
+  color: rgba(255,255,255,.4); text-align: center;
+}
+.l-cam-status__icon {
+  color: #2ECC71;
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+// ─── Face loading ─────────────────────────────────────────────────────────────
+.l-face-loading {
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  padding: 32px 0;
+}
+.l-face-hint { font-size: 12px; color: rgba(255,255,255,.35); letter-spacing: .06em; }
+.l-face-err-block { display: flex; flex-direction: column; gap: 16px; }
+
+// ─── Concluído ────────────────────────────────────────────────────────────────
+.l-done {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 16px; padding: 32px 0;
+}
+.l-done__icon {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: rgba(46,204,113,.15);
+  border: 1.5px solid #2ECC71;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; color: #2ECC71;
+}
+.l-done__msg {
+  text-align: center; font-size: 13px; line-height: 1.7;
+  color: rgba(255,255,255,.55);
+}
+
+// ─── Erro ────────────────────────────────────────────────────────────────────
+.l-err {
+  font-size: 11.5px; color: #E06070; margin: 0 0 16px; line-height: 1.4;
+}
+
+// ─── Botões ──────────────────────────────────────────────────────────────────
+.l-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 44px;
+  background: #8B1C2B; color: #fff;
+  font-size: 12.5px; font-weight: 700; letter-spacing: .08em;
+  border: none; border-radius: 2px; cursor: pointer;
+  transition: background .18s, opacity .18s, transform .1s;
+  outline: none; font-family: inherit; margin-bottom: 12px;
+
   &:hover:not(:disabled)  { background: #A0202F; }
-  &:active:not(:disabled) { transform: scale(0.98); }
+  &:active:not(:disabled) { transform: scale(.98); }
   &:focus-visible         { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #8B1C2B; }
-  &:disabled              { opacity: 0.35; cursor: not-allowed; }
+  &:disabled              { opacity: .35; cursor: not-allowed; }
+
+  &--ghost {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,.15);
+    color: rgba(255,255,255,.55);
+    &:hover:not(:disabled) { background: rgba(255,255,255,.05); }
+  }
+}
+
+.l-back {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; padding: 8px; background: none; border: none;
+  font-size: 11.5px; font-weight: 500;
+  color: rgba(255,255,255,.25); cursor: pointer;
+  transition: color .18s; font-family: inherit; letter-spacing: .04em;
+  &:hover { color: rgba(255,255,255,.6); }
 }
 
 // ─── Spinner ─────────────────────────────────────────────────────────────────
 .l-spin {
   display: inline-block;
   width: 16px; height: 16px;
-  border: 2px solid rgba(255,255,255,0.25);
+  border: 2px solid rgba(255,255,255,.25);
   border-top-color: #fff;
   border-radius: 50%;
-  animation: spin 0.65s linear infinite;
+  animation: spin .65s linear infinite;
+
+  &--lg { width: 28px; height: 28px; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 // ─── Footer ──────────────────────────────────────────────────────────────────
 .l-footer {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  position: relative; z-index: 1;
+  display: flex; align-items: center; gap: 10px;
   padding: 20px 52px 28px;
-  font-size: 9.5px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(255,255,255,0.15);
+  font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase;
+  color: rgba(255,255,255,.15);
 }
-.l-footer__sep { opacity: 0.4; }
-
-// ─── Transitions ─────────────────────────────────────────────────────────────
-.fade-enter-active, .fade-leave-active { transition: opacity 0.18s; }
-.fade-enter-from, .fade-leave-to       { opacity: 0; }
+.l-footer__sep { opacity: .4; }
 
 // ─── Mobile ──────────────────────────────────────────────────────────────────
 @media (max-width: 700px) {
-  .l-header {
-    padding: 20px 28px 0;
-    flex-wrap: wrap;
-    gap: 4px;
-  }
+  .l-header { padding: 20px 28px 0; flex-wrap: wrap; gap: 4px; }
   .l-brand-mark__product,
   .l-brand-mark__system { display: none; }
 
   .l-main {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 36px 28px 0;
-    gap: 32px;
+    flex-direction: column; align-items: flex-start;
+    padding: 32px 28px 0; gap: 28px;
   }
-
   .l-title-col { max-width: 100%; }
-  .l-display__line { font-size: clamp(40px, 11vw, 60px); }
-
-  .l-form-col { flex: none; width: 100%; }
-
-  .l-footer { padding: 20px 28px 24px; }
+  .l-display__line { font-size: clamp(38px, 11vw, 56px); }
+  .l-form-col  { flex: none; width: 100%; }
+  .l-footer    { padding: 20px 28px 24px; }
   .l-watermark { font-size: 38vw; }
 }
+</style>
+
+<!-- Transições fora do scoped: classes do <Transition> precisam ser globais -->
+<style>
+.step-enter-active, .step-leave-active   { transition: opacity .2s ease, transform .2s ease; }
+.step-enter-from  { opacity: 0; transform: translateY(10px); }
+.step-leave-to    { opacity: 0; transform: translateY(-8px); }
+
+.slide-enter-active, .slide-leave-active { transition: opacity .18s ease, transform .18s ease; }
+.slide-enter-from { opacity: 0; transform: translateX(16px); }
+.slide-leave-to   { opacity: 0; transform: translateX(-16px); }
+
+.fade-enter-active, .fade-leave-active { transition: opacity .18s; }
+.fade-enter-from, .fade-leave-to       { opacity: 0; }
 </style>

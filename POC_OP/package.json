@@ -26,6 +26,7 @@
   "dependencies": {
     "@quasar/extras": "^2.0.0",
     "@supabase/supabase-js": "^2.110.0",
+    "@vladmandic/face-api": "^1.7.15",
     "echarts": "^6.1.0",
     "quasar": "^2.20.0",
     "vue": "^3.5.22",
