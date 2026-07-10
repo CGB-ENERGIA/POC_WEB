@@ -401,7 +401,7 @@
               v-else
               outline color="grey-7"
               icon="mdi-camera-plus-outline"
-              label="Adicionar Foto da Resolução *"
+              label="Adicionar Foto da Resolução (opcional)"
               class="full-width q-mb-xs"
               :disable="resolverForm.saving"
               @click="fotoInput?.click()"
@@ -419,7 +419,7 @@
               icon="mdi-send"
               label="Mandar para Análise"
               :loading="resolverForm.saving"
-              :disable="!resolverForm.por.trim() || !resolverForm.fotoBase64"
+              :disable="!resolverForm.por.trim()"
               @click="resolverNc"
             />
           </q-card-actions>
@@ -681,13 +681,22 @@ function onFotoChange(event: Event) {
 }
 
 async function resolverNc() {
-  if (!detalhe.value || !resolverForm.por.trim() || !resolverForm.fotoBase64) return;
+  if (!detalhe.value || !resolverForm.por.trim()) return;
   resolverForm.saving = true;
   resolverForm.error = null;
   try {
     const { sub, nc } = detalhe.value;
-    const key = `resolucoes/${sub.submissionId}/${nc.perguntaId}_${Date.now()}.jpg`;
-    const r2Key = await uploadToR2(key, resolverForm.fotoBase64);
+    let r2Key = "";
+    if (resolverForm.fotoBase64) {
+      try {
+        const key = `resolucoes/${sub.submissionId}/${nc.perguntaId}_${Date.now()}.jpg`;
+        r2Key = await uploadToR2(key, resolverForm.fotoBase64);
+      } catch {
+        resolverForm.error = "Falha no upload da foto. Verifique sua conexão e tente novamente, ou envie sem foto.";
+        resolverForm.saving = false;
+        return;
+      }
+    }
     const nova = await inserirResolucao({
       submission_id: sub.submissionId,
       pergunta_id: nc.perguntaId,
@@ -695,12 +704,13 @@ async function resolverNc() {
       data_resolucao: new Date().toISOString(),
       foto_r2_key: r2Key,
     });
-    // Atualiza lista local sem recarregar tudo
     resolucoes.value = [...resolucoes.value, nova];
-    // Fecha dialog após pequena pausa para o usuário ver o sucesso
     dialogOpen.value = false;
   } catch (e) {
-    resolverForm.error = (e as Error).message;
+    const msg = (e as { message?: string }).message ?? String(e);
+    resolverForm.error = msg.includes("column") && msg.includes("status")
+      ? "Execute a migration SQL no Supabase antes de usar este recurso."
+      : msg;
   } finally {
     resolverForm.saving = false;
   }
