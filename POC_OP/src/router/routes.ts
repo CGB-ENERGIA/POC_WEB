@@ -25,6 +25,7 @@ const routes: RouteRecordRaw[] = [
       { path: "matriz-responsabilidade", component: () => import("@/pages/MatrizResponsabilidade.vue")  },
       { path: "analise-nc",              component: () => import("@/pages/AnalisePage.vue")               },
       { path: "config-metas",           component: () => import("@/pages/ConfigMetas.vue")             },
+      { path: "aprovacoes",             component: () => import("@/pages/AprovacoesPage.vue"), meta: { requiresAdmin: true } },
       { path: "second", component: () => import("@/pages/SecondPage.vue") }
     ]
   },

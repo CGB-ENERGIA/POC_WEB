@@ -35,10 +35,13 @@ export default defineRouter((/* { store, ssrContext } */) => {
     history: createHistory(import.meta.env.QUASAR_VUE_ROUTER_BASE)
   });
 
+  const ADMIN_EMAIL = "italo.fontes@cgbengenharia.com.br";
+
   Router.beforeEach(async (to) => {
     if (to.meta.public) return true;
     const { data } = await supabase.auth.getSession();
     if (!data.session) return "/login";
+    if (to.meta.requiresAdmin && data.session.user.email !== ADMIN_EMAIL) return "/";
     return true;
   });
 

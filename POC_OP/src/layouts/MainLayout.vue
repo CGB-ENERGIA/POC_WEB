@@ -68,6 +68,18 @@
           :key="link.label"
           v-bind="link"
         />
+
+        <template v-if="isAdmin">
+          <q-separator class="q-my-md" />
+          <q-item-label header class="sidebar-section-label">
+            Administração
+          </q-item-label>
+          <EssentialLink
+            label="Aprovações de Acesso"
+            icon="mdi-shield-account"
+            link="/aprovacoes"
+          />
+        </template>
       </q-list>
     </q-drawer>
 
@@ -78,7 +90,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useQuasar } from "quasar";
 import { useRouter } from "vue-router";
 import BrandLogo from "@/components/BrandLogo.vue";
@@ -88,9 +100,12 @@ import EssentialLink, {
 } from "@/components/EssentialLink.vue";
 import { useAuth } from "@/composables/useAuth";
 
+const ADMIN_EMAIL = "italo.fontes@cgbengenharia.com.br";
+
 const $q = useQuasar();
 const router = useRouter();
 const { user, signOut } = useAuth();
+const isAdmin = computed(() => user.value?.email === ADMIN_EMAIL);
 
 async function logout() {
   await signOut();

@@ -206,9 +206,23 @@
             <!-- Passo 1: dados -->
             <div v-if="cadStep === 'form'">
                 <div class="l-field">
-                  <label class="l-field__lbl" for="cad-email">E-MAIL</label>
+                  <label class="l-field__lbl" for="cad-nome">NOME COMPLETO</label>
+                  <input
+                    id="cad-nome"
+                    v-model="cadName"
+                    type="text"
+                    class="l-input"
+                    placeholder="Nome Sobrenome"
+                    :disabled="cadLoading"
+                    @keyup.enter="cadEmailRef?.focus()"
+                  />
+                </div>
+
+                <div class="l-field">
+                  <label class="l-field__lbl" for="cad-email">E-MAIL CORPORATIVO</label>
                   <input
                     id="cad-email"
+                    ref="cadEmailRef"
                     v-model="cadEmail"
                     type="email"
                     class="l-input"
@@ -220,7 +234,7 @@
 
                 <Transition name="fade"><p v-if="cadErro" class="l-err">{{ cadErro }}</p></Transition>
 
-                <button class="l-btn" :disabled="!cadEmail.trim() || cadLoading" @click="avancarParaCamera">
+                <button class="l-btn" :disabled="!cadName.trim() || !cadEmail.trim() || cadLoading" @click="avancarParaCamera">
                   Próximo: capturar rosto
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:8px"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 </button>
@@ -268,7 +282,8 @@
             <!-- Passo 3: concluído -->
             <div v-else-if="cadStep === 'done'" class="l-done">
               <div class="l-done__icon">✓</div>
-              <p class="l-done__msg">Cadastro concluído!<br>Redirecionando...</p>
+              <p class="l-done__msg">Solicitação enviada!<br>Aguarde a aprovação do administrador.</p>
+              <button class="l-link-btn" @click="switchMode('login')">Voltar ao login</button>
             </div>
           </div>
       </div>
@@ -349,11 +364,13 @@ const showFacePrompt = ref(false);
 // cadastro
 type CadStep = "form" | "camera" | "done";
 const cadStep         = ref<CadStep>("form");
+const cadName         = ref("");
 const cadEmail        = ref("");
 const cadLoading      = ref(false);
 const cadErro         = ref<string | null>(null);
 const cadFaceDetected = ref(false);
 const cadVideoRef     = ref<HTMLVideoElement | null>(null);
+const cadEmailRef     = ref<HTMLInputElement | null>(null);
 const cadExistingUser = ref(false);
 
 // câmera / modelos
@@ -495,8 +512,17 @@ async function tryFaceLogin(descriptor: Float32Array) {
 // ─── Cadastro ─────────────────────────────────────────────────────────────────
 function avancarParaCamera() {
   cadErro.value = null;
-  if (!cadEmail.value.trim()) return;
+  if (!cadName.value.trim())  { cadErro.value = "Informe o nome completo."; return; }
+  if (!cadEmail.value.trim()) { cadErro.value = "Informe o e-mail."; return; }
   cadStep.value = "camera";
+}
+
+function capturePhotoBase64(video: HTMLVideoElement): string {
+  const canvas = document.createElement("canvas");
+  canvas.width  = video.videoWidth  || 320;
+  canvas.height = video.videoHeight || 240;
+  canvas.getContext("2d")!.drawImage(video, 0, 0);
+  return canvas.toDataURL("image/jpeg", 0.72);
 }
 
 async function startCadCam() {
@@ -533,59 +559,34 @@ async function capturarECadastrar() {
     const result = await detectOnce(cadVideoRef.value);
     if (!result) throw new Error("Nenhum rosto detectado. Tente novamente.");
 
-    const descriptor = Array.from(result.descriptor);
-    const faceToken  = crypto.randomUUID();
-    const emailVal   = cadEmail.value.trim();
+    const descriptor  = Array.from(result.descriptor);
+    const photo       = capturePhotoBase64(cadVideoRef.value);
+    const emailVal    = cadEmail.value.trim();
+    const nameVal     = cadName.value.trim();
 
+    // Obtém user_id se usuário já está autenticado
+    let userId: string | null = null;
     if (cadExistingUser.value) {
-      // Usuário já autenticado: atualiza senha para o faceToken e salva descritor
-      const { data: sessionData } = await supabase.auth.getSession();
-      const user = sessionData.session?.user;
-      if (!user) throw new Error("Sessão expirada. Faça login novamente.");
-
-      const { error: updateErr } = await supabase.auth.updateUser({ password: faceToken });
-      if (updateErr) throw new Error("Erro ao configurar token facial.");
-
-      const { error: dbErr } = await supabase.from("face_descriptors").insert({
-        user_id:    user.id,
-        email:      emailVal,
-        descriptor,
-        face_token: faceToken,
-      });
-      if (dbErr) throw new Error("Erro ao salvar dados faciais: " + dbErr.message);
-    } else {
-      // Novo usuário: cria conta e salva descritor
-      const { error: signUpErr } = await supabase.auth.signUp({
-        email:    emailVal,
-        password: faceToken,
-      });
-      if (signUpErr) {
-        const seg = signUpErr.message.match(/after (\d+) seconds/)?.[1];
-        throw new Error(seg
-          ? `Por segurança, aguarde ${seg} segundos antes de tentar novamente.`
-          : signUpErr.message);
-      }
-
-      const { data: session } = await supabase.auth.signInWithPassword({
-        email:    emailVal,
-        password: faceToken,
-      });
-      if (!session?.user) throw new Error("Falha ao criar sessão.");
-
-      const { error: dbErr } = await supabase.from("face_descriptors").insert({
-        user_id:    session.user.id,
-        email:      emailVal,
-        descriptor,
-        face_token: faceToken,
-      });
-      if (dbErr) throw new Error("Erro ao salvar dados faciais: " + dbErr.message);
+      const { data: sd } = await supabase.auth.getSession();
+      userId = sd.session?.user?.id ?? null;
+      if (!userId) throw new Error("Sessão expirada. Faça login novamente.");
     }
+
+    // Submete para aprovação do administrador
+    const { error: dbErr } = await supabase.from("pending_face_registrations").insert({
+      name:         nameVal,
+      email:        emailVal,
+      user_id:      userId,
+      descriptor,
+      photo_base64: photo,
+    });
+
+    if (dbErr) throw new Error("Erro ao enviar solicitação: " + dbErr.message);
 
     isCadCam  = false;
     stopStream(cadStream);
     cadExistingUser.value = false;
     cadStep.value = "done";
-    setTimeout(() => router.replace("/"), 1500);
   } catch (e: unknown) {
     cadErro.value = (e as Error).message;
   } finally {
@@ -646,6 +647,7 @@ function switchMode(m: Mode) {
   showFacePrompt.value  = false;
   cadExistingUser.value = false;
   cadStep.value         = "form";
+  cadName.value         = "";
   cadFaceDetected.value = false;
   cadErro.value         = null;
   loginErro.value       = null;
