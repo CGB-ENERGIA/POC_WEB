@@ -400,9 +400,14 @@ async function startFaceScan() {
     faceDetectLoop();
   } catch (e: unknown) {
     faceStatus.value = "error";
-    faceErro.value   = (e as Error).message.includes("Permission")
-      ? "Permissão de câmera negada. Habilite nas configurações do navegador."
-      : "Não foi possível iniciar a câmera.";
+    const msg = (e as Error).message ?? String(e);
+    if (msg.includes("Permission") || msg.includes("NotAllowed")) {
+      faceErro.value = "Permissão de câmera negada. Habilite nas configurações do navegador.";
+    } else if (msg.includes("NotFound") || msg.includes("DevicesNotFound")) {
+      faceErro.value = "Nenhuma câmera encontrada neste dispositivo.";
+    } else {
+      faceErro.value = msg || "Não foi possível iniciar a câmera.";
+    }
     isScanning = false;
   }
 }
@@ -897,18 +902,9 @@ onUnmounted(stopAll);
   .l-footer    { padding: 20px 28px 24px; }
   .l-watermark { font-size: 38vw; }
 }
+
+// fade transition para mensagens de erro inline (global: classes do Vue Transition não herdam scoped)
+:global(.fade-enter-active), :global(.fade-leave-active) { transition: opacity .18s; }
+:global(.fade-enter-from),   :global(.fade-leave-to)     { opacity: 0; }
 </style>
 
-<!-- Transições fora do scoped: classes do <Transition> precisam ser globais -->
-<style>
-.step-enter-active, .step-leave-active   { transition: opacity .2s ease, transform .2s ease; }
-.step-enter-from  { opacity: 0; transform: translateY(10px); }
-.step-leave-to    { opacity: 0; transform: translateY(-8px); }
-
-.slide-enter-active, .slide-leave-active { transition: opacity .18s ease, transform .18s ease; }
-.slide-enter-from { opacity: 0; transform: translateX(16px); }
-.slide-leave-to   { opacity: 0; transform: translateX(-16px); }
-
-.fade-enter-active, .fade-leave-active { transition: opacity .18s; }
-.fade-enter-from, .fade-leave-to       { opacity: 0; }
-</style>
