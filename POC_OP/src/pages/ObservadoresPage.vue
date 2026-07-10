@@ -503,7 +503,7 @@ const chartEquipes = computed(() => {
   const equipeCounts: Record<string, number> = {};
   for (const s of submissions.value) {
     for (const m of (s.membros ?? [])) {
-      const key = m.matricula ?? m.nome;
+      const key = m.nome ?? m.matricula;
       equipeCounts[key] = (equipeCounts[key] ?? 0) + 1;
     }
   }
