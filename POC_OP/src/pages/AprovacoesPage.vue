@@ -199,6 +199,19 @@
               </q-item-label>
               <q-item-label caption>por {{ r.reviewed_by }}</q-item-label>
             </q-item-section>
+
+            <q-item-section side>
+              <q-btn
+                flat round dense
+                icon="mdi-delete-outline"
+                color="negative"
+                size="sm"
+                :loading="actionId === r.id + '_del'"
+                @click="remover(r)"
+              >
+                <q-tooltip>Remover usuário</q-tooltip>
+              </q-btn>
+            </q-item-section>
           </q-item>
         </q-list>
       </q-card>
@@ -280,6 +293,26 @@ async function rejeitar(r: Registration) {
 
   $q.notify({ type: "warning", message: `Cadastro de ${r.name} rejeitado.` });
   await fetchAll();
+}
+
+async function remover(r: Registration) {
+  $q.dialog({
+    title: "Remover usuário",
+    message: `Isso excluirá o acesso de <b>${r.name}</b> (${r.email}) permanentemente.`,
+    html: true,
+    ok: { label: "Remover", color: "negative", unelevated: true },
+    cancel: { label: "Cancelar", flat: true },
+  }).onOk(async () => {
+    actionId.value = r.id + "_del";
+    const { data, error } = await supabase.rpc("remove_face_user", { reg_id: r.id });
+    actionId.value = null;
+    if (error || data?.error) {
+      $q.notify({ type: "negative", message: data?.error ?? error?.message ?? "Erro ao remover." });
+      return;
+    }
+    $q.notify({ type: "positive", message: `Usuário ${r.name} removido.` });
+    await fetchAll();
+  });
 }
 
 function formatDate(iso: string | null): string {
