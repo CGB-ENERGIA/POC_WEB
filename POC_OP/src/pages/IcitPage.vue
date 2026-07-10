@@ -353,9 +353,16 @@ const conformidadeIndex = computed(() => {
 });
 const basesCovertas = computed(() => new Set(filteredSubs.value.map(s => s.base)).size);
 
+// Checklists sem nenhuma NC × checklists com pelo menos 1 NC
+const subsComNc = computed(() => {
+  const ncIds = new Set(filteredResps.value.filter(r => r.resposta === "nao_conforme").map(r => r.submission_id));
+  return filteredSubs.value.filter(s => ncIds.has(s.id)).length;
+});
+const subsSemNc = computed(() => filteredSubs.value.length - subsComNc.value);
+
 const kpis = computed(() => [
-  { label: "conformidade",     value: fmtN(totalConformes.value),   icon: "mdi-check-circle",  color: "positive", hex: "#16a34a" },
-  { label: "Inconformidade",   value: fmtN(totalNaoConformes.value), icon: "mdi-alert-circle",  color: "negative", hex: "#dc2626" },
+  { label: "Conformidade",     value: fmtN(subsSemNc.value),        icon: "mdi-check-circle",  color: "positive", hex: "#16a34a" },
+  { label: "Inconformidade",   value: fmtN(subsComNc.value),        icon: "mdi-alert-circle",  color: "negative", hex: "#dc2626" },
   { label: "Índice Geral",     value: fmtPct(conformidadeIndex.value), icon: "mdi-gauge",       color: "teal",     hex: "#0d9488" },
   { label: "Equipes Auditadas",value: fmtN(basesCovertas.value),    icon: "mdi-account-group", color: "primary",  hex: "#0284c7" },
 ]);
