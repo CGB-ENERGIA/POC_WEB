@@ -526,14 +526,17 @@ const chartCategoria = computed(() => {
 // â"€â"€â"€ Chart: Por Equipe (scrollable vertical) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const equipePct = computed(() => {
   const map: Record<string, { conf: number; total: number }> = {};
+  const respBySubId: Record<string, { conf: number; total: number }> = {};
+  for (const r of filteredResps.value) {
+    if (!respBySubId[r.submission_id]) respBySubId[r.submission_id] = { conf: 0, total: 0 };
+    respBySubId[r.submission_id].total++;
+    if (r.resposta === "conforme") respBySubId[r.submission_id].conf++;
+  }
   for (const sub of filteredSubs.value) {
-    const equipes: string[] = Array.isArray(sub.membros)
-      ? (sub.membros as string[])
-      : sub.equipe ? [sub.equipe] : [];
-    for (const eq of equipes) {
-      if (!map[eq]) map[eq] = { conf: 0, total: 0 };
-      map[eq].total++;
-    }
+    const eq = sub.equipe ?? "Sem equipe";
+    if (!map[eq]) map[eq] = { conf: 0, total: 0 };
+    const r = respBySubId[sub.id];
+    if (r) { map[eq].conf += r.conf; map[eq].total += r.total; }
   }
   return Object.entries(map)
     .map(([name, d]) => ({ name, pct: d.total > 0 ? Math.round((d.conf / d.total) * 100) : 0 }))
