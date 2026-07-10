@@ -221,8 +221,8 @@
                   <tfoot>
                     <tr class="total-row">
                       <td class="td-label">Total</td>
-                      <td v-for="(t, i) in colTotals" :key="i" class="td-cell td-total-cell">{{ t }}</td>
-                      <td class="td-row-total td-grand">{{ totalInc }}</td>
+                      <td v-for="(t, i) in baseColTotals" :key="i" class="td-cell td-total-cell">{{ t }}</td>
+                      <td class="td-row-total td-grand">{{ baseTotalInc }}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -315,7 +315,9 @@ const catData = computed(() => {
     if (r.resposta !== "nao_conforme") continue;
     const mes = subMonthMap.value[r.submission_id];
     if (!mes) continue;
-    const cat = cats.find(c => r.categoria?.includes(c) || c.includes(r.categoria ?? ""));
+    if (!r.categoria) continue;
+    const rc = r.categoria.toLowerCase();
+    const cat = cats.find(c => { const cc = c.toLowerCase(); return rc.includes(cc) || cc.includes(rc); });
     if (!cat) continue;
     rowMap[cat][mes - 1]++;
   }
@@ -347,6 +349,11 @@ const colTotals = computed(() =>
   months.map((_, mi) => catData.value.reduce((s, r) => s + r.values[mi], 0))
 );
 const totalInc = computed(() => colTotals.value.reduce((s, v) => s + v, 0));
+
+const baseColTotals = computed(() =>
+  months.map((_, mi) => baseData.value.reduce((s, r) => s + r.values[mi], 0))
+);
+const baseTotalInc = computed(() => baseColTotals.value.reduce((s, v) => s + v, 0));
 function rowSum(values: number[]) { return values.reduce((s, v) => s + v, 0); }
 
 // â"€â"€â"€ Color scale â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
