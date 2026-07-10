@@ -481,8 +481,15 @@ const chartBase = computed(() => {
 
 // â"€â"€â"€ Chart: Não conformidades por Categoria â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const chartCategoria = computed(() => {
-  const catEntries = Object.entries(byCategoria.value)
-    .map(([cat, d]) => ({ cat, nc: d.nc }))
+  const ncMap: Record<string, number> = {};
+  for (const r of filteredResps.value) {
+    if (r.resposta === "nao_conforme") {
+      const cat = r.categoria ?? "Sem categoria";
+      ncMap[cat] = (ncMap[cat] ?? 0) + 1;
+    }
+  }
+  const catEntries = Object.entries(ncMap)
+    .map(([cat, nc]) => ({ cat, nc }))
     .filter(e => e.nc > 0)
     .sort((a, b) => a.nc - b.nc);
   const cats = catEntries.map(e => e.cat);
