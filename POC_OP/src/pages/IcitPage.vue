@@ -359,12 +359,16 @@ const subsComNc = computed(() => {
   return filteredSubs.value.filter(s => ncIds.has(s.id)).length;
 });
 const subsSemNc = computed(() => filteredSubs.value.length - subsComNc.value);
+const checklistIndex = computed(() => {
+  const t = filteredSubs.value.length;
+  return t ? subsSemNc.value / t : 0;
+});
 
 const kpis = computed(() => [
-  { label: "Conformidade",     value: fmtN(subsSemNc.value),        icon: "mdi-check-circle",  color: "positive", hex: "#16a34a" },
-  { label: "Inconformidade",   value: fmtN(subsComNc.value),        icon: "mdi-alert-circle",  color: "negative", hex: "#dc2626" },
-  { label: "Índice Geral",     value: fmtPct(conformidadeIndex.value), icon: "mdi-gauge",       color: "teal",     hex: "#0d9488" },
-  { label: "Equipes Auditadas",value: fmtN(basesCovertas.value),    icon: "mdi-account-group", color: "primary",  hex: "#0284c7" },
+  { label: "Conformidade",     value: fmtN(subsSemNc.value),           icon: "mdi-check-circle",  color: "positive", hex: "#16a34a" },
+  { label: "Inconformidade",   value: fmtN(subsComNc.value),           icon: "mdi-alert-circle",  color: "negative", hex: "#dc2626" },
+  { label: "Índice Geral",     value: fmtPct(checklistIndex.value),    icon: "mdi-gauge",         color: "teal",     hex: "#0d9488" },
+  { label: "Equipes Auditadas",value: fmtN(basesCovertas.value),       icon: "mdi-account-group", color: "primary",  hex: "#0284c7" },
 ]);
 
 // â"€â"€â"€ Helpers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
@@ -424,8 +428,8 @@ const chartDonut = computed(() => ({
     textStyle: { color: "#64748b", fontSize: 11 }
   },
   title: {
-    text: fmtPct(conformidadeIndex.value),
-    subtext: "conformidade",
+    text: fmtPct(checklistIndex.value),
+    subtext: "checklists perfeitos",
     left: "50%", top: "34%", textAlign: "center",
     textStyle: { fontSize: 26, fontWeight: "bold" as const, color: P.conf },
     subtextStyle: { fontSize: 11, color: "#94a3b8" }
@@ -447,8 +451,8 @@ const chartDonut = computed(() => ({
     itemStyle: { borderRadius: 8, borderColor: "#fff", borderWidth: 3 },
     emphasis: { scale: true, scaleSize: 5, itemStyle: { shadowBlur: 16, shadowColor: "rgba(0,0,0,.15)" } },
     data: [
-      { value: totalConformes.value, name: "conformidade",   itemStyle: { color: P.conf   } },
-      { value: totalNaoConformes.value, name: "Inconformidade", itemStyle: { color: P.inconf } }
+      { value: subsSemNc.value, name: "conformidade",   itemStyle: { color: P.conf   } },
+      { value: subsComNc.value, name: "Inconformidade", itemStyle: { color: P.inconf } }
     ]
   }]
 }));
