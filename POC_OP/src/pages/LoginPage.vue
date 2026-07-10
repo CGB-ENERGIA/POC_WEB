@@ -28,106 +28,78 @@
         </h1>
         <div class="l-sep">
           <span class="l-sep__line" />
-          <span class="l-sep__label">Autenticação em dois passos</span>
+          <span class="l-sep__label">Credenciais corporativas</span>
         </div>
       </div>
 
       <!-- Coluna do formulário -->
       <div class="l-form-col">
 
-        <!-- Stepper -->
-        <div class="l-stepper" role="progressbar" :aria-valuenow="step === 'email' ? 1 : 2" aria-valuemin="1" aria-valuemax="2">
-          <span class="l-step-pill" :class="{ 'l-step-pill--active': step === 'email', 'l-step-pill--done': step === 'otp' }">1</span>
-          <span class="l-step-track">
-            <span class="l-step-fill" :class="{ 'l-step-fill--on': step === 'otp' }" />
-          </span>
-          <span class="l-step-pill" :class="{ 'l-step-pill--active': step === 'otp' }">2</span>
+        <div class="l-pane">
+          <p class="l-pane__label">IDENTIFICAÇÃO</p>
+
+          <!-- E-mail -->
+          <div class="l-field">
+            <label class="l-field__lbl" for="l-email">E-MAIL</label>
+            <input
+              id="l-email"
+              v-model="email"
+              type="email"
+              class="l-input"
+              placeholder="nome@cgbengenharia.com.br"
+              autocomplete="email"
+              :disabled="loading"
+              @keyup.enter="focusSenha"
+            />
+          </div>
+
+          <!-- Senha -->
+          <div class="l-field">
+            <label class="l-field__lbl" for="l-senha">SENHA</label>
+            <div class="l-input-wrap">
+              <input
+                id="l-senha"
+                ref="senhaRef"
+                v-model="senha"
+                :type="showSenha ? 'text' : 'password'"
+                class="l-input l-input--senha"
+                placeholder="••••••••"
+                autocomplete="current-password"
+                :disabled="loading"
+                @keyup.enter="entrar"
+              />
+              <button
+                type="button"
+                class="l-eye"
+                :aria-label="showSenha ? 'Ocultar senha' : 'Mostrar senha'"
+                @click="showSenha = !showSenha"
+              >
+                <svg v-if="!showSenha" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                  <line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <Transition name="fade">
+            <p v-if="erro" class="l-err" role="alert">{{ erro }}</p>
+          </Transition>
+
+          <button
+            class="l-btn"
+            :disabled="!email.trim() || !senha || loading"
+            @click="entrar"
+          >
+            <template v-if="!loading">Entrar no sistema</template>
+            <span v-else class="l-spin" />
+          </button>
         </div>
 
-        <Transition name="step" mode="out-in">
-
-          <!-- ── E-mail ── -->
-          <div v-if="step === 'email'" key="email" class="l-pane">
-            <p class="l-pane__label">IDENTIFICAÇÃO</p>
-            <p class="l-pane__hint">Informe seu e-mail para receber o código de acesso.</p>
-
-            <div class="l-field">
-              <label class="l-field__lbl" for="l-email">E-MAIL CORPORATIVO</label>
-              <input
-                id="l-email"
-                v-model="email"
-                type="email"
-                class="l-input"
-                placeholder="nome@cgbengenharia.com.br"
-                autocomplete="email"
-                :disabled="sending"
-                @keyup.enter="enviarOtp"
-              />
-            </div>
-
-            <Transition name="fade">
-              <p v-if="erro" class="l-err">{{ erro }}</p>
-            </Transition>
-
-            <button class="l-btn" :disabled="!email.trim() || sending" @click="enviarOtp">
-              <template v-if="!sending">Enviar código</template>
-              <span v-else class="l-spin" />
-            </button>
-          </div>
-
-          <!-- ── OTP ── -->
-          <div v-else key="otp" class="l-pane">
-            <p class="l-pane__label">VERIFICAÇÃO</p>
-            <p class="l-pane__hint">
-              Código enviado para<br>
-              <strong class="l-email-em">{{ email }}</strong>
-            </p>
-
-            <div class="l-otp-wrap">
-              <div class="l-otp" @paste.prevent="onPaste">
-                <input
-                  v-for="n in 6"
-                  :key="n"
-                  :ref="(el) => { if (el) digitInputs[n - 1] = el as HTMLInputElement }"
-                  type="text"
-                  inputmode="numeric"
-                  maxlength="1"
-                  class="l-otp__d"
-                  :class="{
-                    'l-otp__d--filled': digits[n - 1],
-                    'l-otp__d--shake': shaking,
-                  }"
-                  :value="digits[n - 1]"
-                  @input="onDigitInput(n - 1, $event as InputEvent)"
-                  @keydown="onDigitKeydown(n - 1, $event as KeyboardEvent)"
-                />
-              </div>
-              <span class="l-otp__note">Auto-submete ao completar</span>
-            </div>
-
-            <Transition name="fade">
-              <p v-if="erro" class="l-err">{{ erro }}</p>
-            </Transition>
-
-            <button
-              class="l-btn"
-              :class="{ 'l-btn--dimmed': token.length < 6 }"
-              :disabled="token.length < 6 || verifying"
-              @click="verificarOtp"
-            >
-              <template v-if="!verifying">Entrar no sistema</template>
-              <span v-else class="l-spin" />
-            </button>
-
-            <button class="l-back" @click="resetEmail">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M7.5 2L3.5 6L7.5 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              Usar outro e-mail
-            </button>
-          </div>
-
-        </Transition>
       </div>
     </main>
 
@@ -142,88 +114,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { supabase } from "@/lib/supabase";
 
-const router = useRouter();
+const router    = useRouter();
+const email     = ref("");
+const senha     = ref("");
+const loading   = ref(false);
+const erro      = ref<string | null>(null);
+const showSenha = ref(false);
+const senhaRef  = ref<HTMLInputElement | null>(null);
 
-const step     = ref<"email" | "otp">("email");
-const email    = ref("");
-const sending  = ref(false);
-const verifying = ref(false);
-const erro     = ref<string | null>(null);
-const shaking  = ref(false);
-
-const digits      = ref<string[]>(["", "", "", "", "", ""]);
-const digitInputs = ref<HTMLInputElement[]>([]);
-const token       = computed(() => digits.value.join(""));
-
-function shake() {
-  shaking.value = true;
-  setTimeout(() => { shaking.value = false; }, 520);
+function focusSenha() {
+  senhaRef.value?.focus();
 }
 
-function resetEmail() {
-  step.value   = "email";
-  digits.value = ["", "", "", "", "", ""];
-  erro.value   = null;
-}
-
-function onDigitInput(i: number, e: InputEvent) {
-  const val = (e.target as HTMLInputElement).value.replace(/\D/g, "").slice(-1);
-  digits.value[i] = val;
-  (e.target as HTMLInputElement).value = val;
-  if (val && i < 5) digitInputs.value[i + 1]?.focus();
-  if (token.value.length === 6) verificarOtp();
-}
-
-function onDigitKeydown(i: number, e: KeyboardEvent) {
-  if (e.key === "Backspace") {
-    if (digits.value[i]) { digits.value[i] = ""; }
-    else if (i > 0) { digits.value[i - 1] = ""; digitInputs.value[i - 1]?.focus(); }
-    e.preventDefault();
-  }
-  if (e.key === "ArrowLeft"  && i > 0) digitInputs.value[i - 1]?.focus();
-  if (e.key === "ArrowRight" && i < 5) digitInputs.value[i + 1]?.focus();
-}
-
-function onPaste(e: ClipboardEvent) {
-  const text = (e.clipboardData?.getData("text") ?? "").replace(/\D/g, "").slice(0, 6);
-  text.split("").forEach((ch, i) => { digits.value[i] = ch; });
-  if (text.length === 6) verificarOtp();
-  else if (text.length > 0) digitInputs.value[Math.min(text.length, 5)]?.focus();
-}
-
-async function enviarOtp() {
-  if (!email.value.trim() || sending.value) return;
-  sending.value = true;
+async function entrar() {
+  if (!email.value.trim() || !senha.value || loading.value) return;
+  loading.value = true;
   erro.value    = null;
-  const { error } = await supabase.auth.signInWithOtp({
-    email: email.value.trim(),
-    options: { shouldCreateUser: true },
-  });
-  sending.value = false;
-  if (error) { erro.value = error.message; return; }
-  step.value = "otp";
-  setTimeout(() => digitInputs.value[0]?.focus(), 120);
-}
 
-async function verificarOtp() {
-  if (token.value.length < 6 || verifying.value) return;
-  verifying.value = true;
-  erro.value      = null;
-  const { error } = await supabase.auth.verifyOtp({
-    email: email.value.trim(),
-    token: token.value,
-    type:  "email",
+  const { error } = await supabase.auth.signInWithPassword({
+    email:    email.value.trim(),
+    password: senha.value,
   });
-  verifying.value = false;
+
+  loading.value = false;
   if (error) {
-    erro.value   = "Código inválido ou expirado.";
-    digits.value = ["", "", "", "", "", ""];
-    shake();
-    setTimeout(() => digitInputs.value[0]?.focus(), 60);
+    erro.value = "E-mail ou senha incorretos.";
     return;
   }
   await router.replace("/");
@@ -240,13 +159,10 @@ async function verificarOtp() {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  grid-template-columns: 1fr;
   overflow: hidden;
 }
 
 // ─── Fixed decorative elements ───────────────────────────────────────────────
-
-// Faixa crimson — borda esquerda
 .l-stripe {
   position: fixed;
   top: 0; left: 0;
@@ -256,7 +172,6 @@ async function verificarOtp() {
   z-index: 10;
 }
 
-// Grade de engenharia
 .l-grid {
   position: fixed;
   inset: 0;
@@ -268,7 +183,6 @@ async function verificarOtp() {
   z-index: 0;
 }
 
-// Marca-d'água "CGB"
 .l-watermark {
   position: fixed;
   right: -0.08em;
@@ -365,9 +279,7 @@ async function verificarOtp() {
   color: #E4EAF3;
   white-space: nowrap;
 
-  &--em {
-    color: #fff;
-  }
+  &--em { color: #fff; }
 }
 
 .l-sep {
@@ -393,82 +305,19 @@ async function verificarOtp() {
 // ─── Form column ─────────────────────────────────────────────────────────────
 .l-form-col {
   flex: 0 0 320px;
-  display: flex;
-  flex-direction: column;
 }
 
-// Stepper
-.l-stepper {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  margin-bottom: 32px;
-}
-.l-step-pill {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0;
-  border: 1.5px solid rgba(255,255,255,0.12);
-  color: rgba(255,255,255,0.25);
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-
-  &--active {
-    border-color: #8B1C2B;
-    background: #8B1C2B;
-    color: #fff;
-  }
-  &--done {
-    border-color: rgba(139,28,43,0.5);
-    background: transparent;
-    color: rgba(139,28,43,0.7);
-  }
-}
-.l-step-track {
-  flex: 1;
-  height: 1px;
-  background: rgba(255,255,255,0.08);
-  margin: 0 8px;
-  overflow: hidden;
-}
-.l-step-fill {
-  display: block;
-  height: 100%;
-  width: 0%;
-  background: #8B1C2B;
-  transition: width 0.45s ease;
-  &--on { width: 100%; }
-}
-
-// Pane
 .l-pane__label {
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.22em;
   color: rgba(255,255,255,0.2);
-  margin: 0 0 8px;
-}
-.l-pane__hint {
-  font-size: 13px;
-  line-height: 1.6;
-  color: rgba(255,255,255,0.45);
-  margin: 0 0 28px;
-}
-.l-email-em {
-  color: #E4EAF3;
-  font-weight: 600;
-  word-break: break-all;
+  margin: 0 0 24px;
 }
 
-// Field
+// ─── Fields ──────────────────────────────────────────────────────────────────
 .l-field {
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 .l-field__lbl {
   display: block;
@@ -478,6 +327,13 @@ async function verificarOtp() {
   color: rgba(255,255,255,0.25);
   margin-bottom: 10px;
 }
+
+.l-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
 .l-input {
   display: block;
   width: 100%;
@@ -492,67 +348,29 @@ async function verificarOtp() {
   outline: none;
   transition: border-color 0.2s;
 
-  &::placeholder { color: rgba(255,255,255,0.2); }
+  &::placeholder { color: rgba(255,255,255,0.18); }
+  &:focus        { border-bottom-color: #8B1C2B; }
+  &:disabled     { opacity: 0.4; cursor: not-allowed; }
 
-  &:focus {
-    border-bottom-color: #8B1C2B;
-  }
-  &:disabled { opacity: 0.4; cursor: not-allowed; }
+  &--senha { padding-right: 32px; }
 }
 
-// OTP
-.l-otp-wrap {
-  margin-bottom: 24px;
-}
-.l-otp {
+.l-eye {
+  position: absolute;
+  right: 0;
+  background: none;
+  border: none;
+  padding: 4px;
+  color: rgba(255,255,255,0.28);
+  cursor: pointer;
   display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.l-otp__d {
-  flex: 1;
-  height: 48px;
-  text-align: center;
-  font-size: 18px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 3px;
-  color: #E4EAF3;
-  outline: none;
-  caret-color: #8B1C2B;
-  -webkit-appearance: none;
-  appearance: none;
-  transition: border-color 0.2s, background 0.2s;
+  align-items: center;
+  transition: color 0.18s;
 
-  &:focus {
-    border-color: #8B1C2B;
-    background: rgba(139,28,43,0.08);
-  }
-  &--filled {
-    border-color: rgba(139,28,43,0.45);
-  }
-  &--shake { animation: shake 0.48s ease; }
-}
-.l-otp__note {
-  display: block;
-  font-size: 9px;
-  letter-spacing: 0.08em;
-  color: rgba(255,255,255,0.15);
+  &:hover { color: rgba(255,255,255,0.6); }
 }
 
-@keyframes shake {
-  0%,100% { transform: translateX(0); }
-  15%      { transform: translateX(-5px); }
-  30%      { transform: translateX(5px); }
-  45%      { transform: translateX(-4px); }
-  60%      { transform: translateX(4px); }
-  78%      { transform: translateX(-2px); }
-  90%      { transform: translateX(2px); }
-}
-
-// Error
+// ─── Error ───────────────────────────────────────────────────────────────────
 .l-err {
   font-size: 11.5px;
   color: #E06070;
@@ -560,7 +378,7 @@ async function verificarOtp() {
   line-height: 1.4;
 }
 
-// Button
+// ─── Button ──────────────────────────────────────────────────────────────────
 .l-btn {
   display: flex;
   align-items: center;
@@ -578,36 +396,14 @@ async function verificarOtp() {
   transition: background 0.18s, opacity 0.18s, transform 0.1s;
   outline: none;
   font-family: inherit;
-  margin-bottom: 12px;
 
-  &:hover:not(:disabled) { background: #A0202F; }
+  &:hover:not(:disabled)  { background: #A0202F; }
   &:active:not(:disabled) { transform: scale(0.98); }
-  &:focus-visible { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #8B1C2B; }
-  &:disabled { opacity: 0.35; cursor: not-allowed; }
-  &--dimmed { opacity: 0.5; }
+  &:focus-visible         { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #8B1C2B; }
+  &:disabled              { opacity: 0.35; cursor: not-allowed; }
 }
 
-.l-back {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  padding: 8px;
-  background: none;
-  border: none;
-  font-size: 11.5px;
-  font-weight: 500;
-  color: rgba(255,255,255,0.25);
-  cursor: pointer;
-  transition: color 0.18s;
-  font-family: inherit;
-  letter-spacing: 0.04em;
-
-  &:hover { color: rgba(255,255,255,0.6); }
-}
-
-// Spinner
+// ─── Spinner ─────────────────────────────────────────────────────────────────
 .l-spin {
   display: inline-block;
   width: 16px; height: 16px;
@@ -634,17 +430,16 @@ async function verificarOtp() {
 .l-footer__sep { opacity: 0.4; }
 
 // ─── Transitions ─────────────────────────────────────────────────────────────
-.step-enter-active,
-.step-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
-.step-enter-from   { opacity: 0; transform: translateY(10px); }
-.step-leave-to     { opacity: 0; transform: translateY(-10px); }
-
 .fade-enter-active, .fade-leave-active { transition: opacity 0.18s; }
 .fade-enter-from, .fade-leave-to       { opacity: 0; }
 
 // ─── Mobile ──────────────────────────────────────────────────────────────────
 @media (max-width: 700px) {
-  .l-header { padding: 20px 28px 0; }
+  .l-header {
+    padding: 20px 28px 0;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
   .l-brand-mark__product,
   .l-brand-mark__system { display: none; }
 
