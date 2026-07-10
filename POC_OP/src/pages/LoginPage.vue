@@ -559,7 +559,12 @@ async function capturarECadastrar() {
         email:    emailVal,
         password: faceToken,
       });
-      if (signUpErr) throw new Error(signUpErr.message);
+      if (signUpErr) {
+        const seg = signUpErr.message.match(/after (\d+) seconds/)?.[1];
+        throw new Error(seg
+          ? `Por segurança, aguarde ${seg} segundos antes de tentar novamente.`
+          : signUpErr.message);
+      }
 
       const { data: session } = await supabase.auth.signInWithPassword({
         email:    emailVal,
