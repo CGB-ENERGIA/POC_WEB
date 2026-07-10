@@ -93,6 +93,7 @@
 
         <!-- ══ LOGIN ══ -->
         <div v-if="mode === 'login'" class="l-pane">
+          <template v-if="!showFacePrompt">
             <p class="l-pane__label">IDENTIFICAÇÃO</p>
 
             <div class="l-field">
@@ -135,6 +136,21 @@
               <template v-if="!loading">Entrar no sistema</template>
               <span v-else class="l-spin" />
             </button>
+          </template>
+
+          <!-- Prompt de cadastro facial (primeiro acesso) -->
+          <div v-else class="l-face-prompt">
+            <div class="l-face-prompt__icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 9a3 3 0 1 1 6 0c0 2-3 3-3 5"/><circle cx="12" cy="12" r="10"/>
+                <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>
+              </svg>
+            </div>
+            <p class="l-face-prompt__title">Ativar Face ID?</p>
+            <p class="l-face-prompt__sub">Entre mais rápido na próxima vez sem precisar digitar senha.</p>
+            <button class="l-btn" @click="cadastrarAgora">Configurar Face ID</button>
+            <button class="l-link-btn" @click="router.replace('/')">Agora não</button>
+          </div>
           </div>
 
         <!-- ══ FACE LOGIN ══ -->
@@ -171,6 +187,9 @@
                 <template v-else>Posicione seu rosto na câmera</template>
               </p>
               <Transition name="fade"><p v-if="faceErro" class="l-err">{{ faceErro }}</p></Transition>
+              <button v-if="faceNotFound" class="l-link-btn" @click="switchMode('cadastro')">
+                Ainda sem cadastro? Registrar rosto →
+              </button>
             </div>
 
             <!-- Erro de câmera / permissão -->
@@ -209,6 +228,7 @@
 
             <!-- Passo 2: câmera -->
             <div v-else-if="cadStep === 'camera'">
+                <p v-if="cadExistingUser" class="l-existing-email">{{ cadEmail }}</p>
                 <div
                   class="l-cam-area"
                   :class="{ 'l-cam-area--sm': true }"
@@ -320,7 +340,11 @@ type FaceStatus = "idle" | "loading" | "scanning" | "matched" | "error";
 const faceStatus   = ref<FaceStatus>("idle");
 const faceDetected = ref(false);
 const faceErro     = ref<string | null>(null);
+const faceNotFound = ref(false);
 const faceVideoRef = ref<HTMLVideoElement | null>(null);
+
+// prompt pós-login
+const showFacePrompt = ref(false);
 
 // cadastro
 type CadStep = "form" | "camera" | "done";
@@ -330,6 +354,7 @@ const cadLoading      = ref(false);
 const cadErro         = ref<string | null>(null);
 const cadFaceDetected = ref(false);
 const cadVideoRef     = ref<HTMLVideoElement | null>(null);
+const cadExistingUser = ref(false);
 
 // câmera / modelos
 let faceStream: MediaStream | null = null;
@@ -444,10 +469,12 @@ async function tryFaceLogin(descriptor: Float32Array) {
 
   if (error || !data) {
     faceErro.value = "Rosto não reconhecido. Tente novamente.";
+    faceNotFound.value = true;
     return;
   }
 
-  isScanning       = false;
+  faceNotFound.value = false;
+  isScanning         = false;
   faceStatus.value = "matched";
   stopStream(faceStream);
 
@@ -510,31 +537,48 @@ async function capturarECadastrar() {
     const faceToken  = crypto.randomUUID();
     const emailVal   = cadEmail.value.trim();
 
-    const { error: signUpErr } = await supabase.auth.signUp({
-      email:    emailVal,
-      password: faceToken,
-    });
+    if (cadExistingUser.value) {
+      // Usuário já autenticado: atualiza senha para o faceToken e salva descritor
+      const { data: sessionData } = await supabase.auth.getSession();
+      const user = sessionData.session?.user;
+      if (!user) throw new Error("Sessão expirada. Faça login novamente.");
 
-    if (signUpErr) throw new Error(signUpErr.message);
+      const { error: updateErr } = await supabase.auth.updateUser({ password: faceToken });
+      if (updateErr) throw new Error("Erro ao configurar token facial.");
 
-    const { data: session } = await supabase.auth.signInWithPassword({
-      email:    emailVal,
-      password: faceToken,
-    });
+      const { error: dbErr } = await supabase.from("face_descriptors").insert({
+        user_id:    user.id,
+        email:      emailVal,
+        descriptor,
+        face_token: faceToken,
+      });
+      if (dbErr) throw new Error("Erro ao salvar dados faciais: " + dbErr.message);
+    } else {
+      // Novo usuário: cria conta e salva descritor
+      const { error: signUpErr } = await supabase.auth.signUp({
+        email:    emailVal,
+        password: faceToken,
+      });
+      if (signUpErr) throw new Error(signUpErr.message);
 
-    if (!session?.user) throw new Error("Falha ao criar sessão.");
+      const { data: session } = await supabase.auth.signInWithPassword({
+        email:    emailVal,
+        password: faceToken,
+      });
+      if (!session?.user) throw new Error("Falha ao criar sessão.");
 
-    const { error: dbErr } = await supabase.from("face_descriptors").insert({
-      user_id:    session.user.id,
-      email:      emailVal,
-      descriptor,
-      face_token: faceToken,
-    });
-
-    if (dbErr) throw new Error("Erro ao salvar dados faciais: " + dbErr.message);
+      const { error: dbErr } = await supabase.from("face_descriptors").insert({
+        user_id:    session.user.id,
+        email:      emailVal,
+        descriptor,
+        face_token: faceToken,
+      });
+      if (dbErr) throw new Error("Erro ao salvar dados faciais: " + dbErr.message);
+    }
 
     isCadCam  = false;
     stopStream(cadStream);
+    cadExistingUser.value = false;
     cadStep.value = "done";
     setTimeout(() => router.replace("/"), 1500);
   } catch (e: unknown) {
@@ -550,14 +594,32 @@ async function entrar() {
   loading.value   = true;
   loginErro.value = null;
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data: authData, error } = await supabase.auth.signInWithPassword({
     email:    email.value.trim(),
     password: senha.value,
   });
 
   loading.value = false;
   if (error) { loginErro.value = "E-mail ou senha incorretos."; return; }
-  await router.replace("/");
+
+  // Verifica se já tem face cadastrada; se não, sugere (sem obrigar)
+  const { data: faceRows } = await supabase
+    .from("face_descriptors")
+    .select("id")
+    .eq("user_id", authData.user!.id)
+    .limit(1);
+
+  if (!faceRows || faceRows.length === 0) {
+    showFacePrompt.value = true;
+  } else {
+    await router.replace("/");
+  }
+}
+
+function cadastrarAgora() {
+  cadEmail.value = email.value.trim();
+  switchMode("cadastro");
+  cadExistingUser.value = true;
 }
 
 // ─── Troca de modo ───────────────────────────────────────────────────────────
@@ -572,20 +634,26 @@ function stopAll() {
 
 function switchMode(m: Mode) {
   stopAll();
-  faceStatus.value    = "idle";
-  faceDetected.value  = false;
-  faceErro.value      = null;
-  cadStep.value       = "form";
+  faceStatus.value      = "idle";
+  faceDetected.value    = false;
+  faceErro.value        = null;
+  faceNotFound.value    = false;
+  showFacePrompt.value  = false;
+  cadExistingUser.value = false;
+  cadStep.value         = "form";
   cadFaceDetected.value = false;
-  cadErro.value       = null;
-  loginErro.value     = null;
-  mode.value          = m;
+  cadErro.value         = null;
+  loginErro.value       = null;
+  mode.value            = m;
 }
 
 // Auto-inicia câmeras ao entrar nos modos
 watch(mode, (m) => {
   if (m === "face") {
     nextTick(() => startFaceScan());
+  }
+  if (m === "cadastro" && cadExistingUser.value) {
+    nextTick(() => { cadStep.value = "camera"; });
   }
 });
 
@@ -876,6 +944,44 @@ onUnmounted(stopAll);
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+// ─── Face prompt (pós-login) ──────────────────────────────────────────────────
+.l-face-prompt {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 14px; padding: 16px 0; text-align: center;
+}
+.l-face-prompt__icon {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(139,28,43,.45);
+  background: rgba(139,28,43,.08);
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,.55);
+}
+.l-face-prompt__title {
+  font-size: 15px; font-weight: 700; color: #E4EAF3; margin: 0;
+  letter-spacing: -.01em;
+}
+.l-face-prompt__sub {
+  font-size: 11.5px; color: rgba(255,255,255,.32); margin: 0;
+  line-height: 1.6; max-width: 240px;
+}
+
+// ─── Link button ──────────────────────────────────────────────────────────────
+.l-link-btn {
+  background: none; border: none; padding: 6px 0;
+  font-size: 11px; color: rgba(255,255,255,.3);
+  cursor: pointer; font-family: inherit; letter-spacing: .04em;
+  text-decoration: underline; text-underline-offset: 3px;
+  transition: color .18s;
+  &:hover { color: rgba(255,255,255,.6); }
+}
+
+// ─── Email label cadastro existente ──────────────────────────────────────────
+.l-existing-email {
+  font-size: 11px; color: rgba(255,255,255,.3); text-align: center;
+  margin: 0 0 12px; letter-spacing: .06em;
+}
+
 // ─── Footer ──────────────────────────────────────────────────────────────────
 .l-footer {
   position: relative; z-index: 1;
@@ -903,7 +1009,7 @@ onUnmounted(stopAll);
   .l-watermark { font-size: 38vw; }
 }
 
-// fade transition para mensagens de erro inline (global: classes do Vue Transition não herdam scoped)
+// fade: transição de opacidade para mensagens inline (global: scoped não afeta classes Vue Transition)
 :global(.fade-enter-active), :global(.fade-leave-active) { transition: opacity .18s; }
 :global(.fade-enter-from),   :global(.fade-leave-to)     { opacity: 0; }
 </style>
