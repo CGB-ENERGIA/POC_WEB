@@ -247,7 +247,7 @@
                 </button>
               </div>
 
-            <!-- Passo 2: câmera -->
+            <!-- Passo 2: câmera (captura guiada em 3 poses) -->
             <div v-else-if="cadStep === 'camera'">
                 <p v-if="cadExistingUser" class="l-existing-email">{{ cadEmail }}</p>
                 <div
@@ -264,24 +264,42 @@
                     <span class="l-corner l-corner--bl" />
                     <span class="l-corner l-corner--br" />
                   </div>
-                  <p class="l-cam-status">
-                    <template v-if="cadFaceDetected">Rosto detectado ✓</template>
-                    <template v-else>Posicione seu rosto</template>
-                  </p>
+
+                  <!-- Etapas da captura -->
+                  <div class="l-pose-steps">
+                    <span
+                      v-for="(p, i) in POSES" :key="i"
+                      class="l-pose-dot"
+                      :class="{
+                        'l-pose-dot--done':   i < cadPoseIndex,
+                        'l-pose-dot--active': i === cadPoseIndex && cadCapturing,
+                      }"
+                    >{{ i < cadPoseIndex ? "✓" : i + 1 }}</span>
+                  </div>
+
+                  <p class="l-cam-status">{{ cadInstruction }}</p>
+
+                  <div v-if="cadCapturing" class="l-pose-bar">
+                    <div class="l-pose-bar__fill" :style="{ width: cadPoseProgress + '%' }" />
+                  </div>
                 </div>
 
                 <Transition name="fade"><p v-if="cadErro" class="l-err">{{ cadErro }}</p></Transition>
 
                 <button
+                  v-if="!cadCapturing && !cadLoading"
                   class="l-btn"
-                  :disabled="!cadFaceDetected || cadLoading"
-                  @click="capturarECadastrar"
+                  :disabled="!cadFaceDetected"
+                  @click="iniciarCapturaGuiada"
                 >
-                  <template v-if="!cadLoading">Capturar e cadastrar</template>
-                  <span v-else class="l-spin" />
+                  Iniciar captura guiada
+                </button>
+                <button v-else class="l-btn" disabled>
+                  <template v-if="cadLoading"><span class="l-spin" /></template>
+                  <template v-else>Capturando {{ cadPoseIndex + 1 }} de {{ POSES.length }}...</template>
                 </button>
 
-                <button class="l-back" @click="cadStep = 'form'">
+                <button class="l-back" @click="cancelarCaptura">
                   <BackArrow /> Voltar
                 </button>
               </div>
@@ -379,6 +397,36 @@ const cadFaceDetected = ref(false);
 const cadVideoRef     = ref<HTMLVideoElement | null>(null);
 const cadEmailRef     = ref<HTMLInputElement | null>(null);
 const cadExistingUser = ref(false);
+
+// captura guiada em poses
+const POSES = [
+  { instrucao: "Olhe diretamente para a câmera" },
+  { instrucao: "Vire levemente o rosto para um lado" },
+  { instrucao: "Agora vire para o lado oposto" },
+] as const;
+const FRAMES_PER_POSE = 8;
+const cadCapturing   = ref(false);
+const cadPoseIndex   = ref(0);
+const cadPoseFrames  = ref(0);
+let poseBuffer: Float32Array[]  = [];
+let poseDescriptors: number[][] = [];
+let poseSideSign = 0;   // lado escolhido na pose 2 (para exigir o oposto na 3)
+let cadPhoto     = "";  // foto frontal para revisão do admin
+
+const cadPoseProgress = computed(() =>
+  Math.round((cadPoseFrames.value / FRAMES_PER_POSE) * 100)
+);
+
+const cadInstruction = computed(() => {
+  if (cadLoading.value)    return "Enviando solicitação...";
+  if (!cadCapturing.value) {
+    return cadFaceDetected.value
+      ? "Rosto detectado — pronto para iniciar"
+      : "Posicione seu rosto no quadro";
+  }
+  if (!cadFaceDetected.value) return "Rosto perdido — reposicione no quadro";
+  return POSES[cadPoseIndex.value]?.instrucao ?? "";
+});
 
 // câmera / modelos
 let faceStream: MediaStream | null = null;
@@ -578,40 +626,114 @@ function cadDetectLoop() {
   detectOnce(cadVideoRef.value).then((result) => {
     if (!isCadCam) return;
     cadFaceDetected.value = !!result;
+    if (result && cadCapturing.value && !cadLoading.value) {
+      processPoseFrame(result);
+    }
     cadRafId = requestAnimationFrame(cadDetectLoop);
   });
 }
 
-async function capturarECadastrar() {
-  if (!cadVideoRef.value || !cadFaceDetected.value) return;
+// Razão nariz↔olhos para estimar rotação do rosto (yaw).
+// ~1.0 = de frente; >1 ou <1 = rosto virado para um dos lados.
+type DetectResult = NonNullable<Awaited<ReturnType<typeof detectOnce>>>;
+function yawRatio(result: DetectResult): number | null {
+  const pts = result.landmarks.positions;
+  const nose = pts[30];                                       // ponta do nariz
+  const le   = result.landmarks.getLeftEye();
+  const re   = result.landmarks.getRightEye();
+  if (!nose || !le.length || !re.length) return null;
+  const leX = le.reduce((s, p) => s + p.x, 0) / le.length;
+  const reX = re.reduce((s, p) => s + p.x, 0) / re.length;
+  const dl = nose.x - leX;
+  const dr = reX - nose.x;
+  if (dl <= 0 || dr <= 0) return null;                        // rotação extrema
+  return dl / dr;
+}
+
+function processPoseFrame(result: DetectResult) {
+  const video = cadVideoRef.value!;
+
+  // Gates de qualidade: confiança e tamanho mínimo do rosto no quadro
+  if (result.detection.score < 0.55) return;
+  if (result.detection.box.width < video.videoWidth * 0.22) return;
+
+  const ratio = yawRatio(result);
+  if (ratio === null) return;
+
+  const idx = cadPoseIndex.value;
+  let poseOk = false;
+
+  if (idx === 0) {
+    poseOk = ratio >= 0.7 && ratio <= 1.42;                   // de frente
+  } else if (idx === 1) {
+    if (ratio >= 1.55)      { poseOk = true; poseSideSign = +1; }
+    else if (ratio <= 0.645){ poseOk = true; poseSideSign = -1; }
+  } else if (idx === 2) {
+    poseOk = poseSideSign > 0 ? ratio <= 0.645 : ratio >= 1.55; // lado oposto
+  }
+  if (!poseOk) return;
+
+  poseBuffer.push(result.descriptor);
+  cadPoseFrames.value = poseBuffer.length;
+
+  if (poseBuffer.length >= FRAMES_PER_POSE) {
+    poseDescriptors.push(Array.from(averageDescriptors(poseBuffer)));
+    if (idx === 0) cadPhoto = capturePhotoBase64(video);      // foto frontal
+    poseBuffer          = [];
+    cadPoseFrames.value = 0;
+    cadPoseIndex.value++;
+
+    if (cadPoseIndex.value >= POSES.length) {
+      cadCapturing.value = false;
+      void submeterCadastro();
+    }
+  }
+}
+
+function iniciarCapturaGuiada() {
+  cadErro.value       = null;
+  poseBuffer          = [];
+  poseDescriptors     = [];
+  poseSideSign        = 0;
+  cadPhoto            = "";
+  cadPoseIndex.value  = 0;
+  cadPoseFrames.value = 0;
+  cadCapturing.value  = true;
+}
+
+function cancelarCaptura() {
+  cadCapturing.value = false;
+  poseBuffer         = [];
+  poseDescriptors    = [];
+  cadStep.value      = "form";
+}
+
+async function submeterCadastro() {
   cadLoading.value = true;
   cadErro.value    = null;
 
   try {
-    // Coleta vários frames e tira a média — descritor muito mais estável
-    const samples: Float32Array[] = [];
-    for (let i = 0; i < 10; i++) {
-      const r = await detectOnce(cadVideoRef.value);
-      if (r) samples.push(r.descriptor);
+    if (poseDescriptors.length < POSES.length) {
+      throw new Error("Captura incompleta. Tente novamente.");
     }
-    if (samples.length < 5) throw new Error("Rosto instável. Mantenha-se parado e tente novamente.");
 
-    const descriptor  = Array.from(averageDescriptors(samples));
-    const photo       = capturePhotoBase64(cadVideoRef.value);
-    const emailVal    = cadEmail.value.trim();
-    const nameVal     = cadName.value.trim();
+    const emailVal = cadEmail.value.trim();
+    const nameVal  = cadName.value.trim();
 
     // Sempre associa o user_id se o usuário estiver logado
     const { data: sd } = await supabase.auth.getSession();
     const userId: string | null = sd.session?.user?.id ?? null;
 
-    // Submete para aprovação do administrador
+    // Submete para aprovação do administrador:
+    // descriptor  = pose frontal (compatibilidade com o fluxo antigo)
+    // descriptors = as 3 poses (frente, lado A, lado B)
     const { error: dbErr } = await supabase.from("pending_face_registrations").insert({
       name:         nameVal,
       email:        emailVal,
       user_id:      userId,
-      descriptor,
-      photo_base64: photo,
+      descriptor:   poseDescriptors[0],
+      descriptors:  poseDescriptors,
+      photo_base64: cadPhoto,
     });
 
     if (dbErr) throw new Error("Erro ao enviar solicitação: " + dbErr.message);
@@ -622,6 +744,10 @@ async function capturarECadastrar() {
     cadStep.value = "done";
   } catch (e: unknown) {
     cadErro.value = (e as Error).message;
+    // Permite tentar de novo sem sair da câmera
+    cadPoseIndex.value  = 0;
+    cadPoseFrames.value = 0;
+    poseDescriptors     = [];
   } finally {
     cadLoading.value = false;
   }
@@ -706,6 +832,13 @@ function switchMode(m: Mode) {
   cadName.value         = "";
   cadFaceDetected.value = false;
   cadErro.value         = null;
+  cadCapturing.value    = false;
+  cadPoseIndex.value    = 0;
+  cadPoseFrames.value   = 0;
+  poseBuffer            = [];
+  poseDescriptors       = [];
+  poseSideSign          = 0;
+  cadPhoto              = "";
   loginErro.value       = null;
   mode.value            = m;
 }
@@ -925,6 +1058,41 @@ onUnmounted(stopAll);
 .l-cam-status {
   font-size: 11px; letter-spacing: .06em;
   color: rgba(255,255,255,.4); text-align: center;
+}
+
+// ─── Captura guiada (poses) ──────────────────────────────────────────────────
+.l-pose-steps {
+  display: flex; gap: 10px; justify-content: center;
+}
+.l-pose-dot {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700;
+  border: 1.5px solid rgba(255,255,255,.15);
+  color: rgba(255,255,255,.3);
+  transition: all .25s;
+
+  &--active {
+    border-color: #8B1C2B;
+    color: #fff;
+    box-shadow: 0 0 10px rgba(139,28,43,.5);
+  }
+  &--done {
+    border-color: #2ECC71;
+    background: rgba(46,204,113,.12);
+    color: #2ECC71;
+  }
+}
+.l-pose-bar {
+  width: 220px; height: 3px;
+  background: rgba(255,255,255,.08);
+  border-radius: 2px; overflow: hidden;
+}
+.l-pose-bar__fill {
+  height: 100%;
+  background: #8B1C2B;
+  transition: width .15s ease-out;
 }
 .l-cam-status__icon {
   color: #2ECC71;
