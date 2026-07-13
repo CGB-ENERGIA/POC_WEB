@@ -52,59 +52,104 @@
         <!-- ══ LOGIN ══ -->
         <div v-if="mode === 'login'" class="l-pane">
           <template v-if="!showFacePrompt">
-            <p class="l-pane__label">IDENTIFICAÇÃO</p>
+            <!-- Sub-modo: Esqueci minha senha -->
+            <template v-if="loginSub === 'forgot'">
+              <p class="l-pane__label">RECUPERAR ACESSO</p>
+              <p class="l-forgot-desc">Informe seu e-mail corporativo e enviaremos um link para redefinir a senha.</p>
 
-            <div class="l-field">
-              <label class="l-field__lbl" for="l-email">E-MAIL</label>
-              <input
-                id="l-email"
-                ref="emailRef"
-                v-model="email"
-                type="email"
-                class="l-input"
-                placeholder="nome@cgbengenharia.com.br"
-                autocomplete="email"
-                :disabled="loading"
-                @keyup.enter="senhaRef?.focus()"
-              />
-            </div>
-
-            <div class="l-field">
-              <label class="l-field__lbl" for="l-senha">SENHA</label>
-              <div class="l-input-wrap">
+              <div class="l-field">
+                <label class="l-field__lbl" for="l-forgot-email">E-MAIL</label>
                 <input
-                  id="l-senha"
-                  ref="senhaRef"
-                  v-model="senha"
-                  :type="showSenha ? 'text' : 'password'"
-                  class="l-input l-input--pw"
-                  placeholder="••••••••"
-                  autocomplete="current-password"
-                  :disabled="loading"
-                  @keyup.enter="entrar"
-                  @keydown="checkCaps"
-                  @keyup="checkCaps"
+                  id="l-forgot-email"
+                  ref="forgotEmailRef"
+                  v-model="forgotEmail"
+                  type="email"
+                  class="l-input"
+                  placeholder="nome@cgbengenharia.com.br"
+                  autocomplete="email"
+                  :disabled="forgotLoading || forgotSent"
+                  @keyup.enter="enviarRecuperacao"
                 />
-                <button type="button" class="l-eye" :aria-label="showSenha ? 'Ocultar' : 'Mostrar'" @click="showSenha = !showSenha">
-                  <EyeIcon :crossed="showSenha" />
-                </button>
               </div>
-              <Transition name="fade"><p v-if="capsOn" class="l-caps">Caps Lock ativado</p></Transition>
-            </div>
 
-            <Transition name="fade"><p v-if="loginErro" class="l-err" role="alert">{{ loginErro }}</p></Transition>
+              <Transition name="fade">
+                <p v-if="forgotErro" class="l-err" role="alert">{{ forgotErro }}</p>
+              </Transition>
+              <Transition name="fade">
+                <div v-if="forgotSent" class="l-forgot-ok">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2ECC71" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  E-mail enviado. Verifique sua caixa de entrada.
+                </div>
+              </Transition>
 
-            <button class="l-btn" :disabled="!email.trim() || !senha || loading" @click="entrar">
-              <template v-if="!loading">Entrar no sistema</template>
-              <span v-else class="l-spin" />
-            </button>
+              <button
+                v-if="!forgotSent"
+                class="l-btn"
+                :disabled="!forgotEmail.trim() || forgotLoading"
+                @click="enviarRecuperacao"
+              >
+                <template v-if="!forgotLoading">Enviar link de recuperação</template>
+                <span v-else class="l-spin" />
+              </button>
 
-            <div class="l-divider"><span>ou</span></div>
+              <button class="l-back" @click="loginSub = 'none'; forgotEmail = ''; forgotErro = null; forgotSent = false">
+                <BackArrow /> Voltar ao login
+              </button>
+            </template>
 
-            <button class="l-btn l-btn--github" :disabled="loading" @click="loginGithub">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right:8px;flex-shrink:0"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/></svg>
-              Entrar com GitHub
-            </button>
+            <!-- Sub-modo: Login normal -->
+            <template v-else>
+              <p class="l-pane__label">IDENTIFICAÇÃO</p>
+
+              <div class="l-field">
+                <label class="l-field__lbl" for="l-email">E-MAIL</label>
+                <input
+                  id="l-email"
+                  ref="emailRef"
+                  v-model="email"
+                  type="email"
+                  class="l-input"
+                  placeholder="nome@cgbengenharia.com.br"
+                  autocomplete="email"
+                  :disabled="loading"
+                  @keyup.enter="senhaRef?.focus()"
+                />
+              </div>
+
+              <div class="l-field">
+                <label class="l-field__lbl" for="l-senha">SENHA</label>
+                <div class="l-input-wrap">
+                  <input
+                    id="l-senha"
+                    ref="senhaRef"
+                    v-model="senha"
+                    :type="showSenha ? 'text' : 'password'"
+                    class="l-input l-input--pw"
+                    placeholder="••••••••"
+                    autocomplete="current-password"
+                    :disabled="loading"
+                    @keyup.enter="entrar"
+                    @keydown="checkCaps"
+                    @keyup="checkCaps"
+                  />
+                  <button type="button" class="l-eye" :aria-label="showSenha ? 'Ocultar' : 'Mostrar'" @click="showSenha = !showSenha">
+                    <EyeIcon :crossed="showSenha" />
+                  </button>
+                </div>
+                <Transition name="fade"><p v-if="capsOn" class="l-caps">Caps Lock ativado</p></Transition>
+              </div>
+
+              <Transition name="fade"><p v-if="loginErro" class="l-err" role="alert">{{ loginErro }}</p></Transition>
+
+              <button class="l-btn" :disabled="!email.trim() || !senha || loading" @click="entrar">
+                <template v-if="!loading">Entrar no sistema</template>
+                <span v-else class="l-spin" />
+              </button>
+
+              <button class="l-link-btn l-link-btn--forgot" @click="abrirEsqueceu">
+                Esqueci minha senha
+              </button>
+            </template>
           </template>
 
           <!-- Prompt de cadastro facial (primeiro acesso) -->
@@ -340,10 +385,45 @@ const capsOn    = ref(false);
 const senhaRef  = ref<HTMLInputElement | null>(null);
 const emailRef  = ref<HTMLInputElement | null>(null);
 
+// esqueci minha senha
+type LoginSub = "none" | "forgot";
+const loginSub        = ref<LoginSub>("none");
+const forgotEmail     = ref("");
+const forgotLoading   = ref(false);
+const forgotErro      = ref<string | null>(null);
+const forgotSent      = ref(false);
+const forgotEmailRef  = ref<HTMLInputElement | null>(null);
+
 const LAST_EMAIL_KEY = "cgb:last-email";
 
 function checkCaps(e: KeyboardEvent) {
   capsOn.value = e.getModifierState?.("CapsLock") ?? false;
+}
+
+function abrirEsqueceu() {
+  forgotEmail.value = email.value.trim();
+  forgotErro.value  = null;
+  forgotSent.value  = false;
+  loginSub.value    = "forgot";
+  nextTick(() => forgotEmailRef.value?.focus());
+}
+
+async function enviarRecuperacao() {
+  if (!forgotEmail.value.trim() || forgotLoading.value) return;
+  forgotLoading.value = true;
+  forgotErro.value    = null;
+
+  const { error } = await supabase.auth.resetPasswordForEmail(
+    forgotEmail.value.trim(),
+    { redirectTo: window.location.origin },
+  );
+
+  forgotLoading.value = false;
+  if (error) {
+    forgotErro.value = "Não foi possível enviar o e-mail. Tente novamente.";
+    return;
+  }
+  forgotSent.value = true;
 }
 
 // face login
@@ -766,19 +846,6 @@ async function entrar() {
   }
 }
 
-async function loginGithub() {
-  loading.value   = true;
-  loginErro.value = null;
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: "github",
-    options: { redirectTo: window.location.origin + "/#/" },
-  });
-  if (error) {
-    loginErro.value = error.message;
-    loading.value   = false;
-  }
-}
-
 function cadastrarAgora() {
   cadEmail.value = email.value.trim();
   switchMode("cadastro");
@@ -803,6 +870,10 @@ function switchMode(m: Mode) {
   faceStatus.value      = "idle";
   faceDetected.value    = false;
   scanProgress.value    = 0;
+  loginSub.value        = "none";
+  forgotEmail.value     = "";
+  forgotErro.value      = null;
+  forgotSent.value      = false;
   faceErro.value        = null;
   faceNotFound.value    = false;
   showFacePrompt.value  = false;
@@ -1146,24 +1217,8 @@ onUnmounted(stopAll);
     color: rgba(255,255,255,.55);
     &:hover:not(:disabled) { background: rgba(255,255,255,.05); }
   }
-
-  &--github {
-    background: #24292e;
-    border: 1px solid rgba(255,255,255,.12);
-    font-size: 12px; letter-spacing: .04em;
-    &:hover:not(:disabled) { background: #2f363d; }
-  }
 }
 
-.l-divider {
-  display: flex; align-items: center; gap: 12px;
-  margin-bottom: 12px;
-  &::before, &::after {
-    content: ""; flex: 1;
-    height: 1px; background: rgba(255,255,255,.08);
-  }
-  span { font-size: 10px; color: rgba(255,255,255,.2); letter-spacing: .12em; text-transform: uppercase; }
-}
 
 .l-back {
   display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -1217,6 +1272,21 @@ onUnmounted(stopAll);
   text-decoration: underline; text-underline-offset: 3px;
   transition: color .18s;
   &:hover { color: rgba(255,255,255,.6); }
+  &--forgot {
+    display: block; width: 100%; text-align: center;
+    margin-top: 4px;
+  }
+}
+
+// ─── Recuperação de senha ─────────────────────────────────────────────────────
+.l-forgot-desc {
+  font-size: 12px; color: rgba(255,255,255,.35); line-height: 1.6;
+  margin: 0 0 24px;
+}
+.l-forgot-ok {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: #2ECC71; margin: 0 0 16px;
+  line-height: 1.4;
 }
 
 // ─── Email label cadastro existente ──────────────────────────────────────────

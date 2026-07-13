@@ -45,5 +45,12 @@ export default defineRouter((/* { store, ssrContext } */) => {
     return true;
   });
 
+  // Redireciona para /reset-password quando o usuário clica no link do e-mail de recuperação
+  supabase.auth.onAuthStateChange((event) => {
+    if (event === "PASSWORD_RECOVERY") {
+      Router.replace("/reset-password");
+    }
+  });
+
   return Router;
 });
