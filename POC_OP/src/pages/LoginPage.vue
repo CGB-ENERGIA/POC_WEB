@@ -860,9 +860,10 @@ onUnmounted(stopAll);
 }
 .l-eye {
   position: absolute; right: 0; background: none; border: none;
-  padding: 4px; color: rgba(255,255,255,.28); cursor: pointer;
-  display: flex; align-items: center; transition: color .18s;
-  &:hover { color: rgba(255,255,255,.6); }
+  padding: 6px; cursor: pointer;
+  display: flex; align-items: center; transition: opacity .18s;
+  color: #8B1C2B; opacity: .7;
+  &:hover { opacity: 1; }
 }
 
 // ─── Câmera ──────────────────────────────────────────────────────────────────
