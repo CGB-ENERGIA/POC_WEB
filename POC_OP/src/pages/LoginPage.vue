@@ -1,49 +1,7 @@
 <!--
-  SQL MIGRATION — rode no Supabase SQL Editor antes de usar Face ID:
-
-  CREATE TABLE IF NOT EXISTS public.face_descriptors (
-    id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id    uuid REFERENCES auth.users(id) ON DELETE CASCADE,
-    email      text NOT NULL,
-    descriptor float8[] NOT NULL,
-    face_token text NOT NULL,
-    created_at timestamptz DEFAULT now()
-  );
-
-  ALTER TABLE public.face_descriptors ENABLE ROW LEVEL SECURITY;
-  CREATE POLICY "anon select desc only" ON public.face_descriptors
-    FOR SELECT TO anon USING (true);
-  CREATE POLICY "owner manage" ON public.face_descriptors
-    FOR ALL TO authenticated USING (user_id = auth.uid());
-
-  CREATE OR REPLACE FUNCTION public.face_authenticate(input_descriptor float8[])
-  RETURNS json
-  LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-  DECLARE
-    rec       RECORD;
-    dist      float8;
-    best_dist float8 := 1.0;
-    best_row  public.face_descriptors;
-  BEGIN
-    FOR rec IN SELECT * FROM public.face_descriptors LOOP
-      SELECT sqrt(sum(pow(a.v - b.v, 2)))
-      INTO dist
-      FROM unnest(input_descriptor) WITH ORDINALITY AS a(v, i)
-      JOIN unnest(rec.descriptor) WITH ORDINALITY AS b(v, i) ON a.i = b.i;
-
-      IF dist < best_dist THEN
-        best_dist := dist;
-        best_row  := rec;
-      END IF;
-    END LOOP;
-
-    IF best_dist < 0.55 THEN
-      RETURN json_build_object('email', best_row.email, 'token', best_row.face_token);
-    END IF;
-    RETURN NULL;
-  END;
-  $$;
-  GRANT EXECUTE ON FUNCTION public.face_authenticate TO anon;
+  Login: senha (Supabase Auth), Face ID (Edge Function face-login → RPC face_match,
+  nunca altera a senha do usuário) e cadastro facial guiado em 3 poses.
+  Schema e funções: supabase/migrations/.
 -->
 <template>
   <div class="l-root">
@@ -100,6 +58,7 @@
               <label class="l-field__lbl" for="l-email">E-MAIL</label>
               <input
                 id="l-email"
+                ref="emailRef"
                 v-model="email"
                 type="email"
                 class="l-input"
@@ -123,11 +82,14 @@
                   autocomplete="current-password"
                   :disabled="loading"
                   @keyup.enter="entrar"
+                  @keydown="checkCaps"
+                  @keyup="checkCaps"
                 />
                 <button type="button" class="l-eye" :aria-label="showSenha ? 'Ocultar' : 'Mostrar'" @click="showSenha = !showSenha">
                   <EyeIcon :crossed="showSenha" />
                 </button>
               </div>
+              <Transition name="fade"><p v-if="capsOn" class="l-caps">Caps Lock ativado</p></Transition>
             </div>
 
             <Transition name="fade"><p v-if="loginErro" class="l-err" role="alert">{{ loginErro }}</p></Transition>
@@ -190,9 +152,13 @@
                 <template v-if="faceStatus === 'matched'">
                   <span class="l-cam-status__icon">✓</span> Acesso liberado
                 </template>
-                <template v-else-if="faceDetected">Rosto identificado — aguardando...</template>
+                <template v-else-if="faceDetected && scanProgress > 0">Analisando — mantenha-se parado</template>
+                <template v-else-if="faceDetected">Rosto identificado...</template>
                 <template v-else>Posicione seu rosto na câmera</template>
               </p>
+              <div v-if="faceStatus === 'scanning' && scanProgress > 0" class="l-pose-bar">
+                <div class="l-pose-bar__fill" :style="{ width: scanProgress + '%' }" />
+              </div>
               <Transition name="fade"><p v-if="faceErro" class="l-err">{{ faceErro }}</p></Transition>
               <button v-if="faceNotFound" class="l-link-btn" @click="switchMode('cadastro')">
                 Ainda sem cadastro? Registrar rosto →
@@ -250,10 +216,7 @@
             <!-- Passo 2: câmera (captura guiada em 3 poses) -->
             <div v-else-if="cadStep === 'camera'">
                 <p v-if="cadExistingUser" class="l-existing-email">{{ cadEmail }}</p>
-                <div
-                  class="l-cam-area"
-                  :class="{ 'l-cam-area--sm': true }"
-                >
+                <div class="l-cam-area">
                   <div
                     class="l-cam-frame"
                     :class="{ 'l-cam-frame--detected': cadFaceDetected }"
@@ -323,7 +286,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted, nextTick, defineComponent, h } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, defineComponent, h } from "vue";
 import { useRouter } from "vue-router";
 import { supabase } from "@/lib/supabase";
 import * as faceapi from "@vladmandic/face-api";
@@ -373,12 +336,21 @@ const senha     = ref("");
 const loading   = ref(false);
 const loginErro = ref<string | null>(null);
 const showSenha = ref(false);
+const capsOn    = ref(false);
 const senhaRef  = ref<HTMLInputElement | null>(null);
+const emailRef  = ref<HTMLInputElement | null>(null);
+
+const LAST_EMAIL_KEY = "cgb:last-email";
+
+function checkCaps(e: KeyboardEvent) {
+  capsOn.value = e.getModifierState?.("CapsLock") ?? false;
+}
 
 // face login
 type FaceStatus = "idle" | "loading" | "scanning" | "matched" | "error";
 const faceStatus   = ref<FaceStatus>("idle");
 const faceDetected = ref(false);
+const scanProgress = ref(0);
 const faceErro     = ref<string | null>(null);
 const faceNotFound = ref(false);
 const faceVideoRef = ref<HTMLVideoElement | null>(null);
@@ -531,6 +503,7 @@ function faceDetectLoop() {
 
       if (stableFrames >= STABLE_NEEDED) {
         descriptorBuffer.push(result.descriptor);
+        scanProgress.value = Math.round((descriptorBuffer.length / COLLECT_FRAMES) * 100);
 
         if (descriptorBuffer.length >= COLLECT_FRAMES) {
           const averaged = averageDescriptors(descriptorBuffer);
@@ -543,6 +516,7 @@ function faceDetectLoop() {
       faceDetected.value = false;
       stableFrames       = 0;
       descriptorBuffer   = [];
+      scanProgress.value = 0;
     }
 
     if (isScanning) {
@@ -559,6 +533,7 @@ async function tryFaceLogin(descriptor: Float32Array) {
   });
 
   if (error || !data?.token_hash) {
+    scanProgress.value = 0;
     loginAttempts++;
     if (loginAttempts >= 3) {
       faceErro.value     = "Rosto não reconhecido. Tente novamente.";
@@ -767,6 +742,9 @@ async function entrar() {
   loading.value = false;
   if (error) { loginErro.value = "E-mail ou senha incorretos."; return; }
 
+  // Lembra o e-mail para o próximo acesso
+  try { localStorage.setItem(LAST_EMAIL_KEY, email.value.trim()); } catch { /* storage indisponível */ }
+
   // Admin não precisa de Face ID — vai direto para o dashboard
   const ADMIN_EMAIL = "italo.fontes@cgbengenharia.com.br";
   if (authData.user!.email === ADMIN_EMAIL) {
@@ -824,6 +802,7 @@ function switchMode(m: Mode) {
   stopAll();
   faceStatus.value      = "idle";
   faceDetected.value    = false;
+  scanProgress.value    = 0;
   faceErro.value        = null;
   faceNotFound.value    = false;
   showFacePrompt.value  = false;
@@ -857,6 +836,15 @@ watch(cadStep, (s) => {
   if (s === "camera") {
     nextTick(() => startCadCam());
   }
+});
+
+onMounted(() => {
+  // Pré-preenche o último e-mail usado e foca o campo certo
+  try {
+    const saved = localStorage.getItem(LAST_EMAIL_KEY);
+    if (saved) email.value = saved;
+  } catch { /* storage indisponível */ }
+  nextTick(() => (email.value ? senhaRef.value : emailRef.value)?.focus());
 });
 
 onUnmounted(stopAll);
@@ -1129,6 +1117,12 @@ onUnmounted(stopAll);
 // ─── Erro ────────────────────────────────────────────────────────────────────
 .l-err {
   font-size: 11.5px; color: #E06070; margin: 0 0 16px; line-height: 1.4;
+}
+
+// ─── Aviso Caps Lock ─────────────────────────────────────────────────────────
+.l-caps {
+  font-size: 10px; letter-spacing: .06em;
+  color: #D9A441; margin: 8px 0 0;
 }
 
 // ─── Botões ──────────────────────────────────────────────────────────────────
