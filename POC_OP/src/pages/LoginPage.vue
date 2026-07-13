@@ -594,13 +594,9 @@ async function capturarECadastrar() {
     const emailVal    = cadEmail.value.trim();
     const nameVal     = cadName.value.trim();
 
-    // Obtém user_id se usuário já está autenticado
-    let userId: string | null = null;
-    if (cadExistingUser.value) {
-      const { data: sd } = await supabase.auth.getSession();
-      userId = sd.session?.user?.id ?? null;
-      if (!userId) throw new Error("Sessão expirada. Faça login novamente.");
-    }
+    // Sempre associa o user_id se o usuário estiver logado
+    const { data: sd } = await supabase.auth.getSession();
+    const userId: string | null = sd.session?.user?.id ?? null;
 
     // Submete para aprovação do administrador
     const { error: dbErr } = await supabase.from("pending_face_registrations").insert({
@@ -638,7 +634,14 @@ async function entrar() {
   loading.value = false;
   if (error) { loginErro.value = "E-mail ou senha incorretos."; return; }
 
-  // Verifica se já tem face cadastrada; se não, sugere (sem obrigar)
+  // Admin não precisa de Face ID — vai direto para o dashboard
+  const ADMIN_EMAIL = "italo.fontes@cgbengenharia.com.br";
+  if (authData.user!.email === ADMIN_EMAIL) {
+    await router.replace("/");
+    return;
+  }
+
+  // Para outros usuários: sugere cadastrar Face ID se ainda não tem
   const { data: faceRows } = await supabase
     .from("face_descriptors")
     .select("id")
