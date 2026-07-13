@@ -504,11 +504,13 @@ function faceDetectLoop() {
 }
 
 async function tryFaceLogin(descriptor: Float32Array) {
-  const { data, error } = await supabase.rpc("face_authenticate", {
-    descriptor: Array.from(descriptor),
+  // Edge Function valida o rosto e retorna um magic link token —
+  // a senha do usuário nunca é alterada.
+  const { data, error } = await supabase.functions.invoke("face-login", {
+    body: { descriptor: Array.from(descriptor) },
   });
 
-  if (error || !data || data?.error) {
+  if (error || !data?.token_hash) {
     loginAttempts++;
     if (loginAttempts >= 3) {
       faceErro.value     = "Rosto não reconhecido. Tente novamente.";
@@ -525,9 +527,9 @@ async function tryFaceLogin(descriptor: Float32Array) {
   faceStatus.value = "matched";
   stopStream(faceStream);
 
-  const { error: authErr } = await supabase.auth.signInWithPassword({
-    email:    data.email,
-    password: data.token,
+  const { error: authErr } = await supabase.auth.verifyOtp({
+    type:       "magiclink",
+    token_hash: data.token_hash,
   });
 
   if (authErr) {
