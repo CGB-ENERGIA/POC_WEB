@@ -586,10 +586,15 @@ async function capturarECadastrar() {
   cadErro.value    = null;
 
   try {
-    const result = await detectOnce(cadVideoRef.value);
-    if (!result) throw new Error("Nenhum rosto detectado. Tente novamente.");
+    // Coleta vários frames e tira a média — descritor muito mais estável
+    const samples: Float32Array[] = [];
+    for (let i = 0; i < 10; i++) {
+      const r = await detectOnce(cadVideoRef.value);
+      if (r) samples.push(r.descriptor);
+    }
+    if (samples.length < 5) throw new Error("Rosto instável. Mantenha-se parado e tente novamente.");
 
-    const descriptor  = Array.from(result.descriptor);
+    const descriptor  = Array.from(averageDescriptors(samples));
     const photo       = capturePhotoBase64(cadVideoRef.value);
     const emailVal    = cadEmail.value.trim();
     const nameVal     = cadName.value.trim();
