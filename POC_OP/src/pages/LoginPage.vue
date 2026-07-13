@@ -333,9 +333,9 @@ const BackArrow = defineComponent({
 });
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
-const MODEL_URL = "/models";
-const FACE_THRESHOLD = 0.55;
-const STABLE_NEEDED  = 25; // frames com rosto antes de autenticar
+const MODEL_URL      = "/models";
+const STABLE_NEEDED  = 8;  // frames com rosto antes de começar a coletar
+const COLLECT_FRAMES = 15; // frames para calcular a média do descritor
 
 const TABS = [
   { id: "login",    label: "Entrar" },
@@ -389,6 +389,8 @@ let modelsLoaded = false;
 let stableFrames = 0;
 let isScanning   = false;
 let isCadCam     = false;
+let descriptorBuffer: Float32Array[] = [];
+let loginAttempts = 0;
 
 // ─── Computed title ───────────────────────────────────────────────────────────
 const title = computed(() => {
@@ -461,6 +463,14 @@ async function startFaceScan() {
   }
 }
 
+function averageDescriptors(buf: Float32Array[]): Float32Array {
+  const len = buf[0].length;
+  const avg = new Float32Array(len);
+  for (const d of buf) for (let i = 0; i < len; i++) avg[i] += d[i];
+  for (let i = 0; i < len; i++) avg[i] /= buf.length;
+  return avg;
+}
+
 function faceDetectLoop() {
   if (!isScanning || !faceVideoRef.value) return;
 
@@ -472,12 +482,19 @@ function faceDetectLoop() {
       stableFrames++;
 
       if (stableFrames >= STABLE_NEEDED) {
-        stableFrames = 0;
-        await tryFaceLogin(result.descriptor);
+        descriptorBuffer.push(result.descriptor);
+
+        if (descriptorBuffer.length >= COLLECT_FRAMES) {
+          const averaged = averageDescriptors(descriptorBuffer);
+          descriptorBuffer = [];
+          stableFrames     = 0;
+          await tryFaceLogin(averaged);
+        }
       }
     } else {
       faceDetected.value = false;
       stableFrames       = 0;
+      descriptorBuffer   = [];
     }
 
     if (isScanning) {
@@ -491,11 +508,17 @@ async function tryFaceLogin(descriptor: Float32Array) {
     descriptor: Array.from(descriptor),
   });
 
-  if (error || !data) {
-    faceErro.value = "Rosto não reconhecido. Tente novamente.";
-    faceNotFound.value = true;
+  if (error || !data || data?.error) {
+    loginAttempts++;
+    if (loginAttempts >= 3) {
+      faceErro.value     = "Rosto não reconhecido. Tente novamente.";
+      faceNotFound.value = true;
+      loginAttempts      = 0;
+    }
     return;
   }
+
+  loginAttempts = 0;
 
   faceNotFound.value = false;
   isScanning         = false;
@@ -650,8 +673,11 @@ function cadastrarAgora() {
 
 // ─── Troca de modo ───────────────────────────────────────────────────────────
 function stopAll() {
-  isScanning = false;
-  isCadCam   = false;
+  isScanning       = false;
+  isCadCam         = false;
+  descriptorBuffer = [];
+  loginAttempts    = 0;
+  stableFrames     = 0;
   if (rafId)    { cancelAnimationFrame(rafId);    rafId    = null; }
   if (cadRafId) { cancelAnimationFrame(cadRafId); cadRafId = null; }
   stopStream(faceStream); faceStream = null;
