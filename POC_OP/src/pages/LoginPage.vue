@@ -160,16 +160,20 @@
                 <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>
               </svg>
             </div>
-            <p class="l-face-prompt__title">Ativar Face ID?</p>
-            <p class="l-face-prompt__sub">Entre mais rápido na próxima vez sem precisar digitar senha.</p>
+            <p class="l-face-prompt__title">Cadastro facial obrigatório</p>
+            <p class="l-face-prompt__sub">Por segurança, o acesso ao sistema é feito por reconhecimento facial. Cadastre seu rosto para continuar — após a aprovação, você entrará apenas com o Face ID.</p>
             <button class="l-btn" @click="cadastrarAgora">Configurar Face ID</button>
-            <button class="l-link-btn" @click="router.replace('/')">Agora não</button>
+            <button class="l-link-btn" @click="sairSemCadastrar">Sair</button>
           </div>
           </div>
 
         <!-- ══ FACE LOGIN ══ -->
         <div v-else-if="mode === 'face'" class="l-pane">
             <p class="l-pane__label">RECONHECIMENTO FACIAL</p>
+
+            <Transition name="fade">
+              <p v-if="faceNotice" class="l-face-notice">{{ faceNotice }}</p>
+            </Transition>
 
             <!-- Carregando modelos -->
             <div v-if="faceStatus === 'loading'" class="l-face-loading">
@@ -315,7 +319,7 @@
             <!-- Passo 3: concluído -->
             <div v-else-if="cadStep === 'done'" class="l-done">
               <div class="l-done__icon">✓</div>
-              <p class="l-done__msg">Solicitação enviada!<br>Aguarde a aprovação do administrador.</p>
+              <p class="l-done__msg">Solicitação enviada!<br>Após a aprovação do administrador,<br>entre usando o <b>Face ID</b>.</p>
               <button class="l-link-btn" @click="switchMode('login')">Voltar ao login</button>
             </div>
           </div>
@@ -444,6 +448,7 @@ type FaceStatus = "idle" | "loading" | "scanning" | "matched" | "error";
 const faceStatus   = ref<FaceStatus>("idle");
 const faceDetected = ref(false);
 const scanProgress = ref(0);
+const faceNotice   = ref<string | null>(null);
 const faceErro     = ref<string | null>(null);
 const faceNotFound = ref(false);
 const faceVideoRef = ref<HTMLVideoElement | null>(null);
@@ -806,6 +811,9 @@ async function submeterCadastro() {
 
     if (dbErr) throw new Error("Erro ao enviar solicitação: " + dbErr.message);
 
+    // A partir daqui o acesso será apenas por Face ID — encerra a sessão por senha
+    if (userId) await supabase.auth.signOut();
+
     isCadCam  = false;
     stopStream(cadStream);
     cadExistingUser.value = false;
@@ -845,18 +853,44 @@ async function entrar() {
     return;
   }
 
-  // Para outros usuários: sugere cadastrar Face ID se ainda não tem
+  const uid = authData.user!.id;
+
+  // Conta já tem Face ID aprovado: o acesso é exclusivamente facial
   const { data: faceRows } = await supabase
     .from("face_descriptors")
     .select("id")
-    .eq("user_id", authData.user!.id)
+    .eq("user_id", uid)
     .limit(1);
 
-  if (!faceRows || faceRows.length === 0) {
-    showFacePrompt.value = true;
-  } else {
-    await router.replace("/");
+  if (faceRows && faceRows.length > 0) {
+    await supabase.auth.signOut();
+    switchMode("face");
+    faceNotice.value = "Esta conta usa Face ID. Posicione seu rosto para entrar.";
+    return;
   }
+
+  // Cadastro facial já enviado e aguardando aprovação
+  const { data: pendRows } = await supabase
+    .from("pending_face_registrations")
+    .select("id")
+    .eq("user_id", uid)
+    .eq("status", "pending")
+    .limit(1);
+
+  if (pendRows && pendRows.length > 0) {
+    await supabase.auth.signOut();
+    loginErro.value = "Seu cadastro facial está aguardando aprovação do administrador.";
+    return;
+  }
+
+  // Primeiro acesso: cadastro facial é obrigatório para continuar
+  showFacePrompt.value = true;
+}
+
+async function sairSemCadastrar() {
+  await supabase.auth.signOut();
+  showFacePrompt.value = false;
+  senha.value = "";
 }
 
 function cadastrarAgora() {
@@ -883,6 +917,7 @@ function switchMode(m: Mode) {
   faceStatus.value      = "idle";
   faceDetected.value    = false;
   scanProgress.value    = 0;
+  faceNotice.value      = null;
   loginSub.value        = "none";
   forgotEmail.value     = "";
   forgotErro.value      = null;
@@ -1207,6 +1242,16 @@ onUnmounted(stopAll);
 .l-caps {
   font-size: 10px; letter-spacing: .06em;
   color: #D9A441; margin: 8px 0 0;
+}
+
+// ─── Aviso Face ID obrigatório ───────────────────────────────────────────────
+.l-face-notice {
+  font-size: 11.5px; line-height: 1.5;
+  color: #D9A441; margin: 0 0 16px;
+  padding: 10px 12px;
+  border: 1px solid rgba(217,164,65,.25);
+  border-radius: 2px;
+  background: rgba(217,164,65,.06);
 }
 
 // ─── Botões ──────────────────────────────────────────────────────────────────
