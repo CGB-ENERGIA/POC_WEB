@@ -9,6 +9,42 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      mobile_face_pending: {
+        Row: {
+          id: string;
+          matricula: string;
+          nome: string;
+          descriptors: Json;
+          photo_base64: string | null;
+          status: string;
+          created_at: string;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          matricula: string;
+          nome: string;
+          descriptors: Json;
+          photo_base64?: string | null;
+          status?: string;
+          created_at?: string;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          matricula?: string;
+          nome?: string;
+          descriptors?: Json;
+          photo_base64?: string | null;
+          status?: string;
+          created_at?: string;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+        };
+        Relationships: [];
+      };
       checklist_photos: {
         Row: {
           created_at: string;
@@ -233,6 +269,19 @@ export type Database = {
       get_server_time: {
         Args: Record<string, never>;
         Returns: string;
+      };
+      mobile_face_status: {
+        Args: { p_matricula: string };
+        Returns: string;
+      };
+      mobile_face_match: {
+        Args: { p_descriptor: number[] };
+        Returns: {
+          matricula?: string;
+          nome?: string;
+          distance?: number;
+          error?: string;
+        };
       };
     };
     Enums: Record<string, never>;

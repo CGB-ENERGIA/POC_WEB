@@ -120,7 +120,15 @@
               {{ formatDate(r.created_at) }}
             </p>
             <q-chip
-              v-if="r.user_id"
+              v-if="r.source === 'mobile'"
+              size="xs"
+              color="deep-orange-8"
+              text-color="white"
+              icon="mdi-cellphone"
+              label="Checklist Mobile"
+            />
+            <q-chip
+              v-else-if="r.user_id"
               size="xs"
               color="blue-grey-8"
               text-color="white"
@@ -185,7 +193,15 @@
             </q-item-section>
 
             <q-item-section>
-              <q-item-label class="ap-hist-name">{{ r.name }}</q-item-label>
+              <q-item-label class="ap-hist-name">
+                {{ r.name }}
+                <q-badge
+                  v-if="r.source === 'mobile'"
+                  color="deep-orange-8"
+                  label="Mobile"
+                  class="q-ml-xs"
+                />
+              </q-item-label>
               <q-item-label caption class="ap-hist-email">{{ r.email }}</q-item-label>
             </q-item-section>
 
@@ -238,6 +254,7 @@ interface Registration {
   created_at: string;
   reviewed_at: string | null;
   reviewed_by: string | null;
+  source: "web" | "mobile";
 }
 
 const router   = useRouter();
@@ -258,21 +275,46 @@ onMounted(async () => {
 
 async function fetchAll() {
   loading.value = true;
-  const { data, error } = await supabase
-    .from("pending_face_registrations")
-    .select("id, name, email, user_id, photo_base64, status, created_at, reviewed_at, reviewed_by")
-    .order("created_at", { ascending: false });
+
+  const [web, mobile] = await Promise.all([
+    supabase
+      .from("pending_face_registrations")
+      .select("id, name, email, user_id, photo_base64, status, created_at, reviewed_at, reviewed_by")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("mobile_face_pending")
+      .select("id, nome, matricula, photo_base64, status, created_at, reviewed_at, reviewed_by")
+      .order("created_at", { ascending: false }),
+  ]);
 
   loading.value = false;
+  const error = web.error ?? mobile.error;
   if (error) { $q.notify({ type: "negative", message: "Erro ao carregar: " + error.message }); return; }
 
-  pending.value = (data ?? []).filter((r) => r.status === "pending");
-  history.value = (data ?? []).filter((r) => r.status !== "pending").slice(0, 20);
+  const all: Registration[] = [
+    ...(web.data ?? []).map((r) => ({ ...r, source: "web" as const })),
+    ...(mobile.data ?? []).map((r) => ({
+      id: r.id,
+      name: r.nome,
+      email: `Matrícula ${r.matricula}`,
+      user_id: null,
+      photo_base64: r.photo_base64,
+      status: r.status as Registration["status"],
+      created_at: r.created_at,
+      reviewed_at: r.reviewed_at,
+      reviewed_by: r.reviewed_by,
+      source: "mobile" as const,
+    })),
+  ].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+
+  pending.value = all.filter((r) => r.status === "pending");
+  history.value = all.filter((r) => r.status !== "pending").slice(0, 20);
 }
 
 async function aprovar(r: Registration) {
   actionId.value = r.id + "_a";
-  const { data, error } = await supabase.rpc("approve_face_registration", { reg_id: r.id });
+  const fn = r.source === "mobile" ? "approve_mobile_face_registration" : "approve_face_registration";
+  const { data, error } = await supabase.rpc(fn, { reg_id: r.id });
   actionId.value = null;
 
   if (error || data?.error) {
@@ -286,7 +328,8 @@ async function aprovar(r: Registration) {
 
 async function rejeitar(r: Registration) {
   actionId.value = r.id + "_r";
-  const { error } = await supabase.rpc("reject_face_registration", { reg_id: r.id });
+  const fn = r.source === "mobile" ? "reject_mobile_face_registration" : "reject_face_registration";
+  const { error } = await supabase.rpc(fn, { reg_id: r.id });
   actionId.value = null;
 
   if (error) { $q.notify({ type: "negative", message: error.message }); return; }
@@ -304,7 +347,8 @@ async function remover(r: Registration) {
     cancel: { label: "Cancelar", flat: true },
   }).onOk(async () => {
     actionId.value = r.id + "_del";
-    const { data, error } = await supabase.rpc("remove_face_user", { reg_id: r.id });
+    const fn = r.source === "mobile" ? "remove_mobile_face_registration" : "remove_face_user";
+    const { data, error } = await supabase.rpc(fn, { reg_id: r.id });
     actionId.value = null;
     if (error || data?.error) {
       $q.notify({ type: "negative", message: data?.error ?? error?.message ?? "Erro ao remover." });
