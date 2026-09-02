@@ -192,7 +192,7 @@
           </div>
 
           <div class="col-12 col-sm-2">
-            <div class="fgroup__label q-mb-xs">META SEMANAL</div>
+            <div class="fgroup__label q-mb-xs">META SEMANAL (obs/sem)</div>
             <div class="row items-center no-wrap gap-sm">
               <q-btn flat round dense icon="mdi-minus" size="sm" @click="ovMeta = Math.max(0, +(ovMeta - 0.5).toFixed(1))" />
               <q-input
@@ -203,7 +203,6 @@
                 style="width:72px"
               />
               <q-btn flat round dense icon="mdi-plus" size="sm" @click="ovMeta = +(ovMeta + 0.5).toFixed(1)" />
-              <span class="text-caption text-grey-6 q-ml-xs">obs/sem</span>
             </div>
             <div class="text-caption text-grey-5 q-mt-xs">Mensal: {{ (ovMeta * 4).toFixed(1) }} obs</div>
           </div>
