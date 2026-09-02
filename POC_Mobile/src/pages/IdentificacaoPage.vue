@@ -82,77 +82,6 @@
           />
         </template>
 
-        <!-- ══ 2. Escolha de biometria ══ -->
-        <template v-else-if="step === 'choice'">
-          <div class="text-center q-mb-lg">
-            <div class="section-title q-mb-xs">Como deseja entrar?</div>
-            <div class="section-subtitle">{{ employee?.nomeCompleto }}</div>
-          </div>
-
-          <!-- Face ID (principal) -->
-          <q-btn
-            v-if="hasFace"
-            class="full-width biometric-btn q-mb-sm"
-            unelevated no-caps size="lg"
-            color="primary"
-            @click="step = 'scan-face'"
-          >
-            <div class="biometric-btn__inner">
-              <q-icon name="mdi-face-recognition" size="28px" />
-              <div class="biometric-btn__text">
-                <span class="biometric-btn__label">Face ID</span>
-                <span class="biometric-btn__sub">Reconhecimento facial</span>
-              </div>
-              <q-icon name="mdi-chevron-right" size="20px" opacity=".6" />
-            </div>
-          </q-btn>
-
-          <!-- Digital (já cadastrada) -->
-          <q-btn
-            v-if="hasDigital"
-            class="full-width biometric-btn biometric-btn--alt q-mb-md"
-            unelevated no-caps size="lg"
-            :color="hasFace ? 'grey-8' : 'primary'"
-            @click="step = 'scan-digital'"
-          >
-            <div class="biometric-btn__inner">
-              <q-icon name="mdi-fingerprint" size="28px" />
-              <div class="biometric-btn__text">
-                <span class="biometric-btn__label">Digital</span>
-                <span class="biometric-btn__sub">Biometria do dispositivo</span>
-              </div>
-              <q-icon name="mdi-chevron-right" size="20px" opacity=".6" />
-            </div>
-          </q-btn>
-
-          <!-- Cadastrar Digital (ainda não cadastrada) -->
-          <q-btn
-            v-if="!hasDigital"
-            class="full-width biometric-btn biometric-btn--alt q-mb-md"
-            unelevated no-caps size="lg" color="grey-8"
-            @click="iniciarCadastroDigital('choice')"
-          >
-            <div class="biometric-btn__inner">
-              <q-icon name="mdi-fingerprint" size="28px" />
-              <div class="biometric-btn__text">
-                <span class="biometric-btn__label">Cadastrar Digital</span>
-                <span class="biometric-btn__sub">Ativar biometria do dispositivo</span>
-              </div>
-              <q-icon name="mdi-plus" size="20px" opacity=".6" />
-            </div>
-          </q-btn>
-
-          <q-separator class="q-my-md" />
-
-          <q-btn
-            flat no-caps color="grey-6"
-            label="Entrar pela matrícula"
-            icon="mdi-badge-account-outline"
-            class="full-width"
-            @click="entrarNoSistema()"
-          />
-          <q-btn flat no-caps color="grey-6" label="Voltar" class="full-width q-mt-xs" @click="voltarIdent" />
-        </template>
 
         <!-- ══ 3a. Scan Face ID ══ -->
         <template v-else-if="step === 'scan-face'">
@@ -196,50 +125,6 @@
           />
         </template>
 
-        <!-- ══ 4. Sugestão de cadastro biométrico (primeiro acesso) ══ -->
-        <template v-else-if="step === 'enroll-choice'">
-          <div class="text-center q-mb-lg">
-            <div class="face-badge q-mx-auto q-mb-md">
-              <q-icon name="mdi-shield-check" size="26px" color="primary" />
-            </div>
-            <div class="section-title q-mb-xs">Ative a biometria</div>
-            <div class="section-subtitle">
-              Escolha como quer entrar nas próximas vezes. Você pode cadastrar
-              agora ou entrar apenas com a matrícula.
-            </div>
-          </div>
-
-          <q-btn
-            class="full-width biometric-btn q-mb-sm"
-            unelevated no-caps size="lg" color="primary"
-            @click="step = 'enroll-face'"
-          >
-            <div class="biometric-btn__inner">
-              <q-icon name="mdi-face-recognition" size="28px" />
-              <div class="biometric-btn__text">
-                <span class="biometric-btn__label">Face ID</span>
-                <span class="biometric-btn__sub">Exige aprovação do admin</span>
-              </div>
-            </div>
-          </q-btn>
-
-          <q-btn
-            class="full-width biometric-btn biometric-btn--alt q-mb-md"
-            unelevated no-caps size="lg" color="grey-8"
-            @click="iniciarCadastroDigital('enroll-choice')"
-          >
-            <div class="biometric-btn__inner">
-              <q-icon name="mdi-fingerprint" size="28px" />
-              <div class="biometric-btn__text">
-                <span class="biometric-btn__label">Digital</span>
-                <span class="biometric-btn__sub">Pronto para usar imediatamente</span>
-              </div>
-            </div>
-          </q-btn>
-
-          <q-separator class="q-my-md" />
-          <q-btn flat no-caps color="grey-6" label="Entrar sem biometria" class="full-width" @click="entrarNoSistema()" />
-        </template>
 
         <!-- ══ 5a. Cadastro Face ID ══ -->
         <template v-else-if="step === 'enroll-face'">
@@ -325,9 +210,8 @@ const supabase = getSupabase();
 
 type Step =
   | "ident"
-  | "choice"
   | "scan-face" | "scan-digital"
-  | "enroll-choice" | "enroll-face" | "enroll-digital"
+  | "enroll-face" | "enroll-digital"
   | "enroll-face-done" | "enroll-digital-done";
 
 const step         = ref<Step>("ident");
@@ -382,29 +266,23 @@ async function onContinue() {
       supabase.rpc("mobile_digital_status", { p_matricula: mat }),
     ]);
 
-    hasFace.value    = faceRes.data    === "approved";
-    hasDigital.value = digRes.data     === "registered";
+    hasFace.value    = faceRes.data === "approved";
+    hasDigital.value = digRes.data  === "registered";
 
-    const facePending = faceRes.data === "pending";
-
-    // Carrega os credential IDs para o WebAuthn
     if (hasDigital.value) {
+      // Tem digital → carrega credentials e abre biometria direto
       const { data: creds } = await supabase.rpc("mobile_digital_credentials", { p_matricula: mat });
       credentialIds.value = (creds ?? []).map((r: { credential_id: string }) => r.credential_id);
-    }
-
-    if (hasFace.value || hasDigital.value) {
-      // Tem pelo menos uma biometria pronta → tela de escolha
-      step.value = "choice";
-    } else if (facePending) {
-      // Face pendente, sem digital → entra pela matrícula com aviso
-      entrarNoSistema("Seu cadastro de Face ID está em análise. Após aprovação, use biometria para entrar.");
+      step.value = "scan-digital";
+    } else if (hasFace.value) {
+      // Sem digital mas tem Face ID → usa face direto
+      step.value = "scan-face";
     } else {
-      // Sem biometria → sugere cadastrar
-      step.value = "enroll-choice";
+      // Sem nenhuma biometria → cadastrar digital direto
+      enrollDigitalFrom.value = "ident";
+      step.value = "enroll-digital";
     }
   } catch {
-    // Sem conexão — entra normalmente
     entrarNoSistema();
   } finally {
     loading.value = false;
@@ -431,11 +309,6 @@ function onFaceMatched(matchedMatricula: string) {
 
 function onDigitalMatched() { entrarNoSistema(); }
 
-function iniciarCadastroDigital(from: Step) {
-  enrollDigitalFrom.value = from;
-  step.value = "enroll-digital";
-}
-
 function onFaceEnrolled()    { step.value = "enroll-face-done"; }
 function onDigitalEnrolled() {
   hasDigital.value = true;
@@ -443,7 +316,7 @@ function onDigitalEnrolled() {
 }
 
 function voltarIdent()  { step.value = "ident"; scanErro.value = null; }
-function voltarChoice() { step.value = hasFace.value || hasDigital.value ? "choice" : "ident"; scanErro.value = null; }
+function voltarChoice() { step.value = "ident"; scanErro.value = null; }
 </script>
 
 <style scoped>
