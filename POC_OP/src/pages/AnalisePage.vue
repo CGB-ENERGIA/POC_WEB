@@ -175,6 +175,12 @@
               size="sm" color="grey-7"
               @click="abrirEdicao(item)"
             />
+            <q-btn
+              flat icon="mdi-delete-outline" label="Apagar"
+              size="sm" color="negative"
+              class="q-ml-auto"
+              @click="abrirDelete(item)"
+            />
           </div>
         </div>
       </div>
@@ -261,6 +267,30 @@
       </q-card>
     </q-dialog>
 
+    <!-- Dialog confirmação de apagar -->
+    <q-dialog v-model="deleteDialog.open" persistent>
+      <q-card style="min-width:320px;max-width:440px;width:100%">
+        <q-card-section class="row items-center q-pb-none">
+          <q-icon name="mdi-delete-outline" color="negative" size="24px" class="q-mr-sm" />
+          <div class="text-subtitle1 text-weight-bold">Apagar Resolução</div>
+          <q-space />
+          <q-btn flat round dense icon="mdi-close" @click="deleteDialog.open = false" :disable="deleteDialog.deleting" />
+        </q-card-section>
+        <q-card-section>
+          <div class="text-body2">
+            Tem certeza que deseja apagar esta resolução? Esta ação não pode ser desfeita.
+          </div>
+          <div v-if="deleteDialog.error" class="text-negative text-caption q-mt-sm">
+            <q-icon name="mdi-alert-circle-outline" size="14px" /> {{ deleteDialog.error }}
+          </div>
+        </q-card-section>
+        <q-card-actions align="right" class="q-pb-md q-px-md">
+          <q-btn flat label="Cancelar" color="grey-7" @click="deleteDialog.open = false" :disable="deleteDialog.deleting" />
+          <q-btn unelevated color="negative" label="Apagar" icon="mdi-delete" :loading="deleteDialog.deleting" @click="confirmarDelete" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <!-- Lightbox foto -->
     <q-dialog v-model="fotoDialog.open">
       <q-card style="max-width:90vw;max-height:90vh;overflow:hidden;background:transparent;box-shadow:none">
@@ -277,6 +307,7 @@ import {
   fetchAnalisePendentes,
   atualizarStatusAnalise,
   editarAnalise,
+  deletarResolucao,
   type ResolucaoRow,
   type ResponseRow,
 } from "@/lib/dashboard";
@@ -481,6 +512,35 @@ async function confirmarEdicao() {
     edicaoDialog.error = (e as Error).message;
   } finally {
     edicaoDialog.saving = false;
+  }
+}
+
+// ── Dialog apagar ─────────────────────────────────────────────────────────────
+const deleteDialog = reactive({
+  open: false,
+  item: null as ItemAnalise | null,
+  deleting: false,
+  error: null as string | null,
+});
+
+function abrirDelete(item: ItemAnalise) {
+  deleteDialog.item = item;
+  deleteDialog.error = null;
+  deleteDialog.open = true;
+}
+
+async function confirmarDelete() {
+  if (!deleteDialog.item) return;
+  deleteDialog.deleting = true;
+  deleteDialog.error = null;
+  try {
+    await deletarResolucao(deleteDialog.item.id);
+    itens.value = itens.value.filter((i) => i.id !== deleteDialog.item!.id);
+    deleteDialog.open = false;
+  } catch (e) {
+    deleteDialog.error = (e as Error).message;
+  } finally {
+    deleteDialog.deleting = false;
   }
 }
 

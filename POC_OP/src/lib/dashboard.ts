@@ -269,6 +269,11 @@ export async function editarAnalise(
   return data as ResolucaoRow;
 }
 
+export async function deletarResolucao(id: string): Promise<void> {
+  const { error } = await supabase.from("nc_resolucoes").delete().eq("id", id);
+  if (error) throw error;
+}
+
 /** Filtra gerência de employee lookup. */
 export function filterByGerencia(
   subs: SubmissionRow[],
