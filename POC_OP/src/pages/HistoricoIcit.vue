@@ -273,9 +273,7 @@ const rawRows = computed<Row[]>(() => {
     if (!info) continue;
     const sub = subs.find(s => s.id === r.submission_id);
     if (!sub) continue;
-    const equipes: string[] = Array.isArray(sub.membros)
-      ? (sub.membros as string[])
-      : sub.equipe ? [sub.equipe] : [];
+    const equipes: string[] = sub.equipe ? [sub.equipe] : [];
     for (const eq of equipes) {
       if (!equipeData[eq]) equipeData[eq] = {};
       if (!equipeData[eq][info.month]) equipeData[eq][info.month] = { conf: 0, total: 0 };
