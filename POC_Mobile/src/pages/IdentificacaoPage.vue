@@ -92,15 +92,6 @@
             </div>
           </transition>
 
-          <transition name="fade">
-            <q-banner v-if="identNotice" rounded class="ident-banner q-mb-md">
-              <template #avatar>
-                <q-icon name="mdi-clock-outline" color="warning" />
-              </template>
-              {{ identNotice }}
-            </q-banner>
-          </transition>
-
           <q-btn
             class="full-width btn-primary-lg q-mt-md"
             color="primary"
@@ -115,27 +106,27 @@
           />
         </template>
 
-        <!-- ══ Passo 2a: cadastro facial obrigatório (primeiro acesso) ══ -->
-        <template v-else-if="step === 'enroll-intro'">
+        <!-- ══ Passo 2: sugestão de cadastro facial (não obrigatório) ══ -->
+        <template v-else-if="step === 'enroll-prompt'">
           <div class="text-center q-mb-md">
             <div class="face-badge q-mx-auto q-mb-md">
               <q-icon name="mdi-face-recognition" size="26px" color="primary" />
             </div>
-            <div class="section-title q-mb-xs">Cadastro facial obrigatório</div>
+            <div class="section-title q-mb-xs">Ative o Face ID</div>
             <div class="section-subtitle">
-              Por segurança, a entrada no checklist é feita por reconhecimento
-              facial. Cadastre seu rosto para continuar — após a aprovação do
-              administrador, você entrará apenas com o Face ID.
+              Cadastre seu rosto para entrar rapidamente nas próximas
+              vezes — sem precisar selecionar a matrícula. Leva menos de
+              um minuto e você pode fazer isso agora ou depois.
             </div>
           </div>
 
           <q-btn
-            class="full-width btn-primary-lg q-mt-md"
+            class="full-width btn-primary-lg q-mt-lg"
             color="primary"
             size="lg"
             unelevated
             no-caps
-            label="Configurar Face ID"
+            label="Cadastrar Face ID agora"
             icon="mdi-face-recognition"
             @click="step = 'enroll'"
           />
@@ -143,13 +134,13 @@
             class="full-width q-mt-sm"
             flat
             no-caps
-            color="grey-7"
-            label="Voltar"
-            @click="voltarIdent"
+            color="grey-6"
+            label="Entrar sem Face ID"
+            @click="entrarNoSistema"
           />
         </template>
 
-        <!-- ══ Passo 2b: captura guiada ══ -->
+        <!-- ══ Passo 3: captura guiada ══ -->
         <template v-else-if="step === 'enroll'">
           <div class="section-title q-mb-xs">Cadastro facial</div>
           <div class="section-subtitle q-mb-md">
@@ -160,20 +151,21 @@
             :matricula="employee?.matricula"
             :nome="employee?.nomeCompleto"
             @enrolled="onEnrolled"
-            @cancel="voltarIdent"
+            @cancel="entrarNoSistema"
           />
         </template>
 
-        <!-- ══ Passo 2c: cadastro enviado ══ -->
+        <!-- ══ Passo 4: cadastro enviado — entra mesmo assim ══ -->
         <template v-else-if="step === 'enroll-done'">
           <div class="text-center">
             <div class="face-badge face-badge--ok q-mx-auto q-mb-md">
               <q-icon name="mdi-check" size="28px" color="positive" />
             </div>
-            <div class="section-title q-mb-xs">Cadastro enviado</div>
+            <div class="section-title q-mb-xs">Cadastro enviado!</div>
             <div class="section-subtitle q-mb-lg">
-              Seu cadastro facial foi enviado para aprovação do administrador.
-              Após a aprovação, entre usando o <b>Face ID</b>.
+              Seu cadastro facial foi enviado para aprovação. Enquanto isso,
+              você pode continuar entrando pela matrícula normalmente.
+              Após a aprovação, a entrada será pelo <b>Face ID</b>.
             </div>
             <q-btn
               class="full-width btn-primary-lg"
@@ -181,13 +173,14 @@
               size="lg"
               unelevated
               no-caps
-              label="Entendi"
-              @click="voltarIdent"
+              label="Entrar no sistema"
+              icon-right="mdi-arrow-right"
+              @click="entrarNoSistema"
             />
           </div>
         </template>
 
-        <!-- ══ Passo 3: entrada por Face ID ══ -->
+        <!-- ══ Passo 5: entrada por Face ID (já aprovado) ══ -->
         <template v-else-if="step === 'scan'">
           <div class="section-title q-mb-xs">Face ID</div>
           <div class="section-subtitle q-mb-md">
@@ -207,6 +200,19 @@
             @matched="onFaceMatched"
             @cancel="voltarIdent"
           />
+          <!-- Fallback: se o Face ID falhar 3x, permite entrar pela matrícula -->
+          <transition name="fade">
+            <q-btn
+              v-if="scanErro"
+              class="full-width q-mt-sm"
+              flat
+              no-caps
+              color="grey-6"
+              label="Entrar pela matrícula"
+              icon="mdi-badge-account-outline"
+              @click="entrarNoSistema"
+            />
+          </transition>
         </template>
 
       </q-card>
@@ -237,7 +243,7 @@ const router = useRouter();
 const session = useSessionStore();
 const supabase = getSupabase();
 
-type Step = "ident" | "enroll-intro" | "enroll" | "enroll-done" | "scan";
+type Step = "ident" | "enroll-prompt" | "enroll" | "enroll-done" | "scan";
 const step = ref<Step>("ident");
 
 const matricula = ref("");
@@ -245,7 +251,6 @@ const employee = ref<Employee | null>(null);
 const filteredOptions = ref<Employee[]>([...employees]);
 const touched = ref(false);
 const loading = ref(false);
-const identNotice = ref<string | null>(null);
 const scanErro = ref<string | null>(null);
 const scanKey = ref(0);
 
@@ -262,7 +267,6 @@ const initials = computed(() => {
 
 function resolveEmployee(value: string | null) {
   employee.value = value ? findByMatricula(value) ?? null : null;
-  identNotice.value = null;
 }
 
 function onMatriculaChange(value: string | null) {
@@ -292,45 +296,48 @@ watch(matricula, (val) => {
 async function onContinue() {
   if (!employee.value) return;
   loading.value = true;
-  identNotice.value = null;
 
-  // Decide o fluxo pelo status do cadastro facial da matrícula
-  const { data, error } = await supabase.rpc("mobile_face_status", {
-    p_matricula: employee.value.matricula,
-  });
-  loading.value = false;
+  try {
+    const { data } = await supabase.rpc("mobile_face_status", {
+      p_matricula: employee.value.matricula,
+    });
 
-  if (error) {
-    // Sem conexão com o Supabase: mantém o fluxo antigo para não travar o campo
+    if (data === "approved") {
+      // Face ID cadastrado e aprovado → usa reconhecimento facial para entrar
+      scanErro.value = null;
+      step.value = "scan";
+    } else if (data === "pending") {
+      // Cadastro aguardando aprovação → entra normalmente, mostra aviso
+      entrarNoSistema("Seu cadastro facial está em análise. Após aprovação, a entrada será pelo Face ID.");
+    } else {
+      // Sem face cadastrada → sugere cadastrar (não obriga)
+      step.value = "enroll-prompt";
+    }
+  } catch {
+    // Sem conexão — entra normalmente
     entrarNoSistema();
-    return;
-  }
-
-  if (data === "approved") {
-    scanErro.value = null;
-    step.value = "scan";
-  } else if (data === "pending") {
-    identNotice.value =
-      "Seu cadastro facial está aguardando aprovação do administrador.";
-  } else {
-    step.value = "enroll-intro";
+  } finally {
+    loading.value = false;
   }
 }
 
-function entrarNoSistema() {
+function entrarNoSistema(aviso?: string) {
   if (!employee.value) return;
   session.login(
     employee.value,
     employee.value.gerencia === "SESMT" ? "GSTC" : "GOMAN"
   );
+  if (aviso) {
+    // Guarda o aviso para exibir no home (via sessionStorage)
+    try { sessionStorage.setItem("cgb:home-notice", aviso); } catch { /* ok */ }
+  }
   void router.replace({ name: "home" });
 }
 
 function onFaceMatched(matchedMatricula: string) {
   if (matchedMatricula !== employee.value?.matricula) {
-    scanErro.value =
-      "O rosto reconhecido não corresponde à matrícula informada.";
-    scanKey.value++; // reinicia o scanner
+    scanErro.value = "O rosto reconhecido não corresponde à matrícula informada.";
+    scanKey.value++;
     return;
   }
   entrarNoSistema();
