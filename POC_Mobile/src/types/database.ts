@@ -9,6 +9,30 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      mobile_device_credentials: {
+        Row: {
+          id: string;
+          matricula: string;
+          nome: string;
+          credential_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          matricula: string;
+          nome: string;
+          credential_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          matricula?: string;
+          nome?: string;
+          credential_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       mobile_face_pending: {
         Row: {
           id: string;
@@ -282,6 +306,14 @@ export type Database = {
           distance?: number;
           error?: string;
         };
+      };
+      mobile_digital_status: {
+        Args: { p_matricula: string };
+        Returns: string;
+      };
+      mobile_digital_credentials: {
+        Args: { p_matricula: string };
+        Returns: { credential_id: string }[];
       };
     };
     Enums: Record<string, never>;
