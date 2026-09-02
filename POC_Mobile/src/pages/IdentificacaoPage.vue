@@ -107,7 +107,7 @@
             </div>
           </q-btn>
 
-          <!-- Digital -->
+          <!-- Digital (já cadastrada) -->
           <q-btn
             v-if="hasDigital"
             class="full-width biometric-btn biometric-btn--alt q-mb-md"
@@ -122,6 +122,23 @@
                 <span class="biometric-btn__sub">Biometria do dispositivo</span>
               </div>
               <q-icon name="mdi-chevron-right" size="20px" opacity=".6" />
+            </div>
+          </q-btn>
+
+          <!-- Cadastrar Digital (ainda não cadastrada) -->
+          <q-btn
+            v-if="!hasDigital"
+            class="full-width biometric-btn biometric-btn--alt q-mb-md"
+            unelevated no-caps size="lg" color="grey-8"
+            @click="iniciarCadastroDigital('choice')"
+          >
+            <div class="biometric-btn__inner">
+              <q-icon name="mdi-fingerprint" size="28px" />
+              <div class="biometric-btn__text">
+                <span class="biometric-btn__label">Cadastrar Digital</span>
+                <span class="biometric-btn__sub">Ativar biometria do dispositivo</span>
+              </div>
+              <q-icon name="mdi-plus" size="20px" opacity=".6" />
             </div>
           </q-btn>
 
@@ -209,7 +226,7 @@
           <q-btn
             class="full-width biometric-btn biometric-btn--alt q-mb-md"
             unelevated no-caps size="lg" color="grey-8"
-            @click="step = 'enroll-digital'"
+            @click="iniciarCadastroDigital('enroll-choice')"
           >
             <div class="biometric-btn__inner">
               <q-icon name="mdi-fingerprint" size="28px" />
@@ -246,7 +263,7 @@
             :matricula="employee?.matricula"
             :nome="employee?.nomeCompleto"
             @enrolled="onDigitalEnrolled"
-            @cancel="step = 'enroll-choice'"
+            @cancel="step = enrollDigitalFrom"
           />
         </template>
 
@@ -321,9 +338,10 @@ const touched      = ref(false);
 const loading      = ref(false);
 const scanErro     = ref<string | null>(null);
 const scanKey      = ref(0);
-const hasFace      = ref(false);
-const hasDigital   = ref(false);
-const credentialIds = ref<string[]>([]);
+const hasFace           = ref(false);
+const hasDigital        = ref(false);
+const credentialIds     = ref<string[]>([]);
+const enrollDigitalFrom = ref<Step>("enroll-choice");
 
 const canContinue = computed(() => employee.value !== null);
 const initials    = computed(() => {
@@ -412,6 +430,11 @@ function onFaceMatched(matchedMatricula: string) {
 }
 
 function onDigitalMatched() { entrarNoSistema(); }
+
+function iniciarCadastroDigital(from: Step) {
+  enrollDigitalFrom.value = from;
+  step.value = "enroll-digital";
+}
 
 function onFaceEnrolled()    { step.value = "enroll-face-done"; }
 function onDigitalEnrolled() {
