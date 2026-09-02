@@ -55,50 +55,81 @@
     <div class="section-title q-mb-sm">O que deseja fazer?</div>
 
     <div class="column q-gutter-md">
-      <!-- Checklist GOMAN -->
-      <q-card
-        flat
-        class="action-tile action-tile--primary cursor-pointer"
-        @click="$router.push({ name: 'checklist-goman' })"
-      >
-        <q-card-section class="row items-center no-wrap q-pa-none">
-          <div class="action-tile__accent" />
-          <div class="row items-center no-wrap col q-pa-lg">
-            <q-avatar color="primary" text-color="white" size="56px" class="q-mr-md">
-              <q-icon name="mdi-wrench-outline" size="28px" />
-            </q-avatar>
-            <div class="col">
-              <div class="text-subtitle1 text-weight-bold">Checklist GOMAN</div>
-              <div class="text-caption text-grey-6 q-mt-xs">
-                {{ totalPerguntasGoman }} perguntas · Conforme / Não conforme
-              </div>
-            </div>
-            <q-icon name="mdi-chevron-right" size="24px" color="primary" />
-          </div>
-        </q-card-section>
-      </q-card>
 
-      <!-- Checklist GSTC -->
-      <q-card
-        flat
-        class="action-tile action-tile--primary cursor-pointer"
-        @click="$router.push({ name: 'checklist-gstc' })"
-      >
-        <q-card-section class="row items-center no-wrap q-pa-none">
+      <!-- Grupo OPERACIONAL -->
+      <q-card flat class="action-tile action-tile--primary">
+        <!-- Cabeçalho do grupo -->
+        <q-card-section
+          class="row items-center no-wrap q-pa-none cursor-pointer"
+          @click="operacionalAberto = !operacionalAberto"
+        >
           <div class="action-tile__accent" />
           <div class="row items-center no-wrap col q-pa-lg">
             <q-avatar color="primary" text-color="white" size="56px" class="q-mr-md">
-              <q-icon name="mdi-crane" size="28px" />
+              <q-icon name="mdi-clipboard-list-outline" size="28px" />
             </q-avatar>
             <div class="col">
-              <div class="text-subtitle1 text-weight-bold">Checklist GSTC</div>
+              <div class="text-subtitle1 text-weight-bold">Operacional</div>
               <div class="text-caption text-grey-6 q-mt-xs">
-                {{ totalPerguntasGstc }} perguntas · Conforme / Não conforme
+                Checklist de campo · GOMAN / GSTC
               </div>
             </div>
-            <q-icon name="mdi-chevron-right" size="24px" color="primary" />
+            <q-icon
+              :name="operacionalAberto ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+              size="24px" color="primary"
+              style="transition: transform .2s"
+            />
           </div>
         </q-card-section>
+
+        <!-- Sub-opções expansíveis -->
+        <q-slide-transition>
+          <div v-if="operacionalAberto">
+            <q-separator />
+
+            <!-- GOMAN -->
+            <q-item
+              clickable v-ripple
+              class="sub-option"
+              @click="$router.push({ name: 'checklist-goman' })"
+            >
+              <q-item-section avatar>
+                <q-avatar color="primary" text-color="white" size="40px">
+                  <q-icon name="mdi-wrench-outline" size="20px" />
+                </q-avatar>
+              </q-item-section>
+              <q-item-section>
+                <q-item-label class="text-weight-bold">Checklist GOMAN</q-item-label>
+                <q-item-label caption>{{ totalPerguntasGoman }} perguntas · Conforme / Não conforme</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-icon name="mdi-chevron-right" color="primary" />
+              </q-item-section>
+            </q-item>
+
+            <q-separator inset="item" />
+
+            <!-- GSTC -->
+            <q-item
+              clickable v-ripple
+              class="sub-option"
+              @click="$router.push({ name: 'checklist-gstc' })"
+            >
+              <q-item-section avatar>
+                <q-avatar color="primary" text-color="white" size="40px">
+                  <q-icon name="mdi-crane" size="20px" />
+                </q-avatar>
+              </q-item-section>
+              <q-item-section>
+                <q-item-label class="text-weight-bold">Checklist GSTC</q-item-label>
+                <q-item-label caption>{{ totalPerguntasGstc }} perguntas · Conforme / Não conforme</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-icon name="mdi-chevron-right" color="primary" />
+              </q-item-section>
+            </q-item>
+          </div>
+        </q-slide-transition>
       </q-card>
 
       <!-- Minhas Observações -->
@@ -144,6 +175,7 @@ function loadPeriodoSalvo(): PeriodoVisao {
 const session = useSessionStore();
 const observacoes = useObservacoesStore();
 const periodo = ref<PeriodoVisao>(loadPeriodoSalvo());
+const operacionalAberto = ref(false);
 const { getGoal, ensureLoaded } = useGoals();
 
 watch(periodo, (valor) => {
@@ -212,6 +244,11 @@ const totalPeriodo = computed(() =>
 const metaProgress = computed(() =>
   Math.min(100, Math.round((totalPeriodo.value / metaAtual.value) * 100))
 );
-
-
 </script>
+
+<style scoped>
+.sub-option {
+  padding: 12px 16px;
+  min-height: 64px;
+}
+</style>
