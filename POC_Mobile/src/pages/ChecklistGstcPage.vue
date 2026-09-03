@@ -665,9 +665,17 @@ function usarFotoLocal(foto: string) {
 
 async function onFotoNcCapturada(base64: string) {
   try {
-    modalFotoPreview.value = await compressBase64(base64);
-  } catch {
-    $q.notify({ type: "negative", message: "Não foi possível processar a foto", position: "top" });
+    const { date } = await getTrustedTime();
+    const compressed = await compressBase64(base64);
+    modalFotoPreview.value = await stampAuditPhoto(compressed, {
+      time: date,
+      observer: session.employee?.nomeCompleto ?? session.employee?.nome ?? "—",
+      equipe: equipe.value.trim(),
+    });
+  } catch (err) {
+    const message =
+      err instanceof ServerTimeError ? err.message : "Não foi possível processar a foto";
+    $q.notify({ type: "negative", message, position: "top" });
   }
 }
 
