@@ -273,7 +273,10 @@ watch(periodo, (valor) => {
   LocalStorage.set(PERIODO_VISAO_STORAGE_KEY, valor);
 });
 
-onMounted(() => { void ensureLoaded(); });
+onMounted(() => {
+  void ensureLoaded();
+  if (session.matricula) void observacoes.fetchSynced(session.matricula);
+});
 
 const matricula = computed(() => session.matricula);
 

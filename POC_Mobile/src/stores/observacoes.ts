@@ -54,10 +54,14 @@ export const useObservacoesStore = defineStore("observacoes", {
 
   getters: {
     byMatricula: (state) => (matricula: string) => {
-      // Itens locais não sincronizados
-      const localPending = state.items
-        .filter((o) => o.matricula === matricula)
-        .filter((o) => !isChecklist(o) || o.syncStatus !== "synced");
+      // Itens locais (todos: pending, failed, local e synced sem correspondente remoto ainda carregado)
+      const localItems = state.items.filter((o) => o.matricula === matricula);
+
+      // Enquanto syncedItems não foi carregado, inclui tudo do local para não zerar a contagem
+      const syncedLoaded = state.syncedItems.length > 0;
+      const localPending = syncedLoaded
+        ? localItems.filter((o) => !isChecklist(o) || o.syncStatus !== "synced")
+        : localItems;
 
       // Itens sincronizados do banco (últimos 35 dias)
       const synced = state.syncedItems.filter((o) => o.matricula === matricula);
