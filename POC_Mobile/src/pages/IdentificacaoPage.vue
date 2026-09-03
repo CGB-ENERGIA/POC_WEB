@@ -99,6 +99,14 @@
             @matched="onFaceMatched"
             @cancel="voltarChoice"
           />
+          <q-btn
+            v-if="hasDigital"
+            flat no-caps color="grey-6"
+            label="Usar digital"
+            icon="mdi-fingerprint"
+            class="full-width q-mt-sm"
+            @click="step = 'scan-digital'"
+          />
           <transition name="fade">
             <q-btn
               v-if="scanErro"
@@ -122,6 +130,14 @@
             :credential-ids="credentialIds"
             @matched="onDigitalMatched"
             @cancel="voltarChoice"
+          />
+          <q-btn
+            v-if="hasFace"
+            flat no-caps color="grey-6"
+            label="Usar Face ID"
+            icon="mdi-face-recognition"
+            class="full-width q-mt-sm"
+            @click="step = 'scan-face'"
           />
         </template>
 
