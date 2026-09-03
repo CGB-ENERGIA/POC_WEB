@@ -18,7 +18,7 @@ interface ChecklistDraftState {
 }
 
 export function useChecklistDraft(
-  auditagem: "GOMAN" | "GSTC",
+  auditagem: string,
   matricula: string,
   state: ChecklistDraftState
 ) {

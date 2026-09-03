@@ -132,7 +132,7 @@ export const useObservacoesStore = defineStore("observacoes", {
     },
 
     addChecklist(payload: {
-      auditagem: "GOMAN" | "GSTC";
+      auditagem: AuditagemCategoria;
       matricula: string;
       observador: string;
       base: string;

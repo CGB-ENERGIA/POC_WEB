@@ -132,6 +132,96 @@
         </q-slide-transition>
       </q-card>
 
+      <!-- Grupo ADMINISTRATIVO -->
+      <q-card flat class="action-tile action-tile--primary">
+        <q-card-section
+          class="row items-center no-wrap q-pa-none cursor-pointer"
+          @click="administrativoAberto = !administrativoAberto"
+        >
+          <div class="action-tile__accent" />
+          <div class="row items-center no-wrap col q-pa-lg">
+            <q-avatar color="primary" text-color="white" size="56px" class="q-mr-md">
+              <q-icon name="mdi-office-building-outline" size="28px" />
+            </q-avatar>
+            <div class="col">
+              <div class="text-subtitle1 text-weight-bold">Administrativo</div>
+              <div class="text-caption text-grey-6 q-mt-xs">
+                Escritório · Alojamento · Logística · Oficina
+              </div>
+            </div>
+            <q-icon
+              :name="administrativoAberto ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+              size="24px" color="primary"
+              style="transition: transform .2s"
+            />
+          </div>
+        </q-card-section>
+
+        <q-slide-transition>
+          <div v-if="administrativoAberto">
+            <q-separator />
+
+            <q-item clickable v-ripple class="sub-option" @click="$router.push({ name: 'checklist-administrativo' })">
+              <q-item-section avatar>
+                <q-avatar color="primary" text-color="white" size="40px">
+                  <q-icon name="mdi-domain" size="20px" />
+                </q-avatar>
+              </q-item-section>
+              <q-item-section>
+                <q-item-label class="text-weight-bold">Administrativo</q-item-label>
+                <q-item-label caption>EPI · Procedimento · Instalações prediais</q-item-label>
+              </q-item-section>
+              <q-item-section side><q-icon name="mdi-chevron-right" color="primary" /></q-item-section>
+            </q-item>
+
+            <q-separator inset="item" />
+
+            <q-item clickable v-ripple class="sub-option" @click="$router.push({ name: 'checklist-alojamento' })">
+              <q-item-section avatar>
+                <q-avatar color="primary" text-color="white" size="40px">
+                  <q-icon name="mdi-home-outline" size="20px" />
+                </q-avatar>
+              </q-item-section>
+              <q-item-section>
+                <q-item-label class="text-weight-bold">Alojamento</q-item-label>
+                <q-item-label caption>Repúblicas · Higiene · Estrutura</q-item-label>
+              </q-item-section>
+              <q-item-section side><q-icon name="mdi-chevron-right" color="primary" /></q-item-section>
+            </q-item>
+
+            <q-separator inset="item" />
+
+            <q-item clickable v-ripple class="sub-option" @click="$router.push({ name: 'checklist-logistica' })">
+              <q-item-section avatar>
+                <q-avatar color="primary" text-color="white" size="40px">
+                  <q-icon name="mdi-truck-outline" size="20px" />
+                </q-avatar>
+              </q-item-section>
+              <q-item-section>
+                <q-item-label class="text-weight-bold">Logística</q-item-label>
+                <q-item-label caption>APR · EPI · Veículos e equipamentos</q-item-label>
+              </q-item-section>
+              <q-item-section side><q-icon name="mdi-chevron-right" color="primary" /></q-item-section>
+            </q-item>
+
+            <q-separator inset="item" />
+
+            <q-item clickable v-ripple class="sub-option" @click="$router.push({ name: 'checklist-oficina' })">
+              <q-item-section avatar>
+                <q-avatar color="primary" text-color="white" size="40px">
+                  <q-icon name="mdi-car-wrench" size="20px" />
+                </q-avatar>
+              </q-item-section>
+              <q-item-section>
+                <q-item-label class="text-weight-bold">Oficina</q-item-label>
+                <q-item-label caption>EPI · Procedimento · Segurança veicular</q-item-label>
+              </q-item-section>
+              <q-item-section side><q-icon name="mdi-chevron-right" color="primary" /></q-item-section>
+            </q-item>
+          </div>
+        </q-slide-transition>
+      </q-card>
+
       <!-- Minhas Observações -->
       <q-card
         flat
@@ -176,6 +266,7 @@ const session = useSessionStore();
 const observacoes = useObservacoesStore();
 const periodo = ref<PeriodoVisao>(loadPeriodoSalvo());
 const operacionalAberto = ref(false);
+const administrativoAberto = ref(false);
 const { getGoal, ensureLoaded } = useGoals();
 
 watch(periodo, (valor) => {

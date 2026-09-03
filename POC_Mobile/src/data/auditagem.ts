@@ -1,4 +1,4 @@
-export type AuditagemCategoria = "GOMAN" | "GSTC";
+export type AuditagemCategoria = "GOMAN" | "GSTC" | "ADMINISTRATIVO" | "ALOJAMENTO" | "LOGISTICA" | "OFICINA";
 
 export const categoriasAuditagem: {
   value: AuditagemCategoria;

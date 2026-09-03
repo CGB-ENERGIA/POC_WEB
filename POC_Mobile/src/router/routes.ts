@@ -36,6 +36,30 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true },
       },
       {
+        path: "checklist-administrativo",
+        name: "checklist-administrativo",
+        component: () => import("@/pages/ChecklistAdministrativoPage.vue"),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: "checklist-alojamento",
+        name: "checklist-alojamento",
+        component: () => import("@/pages/ChecklistAlojamentoPage.vue"),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: "checklist-logistica",
+        name: "checklist-logistica",
+        component: () => import("@/pages/ChecklistLogisticaPage.vue"),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: "checklist-oficina",
+        name: "checklist-oficina",
+        component: () => import("@/pages/ChecklistOficinPage.vue"),
+        meta: { requiresAuth: true },
+      },
+      {
         path: "minhas-observacoes",
         name: "minhas-observacoes",
         component: () => import("@/pages/MinhasObservacoesPage.vue"),
