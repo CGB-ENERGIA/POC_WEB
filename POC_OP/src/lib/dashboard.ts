@@ -98,15 +98,21 @@ export async function fetchSubmissions(f: Filters, usarSemana = false): Promise<
   return (data ?? []) as SubmissionRow[];
 }
 
-/** Respostas ligadas a um conjunto de submissions. */
+/** Respostas ligadas a um conjunto de submissions (chunked para suportar grandes períodos, ex: ano inteiro). */
 export async function fetchResponses(submissionIds: string[]): Promise<ResponseRow[]> {
   if (!submissionIds.length) return [];
-  const { data, error } = await supabase
-    .from("checklist_responses")
-    .select("submission_id,pergunta_id,categoria,pergunta,gravidade,peso,resposta,observacao,foto_r2_key,resolvido")
-    .in("submission_id", submissionIds);
-  if (error) throw error;
-  return (data ?? []) as ResponseRow[];
+  const CHUNK = 300;
+  const all: ResponseRow[] = [];
+  for (let i = 0; i < submissionIds.length; i += CHUNK) {
+    const chunk = submissionIds.slice(i, i + CHUNK);
+    const { data, error } = await supabase
+      .from("checklist_responses")
+      .select("submission_id,pergunta_id,categoria,pergunta,gravidade,peso,resposta,observacao,foto_r2_key,resolvido")
+      .in("submission_id", chunk);
+    if (error) throw error;
+    all.push(...((data ?? []) as ResponseRow[]));
+  }
+  return all;
 }
 
 /** Contagem de não conformidades por mês, ao longo de um ano inteiro (para gráfico de tendência). */

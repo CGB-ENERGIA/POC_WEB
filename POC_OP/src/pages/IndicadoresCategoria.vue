@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <q-page class="indicadores-page">
     <q-linear-progress v-if="loading" indeterminate color="negative" style="position:sticky;top:0;z-index:200" />
 
@@ -18,17 +18,8 @@
       <div class="filter-collapsible" :class="{ 'is-hidden': !showFilters }">
       <div class="filter-bar__inner">
 
-        <!-- Row 1: Mês · Ano · Base · Gerência -->
+        <!-- Row 1: Ano · Gerente -->
         <div class="filter-row">
-          <div class="fgroup">
-            <span class="fgroup__label">Mês</span>
-            <div class="pill-group">
-              <button v-for="m in mesesOpts" :key="m"
-                :class="['pill', filters.mes === m && 'pill--active']"
-                @click="filters.mes = m">{{ m }}</button>
-            </div>
-          </div>
-          <div class="filter-divider" />
           <div class="fgroup">
             <span class="fgroup__label">Ano</span>
             <div class="pill-group">
@@ -38,6 +29,20 @@
             </div>
           </div>
           <div class="filter-divider" />
+          <div class="fgroup fgroup--gerente">
+            <span class="fgroup__label">Gerente</span>
+            <q-select v-model="filters.gerente" :options="gerentesOpts"
+              dense outlined hide-bottom-space class="gerente-select"
+              popup-content-class="gerente-popup">
+              <template #prepend>
+                <q-icon name="mdi-account" size="16px" class="gerente-icon" />
+              </template>
+            </q-select>
+          </div>
+        </div>
+
+        <!-- Row 2: Base · Gerência · Prefixo · Tipo de POC -->
+        <div class="filter-row">
           <div class="fgroup">
             <span class="fgroup__label">Base</span>
             <div class="pill-group">
@@ -55,27 +60,6 @@
                 @click="filters.gerencia = g">{{ g }}</button>
             </div>
           </div>
-        </div>
-
-        <!-- Row 2: Semana · Gerente · Prefixo · Tipo de POC -->
-        <div class="filter-row">
-          <div class="fgroup fgroup--gerente" style="min-width:140px">
-            <span class="fgroup__label">Semana</span>
-            <q-select v-model="filters.semana" :options="semanasOpts"
-              dense outlined hide-bottom-space class="gerente-select"
-              popup-content-class="gerente-popup" />
-          </div>
-          <div class="filter-divider" />
-          <div class="fgroup fgroup--gerente">
-            <span class="fgroup__label">Gerente</span>
-            <q-select v-model="filters.gerente" :options="gerentesOpts"
-              dense outlined hide-bottom-space class="gerente-select"
-              popup-content-class="gerente-popup">
-              <template #prepend>
-                <q-icon name="mdi-account" size="16px" class="gerente-icon" />
-              </template>
-            </q-select>
-          </div>
           <div class="filter-divider" />
           <div class="fgroup fgroup--gerente" style="min-width:170px">
             <span class="fgroup__label">Prefixo</span>
@@ -85,11 +69,13 @@
               @filter="filterPrefixo" />
           </div>
           <div class="filter-divider" />
-          <div class="fgroup fgroup--gerente" style="min-width:170px">
+          <div class="fgroup">
             <span class="fgroup__label">Tipo de POC</span>
-            <q-select v-model="filters.tipo" :options="tiposOpts"
-              dense outlined hide-bottom-space class="gerente-select"
-              popup-content-class="gerente-popup" />
+            <div class="pill-group">
+              <button v-for="t in tiposOpts" :key="t"
+                :class="['pill', filters.tipo === t && 'pill--active']"
+                @click="filters.tipo = t">{{ t }}</button>
+            </div>
           </div>
         </div>
 
@@ -116,7 +102,7 @@
                 {{ totalConf.toLocaleString('pt-BR') }}
               </div>
               <div class="kpi-stat-label">Total conformidade</div>
-              <div class="kpi-stat-sub">jan – jun 2026</div>
+              <div class="kpi-stat-sub">ano {{ filters.ano }}</div>
             </q-card-section>
           </q-card>
         </div>
@@ -132,7 +118,7 @@
                 {{ totalInc.toLocaleString('pt-BR') }}
               </div>
               <div class="kpi-stat-label">Total Inconformidade</div>
-              <div class="kpi-stat-sub">jan – jun 2026</div>
+              <div class="kpi-stat-sub">ano {{ filters.ano }}</div>
             </q-card-section>
           </q-card>
         </div>
@@ -155,7 +141,7 @@
       </div>
 
       <!-- Section title -->
-      <div class="operacional-title">OPERACIONAL</div>
+      <div class="operacional-title">{{ filters.tipo.toUpperCase() }}</div>
 
       <!-- Top row: APR · Regras de Ouro · Procedimento -->
       <div class="row q-col-gutter-md q-mb-md">
@@ -210,18 +196,19 @@ const G = { green: "#16a34a", brand: "#8B1C2B" };
 const showFilters = ref(false);
 
 const now = new Date();
-const MONTH_MAP: Record<string, number> = {
-  "jan": 1, "fev": 2, "mar": 3, "abr": 4, "mai": 5, "jun": 6,
-  "jul": 7, "ago": 8, "set": 9, "out": 10, "nov": 11, "dez": 12,
-};
 
-const mesesOpts    = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26","jul/26","ago/26","set/26","out/26","nov/26","dez/26"];
 const anosOpts     = ["2024","2025","2026"];
 const basesOpts    = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","LOGÍSTICA"];
 const gerentesOpts  = ["Todos","Afonso","Jackson","Jamerson","Julio C.","Marcos","Paulo","Pryscilla","Rafaela","Ricardo"];
-const semanasOpts   = ["Todos","Semana 1","Semana 2","Semana 3","Semana 4"];
-const tiposOpts     = ["Todos","Administrativo","Operacional","Alojamento"];
+const tiposOpts     = ["Operacional","Administrativo","Alojamento"];
+
+// Mapeia o "Tipo de POC" para os valores reais de auditagem gravados no checklist
+const TIPO_AUDITAGEM: Record<string, string[]> = {
+  Operacional: ["GOMAN", "GSTC"],
+  Administrativo: ["ADMINISTRATIVO", "LOGISTICA", "OFICINA"],
+  Alojamento: ["ALOJAMENTO"],
+};
 
 const allPrefixes: string[] = [
   "Todos","MA-BCB-E001M","MA-BCB-E002M","MA-PDT-P002M","MA-BDC-E002M",
@@ -237,31 +224,26 @@ function filterPrefixo(val: string, update: (fn: () => void) => void) {
   });
 }
 
-const curMesLabel = mesesOpts[now.getMonth()] ?? "jan/26";
-
 const filters = reactive({
-  mes: curMesLabel, ano: String(now.getFullYear()), base: "Todos",
+  ano: String(now.getFullYear()), base: "Todos",
   gerencia: "Todos", gerente: "Todos",
-  semana: "Todos", prefixo: "Todos", tipo: "Operacional",
+  prefixo: "Todos", tipo: "Operacional",
 });
 
 async function recarregar() {
-  const mesNum = MONTH_MAP[filters.mes.slice(0, 3)];
+  // Sem "mes": load() busca o ano inteiro, necessário para a quebra mensal do gráfico
   await load({
     ano: Number(filters.ano),
-    mes: mesNum,
     base: filters.base === "Todos" ? undefined : filters.base,
-  }, true); // loadYear=true for monthly breakdown
+  });
 }
 onMounted(recarregar);
-watch(() => [filters.ano, filters.mes, filters.base], recarregar);
+watch(() => [filters.ano, filters.base], recarregar);
 
 const filteredSubs = computed(() => {
   let s = filterByGerencia(submissions.value, employees.value, filters.gerencia);
-  if (filters.semana !== "Todos") {
-    const semNum = Number(filters.semana.replace(/\D/g, "")) || 0;
-    if (semNum) s = s.filter(sub => Math.ceil(new Date(sub.data).getDate() / 7) === semNum);
-  }
+  const auditagens = TIPO_AUDITAGEM[filters.tipo];
+  if (auditagens) s = s.filter(sub => auditagens.includes(sub.auditagem));
   if (filters.gerente !== "Todos") {
     s = s.filter(sub => sub.observador === filters.gerente);
   }
@@ -314,27 +296,11 @@ const rawData = computed(() => {
     else if (r.resposta === "nao_conforme") result[def.key].inc[mes - 1]++;
   }
 
-  // Fallback to static if no real data
-  const hasData = Object.values(result).some(d => d.conf.some(v => v > 0) || d.inc.some(v => v > 0));
-  if (!hasData) return {
-    apr:       { conf: [15053,13844,15107,17425,17471,14172,0,0,0,0,0,0], inc: [11,15,25,9,19,26,0,0,0,0,0,0] },
-    regraOuro: { conf: [5825,5477,6029,6834,5676,5442,0,0,0,0,0,0],       inc: [1,1,1,0,2,0,0,0,0,0,0,0] },
-    procedim:  { conf: [8687,8177,8986,10197,9968,8126,0,0,0,0,0,0],      inc: [52,40,59,54,49,37,0,0,0,0,0,0] },
-    padrinho:  { conf: [2904,2720,2980,3366,3300,2701,0,0,0,0,0,0],       inc: [0,0,0,1,0,0,0,0,0,0,0,0] },
-    alturas:   { conf: [4361,4067,4447,5081,5016,4091,0,0,0,0,0,0],       inc: [10,9,25,20,19,6,0,0,0,0,0,0] },
-    veiculos:  { conf: [8210,7955,8859,9815,9241,7564,0,0,0,0,0,0],       inc: [33,33,30,37,34,37,0,0,0,0,0,0] },
-    epi:       { conf: [12114,11403,12590,14203,13846,11285,0,0,0,0,0,0], inc: [22,42,22,59,40,37,0,0,0,0,0,0] },
-  };
   return result;
 });
 
 // â"€â"€â"€ Chart factory â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 function makeCatChart(data: { conf: number[]; inc: number[] }) {
-  const pct = data.conf.map((c, i) => {
-    const t = c + (data.inc[i] || 0);
-    return t === 0 ? 100 : Math.round((c / t) * 100);
-  });
-
   return {
     tooltip: {
       trigger: "axis" as const,
@@ -348,94 +314,42 @@ function makeCatChart(data: { conf: number[]; inc: number[] }) {
         const i = params[0]?.dataIndex ?? 0;
         return (
           `<b>${months[i]}</b><br/>` +
-          `<span style="color:${G.green}">â— conformidade: ${data.conf[i].toLocaleString("pt-BR")}</span><br/>` +
-          `<span style="color:${G.brand}">â— Inconformidade: ${data.inc[i]}</span><br/>` +
-          `<b>% Conf: ${pct[i]}%</b>`
+          `<span style="color:${G.brand}">Inconformidade: ${data.inc[i]}</span>`
         );
       },
     },
-    legend: {
-      top: 2,
-      left: "center",
-      data: [
-        { name: "conformidade",    icon: "circle" },
-        { name: "Inconformidade",  icon: "circle" },
-        { name: "% conformidade",  icon: "circle" },
-      ],
-      textStyle: { fontSize: 9.5, color: "#64748b" },
-      itemWidth: 7,
-      itemHeight: 7,
-      itemGap: 10,
-    },
-    grid: { left: 4, right: 4, top: 46, bottom: 4, containLabel: true },
+    grid: { left: 4, right: 4, top: 28, bottom: 4, containLabel: true },
     xAxis: {
       type: "category" as const,
       data: months,
       axisLine: { lineStyle: { color: "#e2e8f0" } },
       axisTick: { show: false },
-      axisLabel: {
-        color: "#64748b",
-        fontSize: 10,
-        // Show month + inconformidade value on second line
-        formatter: (_val: string, idx: number) =>
-          `{m|${months[idx]}}\n{i|${data.inc[idx] > 0 ? data.inc[idx] : "·"}}`,
-        rich: {
-          m: { color: "#64748b", fontSize: 10, lineHeight: 14 },
-          i: { color: G.brand, fontSize: 9, fontWeight: "bold", lineHeight: 13 },
-        },
-      },
+      axisLabel: { color: "#64748b", fontSize: 10 },
     },
     yAxis: {
       type: "value" as const,
       show: false,
       splitLine: { show: false },
     },
-    series: [
-      {
-        name: "conformidade",
-        type: "bar" as const,
-        stack: "total",
-        barMaxWidth: 52,
-        itemStyle: { color: G.green, borderRadius: [0, 0, 0, 0] },
-        label: {
-          show: true,
-          position: "inside" as const,
-          color: "#fff",
-          fontSize: 10,
-          fontWeight: "bold" as const,
-          formatter: (p: { value: number }) => p.value.toLocaleString("pt-BR"),
-        },
-        data: data.conf,
+    series: [{
+      name: "Inconformidade",
+      type: "bar" as const,
+      barMaxWidth: 42,
+      barMinHeight: 2,
+      itemStyle: { color: G.brand, borderRadius: [4, 4, 0, 0] },
+      label: {
+        show: true,
+        position: "top" as const,
+        color: "#334155",
+        fontSize: 11,
+        fontWeight: "bold" as const,
+        backgroundColor: "#f1f5f9",
+        padding: [2, 6],
+        borderRadius: 4,
+        formatter: (p: { value: number }) => `${p.value}`,
       },
-      {
-        name: "Inconformidade",
-        type: "bar" as const,
-        stack: "total",
-        barMaxWidth: 52,
-        barMinHeight: 3,
-        itemStyle: { color: G.brand, borderRadius: [3, 3, 0, 0] },
-        label: {
-          show: true,
-          position: "top" as const,
-          color: "#334155",
-          fontSize: 10,
-          fontWeight: "bold" as const,
-          backgroundColor: "#f1f5f9",
-          padding: [2, 5],
-          borderRadius: 3,
-          formatter: (p: { dataIndex: number }) => `${pct[p.dataIndex]}%`,
-        },
-        data: data.inc,
-      },
-      {
-        // legend placeholder only
-        name: "% conformidade",
-        type: "bar" as const,
-        itemStyle: { color: "#475569" },
-        data: [],
-        silent: true,
-      },
-    ],
+      data: data.inc,
+    }],
   };
 }
 
