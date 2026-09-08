@@ -238,6 +238,56 @@
         </div>
 
       </div>
+
+      <!-- Matriz ICIT por Equipe -->
+      <div class="row q-col-gutter-md q-mt-md">
+        <div class="col-12">
+          <q-card flat bordered>
+            <q-card-section class="q-pb-xs">
+              <div class="text-subtitle1 text-weight-bold">Matriz ICIT por Equipe</div>
+              <div class="text-caption text-grey-6">
+                % de checklists sem não conformidade, por prefixo · mês anterior, mês atual e acumulado do ano
+              </div>
+            </q-card-section>
+            <q-card-section class="q-pt-none">
+              <q-table
+                :rows="icitTableRows"
+                :columns="icitColumns"
+                row-key="prefixo"
+                flat
+                dense
+                :rows-per-page-options="[0]"
+                hide-pagination
+                class="icit-table"
+                style="height: 520px"
+                virtual-scroll
+              >
+                <template #body-cell-icitAnterior="props">
+                  <q-td :props="props">
+                    <span :class="['icit-badge', icitBadgeClass(props.value)]">
+                      {{ props.value === null ? "—" : `${props.value.toFixed(2)}%` }}
+                    </span>
+                  </q-td>
+                </template>
+                <template #body-cell-icitAtual="props">
+                  <q-td :props="props">
+                    <span :class="['icit-badge', icitBadgeClass(props.value)]">
+                      {{ props.value === null ? "—" : `${props.value.toFixed(2)}%` }}
+                    </span>
+                  </q-td>
+                </template>
+                <template #body-cell-icitAcumulado="props">
+                  <q-td :props="props">
+                    <span :class="['icit-badge', icitBadgeClass(props.value)]">
+                      {{ props.value === null ? "—" : `${props.value.toFixed(2)}%` }}
+                    </span>
+                  </q-td>
+                </template>
+              </q-table>
+            </q-card-section>
+          </q-card>
+        </div>
+      </div>
     </div>
 
   </q-page>
@@ -255,7 +305,7 @@ import {
 } from "echarts/components";
 import VChart from "vue-echarts";
 import { useChecklistData, fmtPct } from "@/composables/useChecklistData";
-import { filterByGerencia } from "@/lib/dashboard";
+import { filterByGerencia, fetchIcitPorPrefixo, type IcitPrefixo } from "@/lib/dashboard";
 
 use([CanvasRenderer, BarChart, GaugeChart, GridComponent, TooltipComponent, DataZoomComponent]);
 
@@ -296,13 +346,29 @@ const filters = reactive({
   tipoPoc: "Operacional",
 });
 
+// ─── ICIT (checklists sem NC) por prefixo: mês anterior + acumulado do ano ────
+const icitMesAnterior = ref<Map<string, IcitPrefixo>>(new Map());
+const icitAcumulado    = ref<Map<string, IcitPrefixo>>(new Map());
+
 async function recarregar() {
   const mesNum = MONTH_MAP[filters.mes.slice(0, 3)] ?? (now.getMonth() + 1);
-  await load({
-    ano: Number(filters.ano),
-    mes: mesNum,
-    base: filters.base === "Todos" ? undefined : filters.base,
-  });
+  const anoNum = Number(filters.ano);
+  const baseFiltro = filters.base === "Todos" ? undefined : filters.base;
+
+  await load({ ano: anoNum, mes: mesNum, base: baseFiltro });
+
+  const anteriorMes = mesNum === 1 ? 12 : mesNum - 1;
+  const anteriorAno = mesNum === 1 ? anoNum - 1 : anoNum;
+  const anteriorStart = new Date(anteriorAno, anteriorMes - 1, 1).toISOString();
+  const anteriorEnd   = new Date(anteriorAno, anteriorMes, 1).toISOString();
+
+  const acumuladoStart = new Date(anoNum, 0, 1).toISOString();
+  const acumuladoEnd   = new Date(anoNum, mesNum, 1).toISOString();
+
+  [icitMesAnterior.value, icitAcumulado.value] = await Promise.all([
+    fetchIcitPorPrefixo(anteriorStart, anteriorEnd, baseFiltro),
+    fetchIcitPorPrefixo(acumuladoStart, acumuladoEnd, baseFiltro),
+  ]);
 }
 onMounted(recarregar);
 watch(() => [filters.ano, filters.mes, filters.base], recarregar);
@@ -411,6 +477,61 @@ const naoVisitadas = computed(() => {
   const visited = new Set(visitadasSorted.value.map(e => e.nome));
   return allPrefixes.filter(p => !visited.has(p));
 });
+
+// ─── ICIT atual (mês/filtros selecionados) por prefixo, a partir dos dados já carregados ──
+const icitAtualPorPrefixo = computed(() => {
+  const ncPerSub = new Set<string>();
+  for (const r of filteredResps.value) {
+    if (r.resposta === "nao_conforme") ncPerSub.add(r.submission_id);
+  }
+  const map = new Map<string, IcitPrefixo>();
+  for (const sub of filteredSubs.value) {
+    if (!sub.equipe) continue;
+    if (!map.has(sub.equipe)) map.set(sub.equipe, { visitas: 0, semNc: 0 });
+    const entry = map.get(sub.equipe)!;
+    entry.visitas++;
+    if (!ncPerSub.has(sub.id)) entry.semNc++;
+  }
+  return map;
+});
+
+function icitPct(entry: IcitPrefixo | undefined): number | null {
+  if (!entry || !entry.visitas) return null;
+  return Math.round((entry.semNc / entry.visitas) * 10000) / 100;
+}
+
+interface IcitRow {
+  prefixo: string;
+  visitas: number;
+  icitAnterior: number | null;
+  icitAtual: number | null;
+  icitAcumulado: number | null;
+}
+
+const icitTableRows = computed<IcitRow[]>(() => {
+  return visitadasSorted.value.map(({ nome, v }) => ({
+    prefixo: nome,
+    visitas: v,
+    icitAnterior: icitPct(icitMesAnterior.value.get(nome)),
+    icitAtual: icitPct(icitAtualPorPrefixo.value.get(nome)),
+    icitAcumulado: icitPct(icitAcumulado.value.get(nome)),
+  })).sort((a, b) => (a.icitAtual ?? -1) - (b.icitAtual ?? -1));
+});
+
+const icitColumns = [
+  { name: "prefixo", label: "Prefixo", field: "prefixo", align: "left" as const, sortable: true },
+  { name: "visitas", label: "Qnt Visitas", field: "visitas", align: "center" as const, sortable: true },
+  { name: "icitAnterior", label: "% ICIT Mês Anterior", field: "icitAnterior", align: "center" as const, sortable: true },
+  { name: "icitAtual", label: "% ICIT Atual", field: "icitAtual", align: "center" as const, sortable: true },
+  { name: "icitAcumulado", label: "% ICIT Acumulado (Ano)", field: "icitAcumulado", align: "center" as const, sortable: true },
+];
+
+function icitBadgeClass(pct: number | null): string {
+  if (pct === null) return "icit-badge--none";
+  if (pct >= 80) return "icit-badge--good";
+  if (pct >= 40) return "icit-badge--warn";
+  return "icit-badge--bad";
+}
 
 // â"€â"€â"€ Tooltip helper â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const ttItem = {
@@ -802,6 +923,28 @@ $inactive-text:#475569;
   padding: 1px 8px; min-width: 28px; text-align: center;
 }
 
+/* ─── Matriz ICIT ────────────────────────────────────────────────────────── */
+.icit-badge {
+  display: inline-block;
+  font-size: 12px; font-weight: 700;
+  border-radius: 6px;
+  padding: 3px 10px;
+  min-width: 64px;
+  text-align: center;
+}
+.icit-badge--good { color: #15803d; background: #dcfce7; }
+.icit-badge--warn { color: #b45309; background: #fef3c7; }
+.icit-badge--bad  { color: #b91c1c; background: #fee2e2; }
+.icit-badge--none { color: #94a3b8; background: #f1f5f9; }
+
+.icit-table {
+  :deep(thead th) {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .4px; color: #64748b; background: #f8fafc;
+  }
+  :deep(tbody td) { font-size: 12px; }
+}
+
 // â"€â"€ Dark mode â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 .body--dark {
   .relatorio-page { background: #0f172a; }
@@ -820,6 +963,8 @@ $inactive-text:#475569;
   .nv-nome { color: #e2e8f0; }
   .kpi-stat-label { color: #94a3b8; }
   .kpi-stat-sub { color: #64748b; }
+  .icit-table :deep(thead th) { background: #1e293b; color: #94a3b8; }
+  .icit-badge--none { color: #64748b; background: #1e293b; }
 }
 </style>
 

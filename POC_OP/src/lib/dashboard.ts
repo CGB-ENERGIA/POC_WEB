@@ -143,6 +143,50 @@ export async function fetchNaoConformesPorMes(ano: number, base?: string): Promi
   return map;
 }
 
+export interface IcitPrefixo {
+  visitas: number;
+  semNc: number;
+}
+
+/**
+ * Mapa prefixo -> { visitas, semNc } dentro de um intervalo de datas [startIso, endIso).
+ * semNc = checklists sem nenhuma resposta "nao_conforme" (base do calculo de ICIT).
+ */
+export async function fetchIcitPorPrefixo(startIso: string, endIso: string, base?: string): Promise<Map<string, IcitPrefixo>> {
+  let q = supabase.from("checklist_submissions").select("id,equipe");
+  q = q.gte("data", startIso).lt("data", endIso);
+  if (base && base !== "Todos") q = q.eq("base", base);
+
+  const { data: subs, error: subErr } = await q;
+  if (subErr) throw subErr;
+
+  const map = new Map<string, IcitPrefixo>();
+  if (!subs?.length) return map;
+
+  const ids = subs.map((s) => s.id);
+  const CHUNK = 300;
+  const ncSubIds = new Set<string>();
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const chunk = ids.slice(i, i + CHUNK);
+    const { data: resps, error: respErr } = await supabase
+      .from("checklist_responses")
+      .select("submission_id")
+      .eq("resposta", "nao_conforme")
+      .in("submission_id", chunk);
+    if (respErr) throw respErr;
+    for (const r of resps ?? []) ncSubIds.add(r.submission_id);
+  }
+
+  for (const s of subs) {
+    if (!s.equipe) continue;
+    if (!map.has(s.equipe)) map.set(s.equipe, { visitas: 0, semNc: 0 });
+    const entry = map.get(s.equipe)!;
+    entry.visitas++;
+    if (!ncSubIds.has(s.id)) entry.semNc++;
+  }
+  return map;
+}
+
 /** Todos os funcionários ativos. */
 export async function fetchEmployees(): Promise<EmployeeRow[]> {
   const { data, error } = await supabase
