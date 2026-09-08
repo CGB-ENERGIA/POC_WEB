@@ -109,6 +109,40 @@ export async function fetchResponses(submissionIds: string[]): Promise<ResponseR
   return (data ?? []) as ResponseRow[];
 }
 
+/** Contagem de não conformidades por mês, ao longo de um ano inteiro (para gráfico de tendência). */
+export async function fetchNaoConformesPorMes(ano: number, base?: string): Promise<Record<number, number>> {
+  let q = supabase.from("checklist_submissions").select("id,data");
+  const start = new Date(ano, 0, 1).toISOString();
+  const end = new Date(ano + 1, 0, 1).toISOString();
+  q = q.gte("data", start).lt("data", end);
+  if (base && base !== "Todos") q = q.eq("base", base);
+
+  const { data: subs, error: subErr } = await q;
+  if (subErr) throw subErr;
+  if (!subs?.length) return {};
+
+  const mesPorSubmissao = new Map<string, number>();
+  for (const s of subs) mesPorSubmissao.set(s.id, new Date(s.data).getMonth() + 1);
+
+  const ids = subs.map((s) => s.id);
+  const CHUNK = 300;
+  const map: Record<number, number> = {};
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const chunk = ids.slice(i, i + CHUNK);
+    const { data: resps, error: respErr } = await supabase
+      .from("checklist_responses")
+      .select("submission_id")
+      .eq("resposta", "nao_conforme")
+      .in("submission_id", chunk);
+    if (respErr) throw respErr;
+    for (const r of resps ?? []) {
+      const mes = mesPorSubmissao.get(r.submission_id);
+      if (mes) map[mes] = (map[mes] ?? 0) + 1;
+    }
+  }
+  return map;
+}
+
 /** Todos os funcionários ativos. */
 export async function fetchEmployees(): Promise<EmployeeRow[]> {
   const { data, error } = await supabase

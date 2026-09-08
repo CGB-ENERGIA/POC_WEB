@@ -133,61 +133,51 @@
         <!-- LEFT+CENTER (8 cols) -->
         <div class="col-12 col-md-8">
 
-          <!-- Row 1: Donut + Índice por Mês -->
+          <!-- Row 1: Comportamento de Desvio Mensal + Qnt Inconformidade por Base -->
           <div class="row q-col-gutter-md q-mb-md">
-            <div class="col-12 col-md-5">
+            <div class="col-12 col-md-6">
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Índice Geral de Conformidade</div>
+                  <div class="text-subtitle1 text-weight-bold">Comportamento de Desvio Mensal</div>
+                  <div class="text-caption text-grey-6">Não conformidades registradas por mês</div>
                 </q-card-section>
                 <q-card-section>
-                  <v-chart :option="chartDonut" autoresize style="height:260px" />
+                  <v-chart :option="chartTendenciaMensal" autoresize style="height:260px" />
                 </q-card-section>
               </q-card>
             </div>
-            <div class="col-12 col-md-7">
+            <div class="col-12 col-md-6">
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Índice de Conformidade por Mês</div>
-                  <div class="text-caption text-grey-6">% de conformidade acumulada</div>
+                  <div class="text-subtitle1 text-weight-bold">Qnt Inconformidade por Base</div>
                 </q-card-section>
                 <q-card-section>
-                  <v-chart :option="chartMes" autoresize style="height:260px" />
+                  <v-chart :option="chartBase" autoresize style="height:260px" />
                 </q-card-section>
               </q-card>
             </div>
           </div>
 
-          <!-- Row 2: Por Base + Por Gerência + Por Equipe -->
+          <!-- Row 2: Por Gerência + Por Equipe -->
           <div class="row q-col-gutter-md">
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-6">
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Índice de Conformidade por Base</div>
+                  <div class="text-subtitle1 text-weight-bold">Qnt de Inconformidade por Gerência</div>
                 </q-card-section>
                 <q-card-section>
-                  <v-chart :option="chartBase" autoresize style="height:220px" />
+                  <v-chart :option="chartGerencia" autoresize style="height:260px" />
                 </q-card-section>
               </q-card>
             </div>
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-6">
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Índice de Conformidade por Gerência</div>
-                </q-card-section>
-                <q-card-section>
-                  <v-chart :option="chartGerencia" autoresize style="height:220px" />
-                </q-card-section>
-              </q-card>
-            </div>
-            <div class="col-12 col-md-4">
-              <q-card flat bordered class="chart-card">
-                <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Índice de Conformidade por Equipe</div>
+                  <div class="text-subtitle1 text-weight-bold">Qnt de Inconformidade por Equipe</div>
                   <div class="text-caption text-grey-6">Role para ver mais</div>
                 </q-card-section>
                 <q-card-section>
-                  <v-chart :option="chartEquipe" autoresize style="height:220px" />
+                  <v-chart :option="chartEquipe" autoresize style="height:260px" />
                 </q-card-section>
               </q-card>
             </div>
@@ -218,7 +208,7 @@
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
-import { BarChart, PieChart } from "echarts/charts";
+import { BarChart, LineChart } from "echarts/charts";
 import {
   GridComponent,
   TooltipComponent,
@@ -228,10 +218,10 @@ import {
 } from "echarts/components";
 import VChart from "vue-echarts";
 import { useChecklistData, fmtN, fmtPct } from "@/composables/useChecklistData";
-import { filterByGerencia } from "@/lib/dashboard";
+import { filterByGerencia, fetchNaoConformesPorMes } from "@/lib/dashboard";
 
 use([
-  CanvasRenderer, BarChart, PieChart,
+  CanvasRenderer, BarChart, LineChart,
   GridComponent, TooltipComponent, LegendComponent,
   TitleComponent, DataZoomComponent
 ]);
@@ -292,11 +282,9 @@ const {
   submissions,
   responses,
   employees,
-  byBase,
-  byGerencia,
-  byMes,
-  byCategoria,
 } = useChecklistData();
+
+const ncPorMes = ref<Record<number, number>>({});
 
 async function recarregar() {
   await load({
@@ -304,6 +292,7 @@ async function recarregar() {
     mes: filters.mes,
     base: filters.base !== "Todos" ? filters.base : undefined,
   }, true);
+  ncPorMes.value = await fetchNaoConformesPorMes(filters.ano, filters.base);
 }
 
 onMounted(recarregar);
@@ -400,133 +389,108 @@ function hBar(
   };
 }
 
-// ─── Chart: Donut ─────────────────────────────────────────────────────────────
-const chartDonut = computed(() => {
-  const conf = totalConformes.value;
-  const nc = totalNaoConformes.value;
-  const pct = fmtPct(conformidadeIndex.value, 2);
+// ─── nc (não conformidades) por base / gerência / equipe ────────────────────
+const ncPorBase = computed(() => {
+  const map: Record<string, number> = {};
+  for (const s of filteredSubs.value) {
+    const rs = filteredResps.value.filter(r => r.submission_id === s.id && r.resposta === "nao_conforme");
+    if (!rs.length) continue;
+    map[s.base] = (map[s.base] ?? 0) + rs.length;
+  }
+  return map;
+});
+
+const ncPorGerenciaLocal = computed(() => {
+  const map: Record<string, number> = {};
+  for (const s of filteredSubs.value) {
+    const rs = filteredResps.value.filter(r => r.submission_id === s.id && r.resposta === "nao_conforme");
+    if (!rs.length) continue;
+    const emp = employees.value.find(e => e.matricula === s.matricula);
+    const g = emp?.gerencia ?? s.auditagem;
+    map[g] = (map[g] ?? 0) + rs.length;
+  }
+  return map;
+});
+
+// ─── Chart: Comportamento de Desvio Mensal (linha, nc por mês no ano) ────────
+const chartTendenciaMensal = computed(() => {
+  const mesLabels = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+  const vals = mesLabels.map((_, i) => ncPorMes.value[i + 1] ?? 0);
   return {
     tooltip: {
       ...ttItem,
-      formatter: (p: { name: string; value: number; percent: number }) =>
-        `<b>${p.name}</b><br/>${p.value.toLocaleString("pt-BR")} · <b>${p.percent.toFixed(2)}%</b>`
+      trigger: "axis" as const,
+      formatter: (params: { name: string; value: number }[]) => {
+        const p = params[0];
+        return `<b>${p.name}</b>: <b style="color:${P.inconf}">${p.value}</b> desvios`;
+      }
     },
-    legend: {
-      bottom: 4, left: "center",
-      itemWidth: 10, itemHeight: 10, itemGap: 16,
-      textStyle: { color: "#64748b", fontSize: 11 }
+    grid: { left: 8, right: 16, top: 24, bottom: 8, containLabel: true },
+    xAxis: {
+      type: "category" as const,
+      data: mesLabels,
+      axisLine: { lineStyle: { color: "#e2e8f0" } },
+      axisTick: { show: false },
+      axisLabel: { color: "#64748b", fontSize: 11 }
     },
-    title: {
-      text: pct,
-      subtext: "conformidade",
-      left: "50%", top: "34%",
-      textAlign: "center",
-      textStyle: { fontSize: 26, fontWeight: "bold" as const, color: P.conf },
-      subtextStyle: { fontSize: 11, color: "#94a3b8" }
+    yAxis: {
+      type: "value" as const,
+      show: false,
+      splitLine: { show: false }
     },
     series: [{
-      type: "pie" as const,
-      radius: ["52%", "74%"],
-      center: ["50%", "46%"],
-      avoidLabelOverlap: false,
+      type: "line" as const,
+      data: vals,
+      smooth: false,
+      symbol: "circle",
+      symbolSize: 7,
+      lineStyle: { color: P.inconf, width: 3 },
+      itemStyle: { color: P.inconf, borderColor: "#fff", borderWidth: 2 },
       label: {
         show: true,
-        formatter: (p: { name: string; value: number }) =>
-          `{name|${p.name}}\n{val|${p.value.toLocaleString("pt-BR")}}`,
-        rich: {
-          name: { fontSize: 10, color: "#64748b" },
-          val: { fontSize: 12, fontWeight: "bold", color: "#334155" }
+        position: "top" as const,
+        fontSize: 11,
+        fontWeight: "bold" as const,
+        color: "#334155"
+      },
+      areaStyle: {
+        color: {
+          type: "linear" as const, x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [
+            { offset: 0, color: "rgba(139,28,43,.22)" },
+            { offset: 1, color: "rgba(139,28,43,0)" }
+          ]
         }
-      },
-      labelLine: { length: 12, length2: 8 },
-      itemStyle: { borderRadius: 8, borderColor: "#fff", borderWidth: 3 },
-      emphasis: {
-        scale: true, scaleSize: 5,
-        itemStyle: { shadowBlur: 16, shadowColor: "rgba(0,0,0,.15)" }
-      },
-      data: [
-        { value: conf, name: "Conformidade",   itemStyle: { color: P.conf  } },
-        { value: nc,   name: "Inconformidade", itemStyle: { color: P.inconf } }
-      ]
+      }
     }]
   };
 });
 
-// conformidade % por base: (conformes / total) * 100
-const conformidadePorBase = computed(() => {
-  const map: Record<string, { c: number; t: number }> = {};
-  for (const s of filteredSubs.value) {
-    if (!map[s.base]) map[s.base] = { c: 0, t: 0 };
-    const rs = filteredResps.value.filter(r => r.submission_id === s.id);
-    map[s.base].t += rs.length;
-    map[s.base].c += rs.filter(r => r.resposta === "conforme").length;
-  }
-  return map;
-});
-
-const conformidadePorGerencia = computed(() => {
-  const map: Record<string, { c: number; t: number }> = {};
-  for (const s of filteredSubs.value) {
-    const emp = employees.value.find(e => e.matricula === s.matricula);
-    const g = emp?.gerencia ?? s.auditagem;
-    if (!map[g]) map[g] = { c: 0, t: 0 };
-    const rs = filteredResps.value.filter(r => r.submission_id === s.id);
-    map[g].t += rs.length;
-    map[g].c += rs.filter(r => r.resposta === "conforme").length;
-  }
-  return map;
-});
-
-// ─── Chart: Índice por Mês ────────────────────────────────────────────────────
-const chartMes = computed(() => {
-  const mesLabels = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
-  // We need per-month conformidade. Using byMes for submission counts isn't enough.
-  // Simplification: show obs count per month as a proxy
-  const vals = mesLabels.map((_, i) => byMes.value[i + 1] ?? 0);
-  const maxV = Math.max(...vals, 1);
-  return hBar(mesLabels, vals, P.conf, " obs", maxV);
-});
-
-// ─── Chart: Índice por Base ───────────────────────────────────────────────────
+// ─── Chart: Qnt Inconformidade por Base ──────────────────────────────────────
 const chartBase = computed(() => {
-  const entries = Object.entries(conformidadePorBase.value)
-    .map(([base, { c, t }]) => ({
-      base,
-      pct: t ? Math.round((c / t) * 1000) / 10 : 0
-    }))
-    .sort((a, b) => a.pct - b.pct);
-  return hBar(entries.map(e => e.base), entries.map(e => e.pct), P.conf, "%", 100);
+  const entries = Object.entries(ncPorBase.value).sort((a, b) => b[1] - a[1]);
+  return hBar(entries.map(e => e[0]), entries.map(e => e[1]), P.inconf, "", Math.max(...entries.map(e => e[1]), 1));
 });
 
-// ─── Chart: Índice por Gerência ───────────────────────────────────────────────
+// ─── Chart: Qnt de Inconformidade por Gerência ───────────────────────────────
 const chartGerencia = computed(() => {
-  const entries = Object.entries(conformidadePorGerencia.value)
-    .map(([g, { c, t }]) => ({
-      g,
-      pct: t ? Math.round((c / t) * 1000) / 10 : 0
-    }))
-    .sort((a, b) => a.pct - b.pct);
-  return hBar(entries.map(e => e.g), entries.map(e => e.pct), P.conf, "%", 100);
+  const entries = Object.entries(ncPorGerenciaLocal.value).sort((a, b) => b[1] - a[1]);
+  return hBar(entries.map(e => e[0]), entries.map(e => e[1]), P.inconf, "", Math.max(...entries.map(e => e[1]), 1));
 });
 
-// ─── Chart: Índice por Equipe (scrollable) ────────────────────────────────────
+// ─── Chart: Qnt de Inconformidade por Equipe (scrollable) ────────────────────
 const chartEquipe = computed(() => {
-  const equipePcts: Record<string, { c: number; t: number }> = {};
+  const equipeNc: Record<string, number> = {};
   for (const s of filteredSubs.value) {
-    const rs = filteredResps.value.filter(r => r.submission_id === s.id);
-    const nome = s.equipe;
-    if (!nome) continue;
-    if (!equipePcts[nome]) equipePcts[nome] = { c: 0, t: 0 };
-    equipePcts[nome].t += rs.length;
-    equipePcts[nome].c += rs.filter(r => r.resposta === "conforme").length;
+    const rs = filteredResps.value.filter(r => r.submission_id === s.id && r.resposta === "nao_conforme");
+    if (!rs.length || !s.equipe) continue;
+    equipeNc[s.equipe] = (equipeNc[s.equipe] ?? 0) + rs.length;
   }
-  const entries = Object.entries(equipePcts)
-    .map(([equipe, { c, t }]) => ({ equipe, pct: t ? Math.round((c / t) * 1000) / 10 : 0 }))
-    .sort((a, b) => b.pct - a.pct);
-  const names = entries.map(e => e.equipe.length > 16 ? e.equipe.slice(0, 15) + "…" : e.equipe);
-  const vals = entries.map(e => e.pct);
+  const entries = Object.entries(equipeNc).sort((a, b) => b[1] - a[1]);
+  const names = entries.map(e => e[0].length > 16 ? e[0].slice(0, 15) + "…" : e[0]);
+  const vals = entries.map(e => e[1]);
   return {
-    ...hBar([...names].reverse(), [...vals].reverse()),
+    ...hBar([...names].reverse(), [...vals].reverse(), P.inconf, "", Math.max(...vals, 1)),
     dataZoom: [{
       type: "inside" as const,
       orient: "vertical" as const,
