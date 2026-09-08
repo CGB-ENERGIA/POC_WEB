@@ -570,6 +570,7 @@ const allData = computed<SubRow[]>(() => {
 
   for (const r of responses.value) {
     if (r.resposta !== "nao_conforme") continue;
+    if (r.resolvido === true) continue; // resolvida no ato pelo auditor, nao precisa de responsavel
     const sub = subMap.get(r.submission_id);
     if (!sub) continue;
     const raw = resolucaoMap.get(`${r.submission_id}:${r.pergunta_id}`);

@@ -111,6 +111,7 @@ export type Database = {
           pergunta_id: string;
           peso: number;
           resposta: string;
+          resolvido: boolean | null;
           submission_id: string;
         };
         Insert: {
@@ -124,6 +125,7 @@ export type Database = {
           pergunta_id: string;
           peso: number;
           resposta: string;
+          resolvido?: boolean | null;
           submission_id: string;
         };
         Update: {
@@ -137,6 +139,7 @@ export type Database = {
           pergunta_id?: string;
           peso?: number;
           resposta?: string;
+          resolvido?: boolean | null;
           submission_id?: string;
         };
         Relationships: [];

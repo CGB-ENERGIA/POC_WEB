@@ -19,6 +19,8 @@ export interface RespostaPergunta {
   resposta: Exclude<RespostaChecklist, null>
   observacao?: string
   foto?: string
+  /** Apenas para respostas "nao_conforme": foi resolvida no momento da auditoria? */
+  resolvido?: boolean
 }
 
 export const gomanChecklist: CategoriaGoman[] = [

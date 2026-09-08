@@ -375,6 +375,33 @@
             :error="modalTouched && !modalObservacao.trim()"
             error-message="Informe a observação"
           />
+
+          <div class="field-label q-mt-md q-mb-sm">Resolvido no momento da auditoria? *</div>
+          <div class="row q-col-gutter-sm">
+            <div class="col-6">
+              <q-btn
+                class="full-width resposta-btn"
+                :class="{ 'resposta-btn--idle': modalResolvido !== true }"
+                no-caps unelevated icon="mdi-check-circle" label="Sim"
+                :color="modalResolvido === true ? 'positive' : undefined"
+                :text-color="modalResolvido === true ? 'white' : undefined"
+                @click="modalResolvido = true"
+              />
+            </div>
+            <div class="col-6">
+              <q-btn
+                class="full-width resposta-btn"
+                :class="{ 'resposta-btn--idle': modalResolvido !== false }"
+                no-caps unelevated icon="mdi-close-circle" label="Não"
+                :color="modalResolvido === false ? 'negative' : undefined"
+                :text-color="modalResolvido === false ? 'white' : undefined"
+                @click="modalResolvido = false"
+              />
+            </div>
+          </div>
+          <div v-if="modalTouched && modalResolvido === null" class="text-caption text-negative q-mt-xs">
+            Informe se a não conformidade foi resolvida
+          </div>
         </q-card-section>
 
         <q-card-actions class="q-pa-md q-pt-none">
@@ -429,6 +456,7 @@ import CameraModal from "@/components/CameraModal.vue";
 interface NaoConformeDetalhe {
   observacao: string;
   foto: string;
+  resolvido: boolean;
 }
 
 const $q = useQuasar();
@@ -488,6 +516,7 @@ onMounted(() => {
           detalhesMap[r.perguntaId] = {
             observacao: r.observacao ?? "",
             foto: r.foto ?? "",
+            resolvido: r.resolvido ?? false,
           };
         }
       }
@@ -537,6 +566,7 @@ const modalPerguntaId = ref<string | null>(null);
 const modalPerguntaTexto = ref("");
 const modalObservacao = ref("");
 const modalFotoPreview = ref<string | null>(null);
+const modalResolvido = ref<boolean | null>(null);
 const modalTouched = ref(false);
 const cameraNcAberta = ref(false);
 const modalEraNaoConforme = ref(false);
@@ -650,6 +680,7 @@ function abrirModalNaoConforme(pergunta: PerguntaGoman) {
   const existente = detalhesMap[pergunta.id];
   modalObservacao.value = existente?.observacao ?? "";
   modalFotoPreview.value = existente?.foto ?? null;
+  modalResolvido.value = existente?.resolvido ?? null;
   modalTouched.value = false;
   modalAberto.value = true;
 }
@@ -707,14 +738,32 @@ function confirmarNaoConforme() {
     return;
   }
 
+  if (modalResolvido.value === null) {
+    $q.notify({ type: "warning", message: "Informe se a não conformidade foi resolvida", position: "top" });
+    return;
+  }
+
   detalhesMap[modalPerguntaId.value] = {
     observacao: modalObservacao.value.trim(),
     foto: modalFotoPreview.value,
+    resolvido: modalResolvido.value,
   };
   respostas[modalPerguntaId.value] = "nao_conforme";
   const answeredId = modalPerguntaId.value;
+  const resolvidoNoAto = modalResolvido.value;
   modalAberto.value = false;
   modalPerguntaId.value = null;
+
+  if (resolvidoNoAto === false) {
+    $q.notify({
+      type: "info",
+      message: "Não conformidade pendente registrada. Será encaminhada para a Matriz de Responsabilidade.",
+      icon: "mdi-clipboard-alert-outline",
+      position: "top",
+      timeout: 3500,
+    });
+  }
+
   irParaProximaPergunta(answeredId);
 }
 
@@ -763,6 +812,7 @@ async function onSubmit() {
         resposta,
         ...(detalhe?.observacao ? { observacao: detalhe.observacao } : {}),
         ...(detalhe?.foto ? { foto: detalhe.foto } : {}),
+        ...(detalhe?.resolvido !== undefined ? { resolvido: detalhe.resolvido } : {}),
       });
     }
   }

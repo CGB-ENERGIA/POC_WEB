@@ -1,4 +1,5 @@
 import type { RespostaPergunta } from "@/data/goman-checklist";
+import type { AuditagemCategoria } from "@/data/auditagem";
 
 export interface ChecklistResumo {
   total: number;
@@ -17,7 +18,7 @@ export interface ObservacaoChecklist {
   id: string;
   matricula: string;
   observador: string;
-  auditagem: "GOMAN" | "GSTC";
+  auditagem: AuditagemCategoria;
   data: string;
   base: string;
   equipe: string;

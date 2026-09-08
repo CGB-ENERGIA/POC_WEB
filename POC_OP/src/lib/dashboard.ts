@@ -48,6 +48,8 @@ export interface ResponseRow {
   resposta: "conforme" | "nao_conforme";
   observacao: string | null;
   foto_r2_key: string | null;
+  /** Resolvida no momento da auditoria (pergunta obrigatoria no PWA). null = registro antigo. */
+  resolvido: boolean | null;
 }
 
 export interface EmployeeRow {
@@ -101,7 +103,7 @@ export async function fetchResponses(submissionIds: string[]): Promise<ResponseR
   if (!submissionIds.length) return [];
   const { data, error } = await supabase
     .from("checklist_responses")
-    .select("submission_id,pergunta_id,categoria,pergunta,gravidade,peso,resposta,observacao,foto_r2_key")
+    .select("submission_id,pergunta_id,categoria,pergunta,gravidade,peso,resposta,observacao,foto_r2_key,resolvido")
     .in("submission_id", submissionIds);
   if (error) throw error;
   return (data ?? []) as ResponseRow[];
