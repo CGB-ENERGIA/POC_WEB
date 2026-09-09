@@ -9,6 +9,10 @@
             <q-select
               v-model="form.base"
               :options="basesOperacionais"
+              option-value="value"
+              option-label="label"
+              emit-value
+              map-options
               outlined
               dense
               label="Base"

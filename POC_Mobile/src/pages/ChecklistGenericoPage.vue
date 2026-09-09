@@ -32,7 +32,12 @@
         <div class="field-label">Local da auditagem</div>
         <div class="row q-col-gutter-sm">
           <div class="col-6">
-            <q-select v-model="base" :options="basesOperacionais" outlined dense label="Base" :rules="[required]" />
+            <q-select
+              v-model="base"
+              :options="basesOperacionais"
+              option-value="value" option-label="label" emit-value map-options
+              outlined dense label="Base" :rules="[required]"
+            />
           </div>
           <div class="col-6">
             <div class="row items-start no-wrap" style="gap: 6px">

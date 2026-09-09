@@ -61,7 +61,12 @@ export const categorias: ChecklistCategory[] = [
 ];
 
 export const basesOperacionais = [
-  "LDP", "GTC", "MRA", "STI", "BCB", "PDS", "PDT", "BDC", "ITM", "SEDE",
+  { value: "BCB", label: "Bacabal" },
+  { value: "ITM", label: "Itapecuru - Mirim" },
+  { value: "STI", label: "Santa Inês" },
+  { value: "BDC", label: "Barra do Corda" },
+  { value: "PDS", label: "Pedreiras" },
+  { value: "PDT", label: "Presidente Dutra" },
 ];
 
 export const tiposObservacao = [
