@@ -143,7 +143,7 @@ const linksList: EssentialLinkProps[] = [
     link: "/acompanhamento-mensal"
   },
   {
-    label: "Índice de Conformidade",
+    label: "Índice de Inconformidades",
     icon: "mdi-gauge",
     link: "/indice-conformidade"
   },
