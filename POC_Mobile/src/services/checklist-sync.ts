@@ -98,6 +98,7 @@ export async function syncChecklistToRemote(
       observacao: r.observacao ?? null,
       foto_r2_key: fotoKey,
       resolvido: r.resolvido ?? null,
+      itens: r.itens ?? null,
     });
   }
 

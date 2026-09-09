@@ -14,6 +14,11 @@ export interface CategoriaGoman {
   perguntas: PerguntaGoman[]
 }
 
+export interface ItemVerificado {
+  nome: string
+  conforme: boolean
+}
+
 export interface RespostaPergunta {
   perguntaId: string
   resposta: Exclude<RespostaChecklist, null>
@@ -21,6 +26,8 @@ export interface RespostaPergunta {
   foto?: string
   /** Apenas para respostas "nao_conforme": foi resolvida no momento da auditoria? */
   resolvido?: boolean
+  /** Apenas quando a pergunta menciona múltiplos itens: condição individual de cada um. */
+  itens?: ItemVerificado[]
 }
 
 export const gomanChecklist: CategoriaGoman[] = [

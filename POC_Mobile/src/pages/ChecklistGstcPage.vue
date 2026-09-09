@@ -243,6 +243,9 @@
                   <div class="text-caption text-grey-8 nc-resumo__texto">
                     {{ detalhesMap[pergunta.id].observacao }}
                   </div>
+                  <div v-if="detalhesMap[pergunta.id].itens" class="text-caption text-negative">
+                    {{ detalhesMap[pergunta.id].itens!.filter(i => !i.conforme).length }} de {{ detalhesMap[pergunta.id].itens!.length }} itens não conformes
+                  </div>
                 </div>
                 <q-icon name="mdi-pencil" size="18px" color="grey-6" />
               </div>
@@ -321,6 +324,35 @@
           <div v-if="modalPerguntaTexto" class="text-body2 text-grey-8 q-mb-md">
             {{ modalPerguntaTexto }}
           </div>
+
+          <template v-if="modalItens">
+            <div class="field-label q-mb-sm">Itens verificados *</div>
+            <q-list bordered separator class="rounded-borders q-mb-md item-check-list">
+              <q-item v-for="item in modalItens" :key="item">
+                <q-item-section>{{ item }}</q-item-section>
+                <q-item-section side>
+                  <div class="row q-gutter-xs no-wrap">
+                    <q-btn
+                      round dense flat size="sm" icon="mdi-check-circle"
+                      :color="modalItensStatus[item] === true ? 'positive' : 'grey-5'"
+                      @click="modalItensStatus[item] = true"
+                    />
+                    <q-btn
+                      round dense flat size="sm" icon="mdi-close-circle"
+                      :color="modalItensStatus[item] === false ? 'negative' : 'grey-5'"
+                      @click="modalItensStatus[item] = false"
+                    />
+                  </div>
+                </q-item-section>
+              </q-item>
+            </q-list>
+            <div
+              v-if="modalTouched && modalItens.some((i) => modalItensStatus[i] === null || modalItensStatus[i] === undefined)"
+              class="text-caption text-negative q-mb-md"
+            >
+              Marque a condição de todos os itens
+            </div>
+          </template>
 
           <div class="field-label q-mb-sm">Foto da evidência</div>
 
@@ -446,14 +478,17 @@ import {
   type PerguntaGstc,
   type RespostaChecklist,
 } from "@/data/gstc-checklist";
+import type { ItemVerificado } from "@/data/goman-checklist";
 import type { RespostaSalva } from "@/types/checklist";
 import { compressBase64 } from "@/utils/image";
 import { getTrustedTime, ServerTimeError } from "@/utils/server-time";
 import { stampAuditPhoto } from "@/utils/photo-stamp";
+import { extrairItensPergunta } from "@/utils/pergunta-itens";
 import { useChecklistDraft } from "@/composables/useChecklistDraft";
 import CameraModal from "@/components/CameraModal.vue";
 
 interface NaoConformeDetalhe {
+  itens?: ItemVerificado[];
   observacao: string;
   foto: string;
   resolvido: boolean;
@@ -564,6 +599,8 @@ const modalPerguntaTexto = ref("");
 const modalObservacao = ref("");
 const modalFotoPreview = ref<string | null>(null);
 const modalResolvido = ref<boolean | null>(null);
+const modalItens = ref<string[] | null>(null);
+const modalItensStatus = reactive<Record<string, boolean | null>>({});
 const modalTouched = ref(false);
 const cameraNcAberta = ref(false);
 const modalEraNaoConforme = ref(false);
@@ -678,6 +715,16 @@ function abrirModalNaoConforme(pergunta: PerguntaGstc) {
   modalObservacao.value = existente?.observacao ?? "";
   modalFotoPreview.value = existente?.foto ?? null;
   modalResolvido.value = existente?.resolvido ?? null;
+
+  modalItens.value = extrairItensPergunta(pergunta.texto);
+  for (const key of Object.keys(modalItensStatus)) delete modalItensStatus[key];
+  if (modalItens.value) {
+    for (const item of modalItens.value) {
+      const existenteItem = existente?.itens?.find((i) => i.nome === item);
+      modalItensStatus[item] = existenteItem ? existenteItem.conforme : null;
+    }
+  }
+
   modalTouched.value = false;
   modalAberto.value = true;
 }
@@ -740,10 +787,21 @@ function confirmarNaoConforme() {
     return;
   }
 
+  let itensSalvos: ItemVerificado[] | undefined;
+  if (modalItens.value) {
+    const faltando = modalItens.value.some((item) => modalItensStatus[item] === null || modalItensStatus[item] === undefined);
+    if (faltando) {
+      $q.notify({ type: "warning", message: "Marque a condição de todos os itens", position: "top" });
+      return;
+    }
+    itensSalvos = modalItens.value.map((item) => ({ nome: item, conforme: modalItensStatus[item] as boolean }));
+  }
+
   detalhesMap[modalPerguntaId.value] = {
     observacao: modalObservacao.value.trim(),
     foto: modalFotoPreview.value,
     resolvido: modalResolvido.value,
+    ...(itensSalvos ? { itens: itensSalvos } : {}),
   };
   respostas[modalPerguntaId.value] = "nao_conforme";
   const answeredId = modalPerguntaId.value;
@@ -810,6 +868,7 @@ async function onSubmit() {
         ...(detalhe?.observacao ? { observacao: detalhe.observacao } : {}),
         ...(detalhe?.foto ? { foto: detalhe.foto } : {}),
         ...(detalhe?.resolvido !== undefined ? { resolvido: detalhe.resolvido } : {}),
+        ...(detalhe?.itens ? { itens: detalhe.itens } : {}),
       });
     }
   }
