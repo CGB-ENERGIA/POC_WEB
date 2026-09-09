@@ -222,11 +222,11 @@
 
           <template v-if="modalItens">
             <div class="field-label q-mb-sm">Itens verificados *</div>
-            <q-list bordered separator class="rounded-borders q-mb-md item-check-list">
+            <q-list bordered separator class="rounded-borders q-mb-sm item-check-list">
               <q-item v-for="item in modalItens" :key="item">
                 <q-item-section>{{ item }}</q-item-section>
                 <q-item-section side>
-                  <div class="row q-gutter-xs no-wrap">
+                  <div class="row q-gutter-xs no-wrap items-center">
                     <q-btn
                       round dense flat size="sm" icon="mdi-check-circle"
                       :color="modalItensStatus[item] === true ? 'positive' : 'grey-5'"
@@ -237,10 +237,24 @@
                       :color="modalItensStatus[item] === false ? 'negative' : 'grey-5'"
                       @click="modalItensStatus[item] = false"
                     />
+                    <q-btn
+                      v-if="modalItensManuais.has(item)"
+                      round dense flat size="sm" icon="mdi-delete-outline" color="grey-6"
+                      @click="removerItemManual(item)"
+                    />
                   </div>
                 </q-item-section>
               </q-item>
             </q-list>
+            <div class="row q-gutter-sm q-mb-sm items-center">
+              <q-input
+                v-model="modalNovoItem"
+                dense outlined class="col"
+                placeholder="Adicionar outro item..."
+                @keyup.enter="adicionarItemManual"
+              />
+              <q-btn round dense unelevated color="primary" icon="mdi-plus" @click="adicionarItemManual" />
+            </div>
             <div
               v-if="modalTouched && modalItens.some((i) => modalItensStatus[i] === null || modalItensStatus[i] === undefined)"
               class="text-caption text-negative q-mb-md"
@@ -424,6 +438,8 @@ const modalFotoPreview = ref<string | null>(null);
 const modalResolvido = ref<boolean | null>(null);
 const modalItens = ref<string[] | null>(null);
 const modalItensStatus = reactive<Record<string, boolean | null>>({});
+const modalItensManuais = ref<Set<string>>(new Set());
+const modalNovoItem = ref("");
 const modalTouched = ref(false);
 const cameraNcAberta = ref(false);
 const modalEraNaoConforme = ref(false);
@@ -515,15 +531,47 @@ function abrirModalNaoConforme(pergunta: PerguntaGoman) {
 
   modalItens.value = extrairItensPergunta(pergunta.texto);
   for (const key of Object.keys(modalItensStatus)) delete modalItensStatus[key];
+  modalItensManuais.value = new Set();
+  modalNovoItem.value = "";
   if (modalItens.value) {
+    const nomesDetectados = new Set(modalItens.value);
     for (const item of modalItens.value) {
       const existenteItem = existente?.itens?.find((i) => i.nome === item);
       modalItensStatus[item] = existenteItem ? existenteItem.conforme : null;
+    }
+    // Restaura itens adicionados manualmente em uma edição anterior
+    for (const salvo of existente?.itens ?? []) {
+      if (!nomesDetectados.has(salvo.nome)) {
+        modalItens.value.push(salvo.nome);
+        modalItensStatus[salvo.nome] = salvo.conforme;
+        modalItensManuais.value.add(salvo.nome);
+      }
     }
   }
 
   modalTouched.value = false;
   modalAberto.value = true;
+}
+
+function adicionarItemManual() {
+  const nome = modalNovoItem.value.trim();
+  if (!nome) return;
+  if (!modalItens.value) modalItens.value = [];
+  if (modalItens.value.some((i) => i.toLowerCase() === nome.toLowerCase())) {
+    modalNovoItem.value = "";
+    return;
+  }
+  modalItens.value.push(nome);
+  modalItensStatus[nome] = null;
+  modalItensManuais.value.add(nome);
+  modalNovoItem.value = "";
+}
+
+function removerItemManual(item: string) {
+  if (!modalItens.value) return;
+  modalItens.value = modalItens.value.filter((i) => i !== item);
+  delete modalItensStatus[item];
+  modalItensManuais.value.delete(item);
 }
 
 function abrirCameraNc() {
