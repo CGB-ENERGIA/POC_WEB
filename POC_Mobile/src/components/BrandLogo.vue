@@ -55,6 +55,20 @@ const markStyle = computed(() => ({
   display: inline-flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.brand-logo__text {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.brand-logo__title,
+.brand-logo__subtitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .brand-logo--stacked {

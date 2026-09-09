@@ -4,6 +4,18 @@ import { register } from "register-service-worker";
 // events passes a ServiceWorkerRegistration instance in their arguments.
 // ServiceWorkerRegistration: https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerRegistration
 
+// Sem isso, o SW novo instala em segundo plano mas a pagina ja aberta
+// continua rodando o bundle antigo indefinidamente (usuario so via a
+// versao nova ao fechar e reabrir o app manualmente varias vezes).
+if ("serviceWorker" in navigator) {
+  let recarregando = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (recarregando) return;
+    recarregando = true;
+    window.location.reload();
+  });
+}
+
 register(import.meta.env.QUASAR_SERVICE_WORKER_FILE, {
   // The registrationOptions object will be passed as the second argument
   // to ServiceWorkerContainer.register()
