@@ -70,10 +70,26 @@
             </div>
             <div class="row q-col-gutter-sm">
               <div class="col-7">
-                <q-input v-model="membro.nome" outlined dense label="Nome" placeholder="Nome do colaborador" />
+                <q-select
+                  v-model="membro.nome"
+                  :options="membroSugestoes"
+                  outlined dense label="Nome" placeholder="Nome do colaborador"
+                  use-input fill-input hide-selected input-debounce="0"
+                  @filter="filtrarColaborador"
+                  @input-value="(val) => (membro.nome = val)"
+                  @update:model-value="(val) => aplicarColaboradorSelecionado(idx, val)"
+                />
               </div>
               <div class="col-5">
-                <q-input v-model="membro.matricula" outlined dense label="Matrícula" placeholder="Ex: 12512" />
+                <q-select
+                  v-model="membro.matricula"
+                  :options="membroSugestoes"
+                  outlined dense label="Matrícula" placeholder="Ex: 12512"
+                  use-input fill-input hide-selected input-debounce="0"
+                  @filter="filtrarColaborador"
+                  @input-value="(val) => (membro.matricula = val)"
+                  @update:model-value="(val) => aplicarColaboradorSelecionado(idx, val)"
+                />
               </div>
             </div>
           </div>
@@ -344,6 +360,7 @@ import { useSessionStore } from "@/stores/session";
 import { useObservacoesStore } from "@/stores/observacoes";
 import { basesOperacionais } from "@/data/checklist";
 import { equipesPorBase } from "@/data/equipes";
+import { employees } from "@/data/employees";
 import type { CategoriaGoman, PerguntaGoman, Gravidade, ItemVerificado } from "@/data/goman-checklist";
 import type { AuditagemCategoria } from "@/data/auditagem";
 import type { RespostaSalva } from "@/types/checklist";
@@ -426,6 +443,33 @@ const saving = ref(false);
 
 function adicionarMembro() { membros.value.push({ nome: "", matricula: "" }); }
 function removerMembro(idx: number) { if (membros.value.length > 1) membros.value.splice(idx, 1); }
+
+const membroSugestoes = ref<string[]>([]);
+
+function filtrarColaborador(val: string, update: (fn: () => void) => void) {
+  update(() => {
+    const needle = val.trim();
+    const needleLower = needle.toLowerCase();
+    membroSugestoes.value = needle
+      ? employees
+          .filter((e) =>
+            e.nomeCompleto.toLowerCase().includes(needleLower) ||
+            e.nome.toLowerCase().includes(needleLower) ||
+            e.matricula.includes(needle)
+          )
+          .slice(0, 8)
+          .map((e) => `${e.nomeCompleto} — ${e.matricula}`)
+      : [];
+  });
+}
+
+function aplicarColaboradorSelecionado(idx: number, valorSelecionado: string | null) {
+  if (!valorSelecionado) return;
+  const match = valorSelecionado.match(/^(.*) — (\d+)$/);
+  if (!match) return;
+  membros.value[idx].nome = match[1];
+  membros.value[idx].matricula = match[2];
+}
 
 const respostas = reactive<Record<string, Exclude<import("@/data/goman-checklist").RespostaChecklist, null>>>({});
 const detalhesMap = reactive<Record<string, NaoConformeDetalhe>>({});
