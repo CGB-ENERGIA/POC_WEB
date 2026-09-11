@@ -1,281 +1,264 @@
 <template>
-  <q-page class="config-page q-pa-lg">
+  <q-page class="cm-page">
 
-    <div class="page-header q-mb-lg">
-      <div class="row items-center gap-sm q-mb-xs">
-        <q-icon name="mdi-bullseye-arrow" size="28px" color="primary" />
-        <div class="text-h5 text-weight-bold">Configuração de Metas</div>
-      </div>
-      <div class="text-body2 text-grey-6">
-        Defina as metas semanais por perfil e mês. A meta mensal é calculada automaticamente (semanal × 4 semanas).
+    <!-- ── Hero Header ─────────────────────────────────────────────────────────── -->
+    <div class="cm-hero">
+      <div class="cm-hero__inner">
+        <div class="cm-hero__icon">
+          <q-icon name="mdi-bullseye-arrow" size="32px" />
+        </div>
+        <div>
+          <h1 class="cm-hero__title">Configuração de Metas</h1>
+          <p class="cm-hero__sub">Defina as metas semanais por perfil e mês. A meta mensal é calculada automaticamente (semanal × 4 semanas).</p>
+        </div>
       </div>
     </div>
 
-    <!-- Seletor de Mês/Ano -->
-    <q-card flat bordered class="period-card q-mb-lg">
-      <q-card-section class="q-pa-md">
-        <div class="row items-center gap-sm q-mb-sm">
-          <q-icon name="mdi-calendar-range" size="20px" color="primary" />
-          <span class="text-subtitle2 text-weight-bold">Período de referência</span>
+    <!-- ── Período de referência ───────────────────────────────────────────────── -->
+    <div class="cm-section">
+      <div class="cm-period">
+        <div class="cm-period__header">
+          <q-icon name="mdi-calendar-range" size="18px" />
+          <span>Período de referência</span>
         </div>
-        <div class="row items-center q-gutter-md">
-          <div class="fgroup">
-            <span class="fgroup__label">ANO</span>
-            <div class="pill-group">
+        <div class="cm-period__filters">
+          <div class="cm-fgroup">
+            <span class="cm-flabel">ANO</span>
+            <div class="cm-pills">
               <button
                 v-for="a in anos" :key="a"
-                :class="['pill', { 'pill--active': selectedAno === a }]"
+                :class="['cm-pill', selectedAno === a && 'cm-pill--on']"
                 @click="selectedAno = a"
               >{{ a }}</button>
             </div>
           </div>
-          <div class="fgroup">
-            <span class="fgroup__label">MÊS</span>
-            <div class="pill-group">
+          <div class="cm-fgroup cm-fgroup--mes">
+            <span class="cm-flabel">MÊS</span>
+            <div class="cm-pills">
               <button
                 v-for="m in meses" :key="m.value"
-                :class="['pill', { 'pill--active': selectedMes === m.value }]"
+                :class="['cm-pill', selectedMes === m.value && 'cm-pill--on']"
                 @click="onChangeMes(m.value)"
               >{{ m.label }}</button>
             </div>
           </div>
         </div>
-        <div v-if="!hasGoalDefined(selectedAno, selectedMes)" class="q-mt-sm row items-center gap-sm text-caption text-orange-8">
-          <q-icon name="mdi-alert-circle-outline" size="14px" />
-          Sem meta configurada para este mês — exibindo valores padrão.
+        <div class="cm-period__status" :class="hasGoalDefined(selectedAno, selectedMes) ? 'cm-period__status--ok' : 'cm-period__status--warn'">
+          <q-icon :name="hasGoalDefined(selectedAno, selectedMes) ? 'mdi-check-circle-outline' : 'mdi-alert-circle-outline'" size="15px" />
+          <span v-if="hasGoalDefined(selectedAno, selectedMes)">Meta configurada para este mês.</span>
+          <span v-else>Sem meta configurada para este mês — exibindo valores padrão.</span>
         </div>
-        <div v-else class="q-mt-sm row items-center gap-sm text-caption text-positive">
-          <q-icon name="mdi-check-circle-outline" size="14px" />
-          Meta configurada para este mês.
-        </div>
-      </q-card-section>
-    </q-card>
+      </div>
+    </div>
 
-    <!-- Cards de meta por perfil -->
-    <div class="row q-col-gutter-lg">
+    <!-- ── Cards de meta ──────────────────────────────────────────────────────── -->
+    <div class="cm-section">
+      <div class="cm-meta-grid">
 
-      <!-- Operacionais -->
-      <div class="col-12 col-md-5">
-        <q-card flat bordered class="meta-card">
-          <q-card-section class="meta-card__header">
-            <div class="row items-center no-wrap gap-sm">
-              <q-icon name="mdi-account-hard-hat" size="26px" />
-              <div>
-                <div class="text-subtitle1 text-weight-bold">Operacionais</div>
-                <div class="text-caption text-grey-5">Equipes e técnicos de campo</div>
-              </div>
+        <!-- Operacionais -->
+        <div class="cm-meta-card cm-meta-card--op">
+          <div class="cm-meta-card__head">
+            <div class="cm-meta-card__head-icon">
+              <q-icon name="mdi-account-hard-hat" size="28px" />
             </div>
-          </q-card-section>
-          <q-card-section class="q-pt-none">
-            <div class="meta-row">
-              <div class="meta-row__label">
-                <q-icon name="mdi-calendar-week" size="18px" class="q-mr-xs" />
+            <div>
+              <div class="cm-meta-card__head-title">Operacionais</div>
+              <div class="cm-meta-card__head-sub">Equipes e técnicos de campo</div>
+            </div>
+          </div>
+          <div class="cm-meta-card__body">
+            <div class="cm-meta-row">
+              <div class="cm-meta-row__label">
+                <q-icon name="mdi-calendar-week" size="16px" />
                 Meta semanal
               </div>
-              <div class="meta-row__control">
-                <q-btn flat round dense icon="mdi-minus" @click="decrement('normais')" :disable="normaisInput <= 1" />
-                <div class="meta-input-wrap">
-                  <q-input
+              <div class="cm-meta-row__ctrl">
+                <button class="cm-stepper" :disabled="normaisInput <= 1" @click="decrement('normais')">−</button>
+                <div class="cm-counter">
+                  <input
                     v-model.number="normaisInput"
-                    type="number" dense outlined
-                    input-class="text-center text-weight-bold"
-                    min="1" max="99" class="meta-input"
+                    type="number" min="1" max="99"
+                    class="cm-counter__input"
                   />
-                  <span class="meta-unit">obs/sem</span>
+                  <span class="cm-counter__unit">obs/sem</span>
                 </div>
-                <q-btn flat round dense icon="mdi-plus" @click="increment('normais')" :disable="normaisInput >= 99" />
+                <button class="cm-stepper" :disabled="normaisInput >= 99" @click="increment('normais')">+</button>
               </div>
             </div>
-            <div class="meta-derived">
-              <q-icon name="mdi-calendar-month" size="16px" class="q-mr-xs" />
+            <div class="cm-derived">
+              <q-icon name="mdi-calendar-month" size="15px" />
               Meta mensal: <strong>{{ normaisInput * 4 }} obs/mês</strong>
-              <span class="text-grey-5 q-ml-xs">(× 4 semanas)</span>
+              <span class="cm-derived__hint">× 4 semanas</span>
             </div>
-          </q-card-section>
-        </q-card>
-      </div>
+          </div>
+        </div>
 
-      <!-- SESMT / Segurança -->
-      <div class="col-12 col-md-5">
-        <q-card flat bordered class="meta-card meta-card--sesmt">
-          <q-card-section class="meta-card__header meta-card__header--sesmt">
-            <div class="row items-center no-wrap gap-sm">
-              <q-icon name="mdi-shield-account" size="26px" />
-              <div>
-                <div class="text-subtitle1 text-weight-bold">SESMT / Segurança</div>
-                <div class="text-caption text-grey-5">Pessoal de segurança do trabalho</div>
-              </div>
+        <!-- SESMT -->
+        <div class="cm-meta-card cm-meta-card--sesmt">
+          <div class="cm-meta-card__head cm-meta-card__head--sesmt">
+            <div class="cm-meta-card__head-icon">
+              <q-icon name="mdi-shield-account" size="28px" />
             </div>
-          </q-card-section>
-          <q-card-section class="q-pt-none">
-            <div class="meta-row">
-              <div class="meta-row__label">
-                <q-icon name="mdi-calendar-week" size="18px" class="q-mr-xs" />
+            <div>
+              <div class="cm-meta-card__head-title">SESMT / Segurança</div>
+              <div class="cm-meta-card__head-sub">Pessoal de segurança do trabalho</div>
+            </div>
+          </div>
+          <div class="cm-meta-card__body">
+            <div class="cm-meta-row">
+              <div class="cm-meta-row__label">
+                <q-icon name="mdi-calendar-week" size="16px" />
                 Meta semanal
               </div>
-              <div class="meta-row__control">
-                <q-btn flat round dense icon="mdi-minus" @click="decrement('seguranca')" :disable="segurancaInput <= 1" />
-                <div class="meta-input-wrap">
-                  <q-input
+              <div class="cm-meta-row__ctrl">
+                <button class="cm-stepper cm-stepper--sesmt" :disabled="segurancaInput <= 1" @click="decrement('seguranca')">−</button>
+                <div class="cm-counter">
+                  <input
                     v-model.number="segurancaInput"
-                    type="number" dense outlined
-                    input-class="text-center text-weight-bold"
-                    min="1" max="99" class="meta-input"
+                    type="number" min="1" max="99"
+                    class="cm-counter__input"
                   />
-                  <span class="meta-unit">obs/sem</span>
+                  <span class="cm-counter__unit">obs/sem</span>
                 </div>
-                <q-btn flat round dense icon="mdi-plus" @click="increment('seguranca')" :disable="segurancaInput >= 99" />
+                <button class="cm-stepper cm-stepper--sesmt" :disabled="segurancaInput >= 99" @click="increment('seguranca')">+</button>
               </div>
             </div>
-            <div class="meta-derived">
-              <q-icon name="mdi-calendar-month" size="16px" class="q-mr-xs" />
+            <div class="cm-derived">
+              <q-icon name="mdi-calendar-month" size="15px" />
               Meta mensal: <strong>{{ segurancaInput * 4 }} obs/mês</strong>
-              <span class="text-grey-5 q-ml-xs">(× 4 semanas)</span>
+              <span class="cm-derived__hint">× 4 semanas</span>
             </div>
-          </q-card-section>
-        </q-card>
-      </div>
-
-    </div>
-
-    <!-- Actions perfil -->
-    <div class="row q-mt-lg q-gutter-sm">
-      <q-btn label="Salvar metas" icon="mdi-content-save" color="primary" unelevated :loading="saving" @click="handleSave" />
-      <q-btn label="Restaurar padrões" icon="mdi-restore" flat color="grey-6" @click="handleReset" />
-    </div>
-
-    <!-- ══ EXCEÇÕES INDIVIDUAIS ══ -->
-    <q-separator class="q-my-xl" />
-
-    <div class="page-header q-mb-lg">
-      <div class="row items-center gap-sm q-mb-xs">
-        <q-icon name="mdi-account-edit" size="26px" color="deep-orange" />
-        <div class="text-h6 text-weight-bold">Exceções individuais</div>
-      </div>
-      <div class="text-body2 text-grey-6">
-        Defina uma meta específica para um colaborador neste mês (férias, afastamento, integração etc.).
-        Sobrepõe a meta do perfil.
-      </div>
-    </div>
-
-    <!-- Formulário de nova exceção -->
-    <q-card flat bordered class="override-card q-mb-lg">
-      <q-card-section class="q-pa-md">
-        <div class="row q-col-gutter-md items-end">
-
-          <div class="col-12 col-sm-4">
-            <div class="fgroup__label q-mb-xs">COLABORADOR</div>
-            <q-select
-              v-model="ovMatricula"
-              :options="empOptions"
-              option-label="label"
-              option-value="matricula"
-              emit-value map-options use-input input-debounce="150"
-              outlined dense hide-selected fill-input
-              placeholder="Buscar por nome ou matrícula"
-              @filter="filterEmps"
-              @update:model-value="onSelectEmp"
-            >
-              <template #prepend><q-icon name="mdi-account-search" /></template>
-              <template #option="scope">
-                <q-item v-bind="scope.itemProps">
-                  <q-item-section>
-                    <q-item-label>{{ scope.opt.nomeCompleto }}</q-item-label>
-                    <q-item-label caption>{{ scope.opt.matricula }} · {{ scope.opt.gerencia }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </template>
-              <template #no-option>
-                <q-item><q-item-section class="text-grey-6">Nenhum colaborador encontrado</q-item-section></q-item>
-              </template>
-            </q-select>
           </div>
-
-          <div class="col-12 col-sm-2">
-            <div class="fgroup__label q-mb-xs">META SEMANAL (obs/sem)</div>
-            <div class="row items-center no-wrap gap-sm">
-              <q-btn flat round dense icon="mdi-minus" size="sm" @click="ovMeta = Math.max(0, +(ovMeta - 0.5).toFixed(1))" />
-              <q-input
-                v-model.number="ovMeta"
-                type="number" outlined dense
-                input-class="text-center text-weight-bold"
-                min="0" max="99" step="0.5"
-                style="width:72px"
-              />
-              <q-btn flat round dense icon="mdi-plus" size="sm" @click="ovMeta = +(ovMeta + 0.5).toFixed(1)" />
-            </div>
-            <div class="text-caption text-grey-5 q-mt-xs">Mensal: {{ (ovMeta * 4).toFixed(1) }} obs</div>
-          </div>
-
-          <div class="col-12 col-sm-4">
-            <div class="fgroup__label q-mb-xs">MOTIVO</div>
-            <q-input
-              v-model="ovMotivo"
-              outlined dense placeholder="Ex: férias, afastamento médico, integração…"
-            />
-          </div>
-
-          <div class="col-12 col-sm-2">
-            <q-btn
-              label="Adicionar"
-              icon="mdi-plus-circle"
-              color="deep-orange"
-              unelevated
-              :disable="!ovMatricula || !ovMotivo.trim()"
-              :loading="ovSaving"
-              @click="handleSaveOverride"
-            />
-          </div>
-
         </div>
-      </q-card-section>
-    </q-card>
 
-    <!-- Lista de exceções do mês -->
-    <div v-if="monthOverrides.length" class="override-list">
-      <div class="fgroup__label q-mb-sm">EXCEÇÕES EM {{ mesAtualLabel }} / {{ selectedAno }}</div>
-      <q-card flat bordered>
-        <q-list separator>
-          <q-item v-for="ov in monthOverrides" :key="ov.matricula" class="q-py-sm">
-            <q-item-section avatar>
-              <q-avatar color="deep-orange" text-color="white" size="38px" font-size="13px">
-                {{ ov.nome.split(" ").slice(0,2).map(p => p[0]).join("") }}
-              </q-avatar>
-            </q-item-section>
-            <q-item-section>
-              <q-item-label class="text-weight-medium">{{ ov.nome }}</q-item-label>
-              <q-item-label caption>{{ ov.matricula }} · {{ ov.motivo }}</q-item-label>
-            </q-item-section>
-            <q-item-section side class="text-center">
-              <div class="override-badge">{{ ov.meta_semanal }}<span>/sem</span></div>
-              <div class="text-caption text-grey-5">{{ (ov.meta_semanal * 4).toFixed(1) }}/mês</div>
-            </q-item-section>
-            <q-item-section side>
-              <q-btn flat round dense icon="mdi-delete-outline" color="negative" size="sm" @click="handleRemoveOverride(ov)" />
-            </q-item-section>
-          </q-item>
-        </q-list>
-      </q-card>
-    </div>
-    <div v-else class="text-caption text-grey-5 q-mt-sm">
-      Nenhuma exceção individual para {{ mesAtualLabel }}/{{ selectedAno }}.
+      </div>
+
+      <!-- Ações -->
+      <div class="cm-actions">
+        <button class="cm-btn cm-btn--save" :class="{ 'cm-btn--loading': saving }" :disabled="saving" @click="handleSave">
+          <q-icon name="mdi-content-save" size="18px" />
+          <span>{{ saving ? 'Salvando…' : 'Salvar metas' }}</span>
+        </button>
+        <button class="cm-btn cm-btn--reset" @click="handleReset">
+          <q-icon name="mdi-restore" size="18px" />
+          <span>Restaurar padrões</span>
+        </button>
+      </div>
     </div>
 
-    <!-- Info card -->
-    <q-card flat bordered class="info-card q-mt-xl">
-      <q-card-section class="row items-start no-wrap gap-sm">
-        <q-icon name="mdi-information-outline" size="20px" color="info" class="q-mt-xs" />
+    <!-- ── Divisor ─────────────────────────────────────────────────────────────── -->
+    <div class="cm-divider"></div>
+
+    <!-- ── Exceções individuais ────────────────────────────────────────────────── -->
+    <div class="cm-section">
+      <div class="cm-section-title">
+        <q-icon name="mdi-account-edit" size="22px" class="text-deep-orange" />
         <div>
-          <div class="text-body2 text-weight-medium q-mb-xs">Como as metas são usadas</div>
-          <ul class="text-body2 text-grey-7 q-mb-none" style="padding-left:18px">
+          <div class="cm-section-title__main">Exceções individuais</div>
+          <div class="cm-section-title__sub">Meta específica para um colaborador neste mês (férias, afastamento, integração etc.). Sobrepõe a meta do perfil.</div>
+        </div>
+      </div>
+
+      <!-- Formulário -->
+      <div class="cm-override-form">
+        <div class="cm-override-form__field cm-override-form__field--wide">
+          <div class="cm-flabel">COLABORADOR</div>
+          <q-select
+            v-model="ovMatricula"
+            :options="empOptions"
+            option-label="label"
+            option-value="matricula"
+            emit-value map-options use-input input-debounce="150"
+            outlined dense hide-selected fill-input
+            placeholder="Buscar por nome ou matrícula"
+            @filter="filterEmps"
+            @update:model-value="onSelectEmp"
+          >
+            <template #prepend><q-icon name="mdi-account-search" /></template>
+            <template #option="scope">
+              <q-item v-bind="scope.itemProps">
+                <q-item-section>
+                  <q-item-label>{{ scope.opt.nomeCompleto }}</q-item-label>
+                  <q-item-label caption>{{ scope.opt.matricula }} · {{ scope.opt.gerencia }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </template>
+            <template #no-option>
+              <q-item><q-item-section class="text-grey-6">Nenhum colaborador encontrado</q-item-section></q-item>
+            </template>
+          </q-select>
+        </div>
+
+        <div class="cm-override-form__field">
+          <div class="cm-flabel">META SEMANAL</div>
+          <div class="cm-override-ctrl">
+            <button class="cm-stepper" @click="ovMeta = Math.max(0, +(ovMeta - 0.5).toFixed(1))">−</button>
+            <input v-model.number="ovMeta" type="number" min="0" max="99" step="0.5" class="cm-counter__input cm-counter__input--sm" />
+            <button class="cm-stepper" @click="ovMeta = +(ovMeta + 0.5).toFixed(1)">+</button>
+          </div>
+          <div class="cm-flabel" style="margin-top:4px">Mensal: {{ (ovMeta * 4).toFixed(1) }} obs</div>
+        </div>
+
+        <div class="cm-override-form__field cm-override-form__field--wide">
+          <div class="cm-flabel">MOTIVO</div>
+          <q-input v-model="ovMotivo" outlined dense placeholder="Ex: férias, afastamento médico, integração…" />
+        </div>
+
+        <div class="cm-override-form__field cm-override-form__field--btn">
+          <button
+            class="cm-btn cm-btn--add"
+            :disabled="!ovMatricula || !ovMotivo.trim() || ovSaving"
+            @click="handleSaveOverride"
+          >
+            <q-icon name="mdi-plus-circle" size="18px" />
+            <span>Adicionar</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Lista -->
+      <div v-if="monthOverrides.length" class="cm-override-list">
+        <div class="cm-flabel" style="margin-bottom:8px">EXCEÇÕES EM {{ mesAtualLabel.toUpperCase() }} / {{ selectedAno }}</div>
+        <div class="cm-override-items">
+          <div v-for="ov in monthOverrides" :key="ov.matricula" class="cm-override-item">
+            <div class="cm-override-item__avatar">
+              {{ ov.nome.split(" ").slice(0,2).map(p => p[0]).join("") }}
+            </div>
+            <div class="cm-override-item__info">
+              <div class="cm-override-item__name">{{ ov.nome }}</div>
+              <div class="cm-override-item__meta">{{ ov.matricula }} · {{ ov.motivo }}</div>
+            </div>
+            <div class="cm-override-item__badge">
+              <span class="cm-override-item__num">{{ ov.meta_semanal }}</span>
+              <span class="cm-override-item__unit">/sem</span>
+              <div class="cm-override-item__mensal">{{ (ov.meta_semanal * 4).toFixed(1) }}/mês</div>
+            </div>
+            <button class="cm-override-item__del" @click="handleRemoveOverride(ov)">
+              <q-icon name="mdi-delete-outline" size="18px" />
+            </button>
+          </div>
+        </div>
+      </div>
+      <div v-else class="cm-empty">
+        Nenhuma exceção individual para {{ mesAtualLabel }}/{{ selectedAno }}.
+      </div>
+    </div>
+
+    <!-- ── Info ────────────────────────────────────────────────────────────────── -->
+    <div class="cm-section">
+      <div class="cm-info">
+        <q-icon name="mdi-information-outline" size="20px" class="cm-info__icon" />
+        <div>
+          <div class="cm-info__title">Como as metas são usadas</div>
+          <ul class="cm-info__list">
             <li>As metas são aplicadas automaticamente nas páginas de Acompanhamento Semanal e Mensal.</li>
             <li>Observadores com gerência <strong>SESMT</strong> usam a meta de Segurança; os demais usam a meta Operacional.</li>
-            <li>Exceções individuais têm prioridade sobre a meta do perfil — o colaborador não aparece em vermelho por critério que não se aplica a ele.</li>
+            <li>Exceções individuais têm prioridade sobre a meta do perfil.</li>
             <li>Cada mês pode ter uma meta diferente — selecione o mês e salve.</li>
           </ul>
         </div>
-      </q-card-section>
-    </q-card>
+      </div>
+    </div>
 
   </q-page>
 </template>
@@ -307,7 +290,6 @@ const normaisInput   = ref(2);
 const segurancaInput = ref(5);
 const saving = ref(false);
 
-// ─── Exceções individuais ─────────────────────────────────────────────────────
 interface EmpOption {
   matricula: string;
   nomeCompleto: string;
@@ -326,7 +308,6 @@ const ovSaving     = ref(false);
 const mesAtualLabel = computed(() => meses.find(m => m.value === selectedMes.value)?.label ?? "");
 const monthOverrides = computed(() => getOverridesForMonth(selectedAno.value, selectedMes.value));
 
-// Carrega lista de colaboradores do Supabase
 async function loadEmployees() {
   const { data } = await supabase
     .from("employees")
@@ -392,7 +373,6 @@ async function handleRemoveOverride(ov: IndividualOverride) {
   $q.notify({ type: "info", message: `Exceção de ${ov.nome} removida.`, position: "top-right", timeout: 2000 });
 }
 
-// ─── Metas de perfil ──────────────────────────────────────────────────────────
 function loadInputsForPeriod(ano: number, mes: number) {
   const g = getMonthGoal(ano, mes);
   normaisInput.value   = g.normais_semanal;
@@ -439,74 +419,397 @@ function handleReset() {
 </script>
 
 <style scoped lang="scss">
-$brand: #8B1C2B;
-$orange: #e65100;
-$border: #e2e8f0;
-$label-color: #94a3b8;
-$inactive-bg: #f1f5f9;
-$inactive-text: #475569;
+$brand:   #8B1C2B;
+$green:   #15803d;
+$orange:  #e65100;
+$border:  #e2e8f0;
 
-.config-page { max-width: 960px; margin: 0 auto; }
-.gap-sm { gap: 10px; }
-
-.period-card { border-radius: 12px; border-color: $border; }
-
-.fgroup { display: flex; flex-direction: column; gap: 4px; }
-.fgroup__label {
-  font-size: 10px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .8px; color: $label-color;
+// ── Página (zero padding) ──────────────────────────────────────────────────────
+.cm-page {
+  padding: 0;
+  margin: 0;
+  background: #f4f6fa;
+  min-height: 100vh;
 }
 
-.pill-group { display: flex; gap: 4px; flex-wrap: wrap; }
-.pill {
-  display: inline-flex; align-items: center; height: 28px; padding: 0 12px;
-  border: 1.5px solid $border; border-radius: 999px; background: $inactive-bg;
-  color: $inactive-text; font-size: 12px; font-weight: 500; cursor: pointer;
-  transition: background .15s, color .15s, border-color .15s; white-space: nowrap;
-  &:hover:not(.pill--active) { border-color: $brand; color: $brand; }
-  &--active { background: $brand; color: #fff; border-color: $brand; box-shadow: 0 2px 8px rgba($brand,.35); font-weight: 600; }
+// ── Hero header ────────────────────────────────────────────────────────────────
+.cm-hero {
+  background: linear-gradient(135deg, $brand 0%, darken($brand, 8%) 100%);
+  padding: 28px 32px 24px;
+  color: #fff;
+
+  &__inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    max-width: 1200px;
+  }
+
+  &__icon {
+    background: rgba(#fff, .15);
+    border-radius: 12px;
+    padding: 10px;
+    display: flex;
+    flex-shrink: 0;
+  }
+
+  &__title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin: 0 0 4px;
+    letter-spacing: -.01em;
+    line-height: 1.2;
+  }
+
+  &__sub {
+    font-size: .85rem;
+    opacity: .75;
+    margin: 0;
+    line-height: 1.4;
+  }
 }
 
-.meta-card {
-  border-radius: 14px; border-color: $border; overflow: hidden;
-  &__header { background: linear-gradient(135deg, #f0fdf4, #dcfce7); color: #15803d; padding: 16px 20px; }
-  &--sesmt &__header { background: linear-gradient(135deg, #fff1f2, #ffe4e6); color: $brand; }
+// ── Sections ───────────────────────────────────────────────────────────────────
+.cm-section {
+  padding: 24px 32px;
+  max-width: 1200px;
 }
 
-.meta-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 0 8px; gap: 12px; flex-wrap: wrap;
-  &__label { font-size: 13px; font-weight: 600; color: #475569; display: flex; align-items: center; }
-  &__control { display: flex; align-items: center; gap: 4px; }
+.cm-divider {
+  height: 1px;
+  background: $border;
+  margin: 0 32px;
 }
 
-.meta-input-wrap { display: flex; align-items: center; gap: 6px; }
-.meta-input { width: 72px; :deep(.q-field__control) { border-radius: 8px; } :deep(input) { font-size: 20px; font-weight: 700; } }
-.meta-unit { font-size: 12px; color: #94a3b8; white-space: nowrap; }
-.meta-derived {
-  display: flex; align-items: center; font-size: 13px; color: #64748b;
-  padding: 8px 0 12px; border-top: 1px solid #f1f5f9; margin-top: 4px;
+// ── Period ─────────────────────────────────────────────────────────────────────
+.cm-period {
+  background: #fff;
+  border: 1px solid $border;
+  border-radius: 14px;
+  padding: 20px 24px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.05);
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: .9rem;
+    font-weight: 700;
+    color: #334155;
+    margin-bottom: 14px;
+  }
+
+  &__filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-start;
+  }
+
+  &__status {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .78rem;
+    font-weight: 500;
+
+    &--ok  { color: $green; }
+    &--warn { color: #c05621; }
+  }
 }
 
-// ── Override ───────────────────────────────────────────────────────────────────
-.override-card { border-radius: 12px; border-color: rgba($orange, .3); }
-.override-list { max-width: 680px; }
+.cm-fgroup { display: flex; flex-direction: column; gap: 6px; }
+.cm-fgroup--mes { flex: 1; }
 
-.override-badge {
-  font-size: 18px; font-weight: 700; color: $orange; line-height: 1;
-  span { font-size: 11px; font-weight: 500; color: #94a3b8; margin-left: 1px; }
+.cm-flabel {
+  font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .8px; color: #94a3b8;
 }
 
-.info-card { border-radius: 12px; background: #f8fafc; border-color: $border; max-width: 680px; }
+.cm-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.cm-pill {
+  height: 28px; padding: 0 13px;
+  border: 1.5px solid $border; border-radius: 999px;
+  background: #f8fafc; color: #64748b;
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  transition: all .13s;
+  white-space: nowrap;
+
+  &:hover:not(.cm-pill--on) { border-color: $brand; color: $brand; }
+  &--on {
+    background: $brand; color: #fff;
+    border-color: $brand;
+    box-shadow: 0 2px 8px rgba($brand, .3);
+    font-weight: 600;
+  }
+}
+
+// ── Meta cards ─────────────────────────────────────────────────────────────────
+.cm-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+
+  @media (max-width: 640px) { grid-template-columns: 1fr; }
+}
+
+.cm-meta-card {
+  background: #fff;
+  border: 1px solid $border;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 20px;
+    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+    color: $green;
+
+    &--sesmt {
+      background: linear-gradient(135deg, #fff1f2, #ffe4e6);
+      color: $brand;
+    }
+  }
+
+  &__head-icon {
+    background: rgba(#fff, .6);
+    border-radius: 10px;
+    padding: 8px;
+    display: flex;
+    flex-shrink: 0;
+  }
+
+  &__head-title { font-size: .95rem; font-weight: 700; line-height: 1.2; }
+  &__head-sub   { font-size: .78rem; opacity: .75; margin-top: 2px; }
+
+  &__body { padding: 16px 20px; }
+}
+
+.cm-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 12px;
+
+  &__label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600; color: #475569;
+  }
+
+  &__ctrl {
+    display: flex; align-items: center; gap: 6px;
+  }
+}
+
+.cm-stepper {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  border: 1.5px solid $border;
+  background: #f8fafc;
+  font-size: 18px; font-weight: 700;
+  color: #475569; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .12s;
+
+  &:hover:not(:disabled) { border-color: $brand; color: $brand; background: #fff; }
+  &:disabled { opacity: .35; cursor: not-allowed; }
+
+  &--sesmt:hover:not(:disabled) { border-color: $brand; color: $brand; }
+}
+
+.cm-counter {
+  display: flex; align-items: center; gap: 6px;
+
+  &__input {
+    width: 64px; height: 40px;
+    border: 1.5px solid $border; border-radius: 10px;
+    text-align: center; font-size: 20px; font-weight: 700; color: #1e293b;
+    background: #fff; outline: none;
+    transition: border-color .13s;
+    &:focus { border-color: $brand; }
+    &--sm { width: 56px; font-size: 16px; }
+
+    &::-webkit-inner-spin-button,
+    &::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  }
+
+  &__unit { font-size: 11px; color: #94a3b8; white-space: nowrap; }
+}
+
+.cm-derived {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 13px; color: #64748b;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+
+  &__hint { font-size: 11px; color: #94a3b8; }
+}
+
+// ── Ações ──────────────────────────────────────────────────────────────────────
+.cm-actions {
+  display: flex; gap: 10px; flex-wrap: wrap;
+}
+
+.cm-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 0 20px; height: 40px;
+  border-radius: 10px; border: none;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  letter-spacing: .02em; text-transform: uppercase;
+  transition: all .15s;
+
+  &--save {
+    background: $brand; color: #fff;
+    box-shadow: 0 2px 8px rgba($brand, .35);
+    &:hover:not(:disabled) { background: darken($brand, 8%); }
+    &:disabled { opacity: .6; cursor: not-allowed; }
+  }
+
+  &--reset {
+    background: #fff; color: #64748b;
+    border: 1.5px solid $border;
+    &:hover { border-color: #94a3b8; color: #334155; }
+  }
+
+  &--add {
+    background: $orange; color: #fff;
+    box-shadow: 0 2px 8px rgba($orange, .3);
+    height: 38px;
+    &:hover:not(:disabled) { background: darken($orange, 8%); }
+    &:disabled { opacity: .5; cursor: not-allowed; }
+  }
+}
+
+// ── Section titles ─────────────────────────────────────────────────────────────
+.cm-section-title {
+  display: flex; align-items: flex-start; gap: 12px;
+  margin-bottom: 20px;
+
+  &__main { font-size: 1.05rem; font-weight: 700; color: #1e293b; }
+  &__sub  { font-size: .82rem; color: #64748b; margin-top: 3px; line-height: 1.4; }
+}
+
+// ── Override form ──────────────────────────────────────────────────────────────
+.cm-override-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: flex-end;
+  background: #fff;
+  border: 1px solid $border;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.04);
+
+  &__field { display: flex; flex-direction: column; gap: 6px; }
+  &__field--wide { flex: 1; min-width: 200px; }
+  &__field--btn { justify-content: flex-end; }
+}
+
+.cm-override-ctrl {
+  display: flex; align-items: center; gap: 6px;
+}
+
+// ── Override list ──────────────────────────────────────────────────────────────
+.cm-override-list { max-width: 700px; }
+
+.cm-override-items {
+  background: #fff;
+  border: 1px solid $border;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,.04);
+}
+
+.cm-override-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  &:last-child { border-bottom: none; }
+
+  &__avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: $orange; color: #fff;
+    font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  &__info { flex: 1; min-width: 0; }
+  &__name { font-size: 13px; font-weight: 600; color: #1e293b; }
+  &__meta { font-size: 11px; color: #94a3b8; margin-top: 1px; }
+
+  &__badge { text-align: right; flex-shrink: 0; }
+  &__num   { font-size: 18px; font-weight: 700; color: $orange; line-height: 1; }
+  &__unit  { font-size: 11px; color: #94a3b8; margin-left: 1px; }
+  &__mensal{ font-size: 11px; color: #94a3b8; }
+
+  &__del {
+    background: none; border: none; cursor: pointer;
+    color: #f87171; padding: 4px;
+    border-radius: 6px; transition: background .12s;
+    display: flex; align-items: center;
+    &:hover { background: #fee2e2; }
+  }
+}
+
+.cm-empty { font-size: 13px; color: #94a3b8; margin-top: 4px; }
+
+// ── Info ───────────────────────────────────────────────────────────────────────
+.cm-info {
+  display: flex; gap: 14px;
+  background: #fff; border: 1px solid $border;
+  border-radius: 14px; padding: 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.04);
+  max-width: 740px;
+
+  &__icon { color: #3b82f6; flex-shrink: 0; margin-top: 2px; }
+  &__title { font-size: .88rem; font-weight: 700; color: #1e293b; margin-bottom: 8px; }
+  &__list {
+    padding-left: 18px; margin: 0;
+    font-size: .82rem; color: #475569; line-height: 1.7;
+    li + li { margin-top: 3px; }
+  }
+}
 
 // ── Dark mode ──────────────────────────────────────────────────────────────────
 .body--dark {
-  .period-card, .meta-card, .info-card, .override-card { border-color: #334155; }
-  .meta-card__header { background: linear-gradient(135deg, #052e16, #14532d) !important; color: #4ade80 !important; }
-  .meta-card--sesmt .meta-card__header { background: linear-gradient(135deg, #3b0a0f, #5c1020) !important; color: #fca5a5 !important; }
-  .meta-derived { border-top-color: #1e293b; color: #94a3b8; }
-  .info-card { background: #1e293b; border-color: #334155; }
-  .pill { background: #1e293b; border-color: #334155; color: #94a3b8; }
-  .pill--active { background: $brand; color: #fff; border-color: $brand; }
+  .cm-page { background: #0f172a; }
+
+  .cm-period,
+  .cm-meta-card,
+  .cm-override-form,
+  .cm-override-items,
+  .cm-info {
+    background: #1e293b;
+    border-color: #334155;
+  }
+
+  .cm-period__header,
+  .cm-section-title__main { color: #e2e8f0; }
+
+  .cm-meta-card__head { background: linear-gradient(135deg, #052e16, #14532d) !important; color: #4ade80 !important; }
+  .cm-meta-card__head--sesmt { background: linear-gradient(135deg, #3b0a0f, #5c1020) !important; color: #fca5a5 !important; }
+
+  .cm-counter__input { background: #0f172a; color: #e2e8f0; border-color: #334155; }
+  .cm-stepper { background: #0f172a; border-color: #334155; color: #94a3b8; }
+  .cm-pill { background: #0f172a; border-color: #334155; color: #94a3b8; }
+  .cm-pill--on { background: $brand; color: #fff; border-color: $brand; }
+
+  .cm-derived { border-top-color: #334155; color: #94a3b8; }
+  .cm-override-item { border-bottom-color: #334155; }
+  .cm-override-item__name { color: #e2e8f0; }
+  .cm-info__title { color: #e2e8f0; }
+  .cm-info__list { color: #94a3b8; }
+  .cm-btn--reset { background: #1e293b; border-color: #334155; color: #94a3b8; }
 }
 </style>
