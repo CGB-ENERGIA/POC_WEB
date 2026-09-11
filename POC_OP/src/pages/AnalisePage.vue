@@ -589,14 +589,26 @@ $inactive-text: #475569;
 .analise-panels { background: transparent; }
 
 // ── KPI cards ─────────────────────────────────────────────────────────────────
-.kpi-card { border-radius: 12px; height: 100%; transition: box-shadow .2s; &:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); } }
-.kpi-stat-card { position: relative; overflow: hidden; }
-.kpi-stat-accent { position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 12px 12px 0 0; }
-.kpi-stat-section { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 100%; padding-top: 18px !important; }
-.kpi-stat-icon-wrap { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; margin-bottom: 8px; }
-.kpi-stat-value { font-size: 32px; font-weight: 800; line-height: 1.1; letter-spacing: -.5px; }
-.kpi-stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: #64748b; margin-top: 4px; }
-.kpi-stat-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+// ── KPI cards (compactos) ────────────────────────────────────────────────────
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  @media (max-width: 700px) { grid-template-columns: repeat(2, 1fr); }
+}
+.kpi-mini {
+  display: flex; align-items: center; gap: 8px;
+  background: #fff; border: 1.5px solid $border; border-radius: 10px;
+  padding: 10px 12px;
+
+  &__icon {
+    color: var(--kc);
+    background: var(--kbg);
+    border-radius: 8px; padding: 6px; flex-shrink: 0;
+  }
+  &__value { font-size: 18px; font-weight: 800; color: var(--kc); line-height: 1; }
+  &__label { font-size: 11px; font-weight: 600; color: #64748b; margin-left: 2px; }
+}
 
 // ── Filtro pills ──────────────────────────────────────────────────────────────
 .pill {
@@ -706,7 +718,8 @@ $inactive-text: #475569;
   .analise-item__pergunta { color: #f1f5f9; }
   .analise-item__obs, .analise-item__enviado { color: #94a3b8; }
   .analise-item__actions { border-top-color: #334155; }
-  .kpi-card { background: #1e293b; }
+  .kpi-mini { background: #1e293b; border-color: #334155; }
+  .kpi-mini__label { color: #94a3b8; }
   .pill { background: #1e293b; border-color: #334155; color: #94a3b8; &--active { background: $brand; color: #fff; border-color: $brand; } }
 }
 </style>
