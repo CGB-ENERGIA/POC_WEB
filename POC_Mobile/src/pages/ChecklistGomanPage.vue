@@ -243,7 +243,11 @@
                     {{ detalhesMap[pergunta.id].itens!.filter(i => !i.conforme).length }} de {{ detalhesMap[pergunta.id].itens!.length }} itens não conformes
                   </div>
                 </div>
-                <q-icon name="mdi-pencil" size="18px" color="grey-6" />
+                <q-btn
+                  flat round dense size="sm" icon="mdi-delete-outline" color="grey-6"
+                  @click.stop="removerNaoConforme(pergunta.id)"
+                />
+                <q-icon name="mdi-pencil" size="18px" color="grey-6" class="q-ml-xs" />
               </div>
             </div>
           </div>
@@ -334,6 +338,9 @@
               <q-icon name="mdi-camera-retake" size="28px" color="white" />
               <span>Trocar foto</span>
             </div>
+            <button class="nc-foto-preview__remove" @click.stop="modalFotoPreview = null">
+              <q-icon name="mdi-close" size="14px" color="white" />
+            </button>
           </div>
           <q-btn
             v-else
@@ -642,6 +649,11 @@ function setConforme(id: string) {
   irParaProximaPergunta(id);
 }
 
+function removerNaoConforme(perguntaId: string) {
+  delete detalhesMap[perguntaId];
+  delete respostas[perguntaId];
+}
+
 function irParaProximaPergunta(fromPerguntaId: string) {
   const fromIndex = todasPerguntasIds.indexOf(fromPerguntaId);
   const nextId = todasPerguntasIds.slice(fromIndex + 1).find((id) => !respostas[id]);
@@ -948,6 +960,23 @@ async function onSubmit() {
 .nc-foto-preview:hover .nc-foto-preview__overlay,
 .nc-foto-preview:active .nc-foto-preview__overlay {
   opacity: 1;
+}
+
+.nc-foto-preview__remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  z-index: 1;
 }
 
 .fotos-local-picker {
