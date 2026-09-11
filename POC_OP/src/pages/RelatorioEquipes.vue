@@ -196,7 +196,7 @@
               <div class="text-subtitle1 text-weight-bold">Equipes Não Visitadas</div>
               <div class="text-h5 text-weight-bold" style="color:#dc2626">{{ naoVisitadas.length }}</div>
             </q-card-section>
-            <q-card-section class="q-pt-xs">
+            <q-card-section class="q-pt-xs nv-list-wrap">
               <div v-for="eq in naoVisitadas" :key="eq" class="nv-row">
                 <span class="nv-nome">{{ eq }}</span>
                 <span class="nv-zero">0</span>
@@ -848,6 +848,7 @@ $inactive-text:#475569;
   border-bottom: 1px solid $border;
   &:last-child { border-bottom: none; }
 }
+.nv-list-wrap { max-height: 460px; overflow-y: auto; }
 .nv-nome { font-size: 11px; font-weight: 600; color: #334155; }
 .nv-zero {
   font-size: 12px; font-weight: 700; color: #dc2626;
