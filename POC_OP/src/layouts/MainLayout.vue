@@ -193,7 +193,7 @@ const linksList: EssentialLinkProps[] = [
     link: "/banco-inconformidades"
   },
   {
-    label: "Análise de NCs",
+    label: "Validação",
     icon: "mdi-clipboard-check",
     link: "/analise-nc"
   },
