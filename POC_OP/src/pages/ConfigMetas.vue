@@ -218,9 +218,17 @@
             </div>
           </div>
 
-          <div class="cm-override-form__field cm-override-form__field--wide">
+          <div class="cm-override-form__field">
             <div class="cm-flabel">MOTIVO</div>
-            <q-input v-model="ovMotivo" outlined dense placeholder="Ex: férias, afastamento médico, integração…" />
+            <q-select
+              v-model="ovMotivo"
+              :options="motivosOpcoes"
+              outlined dense
+              placeholder="Selecionar motivo"
+              emit-value map-options
+            >
+              <template #prepend><q-icon name="mdi-tag-outline" /></template>
+            </q-select>
           </div>
 
           <div class="cm-override-form__field cm-override-form__field--btn">
@@ -321,6 +329,8 @@ interface EmpOption {
   gerencia: string;
   label: string;
 }
+
+const motivosOpcoes = ["Férias", "Atestado", "Baixada"];
 
 const semanasOpcoes = [
   { value: 0, label: "Todo o mês" },
