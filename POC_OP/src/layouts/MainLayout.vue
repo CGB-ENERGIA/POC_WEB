@@ -188,6 +188,11 @@ const linksList: EssentialLinkProps[] = [
     link: "/matriz-responsabilidade"
   },
   {
+    label: "Banco de Inconformidades",
+    icon: "mdi-database-alert",
+    link: "/banco-inconformidades"
+  },
+  {
     label: "Análise de NCs",
     icon: "mdi-clipboard-check",
     link: "/analise-nc"

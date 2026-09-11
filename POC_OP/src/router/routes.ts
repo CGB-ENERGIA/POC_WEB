@@ -23,6 +23,7 @@ const routes: RouteRecordRaw[] = [
       { path: "mapa-calor-base",       component: () => import("@/pages/MapaCalorBase.vue")             },
       { path: "mapa-calor-mensal",     component: () => import("@/pages/MapaCalorMensal.vue")           },
       { path: "matriz-responsabilidade", component: () => import("@/pages/MatrizResponsabilidade.vue")  },
+      { path: "banco-inconformidades",   component: () => import("@/pages/BancoInconformidades.vue")      },
       { path: "analise-nc",              component: () => import("@/pages/AnalisePage.vue")               },
       { path: "config-metas",           component: () => import("@/pages/ConfigMetas.vue")             },
       { path: "aprovacoes",             component: () => import("@/pages/AprovacoesPage.vue"), meta: { requiresAdmin: true } },
