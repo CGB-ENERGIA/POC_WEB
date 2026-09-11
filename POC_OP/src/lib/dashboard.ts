@@ -103,11 +103,12 @@ function applySubmissionFilters(
   return q;
 }
 
-/** Todas as submissions no período com filtros. */
+/** Todas as submissions no período com filtros. Apenas checklists aprovados contam nas métricas/dashboards. */
 export async function fetchSubmissions(f: Filters, usarSemana = false): Promise<SubmissionRow[]> {
   let q = supabase
     .from("checklist_submissions")
     .select("id,matricula,observador,auditagem,data,base,equipe,membros,resumo")
+    .eq("status", "aprovado")
     .order("data", { ascending: true });
 
   q = applySubmissionFilters(q, f, usarSemana);
@@ -136,7 +137,7 @@ export async function fetchResponses(submissionIds: string[]): Promise<ResponseR
 
 /** Contagem de não conformidades por mês, ao longo de um ano inteiro (para gráfico de tendência). */
 export async function fetchNaoConformesPorMes(ano: number, base?: string): Promise<Record<number, number>> {
-  let q = supabase.from("checklist_submissions").select("id,data");
+  let q = supabase.from("checklist_submissions").select("id,data").eq("status", "aprovado");
   const start = new Date(ano, 0, 1).toISOString();
   const end = new Date(ano + 1, 0, 1).toISOString();
   q = q.gte("data", start).lt("data", end);
@@ -178,7 +179,7 @@ export interface IcitPrefixo {
  * semNc = checklists sem nenhuma resposta "nao_conforme" (base do calculo de ICIT).
  */
 export async function fetchIcitPorPrefixo(startIso: string, endIso: string, base?: string): Promise<Map<string, IcitPrefixo>> {
-  let q = supabase.from("checklist_submissions").select("id,equipe");
+  let q = supabase.from("checklist_submissions").select("id,equipe").eq("status", "aprovado");
   q = q.gte("data", startIso).lt("data", endIso);
   if (base && base !== "Todos") q = q.eq("base", base);
 
@@ -377,6 +378,59 @@ export async function editarAnalise(
 export async function deletarResolucao(id: string): Promise<void> {
   const { error } = await supabase.from("nc_resolucoes").delete().eq("id", id);
   if (error) throw error;
+}
+
+// ─── Validação de checklists enviados ────────────────────────────────────────
+
+export interface ChecklistParaAnalise extends SubmissionRow {
+  client_id: string | null;
+  status: AnaliseStatus;
+  analisado_por?: string | null;
+  data_analise?: string | null;
+  comentario_analise?: string | null;
+}
+
+const CHECKLIST_ANALISE_FIELDS =
+  "id,client_id,matricula,observador,auditagem,data,base,equipe,membros,resumo,status,analisado_por,data_analise,comentario_analise";
+
+/** Todos os checklists enviados (qualquer status), para a aba de validação. */
+export async function fetchChecklistsParaAnalise(): Promise<ChecklistParaAnalise[]> {
+  const { data, error } = await supabase
+    .from("checklist_submissions")
+    .select(CHECKLIST_ANALISE_FIELDS)
+    .order("data", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as ChecklistParaAnalise[];
+}
+
+/**
+ * Aprova/reprova um checklist enviado. Propaga o status para user_observations
+ * (mesmo id = client_id) para refletir no PWA do colaborador.
+ */
+export async function atualizarStatusChecklist(
+  id: string,
+  status: AnaliseStatus,
+  analisadoPor: string,
+  comentario?: string
+): Promise<ChecklistParaAnalise> {
+  const { data, error } = await supabase
+    .from("checklist_submissions")
+    .update({
+      status,
+      analisado_por: analisadoPor,
+      data_analise: new Date().toISOString(),
+      comentario_analise: comentario ?? null,
+    })
+    .eq("id", id)
+    .select(CHECKLIST_ANALISE_FIELDS)
+    .single();
+  if (error) throw error;
+
+  const row = data as ChecklistParaAnalise;
+  if (row.client_id) {
+    await supabase.from("user_observations").update({ status }).eq("id", row.client_id);
+  }
+  return row;
 }
 
 /** Filtra gerência de employee lookup. */

@@ -1,8 +1,45 @@
 <template>
   <q-page class="analise-page">
+
+    <!-- Abas -->
+    <div class="analise-tabs-wrap">
+      <q-tabs
+        v-model="abaAtiva"
+        class="analise-tabs"
+        active-color="white"
+        indicator-color="transparent"
+        no-caps dense
+      >
+        <q-tab name="checklists" class="analise-tab">
+          <div class="analise-tab__content">
+            <q-icon name="mdi-clipboard-check-outline" size="18px" />
+            <span>Validar Checklists</span>
+            <q-badge v-if="checklistsTabRef?.pendentes?.length" color="warning" text-color="dark" :label="checklistsTabRef.pendentes.length" />
+          </div>
+        </q-tab>
+        <q-tab name="resolucoes" class="analise-tab">
+          <div class="analise-tab__content">
+            <q-icon name="mdi-shield-refresh-outline" size="18px" />
+            <span>Resolução de NCs</span>
+            <q-badge v-if="pendentes.length" color="warning" text-color="dark" :label="pendentes.length" />
+          </div>
+        </q-tab>
+      </q-tabs>
+    </div>
+
+    <q-tab-panels v-model="abaAtiva" animated class="analise-panels">
+
+      <!-- ── Aba: Validar Checklists ──────────────────────────────────────────── -->
+      <q-tab-panel name="checklists" class="q-pa-md">
+        <AnaliseChecklistsTab ref="checklistsTabRef" />
+      </q-tab-panel>
+
+      <!-- ── Aba: Resolução de NCs (existente) ────────────────────────────────── -->
+      <q-tab-panel name="resolucoes" class="q-pa-md">
+
     <q-linear-progress v-if="loading" indeterminate color="primary" style="position:sticky;top:0;z-index:200" />
 
-    <div class="q-pa-md">
+    <div class="q-pa-none">
 
       <!-- KPIs -->
       <div class="row q-col-gutter-md q-mb-md">
@@ -186,6 +223,9 @@
       </div>
     </div>
 
+      </q-tab-panel>
+    </q-tab-panels>
+
     <!-- Dialog ação (aprovar / reprovar) -->
     <q-dialog v-model="acaoDialog.open" persistent>
       <q-card style="min-width:340px;max-width:480px;width:100%">
@@ -312,6 +352,10 @@ import {
   type ResponseRow,
 } from "@/lib/dashboard";
 import { supabase } from "@/lib/supabase";
+import AnaliseChecklistsTab from "@/pages/AnaliseChecklistsTab.vue";
+
+const abaAtiva = ref<"checklists" | "resolucoes">("checklists");
+const checklistsTabRef = ref<InstanceType<typeof AnaliseChecklistsTab> | null>(null);
 
 const R2_PUBLIC_BASE = (import.meta.env.VITE_R2_PUBLIC_BASE_URL as string ?? "").replace(/\/$/, "");
 
@@ -557,6 +601,25 @@ $inactive-text: #475569;
 
 .analise-page { background: #f8fafc; min-height: 100vh; }
 
+// ── Abas ──────────────────────────────────────────────────────────────────────
+.analise-tabs-wrap {
+  background: #fff;
+  border-bottom: 1.5px solid $border;
+  padding: 0 16px;
+  position: sticky; top: 0; z-index: 150;
+}
+.analise-tab {
+  padding: 12px 18px;
+  color: #64748b;
+  border-radius: 8px 8px 0 0;
+  &.q-tab--active { color: #fff !important; background: $brand; }
+}
+.analise-tab__content {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 600;
+}
+.analise-panels { background: transparent; }
+
 // ── KPI cards ─────────────────────────────────────────────────────────────────
 .kpi-card { border-radius: 12px; height: 100%; transition: box-shadow .2s; &:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); } }
 .kpi-stat-card { position: relative; overflow: hidden; }
@@ -669,6 +732,8 @@ $inactive-text: #475569;
 // ── Dark mode ─────────────────────────────────────────────────────────────────
 .body--dark {
   .analise-page { background: #0f172a; }
+  .analise-tabs-wrap { background: #1e293b; border-color: #334155; }
+  .analise-tab { color: #94a3b8; }
   .analise-item { background: #1e293b; border-color: #334155; &:hover { box-shadow: 0 4px 16px rgba(0,0,0,.3); } }
   .analise-item__pergunta { color: #f1f5f9; }
   .analise-item__obs, .analise-item__enviado { color: #94a3b8; }

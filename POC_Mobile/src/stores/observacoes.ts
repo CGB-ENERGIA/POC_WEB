@@ -93,6 +93,7 @@ export const useObservacoesStore = defineStore("observacoes", {
         .from("user_observations")
         .select("id,matricula,observador,auditagem,data,base,equipe,resumo")
         .eq("matricula", matricula)
+        .neq("status", "reprovado")
         .gt("expires_at", new Date().toISOString())
         .order("data", { ascending: false });
 
