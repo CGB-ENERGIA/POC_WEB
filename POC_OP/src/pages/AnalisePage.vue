@@ -42,58 +42,26 @@
     <div class="q-pa-none">
 
       <!-- KPIs -->
-      <div class="row q-col-gutter-md q-mb-md">
-        <div class="col-6 col-md-3">
-          <q-card flat bordered class="kpi-card kpi-stat-card">
-            <div class="kpi-stat-accent" style="background:#d97706" />
-            <q-card-section class="q-pa-md kpi-stat-section">
-              <div class="kpi-stat-icon-wrap" style="background:rgba(217,119,6,.1)">
-                <q-icon name="mdi-clock-outline" size="24px" style="color:#d97706" />
-              </div>
-              <div class="kpi-stat-value" style="color:#d97706">{{ pendentes.length }}</div>
-              <div class="kpi-stat-label">Aguardando</div>
-              <div class="kpi-stat-sub">análise pendente</div>
-            </q-card-section>
-          </q-card>
+      <div class="kpi-row q-mb-md">
+        <div class="kpi-mini" style="--kc:#d97706;--kbg:rgba(217,119,6,.1)">
+          <q-icon name="mdi-clock-outline" size="18px" class="kpi-mini__icon" />
+          <div class="kpi-mini__value">{{ pendentes.length }}</div>
+          <div class="kpi-mini__label">Aguardando</div>
         </div>
-        <div class="col-6 col-md-3">
-          <q-card flat bordered class="kpi-card kpi-stat-card">
-            <div class="kpi-stat-accent" style="background:#16a34a" />
-            <q-card-section class="q-pa-md kpi-stat-section">
-              <div class="kpi-stat-icon-wrap" style="background:rgba(22,163,74,.1)">
-                <q-icon name="mdi-check-circle-outline" size="24px" style="color:#16a34a" />
-              </div>
-              <div class="kpi-stat-value" style="color:#16a34a">{{ aprovados.length }}</div>
-              <div class="kpi-stat-label">Aprovados</div>
-              <div class="kpi-stat-sub">resoluções aceitas</div>
-            </q-card-section>
-          </q-card>
+        <div class="kpi-mini" style="--kc:#16a34a;--kbg:rgba(22,163,74,.1)">
+          <q-icon name="mdi-check-circle-outline" size="18px" class="kpi-mini__icon" />
+          <div class="kpi-mini__value">{{ aprovados.length }}</div>
+          <div class="kpi-mini__label">Aprovados</div>
         </div>
-        <div class="col-6 col-md-3">
-          <q-card flat bordered class="kpi-card kpi-stat-card">
-            <div class="kpi-stat-accent" style="background:#dc2626" />
-            <q-card-section class="q-pa-md kpi-stat-section">
-              <div class="kpi-stat-icon-wrap" style="background:rgba(220,38,38,.1)">
-                <q-icon name="mdi-close-circle-outline" size="24px" style="color:#dc2626" />
-              </div>
-              <div class="kpi-stat-value" style="color:#dc2626">{{ reprovados.length }}</div>
-              <div class="kpi-stat-label">Reprovados</div>
-              <div class="kpi-stat-sub">resoluções recusadas</div>
-            </q-card-section>
-          </q-card>
+        <div class="kpi-mini" style="--kc:#dc2626;--kbg:rgba(220,38,38,.1)">
+          <q-icon name="mdi-close-circle-outline" size="18px" class="kpi-mini__icon" />
+          <div class="kpi-mini__value">{{ reprovados.length }}</div>
+          <div class="kpi-mini__label">Reprovados</div>
         </div>
-        <div class="col-6 col-md-3">
-          <q-card flat bordered class="kpi-card kpi-stat-card">
-            <div class="kpi-stat-accent" style="background:#8B1C2B" />
-            <q-card-section class="q-pa-md kpi-stat-section">
-              <div class="kpi-stat-icon-wrap" style="background:rgba(139,28,43,.1)">
-                <q-icon name="mdi-gauge" size="24px" style="color:#8B1C2B" />
-              </div>
-              <div class="kpi-stat-value" style="color:#8B1C2B">{{ taxaAprovacao }}%</div>
-              <div class="kpi-stat-label">Taxa Aprovação</div>
-              <div class="kpi-stat-sub">das analisadas</div>
-            </q-card-section>
-          </q-card>
+        <div class="kpi-mini" style="--kc:#8B1C2B;--kbg:rgba(139,28,43,.1)">
+          <q-icon name="mdi-gauge" size="18px" class="kpi-mini__icon" />
+          <div class="kpi-mini__value">{{ taxaAprovacao }}%</div>
+          <div class="kpi-mini__label">Taxa Aprovação</div>
         </div>
       </div>
 

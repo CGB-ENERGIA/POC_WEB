@@ -3,58 +3,26 @@
     <q-linear-progress v-if="loading" indeterminate color="primary" style="position:sticky;top:0;z-index:200" />
 
     <!-- KPIs -->
-    <div class="row q-col-gutter-md q-mb-md">
-      <div class="col-6 col-md-3">
-        <q-card flat bordered class="kpi-card kpi-stat-card">
-          <div class="kpi-stat-accent" style="background:#d97706" />
-          <q-card-section class="q-pa-md kpi-stat-section">
-            <div class="kpi-stat-icon-wrap" style="background:rgba(217,119,6,.1)">
-              <q-icon name="mdi-clock-outline" size="24px" style="color:#d97706" />
-            </div>
-            <div class="kpi-stat-value" style="color:#d97706">{{ pendentes.length }}</div>
-            <div class="kpi-stat-label">Aguardando</div>
-            <div class="kpi-stat-sub">validação pendente</div>
-          </q-card-section>
-        </q-card>
+    <div class="kpi-row q-mb-md">
+      <div class="kpi-mini" style="--kc:#d97706;--kbg:rgba(217,119,6,.1)">
+        <q-icon name="mdi-clock-outline" size="18px" class="kpi-mini__icon" />
+        <div class="kpi-mini__value">{{ pendentes.length }}</div>
+        <div class="kpi-mini__label">Aguardando</div>
       </div>
-      <div class="col-6 col-md-3">
-        <q-card flat bordered class="kpi-card kpi-stat-card">
-          <div class="kpi-stat-accent" style="background:#16a34a" />
-          <q-card-section class="q-pa-md kpi-stat-section">
-            <div class="kpi-stat-icon-wrap" style="background:rgba(22,163,74,.1)">
-              <q-icon name="mdi-check-circle-outline" size="24px" style="color:#16a34a" />
-            </div>
-            <div class="kpi-stat-value" style="color:#16a34a">{{ aprovados.length }}</div>
-            <div class="kpi-stat-label">Aprovados</div>
-            <div class="kpi-stat-sub">contam nas métricas</div>
-          </q-card-section>
-        </q-card>
+      <div class="kpi-mini" style="--kc:#16a34a;--kbg:rgba(22,163,74,.1)">
+        <q-icon name="mdi-check-circle-outline" size="18px" class="kpi-mini__icon" />
+        <div class="kpi-mini__value">{{ aprovados.length }}</div>
+        <div class="kpi-mini__label">Aprovados</div>
       </div>
-      <div class="col-6 col-md-3">
-        <q-card flat bordered class="kpi-card kpi-stat-card">
-          <div class="kpi-stat-accent" style="background:#dc2626" />
-          <q-card-section class="q-pa-md kpi-stat-section">
-            <div class="kpi-stat-icon-wrap" style="background:rgba(220,38,38,.1)">
-              <q-icon name="mdi-close-circle-outline" size="24px" style="color:#dc2626" />
-            </div>
-            <div class="kpi-stat-value" style="color:#dc2626">{{ reprovados.length }}</div>
-            <div class="kpi-stat-label">Reprovados</div>
-            <div class="kpi-stat-sub">desconsiderados</div>
-          </q-card-section>
-        </q-card>
+      <div class="kpi-mini" style="--kc:#dc2626;--kbg:rgba(220,38,38,.1)">
+        <q-icon name="mdi-close-circle-outline" size="18px" class="kpi-mini__icon" />
+        <div class="kpi-mini__value">{{ reprovados.length }}</div>
+        <div class="kpi-mini__label">Reprovados</div>
       </div>
-      <div class="col-6 col-md-3">
-        <q-card flat bordered class="kpi-card kpi-stat-card">
-          <div class="kpi-stat-accent" style="background:#8B1C2B" />
-          <q-card-section class="q-pa-md kpi-stat-section">
-            <div class="kpi-stat-icon-wrap" style="background:rgba(139,28,43,.1)">
-              <q-icon name="mdi-gauge" size="24px" style="color:#8B1C2B" />
-            </div>
-            <div class="kpi-stat-value" style="color:#8B1C2B">{{ taxaAprovacao }}%</div>
-            <div class="kpi-stat-label">Taxa Aprovação</div>
-            <div class="kpi-stat-sub">dos validados</div>
-          </q-card-section>
-        </q-card>
+      <div class="kpi-mini" style="--kc:#8B1C2B;--kbg:rgba(139,28,43,.1)">
+        <q-icon name="mdi-gauge" size="18px" class="kpi-mini__icon" />
+        <div class="kpi-mini__value">{{ taxaAprovacao }}%</div>
+        <div class="kpi-mini__label">Taxa Aprovação</div>
       </div>
     </div>
 
@@ -420,15 +388,26 @@ $inactive-text: #475569;
 
 .ac-tab { }
 
-// ── KPI cards ─────────────────────────────────────────────────────────────────
-.kpi-card { border-radius: 12px; height: 100%; transition: box-shadow .2s; &:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); } }
-.kpi-stat-card { position: relative; overflow: hidden; }
-.kpi-stat-accent { position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 12px 12px 0 0; }
-.kpi-stat-section { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 100%; padding-top: 18px !important; }
-.kpi-stat-icon-wrap { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; margin-bottom: 8px; }
-.kpi-stat-value { font-size: 32px; font-weight: 800; line-height: 1.1; letter-spacing: -.5px; }
-.kpi-stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: #64748b; margin-top: 4px; }
-.kpi-stat-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+// ── KPI cards (compactos) ────────────────────────────────────────────────────
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  @media (max-width: 700px) { grid-template-columns: repeat(2, 1fr); }
+}
+.kpi-mini {
+  display: flex; align-items: center; gap: 8px;
+  background: #fff; border: 1.5px solid $border; border-radius: 10px;
+  padding: 10px 12px;
+
+  &__icon {
+    color: var(--kc);
+    background: var(--kbg);
+    border-radius: 8px; padding: 6px; flex-shrink: 0;
+  }
+  &__value { font-size: 18px; font-weight: 800; color: var(--kc); line-height: 1; }
+  &__label { font-size: 11px; font-weight: 600; color: #64748b; margin-left: 2px; }
+}
 
 // ── Filtro pills ──────────────────────────────────────────────────────────────
 .pill {
@@ -534,7 +513,8 @@ $inactive-text: #475569;
   .analise-item { background: #1e293b; border-color: #334155; &:hover { box-shadow: 0 4px 16px rgba(0,0,0,.3); } }
   .analise-item__enviado { color: #94a3b8; }
   .analise-item__actions { border-top-color: #334155; }
-  .kpi-card { background: #1e293b; }
+  .kpi-mini { background: #1e293b; border-color: #334155; }
+  .kpi-mini__label { color: #94a3b8; }
   .pill { background: #1e293b; border-color: #334155; color: #94a3b8; &--active { background: $brand; color: #fff; border-color: $brand; } }
   .ac-expand__body { background: #0f172a; }
   .ac-resp-row__pergunta { color: #e2e8f0; }
