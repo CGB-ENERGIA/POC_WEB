@@ -538,9 +538,8 @@ $border:  #e2e8f0;
 
   &__filters {
     display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
   }
 
   &__status {
@@ -557,7 +556,6 @@ $border:  #e2e8f0;
 }
 
 .cm-fgroup { display: flex; flex-direction: column; gap: 6px; }
-.cm-fgroup--mes { flex: 1; }
 
 .cm-flabel {
   font-size: 9.5px; font-weight: 700; text-transform: uppercase;
