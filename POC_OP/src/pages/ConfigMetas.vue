@@ -734,7 +734,6 @@ $border:  #e2e8f0;
 
 // ── Busca de colaborador ───────────────────────────────────────────────────────
 .cm-emp-search {
-  max-width: 480px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -819,7 +818,7 @@ $border:  #e2e8f0;
 }
 
 // ── Override list ──────────────────────────────────────────────────────────────
-.cm-override-list { max-width: 700px; }
+.cm-override-list { width: 100%; }
 
 .cm-override-items {
   background: #fff;
