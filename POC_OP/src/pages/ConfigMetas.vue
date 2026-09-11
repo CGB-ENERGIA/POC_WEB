@@ -68,7 +68,6 @@
                     type="number" min="1" max="99"
                     class="cm-counter__input"
                   />
-                  <span class="cm-counter__unit">obs/sem</span>
                 </div>
                 <button class="cm-stepper" :disabled="normaisInput >= 99" @click="increment('normais')">+</button>
               </div>
@@ -106,7 +105,6 @@
                     type="number" min="1" max="99"
                     class="cm-counter__input"
                   />
-                  <span class="cm-counter__unit">obs/sem</span>
                 </div>
                 <button class="cm-stepper cm-stepper--sesmt" :disabled="segurancaInput >= 99" @click="increment('seguranca')">+</button>
               </div>
