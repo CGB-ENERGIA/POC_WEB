@@ -505,11 +505,14 @@ const icitTableRows = computed<IcitRow[]>(() => {
 });
 
 const icitColumns = [
-  { name: "prefixo", label: "Prefixo", field: "prefixo", align: "left" as const, sortable: true },
-  { name: "visitas", label: "Qnt Visitas", field: "visitas", align: "center" as const, sortable: true },
-  { name: "icitAnterior", label: "% ICIT Mês Anterior", field: "icitAnterior", align: "center" as const, sortable: true },
-  { name: "icitAtual", label: "% ICIT Atual", field: "icitAtual", align: "center" as const, sortable: true },
-  { name: "icitAcumulado", label: "% ICIT Acumulado (Ano)", field: "icitAcumulado", align: "center" as const, sortable: true },
+  { name: "prefixo",      label: "Prefixo", field: "prefixo",      align: "left"   as const, sortable: true, style: "width:110px; min-width:90px" },
+  { name: "visitas",      label: "Visitas", field: "visitas",      align: "center" as const, sortable: true, style: "width:52px;  min-width:44px" },
+  { name: "icitAnterior", label: "Ant.",    field: "icitAnterior", align: "center" as const, sortable: true, style: "width:72px;  min-width:60px",
+    headerStyle: "white-space:nowrap", headerTitle: "% ICIT Mês Anterior" },
+  { name: "icitAtual",    label: "Atual",   field: "icitAtual",    align: "center" as const, sortable: true, style: "width:72px;  min-width:60px",
+    headerStyle: "white-space:nowrap", headerTitle: "% ICIT Atual" },
+  { name: "icitAcumulado",label: "Acum.",   field: "icitAcumulado",align: "center" as const, sortable: true, style: "width:72px;  min-width:60px",
+    headerStyle: "white-space:nowrap", headerTitle: "% ICIT Acumulado (Ano)" },
 ];
 
 function icitBadgeClass(pct: number | null): string {
@@ -859,11 +862,12 @@ $inactive-text:#475569;
 /* ─── Matriz ICIT ────────────────────────────────────────────────────────── */
 .icit-badge {
   display: inline-block;
-  font-size: 12px; font-weight: 700;
-  border-radius: 6px;
-  padding: 3px 10px;
-  min-width: 64px;
+  font-size: 11px; font-weight: 700;
+  border-radius: 5px;
+  padding: 2px 6px;
+  min-width: 54px;
   text-align: center;
+  white-space: nowrap;
 }
 .icit-badge--good { color: #15803d; background: #dcfce7; }
 .icit-badge--warn { color: #b45309; background: #fef3c7; }
@@ -871,10 +875,15 @@ $inactive-text:#475569;
 .icit-badge--none { color: #94a3b8; background: #f1f5f9; }
 
 .icit-table {
+  overflow-x: hidden;
+
+  :deep(table) { table-layout: fixed; width: 100%; }
   :deep(thead th) {
-    font-size: 11px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: .4px; color: #64748b; background: #f8fafc;
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .3px; color: #64748b; background: #f8fafc;
+    white-space: nowrap; padding: 6px 4px;
   }
+  :deep(td) { padding: 4px 4px; }
   :deep(tbody td) { font-size: 12px; }
 }
 
