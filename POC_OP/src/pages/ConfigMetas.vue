@@ -898,6 +898,7 @@ $border:  #e2e8f0;
 
   .cm-meta-card__head { background: linear-gradient(135deg, #052e16, #14532d) !important; color: #4ade80 !important; }
   .cm-meta-card__head--sesmt { background: linear-gradient(135deg, #3b0a0f, #5c1020) !important; color: #fca5a5 !important; }
+  .cm-meta-card__head-icon { background: rgba(0, 0, 0, .30); }
 
   .cm-counter__input { background: #0f172a; color: #e2e8f0; border-color: #334155; }
   .cm-stepper { background: #0f172a; border-color: #334155; color: #94a3b8; }
