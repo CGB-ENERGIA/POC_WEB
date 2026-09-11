@@ -218,7 +218,7 @@ import {
 } from "echarts/components";
 import VChart from "vue-echarts";
 import { useChecklistData, fmtN, fmtPct } from "@/composables/useChecklistData";
-import { filterByGerencia, fetchNaoConformesPorMes } from "@/lib/dashboard";
+import { filterByGerencia, fetchNaoConformesPorMes, semanaDoMes } from "@/lib/dashboard";
 
 use([
   CanvasRenderer, BarChart, LineChart,
@@ -301,7 +301,7 @@ watch(() => [filters.ano, filters.mes, filters.base], recarregar);
 const filteredSubs = computed(() => {
   let s = filterByGerencia(submissions.value, employees.value, filters.gerencia);
   if (filters.semana) {
-    s = s.filter(sub => Math.ceil(new Date(sub.data).getDate() / 7) === filters.semana);
+    s = s.filter(sub => semanaDoMes(new Date(sub.data).getDate()) === filters.semana);
   }
   if (filters.gerente !== "Todos") {
     s = s.filter(sub => sub.observador === filters.gerente);

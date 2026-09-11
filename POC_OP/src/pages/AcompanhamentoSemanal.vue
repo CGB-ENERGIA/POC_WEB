@@ -231,7 +231,7 @@ import {
 } from "echarts/components";
 import VChart from "vue-echarts";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia } from "@/lib/dashboard";
+import { filterByGerencia, semanaDoMes } from "@/lib/dashboard";
 import { useGoals } from "@/composables/useGoals";
 const { getMonthGoal, goalForColaborador } = useGoals();
 const normaisSemanal = computed(() => getMonthGoal(filters.ano, filters.mes).normais_semanal);
@@ -244,10 +244,10 @@ use([
 
 // ─── Filter options ──────────────────────────────────────────────────────────
 const semanas = [
-  { value: 1, label: "1. Primeira" },
-  { value: 2, label: "2. Segunda" },
-  { value: 3, label: "3. Terceira" },
-  { value: 4, label: "4. Quarta" }
+  { value: 1, label: "1ª (01–08)" },
+  { value: 2, label: "2ª (09–15)" },
+  { value: 3, label: "3ª (16–22)" },
+  { value: 4, label: "4ª (23–31)" },
 ];
 
 const showFilters = ref(false);
@@ -271,7 +271,7 @@ const gerencias = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT"];
 // ─── Filter state ────────────────────────────────────────────────────────────
 const now = new Date();
 const filters = reactive({
-  semana: Math.ceil(now.getDate() / 7) as 1|2|3|4,
+  semana: semanaDoMes(now.getDate()),
   ano: now.getFullYear(),
   mes: now.getMonth() + 1,
   gerente: "Todos",
@@ -280,7 +280,7 @@ const filters = reactive({
 });
 
 function resetFilters() {
-  filters.semana = Math.ceil(now.getDate() / 7) as 1|2|3|4;
+  filters.semana = semanaDoMes(now.getDate());
   filters.ano = now.getFullYear();
   filters.mes = now.getMonth() + 1;
   filters.gerente = "Todos";
@@ -324,7 +324,7 @@ const allMonthSubs = computed(() => {
 // Subs filtrados pela semana selecionada (client-side)
 const filteredSubs = computed(() =>
   allMonthSubs.value.filter(sub =>
-    Math.ceil(new Date(sub.data).getDate() / 7) === filters.semana
+    semanaDoMes(new Date(sub.data).getDate()) === filters.semana
   )
 );
 
@@ -340,7 +340,7 @@ const byBase = computed(() => {
 const bySemana = computed(() => {
   const m: Record<number, number> = {};
   for (const s of allMonthSubs.value) {
-    const sem = Math.ceil(new Date(s.data).getDate() / 7);
+    const sem = semanaDoMes(new Date(s.data).getDate());
     m[sem] = (m[sem] ?? 0) + 1;
   }
   return m;

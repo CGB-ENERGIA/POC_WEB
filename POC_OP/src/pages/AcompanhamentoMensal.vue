@@ -249,7 +249,7 @@ import {
 } from "echarts/components";
 import VChart from "vue-echarts";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia } from "@/lib/dashboard";
+import { filterByGerencia, semanaDoMes } from "@/lib/dashboard";
 import { useGoals } from "@/composables/useGoals";
 
 use([
@@ -335,7 +335,7 @@ watch(() => [filters.ano, filters.mes, filters.base], recarregar);
 const filteredSubs = computed(() => {
   let s = filterByGerencia(submissions.value, employees.value, filters.gerencia);
   if (filters.semana) {
-    s = s.filter(sub => Math.ceil(new Date(sub.data).getDate() / 7) === filters.semana);
+    s = s.filter(sub => semanaDoMes(new Date(sub.data).getDate()) === filters.semana);
   }
   if (filters.gerente !== "Todos") {
     s = s.filter(sub => sub.observador === filters.gerente);
@@ -361,7 +361,7 @@ const byBase = computed(() => {
 const bySemana = computed(() => {
   const m: Record<number, number> = {};
   for (const s of filteredSubs.value) {
-    const sem = Math.ceil(new Date(s.data).getDate() / 7);
+    const sem = semanaDoMes(new Date(s.data).getDate());
     m[sem] = (m[sem] ?? 0) + 1;
   }
   return m;

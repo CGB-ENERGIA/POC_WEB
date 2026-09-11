@@ -16,11 +16,28 @@ function mesRange(ano: number, mes: number) {
   return { start, end };
 }
 
-/** Semana do mês 1-4+ (semana 1 = dias 1-7, etc.). */
+/**
+ * Retorna o número da semana do mês (1-4) com base no cronograma padrão CGB:
+ *   1ª Semana = dias 01–08
+ *   2ª Semana = dias 09–15
+ *   3ª Semana = dias 16–22
+ *   4ª Semana = dias 23–31
+ */
+export function semanaDoMes(dia: number): 1 | 2 | 3 | 4 {
+  if (dia <= 8)  return 1;
+  if (dia <= 15) return 2;
+  if (dia <= 22) return 3;
+  return 4;
+}
+
+/** Intervalo ISO para a semana do mês, conforme cronograma padrão CGB. */
 function semanaRange(ano: number, mes: number, semana: number) {
-  const dia = (semana - 1) * 7 + 1;
-  const start = new Date(ano, mes - 1, dia).toISOString();
-  const end   = new Date(ano, mes - 1, dia + 7).toISOString();
+  const STARTS = [1, 9, 16, 23] as const;
+  const diaInicio = STARTS[semana - 1] ?? 1;
+  const start = new Date(ano, mes - 1, diaInicio).toISOString();
+  const end = semana >= 4
+    ? new Date(ano, mes, 1).toISOString()
+    : new Date(ano, mes - 1, STARTS[semana]!).toISOString();
   return { start, end };
 }
 

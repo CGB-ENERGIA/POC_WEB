@@ -304,8 +304,12 @@ const minhasObs = computed(() =>
 
 const totalGeral = computed(() => minhasObs.value.length);
 
-function semanaDoMes(date: Date) {
-  return Math.ceil(date.getDate() / 7);
+function semanaDoMes(date: Date): number {
+  const d = date.getDate();
+  if (d <= 8)  return 1;
+  if (d <= 15) return 2;
+  if (d <= 22) return 3;
+  return 4;
 }
 
 function isMesmoMes(date: Date, ref: Date) {

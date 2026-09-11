@@ -137,13 +137,15 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useChecklistData, type SubmissionRow, type ResponseRow, type EmployeeRow } from "@/composables/useChecklistData";
-import { filterByGerencia } from "@/lib/dashboard";
+import { filterByGerencia, semanaDoMes } from "@/lib/dashboard";
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
 const semanas  = [
-  { value: 1, label: "1. Primeira" },
-  { value: 2, label: "2. Segunda"  },
+  { value: 1, label: "1ª (01–08)" },
+  { value: 2, label: "2ª (09–15)" },
+  { value: 3, label: "3ª (16–22)" },
+  { value: 4, label: "4ª (23–31)" },
 ];
 
 const meses = [
@@ -272,12 +274,7 @@ const listaFiltrada = computed<NcRow[]>(() => {
   let rows = todasNcs.value;
 
   if (filters.semana) {
-    const diaInicio = (filters.semana - 1) * 7 + 1;
-    const diaFim    = diaInicio + 7;
-    rows = rows.filter(r => {
-      const d = new Date(r.data).getDate();
-      return d >= diaInicio && d < diaFim;
-    });
+    rows = rows.filter(r => semanaDoMes(new Date(r.data).getDate()) === filters.semana);
   }
 
   if (filters.base) {

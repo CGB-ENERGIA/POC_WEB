@@ -259,7 +259,7 @@ import {
 } from "echarts/components";
 import VChart from "vue-echarts";
 import { useChecklistData, fmtPct, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia } from "@/lib/dashboard";
+import { filterByGerencia, semanaDoMes } from "@/lib/dashboard";
 
 use([
   CanvasRenderer, BarChart, PieChart,
@@ -288,10 +288,10 @@ const now = new Date();
 const anos     = [2024, 2025, 2026];
 const semanas  = [
   { value: 0, label: "Todas"       },
-  { value: 1, label: "1. Primeira" },
-  { value: 2, label: "2. Segunda"  },
-  { value: 3, label: "3. Terceira" },
-  { value: 4, label: "4. Quarta"   },
+  { value: 1, label: "1ª (01–08)" },
+  { value: 2, label: "2ª (09–15)" },
+  { value: 3, label: "3ª (16–22)" },
+  { value: 4, label: "4ª (23–31)" },
 ];
 const meses = [
   { value: 1,  label: "jan" }, { value: 2,  label: "fev" },
@@ -331,7 +331,7 @@ watch(() => [filters.ano, filters.mes, filters.base], recarregar);
 const filteredSubs = computed(() => {
   let s = filterByGerencia(submissions.value, employees.value, filters.gerencia);
   if (filters.semana) {
-    s = s.filter(sub => Math.ceil(new Date(sub.data).getDate() / 7) === filters.semana);
+    s = s.filter(sub => semanaDoMes(new Date(sub.data).getDate()) === filters.semana);
   }
   if (filters.gerente !== "Todos") {
     s = s.filter(sub => sub.observador === filters.gerente);

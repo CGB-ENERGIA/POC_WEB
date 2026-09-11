@@ -192,7 +192,7 @@ import { BarChart, TreemapChart } from "echarts/charts";
 import { TooltipComponent, GridComponent, DataZoomComponent } from "echarts/components";
 import VChart from "vue-echarts";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia } from "@/lib/dashboard";
+import { filterByGerencia, semanaDoMes } from "@/lib/dashboard";
 
 use([CanvasRenderer, BarChart, TreemapChart, TooltipComponent, GridComponent, DataZoomComponent]);
 
@@ -301,7 +301,7 @@ const filteredSubs = computed(() => {
   let s = filterByGerencia(submissions.value, employees.value, filters.gerencia);
   if (filters.semana !== "Todos") {
     const semNum = Number(filters.semana.replace(/\D/g, "")) || 0;
-    if (semNum) s = s.filter(sub => Math.ceil(new Date(sub.data).getDate() / 7) === semNum);
+    if (semNum) s = s.filter(sub => semanaDoMes(new Date(sub.data).getDate()) === semNum);
   }
   if (filters.observador !== "Todos") {
     s = s.filter(sub => sub.observador === filters.observador);
