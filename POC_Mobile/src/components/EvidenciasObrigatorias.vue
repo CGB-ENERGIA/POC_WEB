@@ -17,6 +17,9 @@
         <div class="evid-slot__retake">
           <q-icon name="mdi-camera-retake" size="18px" color="white" />
         </div>
+        <button class="evid-slot__remove" @click.stop="removerFoto(idx)">
+          <q-icon name="mdi-close" size="13px" color="white" />
+        </button>
       </template>
       <div v-else class="evid-slot__placeholder">
         <q-spinner v-if="carregandoIdx === idx" color="primary" size="22px" />
@@ -60,6 +63,12 @@ const idxAtivo = ref<number | null>(null);
 
 const preenchidas = computed(() => props.modelValue.filter(Boolean).length);
 const completas = computed(() => preenchidas.value >= 3);
+
+function removerFoto(idx: number) {
+  const next = [...props.modelValue];
+  next[idx] = null;
+  emit("update:modelValue", next);
+}
 
 function abrirCamera(idx: number) {
   if (!props.equipe.trim()) {
@@ -150,6 +159,23 @@ async function onCaptured(base64: string) {
   transition: opacity 0.15s;
 }
 .evid-slot:active .evid-slot__retake { opacity: 1; }
+
+.evid-slot__remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  z-index: 1;
+}
 
 .evid-slot__badge {
   position: absolute;
