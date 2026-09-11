@@ -99,6 +99,9 @@ export async function syncChecklistToRemote(
       foto_r2_key: fotoKey,
       resolvido: r.resolvido ?? null,
       itens: r.itens ?? null,
+      atribuido_tipo: r.atribuidoTipo ?? null,
+      atribuido_nome: r.atribuidoNome ?? null,
+      atribuido_matricula: r.atribuidoMatricula ?? null,
     });
   }
 

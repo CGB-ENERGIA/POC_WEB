@@ -383,6 +383,43 @@
             error-message="Informe a observação"
           />
 
+          <div class="field-label q-mt-md q-mb-sm">Atribuir não conformidade a *</div>
+          <div class="row q-col-gutter-sm">
+            <div class="col-6">
+              <q-btn
+                class="full-width resposta-btn"
+                :class="{ 'resposta-btn--idle': modalAtribuidoTipo !== 'equipe' }"
+                no-caps unelevated icon="mdi-account-group" label="Equipe completa"
+                :color="modalAtribuidoTipo === 'equipe' ? 'primary' : undefined"
+                :text-color="modalAtribuidoTipo === 'equipe' ? 'white' : undefined"
+                @click="selecionarAtribuicao('equipe')"
+              />
+            </div>
+            <div class="col-6">
+              <q-btn
+                class="full-width resposta-btn"
+                :class="{ 'resposta-btn--idle': modalAtribuidoTipo !== 'membro' }"
+                no-caps unelevated icon="mdi-account" label="Membro específico"
+                :color="modalAtribuidoTipo === 'membro' ? 'primary' : undefined"
+                :text-color="modalAtribuidoTipo === 'membro' ? 'white' : undefined"
+                @click="selecionarAtribuicao('membro')"
+              />
+            </div>
+          </div>
+          <div v-if="modalTouched && !modalAtribuidoTipo" class="text-caption text-negative q-mt-xs">
+            Selecione se é da equipe ou de um membro específico
+          </div>
+          <q-select
+            v-if="modalAtribuidoTipo === 'membro'"
+            v-model="modalMembroSelecionado"
+            :options="membrosPreenchidosOptions"
+            outlined dense
+            label="Selecione o membro *"
+            class="q-mt-sm"
+            :error="modalTouched && modalAtribuidoTipo === 'membro' && !modalMembroSelecionado"
+            error-message="Selecione o membro responsável"
+          />
+
           <div class="field-label q-mt-md q-mb-sm">Resolvido no momento da auditoria? *</div>
           <div class="row q-col-gutter-sm">
             <div class="col-6">
@@ -468,6 +505,9 @@ interface NaoConformeDetalhe {
   observacao: string;
   foto: string;
   resolvido: boolean;
+  atribuidoTipo: "equipe" | "membro";
+  atribuidoNome?: string;
+  atribuidoMatricula?: string;
 }
 
 const $q = useQuasar();
@@ -527,6 +567,9 @@ onMounted(() => {
             observacao: r.observacao ?? "",
             foto: r.foto ?? "",
             resolvido: r.resolvido ?? false,
+            atribuidoTipo: r.atribuidoTipo ?? "equipe",
+            ...(r.atribuidoNome ? { atribuidoNome: r.atribuidoNome } : {}),
+            ...(r.atribuidoMatricula ? { atribuidoMatricula: r.atribuidoMatricula } : {}),
           };
         }
       }
@@ -592,6 +635,19 @@ const modalPerguntaTexto = ref("");
 const modalObservacao = ref("");
 const modalFotoPreview = ref<string | null>(null);
 const modalResolvido = ref<boolean | null>(null);
+const modalAtribuidoTipo = ref<"equipe" | "membro" | null>(null);
+const modalMembroSelecionado = ref<string | null>(null);
+
+const membrosPreenchidosOptions = computed(() =>
+  membros.value
+    .filter((m) => m.nome.trim())
+    .map((m) => (m.matricula.trim() ? `${m.nome.trim()} — ${m.matricula.trim()}` : m.nome.trim()))
+);
+
+function selecionarAtribuicao(tipo: "equipe" | "membro") {
+  modalAtribuidoTipo.value = tipo;
+  if (tipo === "equipe") modalMembroSelecionado.value = null;
+}
 const modalItens = ref<string[] | null>(null);
 const modalItensStatus = reactive<Record<string, boolean | null>>({});
 const modalItensManuais = ref<Set<string>>(new Set());
@@ -689,6 +745,13 @@ function abrirModalNaoConforme(pergunta: PerguntaGoman) {
   modalObservacao.value = existente?.observacao ?? "";
   modalFotoPreview.value = existente?.foto ?? null;
   modalResolvido.value = existente?.resolvido ?? null;
+  modalAtribuidoTipo.value = existente?.atribuidoTipo ?? null;
+  modalMembroSelecionado.value =
+    existente?.atribuidoTipo === "membro" && existente.atribuidoNome
+      ? existente.atribuidoMatricula
+        ? `${existente.atribuidoNome} — ${existente.atribuidoMatricula}`
+        : existente.atribuidoNome
+      : null;
 
   modalItens.value = extrairItensPergunta(pergunta.texto);
   for (const key of Object.keys(modalItensStatus)) delete modalItensStatus[key];
@@ -792,6 +855,16 @@ function confirmarNaoConforme() {
     return;
   }
 
+  if (!modalAtribuidoTipo.value) {
+    $q.notify({ type: "warning", message: "Selecione se é da equipe ou de um membro específico", position: "top" });
+    return;
+  }
+
+  if (modalAtribuidoTipo.value === "membro" && !modalMembroSelecionado.value) {
+    $q.notify({ type: "warning", message: "Selecione o membro responsável", position: "top" });
+    return;
+  }
+
   let itensSalvos: ItemVerificado[] | undefined;
   if (modalItens.value) {
     const faltando = modalItens.value.some((item) => modalItensStatus[item] === null || modalItensStatus[item] === undefined);
@@ -802,10 +875,20 @@ function confirmarNaoConforme() {
     itensSalvos = modalItens.value.map((item) => ({ nome: item, conforme: modalItensStatus[item] as boolean }));
   }
 
+  let atribuidoNome: string | undefined;
+  let atribuidoMatricula: string | undefined;
+  if (modalAtribuidoTipo.value === "membro" && modalMembroSelecionado.value) {
+    const match = modalMembroSelecionado.value.match(/^(.*) — (.+)$/);
+    if (match) { atribuidoNome = match[1]; atribuidoMatricula = match[2]; }
+    else atribuidoNome = modalMembroSelecionado.value;
+  }
+
   detalhesMap[modalPerguntaId.value] = {
     observacao: modalObservacao.value.trim(),
     foto: modalFotoPreview.value,
     resolvido: modalResolvido.value,
+    atribuidoTipo: modalAtribuidoTipo.value,
+    ...(atribuidoNome ? { atribuidoNome, ...(atribuidoMatricula ? { atribuidoMatricula } : {}) } : {}),
     ...(itensSalvos ? { itens: itensSalvos } : {}),
   };
   respostas[modalPerguntaId.value] = "nao_conforme";
@@ -874,6 +957,9 @@ async function onSubmit() {
         ...(detalhe?.foto ? { foto: detalhe.foto } : {}),
         ...(detalhe?.resolvido !== undefined ? { resolvido: detalhe.resolvido } : {}),
         ...(detalhe?.itens ? { itens: detalhe.itens } : {}),
+        ...(detalhe?.atribuidoTipo ? { atribuidoTipo: detalhe.atribuidoTipo } : {}),
+        ...(detalhe?.atribuidoNome ? { atribuidoNome: detalhe.atribuidoNome } : {}),
+        ...(detalhe?.atribuidoMatricula ? { atribuidoMatricula: detalhe.atribuidoMatricula } : {}),
       });
     }
   }

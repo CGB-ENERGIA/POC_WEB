@@ -69,6 +69,10 @@ export interface ResponseRow {
   resolvido: boolean | null;
   /** Condicao individual de cada item, quando a pergunta menciona mais de uma coisa. */
   itens: { nome: string; conforme: boolean }[] | null;
+  /** A quem a nao conformidade foi atribuida: equipe toda ou um membro especifico. */
+  atribuido_tipo: "equipe" | "membro" | null;
+  atribuido_nome: string | null;
+  atribuido_matricula: string | null;
 }
 
 export interface EmployeeRow {
@@ -127,7 +131,7 @@ export async function fetchResponses(submissionIds: string[]): Promise<ResponseR
     const chunk = submissionIds.slice(i, i + CHUNK);
     const { data, error } = await supabase
       .from("checklist_responses")
-      .select("submission_id,pergunta_id,categoria,pergunta,gravidade,peso,resposta,observacao,foto_r2_key,resolvido,itens")
+      .select("submission_id,pergunta_id,categoria,pergunta,gravidade,peso,resposta,observacao,foto_r2_key,resolvido,itens,atribuido_tipo,atribuido_nome,atribuido_matricula")
       .in("submission_id", chunk);
     if (error) throw error;
     all.push(...((data ?? []) as ResponseRow[]));

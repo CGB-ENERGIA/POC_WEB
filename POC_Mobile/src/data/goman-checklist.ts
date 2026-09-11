@@ -28,6 +28,10 @@ export interface RespostaPergunta {
   resolvido?: boolean
   /** Apenas quando a pergunta menciona múltiplos itens: condição individual de cada um. */
   itens?: ItemVerificado[]
+  /** Apenas para respostas "nao_conforme": atribuída à equipe toda ou a um membro específico. */
+  atribuidoTipo?: "equipe" | "membro"
+  atribuidoNome?: string
+  atribuidoMatricula?: string
 }
 
 export const gomanChecklist: CategoriaGoman[] = [
