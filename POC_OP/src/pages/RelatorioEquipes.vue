@@ -225,28 +225,13 @@
           </q-card>
         </div>
 
-        <!-- Col 4: Ranking Geral NC -->
+        <!-- Col 4: Matriz ICIT por Equipe -->
         <div class="col-12 col-md-4">
-          <q-card flat bordered>
-            <q-card-section class="q-pb-xs">
-              <div class="text-subtitle1 text-weight-bold">Ranking Geral de Não Conformidades</div>
-            </q-card-section>
-            <q-card-section class="q-pt-none">
-              <v-chart :option="chartRankingGeralNc" autoresize style="height:460px" />
-            </q-card-section>
-          </q-card>
-        </div>
-
-      </div>
-
-      <!-- Matriz ICIT por Equipe -->
-      <div class="row q-col-gutter-md q-mt-md">
-        <div class="col-12">
           <q-card flat bordered>
             <q-card-section class="q-pb-xs">
               <div class="text-subtitle1 text-weight-bold">Matriz ICIT por Equipe</div>
               <div class="text-caption text-grey-6">
-                % de checklists sem não conformidade, por prefixo · mês anterior, mês atual e acumulado do ano
+                % de checklists sem NC, por prefixo · mês anterior, atual e acumulado
               </div>
             </q-card-section>
             <q-card-section class="q-pt-none">
@@ -259,7 +244,7 @@
                 :rows-per-page-options="[0]"
                 hide-pagination
                 class="icit-table"
-                style="height: 520px"
+                style="height: 460px"
                 virtual-scroll
               >
                 <template #body-cell-icitAnterior="props">
@@ -287,6 +272,7 @@
             </q-card-section>
           </q-card>
         </div>
+
       </div>
     </div>
 
@@ -702,60 +688,6 @@ const chartNcCat = computed(() => {
   };
 });
 
-// â"€â"€â"€ Ranking Geral NC â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-const rgData = computed(() => {
-  const counts: Record<string, number> = {};
-  for (const r of filteredResps.value) {
-    if (r.resposta === "nao_conforme") {
-      const key = (r.pergunta ?? "Sem descrição").slice(0, 50) + "...";
-      counts[key] = (counts[key] ?? 0) + 1;
-    }
-  }
-  return Object.entries(counts)
-    .map(([q, v]) => ({ q, v }))
-    .sort((a, b) => a.v - b.v);
-});
-
-const chartRankingGeralNc = computed(() => {
-  const data = rgData.value;
-  return {
-    tooltip: {
-      ...ttItem,
-      formatter: (p: { name: string; value: number }) =>
-        `${p.name}<br/>NC: <b style="color:${G.brand}">${p.value}</b>`,
-    },
-    grid: { left: 8, right: 28, top: 4, bottom: 4, containLabel: true },
-    xAxis: { type: "value" as const, show: false, splitLine: { show: false } },
-    yAxis: {
-      type: "category" as const, data: data.map(e => e.q), inverse: false,
-      axisLine: { show: false }, axisTick: { show: false },
-      splitLine: { show: false },
-      axisLabel: { color: "#334155", fontSize: 10, width: 200, overflow: "truncate" as const },
-    },
-    dataZoom: [{
-      type: "inside" as const, orient: "vertical" as const,
-      startValue: 0, endValue: data.length - 1,
-      zoomOnMouseWheel: false, moveOnMouseWheel: true,
-    }],
-    series: [{
-      type: "bar" as const,
-      data: data.map((e, i) => ({
-        value: e.v,
-        itemStyle: {
-          color: `rgba(139,28,43,${0.45 + (i / (data.length || 1)) * 0.55})`,
-          borderRadius: [0, 6, 6, 0],
-        },
-      })),
-      barMaxWidth: 22,
-      emphasis: { itemStyle: { opacity: .8 } },
-      label: {
-        show: true, position: "right" as const,
-        fontSize: 11, fontWeight: "bold" as const, color: G.brand,
-        formatter: (p: { value: number }) => `${p.value}`,
-      },
-    }],
-  };
-});
 </script>
 
 <style scoped lang="scss">
