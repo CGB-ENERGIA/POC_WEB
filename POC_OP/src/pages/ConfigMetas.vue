@@ -209,12 +209,12 @@
           <div class="cm-override-form__field">
             <div class="cm-flabel">META SEMANAL</div>
             <div class="cm-override-ctrl">
-              <button class="cm-stepper" @click="ovMeta = Math.max(0, +(ovMeta - 0.5).toFixed(1))">−</button>
-              <input v-model.number="ovMeta" type="number" min="0" max="99" step="0.5" class="cm-counter__input cm-counter__input--sm" />
-              <button class="cm-stepper" @click="ovMeta = +(ovMeta + 0.5).toFixed(1)">+</button>
+              <button class="cm-stepper" @click="ovMeta = Math.max(0, ovMeta - 1)">−</button>
+              <input v-model.number="ovMeta" type="number" min="0" max="99" step="1" class="cm-counter__input cm-counter__input--sm" />
+              <button class="cm-stepper" @click="ovMeta = Math.min(99, ovMeta + 1)">+</button>
             </div>
             <div class="cm-flabel" style="margin-top:4px">
-              {{ ovSemana === 0 ? `Mensal: ${(ovMeta * 4).toFixed(1)} obs` : `Só esta semana` }}
+              {{ ovSemana === 0 ? `Mensal: ${ovMeta * 4} obs` : `Só esta semana` }}
             </div>
           </div>
 
@@ -256,7 +256,7 @@
             <div class="cm-override-item__badge">
               <span class="cm-override-item__num">{{ ov.meta_semanal }}</span>
               <span class="cm-override-item__unit">/sem</span>
-              <div class="cm-override-item__mensal">{{ ov.semana === 0 ? `${(ov.meta_semanal * 4).toFixed(1)}/mês` : 'só esta semana' }}</div>
+              <div class="cm-override-item__mensal">{{ ov.semana === 0 ? `${ov.meta_semanal * 4}/mês` : 'só esta semana' }}</div>
             </div>
             <button class="cm-override-item__del" @click="handleRemoveOverride(ov)">
               <q-icon name="mdi-delete-outline" size="18px" />
