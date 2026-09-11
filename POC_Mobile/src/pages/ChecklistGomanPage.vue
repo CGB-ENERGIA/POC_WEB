@@ -510,7 +510,7 @@ onMounted(() => {
       const existingMembros = existing.membros.length > 0 ? existing.membros : [];
       membros.value = [
         ...existingMembros.map(m => ({ nome: m.nome, matricula: m.matricula })),
-        ...Array.from({ length: Math.max(0, 6 - existingMembros.length) }, () => ({ nome: "", matricula: "" })),
+        ...Array.from({ length: Math.max(0, 5 - existingMembros.length) }, () => ({ nome: "", matricula: "" })),
       ];
       // Respostas e detalhes
       for (const r of existing.respostas) {
@@ -537,7 +537,7 @@ watch(evidencias, (val) => {
 
 // ── Membros ───────────────────────────────────────────────────────────────────
 const membros = ref<{ nome: string; matricula: string }[]>(
-  Array.from({ length: 6 }, () => ({ nome: "", matricula: "" }))
+  Array.from({ length: 5 }, () => ({ nome: "", matricula: "" }))
 );
 const saving = ref(false);
 
