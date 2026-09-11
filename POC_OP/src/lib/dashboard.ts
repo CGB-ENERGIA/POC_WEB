@@ -437,6 +437,19 @@ export async function atualizarStatusChecklist(
   return row;
 }
 
+/**
+ * Apaga um checklist enviado (e em cascata suas respostas/fotos via FK).
+ * Remove também o registro espelho em user_observations (usado no PWA), que
+ * não é apagado em cascata pois não tem FK para checklist_submissions.
+ */
+export async function deletarChecklist(id: string, clientId: string | null): Promise<void> {
+  const { error } = await supabase.from("checklist_submissions").delete().eq("id", id);
+  if (error) throw error;
+  if (clientId) {
+    await supabase.from("user_observations").delete().eq("id", clientId);
+  }
+}
+
 /** Filtra gerência de employee lookup. */
 export function filterByGerencia(
   subs: SubmissionRow[],

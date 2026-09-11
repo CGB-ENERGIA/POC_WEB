@@ -159,6 +159,12 @@
               @click="abrirAcao(item, item.status === 'aprovado' ? 'reprovado' : 'aprovado')"
             />
           </template>
+          <q-btn
+            flat icon="mdi-delete-outline" label="Apagar"
+            size="sm" color="negative"
+            class="q-ml-auto"
+            @click="abrirDelete(item)"
+          />
         </div>
       </div>
     </div>
@@ -220,6 +226,30 @@
         <img :src="fotoDialog.url" style="max-width:90vw;max-height:90vh;object-fit:contain;border-radius:8px" />
       </q-card>
     </q-dialog>
+
+    <!-- Dialog confirmação de apagar -->
+    <q-dialog v-model="deleteDialog.open" persistent>
+      <q-card style="min-width:320px;max-width:440px;width:100%">
+        <q-card-section class="row items-center q-pb-none">
+          <q-icon name="mdi-delete-outline" color="negative" size="24px" class="q-mr-sm" />
+          <div class="text-subtitle1 text-weight-bold">Apagar Checklist</div>
+          <q-space />
+          <q-btn flat round dense icon="mdi-close" @click="deleteDialog.open = false" :disable="deleteDialog.deleting" />
+        </q-card-section>
+        <q-card-section>
+          <div class="text-body2">
+            Tem certeza que deseja apagar este checklist? Todas as respostas e fotos associadas também serão removidas. Esta ação não pode ser desfeita.
+          </div>
+          <div v-if="deleteDialog.error" class="text-negative text-caption q-mt-sm">
+            <q-icon name="mdi-alert-circle-outline" size="14px" /> {{ deleteDialog.error }}
+          </div>
+        </q-card-section>
+        <q-card-actions align="right" class="q-pb-md q-px-md">
+          <q-btn flat label="Cancelar" color="grey-7" @click="deleteDialog.open = false" :disable="deleteDialog.deleting" />
+          <q-btn unelevated color="negative" label="Apagar" icon="mdi-delete" :loading="deleteDialog.deleting" @click="confirmarDelete" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </div>
 </template>
 
@@ -228,6 +258,7 @@ import { ref, computed, onMounted, reactive } from "vue";
 import {
   fetchChecklistsParaAnalise,
   atualizarStatusChecklist,
+  deletarChecklist,
   fetchResponses,
   type ChecklistParaAnalise,
   type ResponseRow,
@@ -378,6 +409,35 @@ async function confirmarAcao() {
 // ── Lightbox ──────────────────────────────────────────────────────────────────
 const fotoDialog = reactive({ open: false, url: "" });
 function abrirFoto(url: string) { fotoDialog.url = url; fotoDialog.open = true; }
+
+// ── Dialog apagar ─────────────────────────────────────────────────────────────
+const deleteDialog = reactive({
+  open: false,
+  item: null as ChecklistParaAnalise | null,
+  deleting: false,
+  error: null as string | null,
+});
+
+function abrirDelete(item: ChecklistParaAnalise) {
+  deleteDialog.item = item;
+  deleteDialog.error = null;
+  deleteDialog.open = true;
+}
+
+async function confirmarDelete() {
+  if (!deleteDialog.item) return;
+  deleteDialog.deleting = true;
+  deleteDialog.error = null;
+  try {
+    await deletarChecklist(deleteDialog.item.id, deleteDialog.item.client_id);
+    itens.value = itens.value.filter((i) => i.id !== deleteDialog.item!.id);
+    deleteDialog.open = false;
+  } catch (e) {
+    deleteDialog.error = (e as Error).message;
+  } finally {
+    deleteDialog.deleting = false;
+  }
+}
 </script>
 
 <style scoped lang="scss">
