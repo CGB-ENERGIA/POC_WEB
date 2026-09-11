@@ -121,7 +121,7 @@
                 </q-avatar>
               </q-item-section>
               <q-item-section>
-                <q-item-label class="text-weight-bold">Checklist GSTC</q-item-label>
+                <q-item-label class="text-weight-bold">Checklist GSTC/GERE</q-item-label>
                 <q-item-label caption>{{ totalPerguntasGstc }} perguntas · Conforme / Não conforme</q-item-label>
               </q-item-section>
               <q-item-section side>

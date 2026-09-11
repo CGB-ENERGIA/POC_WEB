@@ -5,7 +5,7 @@
       <div class="mobile-card mobile-card--flat q-pa-md">
         <div class="row items-center justify-between q-mb-sm">
           <div>
-            <div class="section-title">Checklist GSTC</div>
+            <div class="section-title">Checklist GSTC/GERE</div>
             <div class="section-subtitle">{{ respondidas }} de {{ totalPerguntas }} respondidas</div>
           </div>
           <q-circular-progress
@@ -885,7 +885,7 @@ async function onSubmit() {
 
   $q.notify({
     type: "positive",
-    message: "Checklist GSTC registrado com sucesso!",
+    message: "Checklist GSTC/GERE registrado com sucesso!",
     icon: "mdi-check-circle",
     position: "top",
   });

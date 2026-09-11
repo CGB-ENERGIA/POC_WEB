@@ -81,7 +81,7 @@ const titles: Record<string, string> = {
   home: "Início",
   "nova-observacao": "Nova Observação",
   "checklist-goman": "Checklist GOMAN",
-  "checklist-gstc": "Checklist GSTC",
+  "checklist-gstc": "Checklist GSTC/GERE",
   "minhas-observacoes": "Minhas Observações",
 };
 
