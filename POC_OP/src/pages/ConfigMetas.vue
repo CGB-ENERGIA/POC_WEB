@@ -74,8 +74,7 @@
             </div>
             <div class="cm-derived">
               <q-icon name="mdi-calendar-month" size="15px" />
-              Meta mensal: <strong>{{ normaisInput * 4 }} obs/mês</strong>
-              <span class="cm-derived__hint">× 4 semanas</span>
+              Meta mensal: <strong>{{ normaisInput * 4 }}</strong>
             </div>
           </div>
         </div>
@@ -111,8 +110,7 @@
             </div>
             <div class="cm-derived">
               <q-icon name="mdi-calendar-month" size="15px" />
-              Meta mensal: <strong>{{ segurancaInput * 4 }} obs/mês</strong>
-              <span class="cm-derived__hint">× 4 semanas</span>
+              Meta mensal: <strong>{{ segurancaInput * 4 }}</strong>
             </div>
           </div>
         </div>
