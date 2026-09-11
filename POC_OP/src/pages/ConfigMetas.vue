@@ -1,5 +1,6 @@
 <template>
   <q-page class="cm-page">
+    <div class="cm-container">
 
     <!-- ── Período de referência ───────────────────────────────────────────────── -->
     <div class="cm-section">
@@ -283,6 +284,7 @@
       </div>
     </div>
 
+    </div><!-- /cm-container -->
   </q-page>
 </template>
 
@@ -491,7 +493,7 @@ $green:   #15803d;
 $orange:  #e65100;
 $border:  #e2e8f0;
 
-// ── Página (zero padding) ──────────────────────────────────────────────────────
+// ── Página ─────────────────────────────────────────────────────────────────────
 .cm-page {
   padding: 0;
   margin: 0;
@@ -499,16 +501,21 @@ $border:  #e2e8f0;
   min-height: 100vh;
 }
 
+.cm-container {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 32px 20px 48px;
+}
+
 // ── Sections ───────────────────────────────────────────────────────────────────
 .cm-section {
-  padding: 24px 32px;
-  max-width: 1200px;
+  margin-bottom: 24px;
 }
 
 .cm-divider {
   height: 1px;
   background: $border;
-  margin: 0 32px;
+  margin: 0 0 24px;
 }
 
 // ── Period ─────────────────────────────────────────────────────────────────────
