@@ -71,7 +71,7 @@
             <div class="col">
               <div class="text-subtitle1 text-weight-bold">Operacional</div>
               <div class="text-caption text-grey-6 q-mt-xs">
-                Checklist de campo · GOMAN / GSTC
+                Checklist de campo · GOMAN / GSTC / GERE
               </div>
             </div>
             <q-icon
