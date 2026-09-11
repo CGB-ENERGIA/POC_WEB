@@ -161,77 +161,102 @@
 
       <!-- Formulário -->
       <div class="cm-override-form">
-        <div class="cm-override-form__field cm-override-form__field--wide">
-          <div class="cm-flabel">COLABORADOR</div>
-          <q-select
-            v-model="ovMatricula"
-            :options="empOptions"
-            option-label="label"
-            option-value="matricula"
-            emit-value map-options use-input input-debounce="150"
-            outlined dense hide-selected fill-input
-            placeholder="Buscar por nome ou matrícula"
-            @filter="filterEmps"
-            @update:model-value="onSelectEmp"
-          >
-            <template #prepend><q-icon name="mdi-account-search" /></template>
-            <template #option="scope">
-              <q-item v-bind="scope.itemProps">
-                <q-item-section>
-                  <q-item-label>{{ scope.opt.nomeCompleto }}</q-item-label>
-                  <q-item-label caption>{{ scope.opt.matricula }} · {{ scope.opt.gerencia }}</q-item-label>
-                </q-item-section>
-              </q-item>
-            </template>
-            <template #no-option>
-              <q-item><q-item-section class="text-grey-6">Nenhum colaborador encontrado</q-item-section></q-item>
-            </template>
-          </q-select>
-        </div>
 
-        <div class="cm-override-form__field">
-          <div class="cm-flabel">META SEMANAL</div>
-          <div class="cm-override-ctrl">
-            <button class="cm-stepper" @click="ovMeta = Math.max(0, +(ovMeta - 0.5).toFixed(1))">−</button>
-            <input v-model.number="ovMeta" type="number" min="0" max="99" step="0.5" class="cm-counter__input cm-counter__input--sm" />
-            <button class="cm-stepper" @click="ovMeta = +(ovMeta + 0.5).toFixed(1)">+</button>
+        <!-- Linha 1: Colaborador + Semana -->
+        <div class="cm-override-row">
+          <div class="cm-override-form__field cm-override-form__field--wide">
+            <div class="cm-flabel">COLABORADOR</div>
+            <q-select
+              v-model="ovMatricula"
+              :options="empOptions"
+              option-label="label"
+              option-value="matricula"
+              emit-value map-options use-input input-debounce="150"
+              outlined dense hide-selected fill-input
+              placeholder="Buscar por nome ou matrícula"
+              @filter="filterEmps"
+              @update:model-value="onSelectEmp"
+            >
+              <template #prepend><q-icon name="mdi-account-search" /></template>
+              <template #option="scope">
+                <q-item v-bind="scope.itemProps">
+                  <q-item-section>
+                    <q-item-label>{{ scope.opt.nomeCompleto }}</q-item-label>
+                    <q-item-label caption>{{ scope.opt.matricula }} · {{ scope.opt.gerencia }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </template>
+              <template #no-option>
+                <q-item><q-item-section class="text-grey-6">Nenhum colaborador encontrado</q-item-section></q-item>
+              </template>
+            </q-select>
           </div>
-          <div class="cm-flabel" style="margin-top:4px">Mensal: {{ (ovMeta * 4).toFixed(1) }} obs</div>
+
+          <div class="cm-override-form__field">
+            <div class="cm-flabel">SEMANA</div>
+            <div class="cm-pills cm-pills--semana">
+              <button
+                v-for="s in semanasOpcoes" :key="s.value"
+                :class="['cm-pill', 'cm-pill--sm', ovSemana === s.value && 'cm-pill--on']"
+                @click="ovSemana = s.value"
+              >{{ s.label }}</button>
+            </div>
+          </div>
         </div>
 
-        <div class="cm-override-form__field cm-override-form__field--wide">
-          <div class="cm-flabel">MOTIVO</div>
-          <q-input v-model="ovMotivo" outlined dense placeholder="Ex: férias, afastamento médico, integração…" />
+        <!-- Linha 2: Meta + Motivo + Botão -->
+        <div class="cm-override-row cm-override-row--bottom">
+          <div class="cm-override-form__field">
+            <div class="cm-flabel">META SEMANAL</div>
+            <div class="cm-override-ctrl">
+              <button class="cm-stepper" @click="ovMeta = Math.max(0, +(ovMeta - 0.5).toFixed(1))">−</button>
+              <input v-model.number="ovMeta" type="number" min="0" max="99" step="0.5" class="cm-counter__input cm-counter__input--sm" />
+              <button class="cm-stepper" @click="ovMeta = +(ovMeta + 0.5).toFixed(1)">+</button>
+            </div>
+            <div class="cm-flabel" style="margin-top:4px">
+              {{ ovSemana === 0 ? `Mensal: ${(ovMeta * 4).toFixed(1)} obs` : `Só esta semana` }}
+            </div>
+          </div>
+
+          <div class="cm-override-form__field cm-override-form__field--wide">
+            <div class="cm-flabel">MOTIVO</div>
+            <q-input v-model="ovMotivo" outlined dense placeholder="Ex: férias, afastamento médico, integração…" />
+          </div>
+
+          <div class="cm-override-form__field cm-override-form__field--btn">
+            <button
+              class="cm-btn cm-btn--add"
+              :disabled="!ovMatricula || !ovMotivo.trim() || ovSaving"
+              @click="handleSaveOverride"
+            >
+              <q-icon name="mdi-plus-circle" size="18px" />
+              <span>Adicionar</span>
+            </button>
+          </div>
         </div>
 
-        <div class="cm-override-form__field cm-override-form__field--btn">
-          <button
-            class="cm-btn cm-btn--add"
-            :disabled="!ovMatricula || !ovMotivo.trim() || ovSaving"
-            @click="handleSaveOverride"
-          >
-            <q-icon name="mdi-plus-circle" size="18px" />
-            <span>Adicionar</span>
-          </button>
-        </div>
       </div>
 
       <!-- Lista -->
       <div v-if="monthOverrides.length" class="cm-override-list">
         <div class="cm-flabel" style="margin-bottom:8px">EXCEÇÕES EM {{ mesAtualLabel.toUpperCase() }} / {{ selectedAno }}</div>
         <div class="cm-override-items">
-          <div v-for="ov in monthOverrides" :key="ov.matricula" class="cm-override-item">
+          <div v-for="ov in monthOverrides" :key="`${ov.matricula}-${ov.semana}`" class="cm-override-item">
             <div class="cm-override-item__avatar">
               {{ ov.nome.split(" ").slice(0,2).map(p => p[0]).join("") }}
             </div>
             <div class="cm-override-item__info">
               <div class="cm-override-item__name">{{ ov.nome }}</div>
-              <div class="cm-override-item__meta">{{ ov.matricula }} · {{ ov.motivo }}</div>
+              <div class="cm-override-item__meta">
+                {{ ov.matricula }} ·
+                <span class="cm-override-item__sem">{{ ov.semana === 0 ? "Todo o mês" : semanasOpcoes.find(s => s.value === ov.semana)?.label }}</span>
+                · {{ ov.motivo }}
+              </div>
             </div>
             <div class="cm-override-item__badge">
               <span class="cm-override-item__num">{{ ov.meta_semanal }}</span>
               <span class="cm-override-item__unit">/sem</span>
-              <div class="cm-override-item__mensal">{{ (ov.meta_semanal * 4).toFixed(1) }}/mês</div>
+              <div class="cm-override-item__mensal">{{ ov.semana === 0 ? `${(ov.meta_semanal * 4).toFixed(1)}/mês` : 'só esta semana' }}</div>
             </div>
             <button class="cm-override-item__del" @click="handleRemoveOverride(ov)">
               <q-icon name="mdi-delete-outline" size="18px" />
@@ -297,11 +322,20 @@ interface EmpOption {
   label: string;
 }
 
+const semanasOpcoes = [
+  { value: 0, label: "Todo o mês" },
+  { value: 1, label: "1ª (01–08)" },
+  { value: 2, label: "2ª (09–15)" },
+  { value: 3, label: "3ª (16–22)" },
+  { value: 4, label: "4ª (23–31)" },
+];
+
 const allEmps      = ref<EmpOption[]>([]);
 const empOptions   = ref<EmpOption[]>([]);
 const ovMatricula  = ref<string | null>(null);
 const ovNome       = ref("");
 const ovMeta       = ref(1);
+const ovSemana     = ref(0);
 const ovMotivo     = ref("");
 const ovSaving     = ref(false);
 
@@ -351,15 +385,18 @@ async function handleSaveOverride() {
     nome:         ovNome.value,
     ano:          selectedAno.value,
     mes:          selectedMes.value,
+    semana:       ovSemana.value,
     meta_semanal: ovMeta.value,
     motivo:       ovMotivo.value.trim(),
   };
+  const semLabel = semanasOpcoes.find(s => s.value === ovSemana.value)?.label ?? "";
   try {
     await saveOverride(ov);
-    $q.notify({ type: "positive", message: `Meta individual de ${ovNome.value} salva!`, icon: "mdi-check-circle", position: "top-right", timeout: 2500 });
+    $q.notify({ type: "positive", message: `Meta de ${ovNome.value} salva! (${semLabel})`, icon: "mdi-check-circle", position: "top-right", timeout: 2500 });
     ovMatricula.value = null;
     ovNome.value = "";
     ovMeta.value = 1;
+    ovSemana.value = 0;
     ovMotivo.value = "";
   } catch {
     $q.notify({ type: "negative", message: "Erro ao salvar exceção.", position: "top-right" });
@@ -369,7 +406,7 @@ async function handleSaveOverride() {
 }
 
 async function handleRemoveOverride(ov: IndividualOverride) {
-  await removeOverride(ov.matricula, ov.ano, ov.mes);
+  await removeOverride(ov.matricula, ov.ano, ov.mes, ov.semana ?? 0);
   $q.notify({ type: "info", message: `Exceção de ${ov.nome} removida.`, position: "top-right", timeout: 2000 });
 }
 
@@ -700,9 +737,8 @@ $border:  #e2e8f0;
 // ── Override form ──────────────────────────────────────────────────────────────
 .cm-override-form {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 14px;
-  align-items: flex-end;
   background: #fff;
   border: 1px solid $border;
   border-radius: 14px;
@@ -713,6 +749,22 @@ $border:  #e2e8f0;
   &__field { display: flex; flex-direction: column; gap: 6px; }
   &__field--wide { flex: 1; min-width: 200px; }
   &__field--btn { justify-content: flex-end; }
+}
+
+.cm-override-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: flex-end;
+
+  &--bottom { align-items: flex-end; }
+}
+
+.cm-pills--semana { flex-wrap: nowrap; gap: 4px; }
+
+.cm-pill--sm {
+  height: 26px; padding: 0 10px;
+  font-size: 11px;
 }
 
 .cm-override-ctrl {
@@ -752,6 +804,7 @@ $border:  #e2e8f0;
   &__num   { font-size: 18px; font-weight: 700; color: $orange; line-height: 1; }
   &__unit  { font-size: 11px; color: #94a3b8; margin-left: 1px; }
   &__mensal{ font-size: 11px; color: #94a3b8; }
+  &__sem   { color: $brand; font-weight: 600; }
 
   &__del {
     background: none; border: none; cursor: pointer;

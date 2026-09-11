@@ -16,6 +16,7 @@ export interface IndividualOverride {
   nome: string;
   ano: number;
   mes: number;
+  semana: number; // 0 = todas as semanas do mês; 1-4 = semana específica
   meta_semanal: number;
   motivo: string;
 }
@@ -31,8 +32,8 @@ function monthKey(ano: number, mes: number): string {
   return `${ano}-${String(mes).padStart(2, "0")}`;
 }
 
-function overrideKey(matricula: string, ano: number, mes: number): string {
-  return `${monthKey(ano, mes)}-${matricula}`;
+function overrideKey(matricula: string, ano: number, mes: number, semana = 0): string {
+  return `${monthKey(ano, mes)}-S${semana}-${matricula}`;
 }
 
 // ─── Persistência local ───────────────────────────────────────────────────────
@@ -76,9 +77,10 @@ async function syncFromSupabase(): Promise<void> {
     if (!ovRes.error && ovRes.data) {
       const merged: OverrideStore = {};
       for (const row of ovRes.data) {
-        merged[overrideKey(row.matricula, row.ano, row.mes)] = {
+        const sem = Number(row.semana ?? 0);
+        merged[overrideKey(row.matricula, row.ano, row.mes, sem)] = {
           id: row.id, matricula: row.matricula, nome: row.nome,
-          ano: row.ano, mes: row.mes,
+          ano: row.ano, mes: row.mes, semana: sem,
           meta_semanal: Number(row.meta_semanal),
           motivo: row.motivo ?? "",
         };
@@ -128,12 +130,21 @@ export function useGoals() {
     matricula: string | undefined,
     gerencia: string | undefined,
     ano: number,
-    mes: number
+    mes: number,
+    semana?: number
   ): { semanal: number; mensal: number; isOverride: boolean } {
     if (matricula) {
-      const ov = overrides.value[overrideKey(matricula, ano, mes)];
-      if (ov !== undefined) {
-        return { semanal: ov.meta_semanal, mensal: ov.meta_semanal * 4, isOverride: true };
+      // Override de semana específica tem prioridade
+      if (semana && semana > 0) {
+        const weekOv = overrides.value[overrideKey(matricula, ano, mes, semana)];
+        if (weekOv !== undefined) {
+          return { semanal: weekOv.meta_semanal, mensal: weekOv.meta_semanal * 4, isOverride: true };
+        }
+      }
+      // Override mensal (todas as semanas)
+      const monthOv = overrides.value[overrideKey(matricula, ano, mes, 0)];
+      if (monthOv !== undefined) {
+        return { semanal: monthOv.meta_semanal, mensal: monthOv.meta_semanal * 4, isOverride: true };
       }
     }
     return { ...goalForGerencia(gerencia, ano, mes), isOverride: false };
@@ -145,11 +156,14 @@ export function useGoals() {
 
   // ─── Override individual ────────────────────────────────────────────────────
   function getOverridesForMonth(ano: number, mes: number): IndividualOverride[] {
-    const prefix = monthKey(ano, mes) + "-";
+    const prefix = monthKey(ano, mes) + "-S";
     return Object.entries(overrides.value)
       .filter(([k]) => k.startsWith(prefix))
       .map(([, v]) => v)
-      .sort((a, b) => a.nome.localeCompare(b.nome));
+      .sort((a, b) => {
+        if ((a.semana ?? 0) !== (b.semana ?? 0)) return (a.semana ?? 0) - (b.semana ?? 0);
+        return a.nome.localeCompare(b.nome);
+      });
   }
 
   function getOverride(matricula: string, ano: number, mes: number): IndividualOverride | undefined {
@@ -157,28 +171,30 @@ export function useGoals() {
   }
 
   async function saveOverride(ov: IndividualOverride): Promise<void> {
-    const key = overrideKey(ov.matricula, ov.ano, ov.mes);
-    overrides.value = { ...overrides.value, [key]: ov };
+    const sem = ov.semana ?? 0;
+    const key = overrideKey(ov.matricula, ov.ano, ov.mes, sem);
+    overrides.value = { ...overrides.value, [key]: { ...ov, semana: sem } };
     writeOverrides(overrides.value);
 
     const { data } = await supabase
       .from("individual_goal_overrides")
       .upsert(
         { matricula: ov.matricula, nome: ov.nome, ano: ov.ano, mes: ov.mes,
+          semana: sem,
           meta_semanal: ov.meta_semanal, motivo: ov.motivo, updated_at: new Date().toISOString() },
-        { onConflict: "matricula,ano,mes" }
+        { onConflict: "matricula,ano,mes,semana" }
       )
       .select("id")
       .single();
 
     if (data?.id) {
-      overrides.value[key] = { ...ov, id: data.id };
+      overrides.value[key] = { ...ov, semana: sem, id: data.id };
       writeOverrides(overrides.value);
     }
   }
 
-  async function removeOverride(matricula: string, ano: number, mes: number): Promise<void> {
-    const key = overrideKey(matricula, ano, mes);
+  async function removeOverride(matricula: string, ano: number, mes: number, semana = 0): Promise<void> {
+    const key = overrideKey(matricula, ano, mes, semana);
     const ov  = overrides.value[key];
     const copy = { ...overrides.value };
     delete copy[key];
@@ -189,7 +205,7 @@ export function useGoals() {
       await supabase.from("individual_goal_overrides").delete().eq("id", ov.id);
     } else {
       await supabase.from("individual_goal_overrides")
-        .delete().eq("matricula", matricula).eq("ano", ano).eq("mes", mes);
+        .delete().eq("matricula", matricula).eq("ano", ano).eq("mes", mes).eq("semana", semana);
     }
   }
 

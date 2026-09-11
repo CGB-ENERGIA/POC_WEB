@@ -383,7 +383,7 @@ const metaTotal = computed(() =>
   Object.keys(byObservador.value).reduce((total, obsName) => {
     const sub = filteredSubs.value.find(s => s.observador === obsName);
     const emp = employees.value.find(e => e.matricula === sub?.matricula);
-    return total + goalForColaborador(emp?.matricula, emp?.gerencia, filters.ano, filters.mes).semanal;
+    return total + goalForColaborador(emp?.matricula, emp?.gerencia, filters.ano, filters.mes, filters.semana).semanal;
   }, 0)
 );
 
@@ -391,7 +391,7 @@ const obsNoMeta = computed(() =>
   Object.entries(byObservador.value).filter(([obsName, count]) => {
     const sub = filteredSubs.value.find(s => s.observador === obsName);
     const emp = employees.value.find(e => e.matricula === sub?.matricula);
-    return count >= goalForColaborador(emp?.matricula, emp?.gerencia, filters.ano, filters.mes).semanal;
+    return count >= goalForColaborador(emp?.matricula, emp?.gerencia, filters.ano, filters.mes, filters.semana).semanal;
   }).length
 );
 
