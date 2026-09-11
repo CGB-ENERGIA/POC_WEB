@@ -40,27 +40,24 @@
             />
           </div>
           <div class="col-6">
-            <div class="row items-start no-wrap" style="gap: 6px">
-              <q-select
-                v-model="equipe"
-                :options="equipesFiltered"
-                class="col"
-                outlined dense
-                label="Equipe / Prefixo"
-                use-input input-debounce="0"
-                hide-selected fill-input
-                :rules="[required]"
-                @filter="filterEquipes"
-              />
-              <q-btn flat round size="md" class="foto-local-btn q-mt-xs" @click="abrirModalFotosLocal">
-                <q-icon name="mdi-camera-outline" size="22px" :color="fotosLocal.length ? 'primary' : 'grey-5'" />
-                <q-badge v-if="fotosLocal.length" floating color="primary" style="font-size: 10px">
-                  {{ fotosLocal.length }}
-                </q-badge>
-              </q-btn>
-            </div>
+            <q-select
+              v-model="equipe"
+              :options="equipesFiltered"
+              outlined dense
+              label="Equipe / Prefixo"
+              use-input input-debounce="0"
+              hide-selected fill-input
+              :rules="[required]"
+              @filter="filterEquipes"
+            />
           </div>
         </div>
+
+        <EvidenciasObrigatorias
+          v-model="evidencias"
+          :equipe="equipe"
+          :observador="session.employee?.nomeCompleto ?? session.employee?.nome ?? ''"
+        />
       </q-card>
 
       <q-card flat bordered class="mobile-card q-pa-md q-mb-md">
@@ -197,38 +194,9 @@
         color="primary" size="lg" unelevated no-caps
         label="Finalizar" icon="mdi-content-save"
         :loading="saving"
-        :disable="!isTestUser && respondidas < totalPerguntas"
+        :disable="!isTestUser && (respondidas < totalPerguntas || !evidenciasCompletas)"
       />
     </q-form>
-
-    <!-- Modal fotos do local -->
-    <q-dialog v-model="modalFotosAberto" position="bottom">
-      <q-card class="fotos-local-modal">
-        <q-card-section class="row items-center q-pb-sm">
-          <div>
-            <div class="text-subtitle1 text-weight-bold">📸 Fotos do local</div>
-            <div class="text-caption text-grey-6">Salvas automaticamente como rascunho</div>
-          </div>
-          <q-space />
-          <q-btn flat round dense icon="mdi-close" v-close-popup />
-        </q-card-section>
-        <q-card-section class="q-pt-none">
-          <div class="fotos-local-grid">
-            <div v-for="(foto, i) in fotosLocal" :key="i" class="foto-thumb">
-              <img :src="foto" alt="Foto do local" />
-              <q-btn round dense flat icon="mdi-close" size="xs" color="white" class="foto-thumb__del" @click="removerFotoLocal(i)" />
-            </div>
-            <div class="foto-add" :class="{ 'foto-add--loading': carregandoFotoLocal }" @click="!carregandoFotoLocal && abrirCameraLocal()">
-              <q-spinner v-if="carregandoFotoLocal" color="primary" size="28px" />
-              <template v-else>
-                <q-icon name="mdi-camera-plus-outline" size="28px" color="grey-5" />
-                <div class="text-caption text-grey-5 q-mt-xs">Adicionar</div>
-              </template>
-            </div>
-          </div>
-        </q-card-section>
-      </q-card>
-    </q-dialog>
 
     <!-- Modal não conforme -->
     <q-dialog v-model="modalAberto" persistent position="bottom">
@@ -352,7 +320,6 @@
       </q-card>
     </q-dialog>
 
-    <CameraModal v-model="cameraLocalAberta" @captured="onFotoLocalCapturada" />
     <CameraModal v-model="cameraNcAberta" @captured="onFotoNcCapturada" />
   </q-page>
 </template>
@@ -375,6 +342,7 @@ import { stampAuditPhoto } from "@/utils/photo-stamp";
 import { extrairItensPergunta } from "@/utils/pergunta-itens";
 import { useChecklistDraft } from "@/composables/useChecklistDraft";
 import CameraModal from "@/components/CameraModal.vue";
+import EvidenciasObrigatorias from "@/components/EvidenciasObrigatorias.vue";
 
 interface NaoConformeDetalhe {
   observacao: string;
@@ -416,30 +384,19 @@ function filterEquipes(val: string, update: (fn: () => void) => void) {
 }
 
 const draftKey = `cgb-fotos-local-${props.auditagem.toLowerCase()}-${session.employee?.matricula ?? "anon"}`;
-const fotosLocal = ref<string[]>([]);
-const modalFotosAberto = ref(false);
-const cameraLocalAberta = ref(false);
-const carregandoFotoLocal = ref(false);
+const evidencias = ref<(string | null)[]>([null, null, null]);
+const fotosLocal = computed(() => evidencias.value.filter((f): f is string => !!f));
+const evidenciasCompletas = computed(() => evidencias.value.every(Boolean));
 
 onMounted(() => {
-  const saved = LocalStorage.getItem<string[]>(draftKey);
-  if (saved?.length) fotosLocal.value = saved;
+  const saved = LocalStorage.getItem<(string | null)[]>(draftKey);
+  if (saved?.length) evidencias.value = [0, 1, 2].map(i => saved[i] ?? null);
 });
 
-watch(fotosLocal, (val) => {
-  if (val.length) LocalStorage.set(draftKey, val);
+watch(evidencias, (val) => {
+  if (val.some(Boolean)) LocalStorage.set(draftKey, val);
   else LocalStorage.remove(draftKey);
 }, { deep: true });
-
-function abrirModalFotosLocal() { modalFotosAberto.value = true; }
-
-function abrirCameraLocal() {
-  if (!equipe.value.trim()) {
-    $q.notify({ type: "warning", message: "Informe o nome da equipe antes de tirar a foto", position: "top" });
-    return;
-  }
-  cameraLocalAberta.value = true;
-}
 
 const membros = ref<{ nome: string; matricula: string }[]>(
   Array.from({ length: 6 }, () => ({ nome: "", matricula: "" }))
@@ -507,27 +464,6 @@ const { clearDraft: clearChecklistDraft } = useChecklistDraft(
   session.employee?.matricula ?? "anon",
   { base, equipe, membros, respostas, detalhesMap, expandedCategories }
 );
-
-async function onFotoLocalCapturada(base64: string) {
-  carregandoFotoLocal.value = true;
-  try {
-    const { date } = await getTrustedTime();
-    const compressed = await compressBase64(base64);
-    const carimbrada = await stampAuditPhoto(compressed, {
-      time: date,
-      observer: session.employee?.nomeCompleto ?? session.employee?.nome ?? "—",
-      equipe: equipe.value.trim(),
-    });
-    fotosLocal.value.push(carimbrada);
-  } catch (err) {
-    const message = err instanceof ServerTimeError ? err.message : "Erro ao processar foto";
-    $q.notify({ type: "warning", message, position: "top", timeout: 4500 });
-  } finally {
-    carregandoFotoLocal.value = false;
-  }
-}
-
-function removerFotoLocal(idx: number) { fotosLocal.value.splice(idx, 1); }
 
 const respondidas = computed(
   () => Object.keys(respostas).filter((k) => respostas[k]).length
@@ -716,7 +652,7 @@ const isTestUser = computed(() => session.employee?.matricula === "12690");
 const required = (v: string) => isTestUser.value || !!v?.trim() || "Campo obrigatório";
 
 async function onSubmit() {
-  if (!session.employee || (!isTestUser.value && respondidas.value < props.totalPerguntas)) return;
+  if (!session.employee || (!isTestUser.value && (respondidas.value < props.totalPerguntas || !evidenciasCompletas.value))) return;
 
   saving.value = true;
 
@@ -799,13 +735,6 @@ async function onSubmit() {
 }
 .nc-foto-preview:hover .nc-foto-preview__overlay,
 .nc-foto-preview:active .nc-foto-preview__overlay { opacity: 1; }
-.foto-local-btn { min-width: 36px; min-height: 36px; flex-shrink: 0; }
-.fotos-local-modal { width: 100%; max-width: 480px; border-radius: 20px 20px 0 0; }
-.fotos-local-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.foto-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.foto-thumb__del { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.45) !important; }
-.foto-add:active { border-color: var(--q-primary); }
-.foto-add--loading { border-color: var(--q-primary); opacity: 0.7; cursor: wait; }
 .fotos-local-picker { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
 .foto-local-thumb {
   position: relative; width: 68px; height: 68px; border-radius: 8px;
