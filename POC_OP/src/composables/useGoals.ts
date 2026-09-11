@@ -166,8 +166,8 @@ export function useGoals() {
       });
   }
 
-  function getOverride(matricula: string, ano: number, mes: number): IndividualOverride | undefined {
-    return overrides.value[overrideKey(matricula, ano, mes)];
+  function getOverride(matricula: string, ano: number, mes: number, semana = 0): IndividualOverride | undefined {
+    return overrides.value[overrideKey(matricula, ano, mes, semana)];
   }
 
   async function saveOverride(ov: IndividualOverride): Promise<void> {

@@ -155,98 +155,102 @@
         <q-icon name="mdi-account-edit" size="22px" class="text-deep-orange" />
         <div>
           <div class="cm-section-title__main">Exceções individuais</div>
-          <div class="cm-section-title__sub">Meta específica para um colaborador neste mês (férias, afastamento, integração etc.). Sobrepõe a meta do perfil.</div>
+          <div class="cm-section-title__sub">Selecione um colaborador para definir a meta de cada semana do mês.</div>
         </div>
       </div>
 
-      <!-- Formulário -->
-      <div class="cm-override-form">
+      <!-- Busca de colaborador -->
+      <div class="cm-emp-search">
+        <div class="cm-flabel">COLABORADOR</div>
+        <q-select
+          v-model="selectedEmp"
+          :options="empOptions"
+          option-label="label"
+          outlined dense use-input hide-selected fill-input input-debounce="150"
+          placeholder="Buscar por nome ou matrícula…"
+          @filter="filterEmps"
+          @update:model-value="openPanel"
+          clearable
+        >
+          <template #prepend><q-icon name="mdi-account-search" /></template>
+          <template #option="scope">
+            <q-item v-bind="scope.itemProps">
+              <q-item-section>
+                <q-item-label>{{ scope.opt.nomeCompleto }}</q-item-label>
+                <q-item-label caption>{{ scope.opt.matricula }} · {{ scope.opt.gerencia }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </template>
+          <template #no-option>
+            <q-item><q-item-section class="text-grey-6">Nenhum colaborador encontrado</q-item-section></q-item>
+          </template>
+        </q-select>
+      </div>
 
-        <!-- Linha 1: Colaborador + Semana -->
-        <div class="cm-override-row">
-          <div class="cm-override-form__field cm-override-form__field--wide">
-            <div class="cm-flabel">COLABORADOR</div>
-            <q-select
-              v-model="ovMatricula"
-              :options="empOptions"
-              option-label="label"
-              option-value="matricula"
-              emit-value map-options use-input input-debounce="150"
-              outlined dense hide-selected fill-input
-              placeholder="Buscar por nome ou matrícula"
-              @filter="filterEmps"
-              @update:model-value="onSelectEmp"
-            >
-              <template #prepend><q-icon name="mdi-account-search" /></template>
-              <template #option="scope">
-                <q-item v-bind="scope.itemProps">
-                  <q-item-section>
-                    <q-item-label>{{ scope.opt.nomeCompleto }}</q-item-label>
-                    <q-item-label caption>{{ scope.opt.matricula }} · {{ scope.opt.gerencia }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </template>
-              <template #no-option>
-                <q-item><q-item-section class="text-grey-6">Nenhum colaborador encontrado</q-item-section></q-item>
-              </template>
-            </q-select>
-          </div>
+      <!-- Painel de edição das 4 semanas -->
+      <q-slide-transition>
+        <div v-if="panelVisible && selectedEmp" class="cm-week-panel">
 
-          <div class="cm-override-form__field">
-            <div class="cm-flabel">SEMANA</div>
-            <div class="cm-pills cm-pills--semana">
-              <button
-                v-for="s in semanasOpcoes" :key="s.value"
-                :class="['cm-pill', 'cm-pill--sm', ovSemana === s.value && 'cm-pill--on']"
-                @click="ovSemana = s.value"
-              >{{ s.label }}</button>
+          <!-- Cabeçalho do colaborador -->
+          <div class="cm-week-panel__header">
+            <div class="cm-week-panel__avatar">
+              {{ selectedEmp.nomeCompleto.split(" ").slice(0,2).map((p: string) => p[0]).join("") }}
             </div>
-          </div>
-        </div>
-
-        <!-- Linha 2: Meta + Motivo + Botão -->
-        <div class="cm-override-row cm-override-row--bottom">
-          <div class="cm-override-form__field">
-            <div class="cm-flabel">META SEMANAL</div>
-            <div class="cm-override-ctrl">
-              <button class="cm-stepper" @click="ovMeta = Math.max(0, ovMeta - 1)">−</button>
-              <input v-model.number="ovMeta" type="number" min="0" max="99" step="1" class="cm-counter__input cm-counter__input--sm" />
-              <button class="cm-stepper" @click="ovMeta = Math.min(99, ovMeta + 1)">+</button>
-            </div>
-            <div class="cm-flabel" style="margin-top:4px">
-              {{ ovSemana === 0 ? `Mensal: ${ovMeta * 4} obs` : `Só esta semana` }}
+            <div class="cm-week-panel__emp-info">
+              <div class="cm-week-panel__emp-name">{{ selectedEmp.nomeCompleto }}</div>
+              <div class="cm-week-panel__emp-sub">
+                {{ selectedEmp.matricula }} · {{ selectedEmp.gerencia }} · Meta padrão: <strong>{{ panelDefaultMeta }}/sem</strong>
+              </div>
             </div>
           </div>
 
-          <div class="cm-override-form__field">
-            <div class="cm-flabel">MOTIVO</div>
-            <q-select
-              v-model="ovMotivo"
-              :options="motivosOpcoes"
-              outlined dense
-              placeholder="Selecionar motivo"
-              emit-value map-options
+          <!-- Linhas das semanas -->
+          <div class="cm-week-rows">
+            <div
+              v-for="row in weekRows" :key="row.semana"
+              class="cm-week-row"
+              :class="row.motivo ? 'cm-week-row--active' : ''"
             >
-              <template #prepend><q-icon name="mdi-tag-outline" /></template>
-            </q-select>
+              <div class="cm-week-row__label">
+                <div class="cm-week-row__name">{{ row.label }}</div>
+                <div class="cm-week-row__periodo">{{ row.periodo }}</div>
+              </div>
+
+              <div class="cm-week-row__ctrl">
+                <button class="cm-stepper" @click="row.meta = Math.max(0, row.meta - 1)">−</button>
+                <input
+                  v-model.number="row.meta"
+                  type="number" min="0" max="99" step="1"
+                  class="cm-counter__input cm-counter__input--sm"
+                />
+                <button class="cm-stepper" @click="row.meta = Math.min(99, row.meta + 1)">+</button>
+                <span class="cm-week-row__unit">obs</span>
+              </div>
+
+              <div class="cm-week-row__motivo">
+                <q-select
+                  v-model="row.motivo"
+                  :options="motivosComVazio"
+                  outlined dense emit-value map-options
+                  placeholder="Sem exceção"
+                />
+              </div>
+            </div>
           </div>
 
-          <div class="cm-override-form__field cm-override-form__field--btn">
-            <button
-              class="cm-btn cm-btn--add"
-              :disabled="!ovMatricula || !ovMotivo.trim() || ovSaving"
-              @click="handleSaveOverride"
-            >
-              <q-icon name="mdi-plus-circle" size="18px" />
-              <span>Adicionar</span>
+          <!-- Ações -->
+          <div class="cm-week-panel__actions">
+            <button class="cm-btn cm-btn--reset" @click="cancelPanel">Cancelar</button>
+            <button class="cm-btn cm-btn--save" :disabled="panelSaving" @click="savePanel">
+              <q-icon name="mdi-content-save" size="16px" />
+              {{ panelSaving ? "Salvando…" : "Salvar metas do colaborador" }}
             </button>
           </div>
         </div>
+      </q-slide-transition>
 
-      </div>
-
-      <!-- Lista -->
-      <div v-if="monthOverrides.length" class="cm-override-list">
+      <!-- Lista de exceções salvas -->
+      <div v-if="monthOverrides.length" class="cm-override-list" :class="panelVisible ? 'q-mt-lg' : ''">
         <div class="cm-flabel" style="margin-bottom:8px">EXCEÇÕES EM {{ mesAtualLabel.toUpperCase() }} / {{ selectedAno }}</div>
         <div class="cm-override-items">
           <div v-for="ov in monthOverrides" :key="`${ov.matricula}-${ov.semana}`" class="cm-override-item">
@@ -257,14 +261,13 @@
               <div class="cm-override-item__name">{{ ov.nome }}</div>
               <div class="cm-override-item__meta">
                 {{ ov.matricula }} ·
-                <span class="cm-override-item__sem">{{ ov.semana === 0 ? "Todo o mês" : semanasOpcoes.find(s => s.value === ov.semana)?.label }}</span>
+                <span class="cm-override-item__sem">{{ semanaDefs.find(s => s.value === ov.semana)?.label ?? "Todo o mês" }}</span>
                 · {{ ov.motivo }}
               </div>
             </div>
             <div class="cm-override-item__badge">
               <span class="cm-override-item__num">{{ ov.meta_semanal }}</span>
               <span class="cm-override-item__unit">/sem</span>
-              <div class="cm-override-item__mensal">{{ ov.semana === 0 ? `${ov.meta_semanal * 4}/mês` : 'só esta semana' }}</div>
             </div>
             <button class="cm-override-item__del" @click="handleRemoveOverride(ov)">
               <q-icon name="mdi-delete-outline" size="18px" />
@@ -272,7 +275,7 @@
           </div>
         </div>
       </div>
-      <div v-else class="cm-empty">
+      <div v-else-if="!panelVisible" class="cm-empty">
         Nenhuma exceção individual para {{ mesAtualLabel }}/{{ selectedAno }}.
       </div>
     </div>
@@ -303,7 +306,7 @@ import { useGoals, type IndividualOverride } from "@/composables/useGoals";
 import { supabase } from "@/lib/supabase";
 
 const $q = useQuasar();
-const { getMonthGoal, save, hasGoalDefined, getOverridesForMonth, saveOverride, removeOverride } = useGoals();
+const { getMonthGoal, save, hasGoalDefined, goalForGerencia, getOverride, getOverridesForMonth, saveOverride, removeOverride } = useGoals();
 
 const now = new Date();
 const anos = [2024, 2025, 2026];
@@ -330,24 +333,34 @@ interface EmpOption {
   label: string;
 }
 
-const motivosOpcoes = ["Férias", "Atestado", "Baixada"];
-
-const semanasOpcoes = [
-  { value: 0, label: "Todo o mês" },
-  { value: 1, label: "1ª (01–08)" },
-  { value: 2, label: "2ª (09–15)" },
-  { value: 3, label: "3ª (16–22)" },
-  { value: 4, label: "4ª (23–31)" },
+const motivosComVazio = [
+  { label: "Sem exceção", value: "" },
+  { label: "Férias",      value: "Férias" },
+  { label: "Atestado",    value: "Atestado" },
+  { label: "Baixada",     value: "Baixada" },
 ];
 
-const allEmps      = ref<EmpOption[]>([]);
-const empOptions   = ref<EmpOption[]>([]);
-const ovMatricula  = ref<string | null>(null);
-const ovNome       = ref("");
-const ovMeta       = ref(1);
-const ovSemana     = ref(0);
-const ovMotivo     = ref("");
-const ovSaving     = ref(false);
+const semanaDefs = [
+  { value: 1, label: "1ª Semana", periodo: "01–08" },
+  { value: 2, label: "2ª Semana", periodo: "09–15" },
+  { value: 3, label: "3ª Semana", periodo: "16–22" },
+  { value: 4, label: "4ª Semana", periodo: "23–31" },
+];
+
+interface WeekRow { semana: number; label: string; periodo: string; meta: number; motivo: string; }
+
+const allEmps       = ref<EmpOption[]>([]);
+const empOptions    = ref<EmpOption[]>([]);
+const selectedEmp   = ref<EmpOption | null>(null);
+const panelVisible  = ref(false);
+const weekRows      = ref<WeekRow[]>([]);
+const panelSaving   = ref(false);
+
+const panelDefaultMeta = computed(() =>
+  selectedEmp.value
+    ? goalForGerencia(selectedEmp.value.gerencia, selectedAno.value, selectedMes.value).semanal
+    : 0
+);
 
 const mesAtualLabel = computed(() => meses.find(m => m.value === selectedMes.value)?.label ?? "");
 const monthOverrides = computed(() => getOverridesForMonth(selectedAno.value, selectedMes.value));
@@ -382,42 +395,62 @@ function filterEmps(val: string, update: (fn: () => void) => void) {
   });
 }
 
-function onSelectEmp(matricula: string | null) {
-  const emp = allEmps.value.find(e => e.matricula === matricula);
-  ovNome.value = emp?.nomeCompleto ?? "";
+function openPanel(emp: EmpOption | null) {
+  if (!emp) { panelVisible.value = false; weekRows.value = []; return; }
+  const defaultMeta = goalForGerencia(emp.gerencia, selectedAno.value, selectedMes.value).semanal;
+  weekRows.value = semanaDefs.map(s => {
+    const weekOv  = getOverride(emp.matricula, selectedAno.value, selectedMes.value, s.value);
+    const monthOv = getOverride(emp.matricula, selectedAno.value, selectedMes.value, 0);
+    const ov = weekOv ?? monthOv;
+    return { semana: s.value, label: s.label, periodo: s.periodo, meta: ov?.meta_semanal ?? defaultMeta, motivo: ov?.motivo ?? "" };
+  });
+  panelVisible.value = true;
 }
 
-async function handleSaveOverride() {
-  if (!ovMatricula.value || !ovNome.value) return;
-  ovSaving.value = true;
-  const ov: IndividualOverride = {
-    matricula:    ovMatricula.value,
-    nome:         ovNome.value,
-    ano:          selectedAno.value,
-    mes:          selectedMes.value,
-    semana:       ovSemana.value,
-    meta_semanal: ovMeta.value,
-    motivo:       ovMotivo.value.trim(),
-  };
-  const semLabel = semanasOpcoes.find(s => s.value === ovSemana.value)?.label ?? "";
+function cancelPanel() {
+  panelVisible.value = false;
+  selectedEmp.value  = null;
+  weekRows.value     = [];
+}
+
+async function savePanel() {
+  if (!selectedEmp.value) return;
+  panelSaving.value = true;
   try {
-    await saveOverride(ov);
-    $q.notify({ type: "positive", message: `Meta de ${ovNome.value} salva! (${semLabel})`, icon: "mdi-check-circle", position: "top-right", timeout: 2500 });
-    ovMatricula.value = null;
-    ovNome.value = "";
-    ovMeta.value = 1;
-    ovSemana.value = 0;
-    ovMotivo.value = "";
+    // Remove override mensal genérico se existir
+    const monthOv = getOverride(selectedEmp.value.matricula, selectedAno.value, selectedMes.value, 0);
+    if (monthOv) await removeOverride(selectedEmp.value.matricula, selectedAno.value, selectedMes.value, 0);
+
+    for (const row of weekRows.value) {
+      if (row.motivo) {
+        await saveOverride({
+          matricula:    selectedEmp.value.matricula,
+          nome:         selectedEmp.value.nomeCompleto,
+          ano:          selectedAno.value,
+          mes:          selectedMes.value,
+          semana:       row.semana,
+          meta_semanal: row.meta,
+          motivo:       row.motivo,
+        });
+      } else {
+        const existing = getOverride(selectedEmp.value.matricula, selectedAno.value, selectedMes.value, row.semana);
+        if (existing) await removeOverride(selectedEmp.value.matricula, selectedAno.value, selectedMes.value, row.semana);
+      }
+    }
+    $q.notify({ type: "positive", message: `Metas de ${selectedEmp.value.nomeCompleto} salvas!`, icon: "mdi-check-circle", position: "top-right", timeout: 2500 });
+    cancelPanel();
   } catch {
-    $q.notify({ type: "negative", message: "Erro ao salvar exceção.", position: "top-right" });
+    $q.notify({ type: "negative", message: "Erro ao salvar exceções.", position: "top-right" });
   } finally {
-    ovSaving.value = false;
+    panelSaving.value = false;
   }
 }
 
 async function handleRemoveOverride(ov: IndividualOverride) {
   await removeOverride(ov.matricula, ov.ano, ov.mes, ov.semana ?? 0);
   $q.notify({ type: "info", message: `Exceção de ${ov.nome} removida.`, position: "top-right", timeout: 2000 });
+  // Reabre o painel se for o colaborador selecionado (atualiza view)
+  if (selectedEmp.value?.matricula === ov.matricula && panelVisible.value) openPanel(selectedEmp.value);
 }
 
 function loadInputsForPeriod(ano: number, mes: number) {
@@ -744,37 +777,86 @@ $border:  #e2e8f0;
   &__sub  { font-size: .82rem; color: #64748b; margin-top: 3px; line-height: 1.4; }
 }
 
-// ── Override form ──────────────────────────────────────────────────────────────
-.cm-override-form {
+// ── Busca de colaborador ───────────────────────────────────────────────────────
+.cm-emp-search {
+  max-width: 480px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+// ── Painel das 4 semanas ───────────────────────────────────────────────────────
+.cm-week-panel {
   background: #fff;
   border: 1px solid $border;
-  border-radius: 14px;
-  padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 1px 4px rgba(0,0,0,.04);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,.08);
+  margin-bottom: 24px;
 
-  &__field { display: flex; flex-direction: column; gap: 6px; }
-  &__field--wide { flex: 1; min-width: 200px; }
-  &__field--btn { justify-content: flex-end; }
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+    border-bottom: 1px solid $border;
+  }
+
+  &__avatar {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: $orange; color: #fff;
+    font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  &__emp-name { font-size: .95rem; font-weight: 700; color: #1e293b; }
+  &__emp-sub  { font-size: .78rem; color: #64748b; margin-top: 2px; }
+
+  &__actions {
+    display: flex; align-items: center; justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 20px;
+    border-top: 1px solid $border;
+    background: #fafafa;
+  }
 }
 
-.cm-override-row {
+// ── Linhas de semana ───────────────────────────────────────────────────────────
+.cm-week-rows { padding: 0; }
+
+.cm-week-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  align-items: flex-end;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background .13s;
 
-  &--bottom { align-items: flex-end; }
-}
+  &:last-child { border-bottom: none; }
 
-.cm-pills--semana { flex-wrap: nowrap; gap: 4px; }
+  &--active { background: #fffbf0; }
 
-.cm-pill--sm {
-  height: 26px; padding: 0 10px;
-  font-size: 11px;
+  &__label {
+    width: 110px;
+    flex-shrink: 0;
+  }
+
+  &__name   { font-size: 13px; font-weight: 700; color: #1e293b; }
+  &__periodo { font-size: 11px; color: #94a3b8; margin-top: 1px; }
+
+  &__ctrl {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  &__unit { font-size: 11px; color: #94a3b8; }
+
+  &__motivo { flex: 1; max-width: 220px; }
 }
 
 .cm-override-ctrl {
@@ -874,5 +956,13 @@ $border:  #e2e8f0;
   .cm-info__title { color: #e2e8f0; }
   .cm-info__list { color: #94a3b8; }
   .cm-btn--reset { background: #1e293b; border-color: #334155; color: #94a3b8; }
+
+  .cm-week-panel { background: #1e293b; border-color: #334155; }
+  .cm-week-panel__header { background: linear-gradient(135deg, #1e293b, #0f172a); border-color: #334155; }
+  .cm-week-panel__emp-name { color: #e2e8f0; }
+  .cm-week-panel__actions { background: #0f172a; border-color: #334155; }
+  .cm-week-row { border-bottom-color: #334155; }
+  .cm-week-row--active { background: #1c1a0a; }
+  .cm-week-row__name { color: #e2e8f0; }
 }
 </style>
