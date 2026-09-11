@@ -1,19 +1,6 @@
 <template>
   <q-page class="cm-page">
 
-    <!-- ── Hero Header ─────────────────────────────────────────────────────────── -->
-    <div class="cm-hero">
-      <div class="cm-hero__inner">
-        <div class="cm-hero__icon">
-          <q-icon name="mdi-bullseye-arrow" size="32px" />
-        </div>
-        <div>
-          <h1 class="cm-hero__title">Configuração de Metas</h1>
-          <p class="cm-hero__sub">Defina as metas semanais por perfil e mês. A meta mensal é calculada automaticamente (semanal × 4 semanas).</p>
-        </div>
-      </div>
-    </div>
-
     <!-- ── Período de referência ───────────────────────────────────────────────── -->
     <div class="cm-section">
       <div class="cm-period">
@@ -510,43 +497,6 @@ $border:  #e2e8f0;
   margin: 0;
   background: #f4f6fa;
   min-height: 100vh;
-}
-
-// ── Hero header ────────────────────────────────────────────────────────────────
-.cm-hero {
-  background: linear-gradient(135deg, $brand 0%, darken($brand, 8%) 100%);
-  padding: 28px 32px 24px;
-  color: #fff;
-
-  &__inner {
-    display: flex;
-    align-items: flex-start;
-    gap: 16px;
-    max-width: 1200px;
-  }
-
-  &__icon {
-    background: rgba(#fff, .15);
-    border-radius: 12px;
-    padding: 10px;
-    display: flex;
-    flex-shrink: 0;
-  }
-
-  &__title {
-    font-size: 1.5rem;
-    font-weight: 800;
-    margin: 0 0 4px;
-    letter-spacing: -.01em;
-    line-height: 1.2;
-  }
-
-  &__sub {
-    font-size: .85rem;
-    opacity: .75;
-    margin: 0;
-    line-height: 1.4;
-  }
 }
 
 // ── Sections ───────────────────────────────────────────────────────────────────
