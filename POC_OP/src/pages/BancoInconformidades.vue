@@ -17,91 +17,104 @@
     <!-- ── Filtros ────────────────────────────────────────────────────────────── -->
     <div class="banco-filters">
 
-      <!-- Semana + Mês + Gerência -->
-      <div class="filter-row">
-        <div class="fgroup">
-          <span class="flabel">Semana</span>
-          <div class="fchips">
-            <button
-              v-for="s in semanas" :key="s.value"
-              :class="['fchip', filters.semana === s.value && 'fchip--on']"
-              @click="toggleSemana(s.value)"
-            >{{ s.label }}</button>
+      <button class="filters-toggle" @click="filtrosAbertos = !filtrosAbertos">
+        <q-icon name="mdi-filter-variant" size="18px" />
+        <span>Filtros</span>
+        <span v-if="!filtrosAbertos && filtrosAtivosCount" class="filters-toggle__badge">{{ filtrosAtivosCount }}</span>
+        <q-icon :name="filtrosAbertos ? 'mdi-chevron-up' : 'mdi-chevron-down'" size="20px" class="filters-toggle__chevron" />
+      </button>
+
+      <q-slide-transition>
+        <div v-show="filtrosAbertos">
+
+          <!-- Semana + Mês + Gerência -->
+          <div class="filter-row">
+            <div class="fgroup">
+              <span class="flabel">Semana</span>
+              <div class="fchips">
+                <button
+                  v-for="s in semanas" :key="s.value"
+                  :class="['fchip', filters.semana === s.value && 'fchip--on']"
+                  @click="toggleSemana(s.value)"
+                >{{ s.label }}</button>
+              </div>
+            </div>
+
+            <div class="fgroup fgroup--mes">
+              <span class="flabel">Mês</span>
+              <div class="fchips">
+                <button
+                  v-for="m in meses" :key="m.value"
+                  :class="['fchip', filters.mes === m.value && 'fchip--on']"
+                  @click="toggleMes(m.value)"
+                >{{ m.label }}</button>
+              </div>
+            </div>
+
+            <div class="fgroup">
+              <span class="flabel">Gerência</span>
+              <div class="fchips">
+                <button
+                  v-for="g in gerencias" :key="g"
+                  :class="['fchip', filters.gerencia === g && 'fchip--on']"
+                  @click="toggleGerencia(g)"
+                >{{ g }}</button>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div class="fgroup fgroup--mes">
-          <span class="flabel">Mês</span>
-          <div class="fchips">
-            <button
-              v-for="m in meses" :key="m.value"
-              :class="['fchip', filters.mes === m.value && 'fchip--on']"
-              @click="toggleMes(m.value)"
-            >{{ m.label }}</button>
+          <!-- Base + Ano + Gerente -->
+          <div class="filter-row">
+            <div class="fgroup">
+              <span class="flabel">Base</span>
+              <div class="fchips">
+                <button
+                  v-for="b in bases" :key="b"
+                  :class="['fchip', filters.base === b && 'fchip--on']"
+                  @click="toggleBase(b)"
+                >{{ b }}</button>
+              </div>
+            </div>
+
+            <div class="fgroup fgroup--ano">
+              <span class="flabel">Ano</span>
+              <div class="ano-box">{{ filters.ano }}</div>
+            </div>
+
+            <div class="fgroup fgroup--gerente">
+              <span class="flabel">Gerente</span>
+              <div class="fchips">
+                <button
+                  v-for="g in gerentes" :key="g"
+                  :class="['fchip', filters.gerente === g && 'fchip--on']"
+                  @click="toggleGerente(g)"
+                >{{ g }}</button>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div class="fgroup">
-          <span class="flabel">Gerência</span>
-          <div class="fchips">
-            <button
-              v-for="g in gerencias" :key="g"
-              :class="['fchip', filters.gerencia === g && 'fchip--on']"
-              @click="toggleGerencia(g)"
-            >{{ g }}</button>
+          <!-- Observador + Equipe -->
+          <div class="filter-row filter-row--selects">
+            <q-select
+              v-model="filters.observador"
+              :options="observadoresOpts"
+              label="Observador"
+              outlined dense clearable
+              style="min-width: 180px"
+              popup-content-class="banco-popup"
+            />
+            <q-select
+              v-model="filters.equipe"
+              :options="equipesOpts"
+              label="Equipe"
+              outlined dense clearable
+              style="min-width: 180px"
+              popup-content-class="banco-popup"
+            />
           </div>
-        </div>
-      </div>
 
-      <!-- Base + Ano + Gerente -->
-      <div class="filter-row">
-        <div class="fgroup">
-          <span class="flabel">Base</span>
-          <div class="fchips">
-            <button
-              v-for="b in bases" :key="b"
-              :class="['fchip', filters.base === b && 'fchip--on']"
-              @click="toggleBase(b)"
-            >{{ b }}</button>
-          </div>
         </div>
-
-        <div class="fgroup fgroup--ano">
-          <span class="flabel">Ano</span>
-          <div class="ano-box">{{ filters.ano }}</div>
-        </div>
-
-        <div class="fgroup fgroup--gerente">
-          <span class="flabel">Gerente</span>
-          <div class="fchips">
-            <button
-              v-for="g in gerentes" :key="g"
-              :class="['fchip', filters.gerente === g && 'fchip--on']"
-              @click="toggleGerente(g)"
-            >{{ g }}</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Observador + Equipe -->
-      <div class="filter-row filter-row--selects">
-        <q-select
-          v-model="filters.observador"
-          :options="observadoresOpts"
-          label="Observador"
-          outlined dense clearable
-          style="min-width: 180px"
-          popup-content-class="banco-popup"
-        />
-        <q-select
-          v-model="filters.equipe"
-          :options="equipesOpts"
-          label="Equipe"
-          outlined dense clearable
-          style="min-width: 180px"
-          popup-content-class="banco-popup"
-        />
-      </div>
+      </q-slide-transition>
     </div>
 
     <!-- ── Tabela ──────────────────────────────────────────────────────────────── -->
@@ -191,6 +204,12 @@ const filters = reactive({
   observador: null as string | null,
   equipe:     null as string | null,
 });
+
+const filtrosAbertos = ref(true);
+const filtrosAtivosCount = computed(() =>
+  [filters.semana, filters.base, filters.gerencia, filters.gerente, filters.observador, filters.equipe]
+    .filter(v => v !== null).length
+);
 
 function toggleSemana (v: number)  { filters.semana   = filters.semana   === v    ? null : v; }
 function toggleMes    (v: number)  { filters.mes       = filters.mes      === v    ? null as unknown as number : v; }
@@ -394,11 +413,43 @@ $brand: #8B1C2E;
   gap: 10px;
 }
 
+.filters-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 4px 0;
+  margin-bottom: 4px;
+  font-size: .82rem;
+  font-weight: 700;
+  color: $brand;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+
+  &:hover { opacity: .8; }
+
+  &__badge {
+    background: $brand;
+    color: #fff;
+    font-size: .68rem;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 1px 7px;
+    text-transform: none;
+    letter-spacing: normal;
+  }
+
+  &__chevron { margin-left: 2px; }
+}
+
 .filter-row {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 16px;
+  margin-top: 10px;
 
   &--selects {
     gap: 12px;
