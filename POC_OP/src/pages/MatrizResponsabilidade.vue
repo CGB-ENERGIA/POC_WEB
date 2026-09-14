@@ -871,7 +871,6 @@ $header-bg:    #fce4e8;
     text-align: center; white-space: nowrap;
     position: sticky; top: 0; z-index: 1;
     border-bottom: 2px solid rgba($brand,.2);
-    &:first-child, &.col-obs { text-align: left; }
   }
 
   tbody {
@@ -893,9 +892,9 @@ $header-bg:    #fce4e8;
     padding: 8px 10px; vertical-align: middle; text-align: center;
   }
   .col-toggle  { width: 32px; padding: 8px 4px; }
-  .col-data    { min-width: 140px; font-size: 11px; text-align: left; }
+  .col-data    { min-width: 140px; font-size: 11px; }
   .col-base    { min-width: 60px; }
-  .col-obs     { min-width: 110px; font-weight: 600; color: #1e293b; text-align: left; }
+  .col-obs     { min-width: 110px; font-weight: 600; color: #1e293b; }
   .col-equipe  { min-width: 140px; font-size: 11px; }
   .col-nc      { min-width: 80px; }
   .col-status  { min-width: 110px; }
