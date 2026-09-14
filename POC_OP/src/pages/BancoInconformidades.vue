@@ -338,12 +338,12 @@ const equipesOpts = computed(() =>
 // ─── Colunas da tabela ───────────────────────────────────────────────────────
 
 const colunas = [
-  { name: "mes",           label: "Mês",           field: "mes",           align: "left"   as const, sortable: true  },
-  { name: "observador",    label: "Observador",     field: "observador",    align: "left"   as const, sortable: true  },
-  { name: "equipe",        label: "Equipe",         field: "equipe",        align: "left"   as const, sortable: true  },
-  { name: "gerencia",      label: "Gerência",       field: "gerencia",      align: "left"   as const, sortable: true  },
-  { name: "categoria",     label: "Categoria",      field: "categoria",     align: "left"   as const, sortable: true  },
-  { name: "inconformidade",label: "Inconformidade", field: "inconformidade",align: "left"   as const, sortable: false },
+  { name: "mes",           label: "Mês",           field: "mes",           align: "center" as const, sortable: true  },
+  { name: "observador",    label: "Observador",     field: "observador",    align: "center" as const, sortable: true  },
+  { name: "equipe",        label: "Equipe",         field: "equipe",        align: "center" as const, sortable: true  },
+  { name: "gerencia",      label: "Gerência",       field: "gerencia",      align: "center" as const, sortable: true  },
+  { name: "categoria",     label: "Categoria",      field: "categoria",     align: "center" as const, sortable: true  },
+  { name: "inconformidade",label: "Inconformidade", field: "inconformidade",align: "center" as const, sortable: false },
   { name: "status",        label: "Status",         field: "resolvido",     align: "center" as const, sortable: true  },
 ];
 </script>
