@@ -196,7 +196,13 @@
                         >
                           <span class="nc-item__num">{{ i + 1 }}</span>
                           <span class="cat-badge" :class="catClass(nc.categoria)">{{ nc.categoria }}</span>
-                          <span class="nc-item__desc">{{ nc.inconformidade }}</span>
+                          <div class="nc-item__text">
+                            <div class="nc-item__pergunta">{{ nc.pergunta }}</div>
+                            <div v-if="nc.observacao && nc.observacao !== nc.pergunta" class="nc-item__obs">
+                              <q-icon name="mdi-comment-text-outline" size="12px" />
+                              {{ nc.observacao }}
+                            </div>
+                          </div>
                           <div class="nc-item__actions">
                             <span v-if="nc.fotoUrl" class="ev-badge ev-com-foto" title="Tem foto">
                               <q-icon name="mdi-camera" size="14px" />
@@ -260,7 +266,11 @@
                   <span class="base-badge">{{ item.sub.base }}</span>
                   <span class="td-mono" style="font-size:10px;color:#94a3b8">{{ item.sub.equipe }}</span>
                 </div>
-                <div class="hist-item__desc">{{ item.nc.inconformidade }}</div>
+                <div class="hist-item__desc">{{ item.nc.pergunta }}</div>
+                <div v-if="item.nc.observacao && item.nc.observacao !== item.nc.pergunta" class="hist-item__obs">
+                  <q-icon name="mdi-comment-text-outline" size="12px" />
+                  {{ item.nc.observacao }}
+                </div>
                 <div class="hist-item__meta">
                   <q-icon name="mdi-check-circle" size="12px" color="positive" class="q-mr-xs" />
                   {{ item.nc.resolucao?.dataResolucao }}
@@ -923,51 +933,41 @@ $header-bg:    #fce4e8;
   gap: 4px;
 }
 .nc-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 10px;
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 12px;
   border-radius: 8px;
   background: #fff;
   border: 1px solid $border;
+  border-left: 3px solid $border;
   cursor: pointer;
   transition: background .15s, border-color .15s;
-  &:hover { background: #fef2f2; border-color: rgba($brand,.25); }
-  &--resolved {
-    background: #f0fdf4;
-    border-color: rgba(22,163,74,.25);
-    &:hover { background: #dcfce7; border-color: rgba(22,163,74,.4); }
-    .nc-item__desc { color: #166534; }
-  }
-  &--analise {
-    background: #fefce8;
-    border-color: rgba(217,119,6,.3);
-    animation: analise-row-pulse 2s ease-in-out infinite;
-    &:hover { background: #fef9c3; border-color: rgba(217,119,6,.5); }
-    .nc-item__desc { color: #92400e; }
-  }
-  &--reprovado {
-    background: #fef2f2;
-    border-color: rgba(220,38,38,.25);
-    &:hover { background: #fee2e2; border-color: rgba(220,38,38,.4); }
-    .nc-item__desc { color: #991b1b; }
-  }
-}
+  &:hover { background: #f8fafc; border-color: #cbd5e1; }
 
-@keyframes analise-row-pulse {
-  0%, 100% { border-color: rgba(217,119,6,.3); }
-  50%       { border-color: rgba(217,119,6,.7); }
+  &--resolved  { border-left-color: #16a34a; &:hover { background: #f0fdf4; } }
+  &--analise   { border-left-color: #d97706; &:hover { background: #fefce8; } }
+  &--reprovado { border-left-color: #dc2626; &:hover { background: #fef2f2; } }
 }
 .nc-item__num {
   font-size: 10px; font-weight: 700; color: #94a3b8;
   min-width: 16px; text-align: right;
+  margin-top: 2px;
 }
-.nc-item__desc {
-  flex: 1; font-size: 11.5px; color: #334155;
-  line-height: 1.4; white-space: pre-line;
+.nc-item__text { flex: 1; min-width: 0; margin-top: 1px; }
+.nc-item__pergunta {
+  font-size: 12px; font-weight: 600; color: #334155;
+  line-height: 1.4;
   overflow: hidden; text-overflow: ellipsis;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
 }
+.nc-item__obs {
+  display: flex; align-items: flex-start; gap: 4px;
+  font-size: 11px; color: #64748b;
+  margin-top: 3px; line-height: 1.4;
+  white-space: pre-line;
+}
 .nc-item__actions {
   display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+  margin-top: 1px;
 }
 
 // ── Badges ────────────────────────────────────────────────────────────────────
@@ -1056,9 +1056,14 @@ $header-bg:    #fce4e8;
 }
 .hist-item__body { flex: 1; min-width: 0; }
 .hist-item__desc {
-  font-size: 12px; color: #166534; line-height: 1.4;
+  font-size: 12px; font-weight: 600; color: #166534; line-height: 1.4;
   overflow: hidden; text-overflow: ellipsis;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  margin-bottom: 4px;
+}
+.hist-item__obs {
+  display: flex; align-items: flex-start; gap: 4px;
+  font-size: 11px; color: #4b7c5a; line-height: 1.4;
   margin-bottom: 4px;
 }
 .hist-item__meta {
@@ -1157,30 +1162,20 @@ $header-bg:    #fce4e8;
     }
     .td-nc-container { background: #131e2e; }
     .nc-item {
-      background: #1e293b; border-color: #334155;
-      .nc-item__desc { color: #94a3b8; }
-      &:hover { background: rgba($brand,.12); border-color: rgba($brand,.3); }
-      &--resolved {
-        background: #052e16; border-color: rgba(22,163,74,.3);
-        .nc-item__desc { color: #86efac; }
-        &:hover { background: #064e3b; }
-      }
-      &--analise {
-        background: #1c1a05; border-color: rgba(217,119,6,.4);
-        .nc-item__desc { color: #fcd34d; }
-        &:hover { background: #292207; }
-      }
-      &--reprovado {
-        background: #2d0a0a; border-color: rgba(220,38,38,.3);
-        .nc-item__desc { color: #fca5a5; }
-        &:hover { background: #450a0a; }
-      }
+      background: #1e293b; border-color: #334155; border-left-color: #334155;
+      .nc-item__pergunta { color: #e2e8f0; }
+      .nc-item__obs { color: #94a3b8; }
+      &:hover { background: #24334a; border-color: #3f5674; }
+      &--resolved  { border-left-color: #16a34a; &:hover { background: #052e16; } }
+      &--analise   { border-left-color: #d97706; &:hover { background: #1c1a05; } }
+      &--reprovado { border-left-color: #dc2626; &:hover { background: #2d0a0a; } }
     }
   }
   .hist-item {
     background: #052e16; border-color: rgba(22,163,74,.25);
     &:hover { background: #064e3b; }
     .hist-item__desc { color: #86efac; }
+    .hist-item__obs { color: #6ee7a5; }
     .hist-item__meta { color: #4ade80; }
     .hist-item__por { color: #86efac; }
   }
