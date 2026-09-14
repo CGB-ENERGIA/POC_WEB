@@ -532,6 +532,8 @@ $brand: #8B1C2E;
     border-bottom: 2px solid #ddd;
   }
 
+  :deep(td) { color: #333; }
+
   :deep(tr:nth-child(even) td) { background: #fafafa; }
 }
 
@@ -559,4 +561,37 @@ $brand: #8B1C2E;
 
 :global(.banco-popup .q-item) { font-size: .85rem; }
 :global(.banco-popup .q-item--active) { color: $brand !important; }
+
+// ── Dark mode ──────────────────────────────────────────────────────────────────
+.body--dark {
+  .banco-nc { background: #0f172a; }
+
+  .banco-header {
+    background: #1e293b;
+    border-bottom-color: #334155;
+    &__datetime, &__label { color: #94a3b8; }
+  }
+
+  .banco-filters { background: #1e293b; border-bottom-color: #334155; }
+  .flabel { color: #94a3b8; }
+
+  .fchip {
+    background: #0f172a;
+    border-color: #334155;
+    color: #cbd5e1;
+    &--on { background: $brand; border-color: $brand; color: #fff; }
+  }
+
+  .banco-table-wrap { }
+
+  .banco-table {
+    background: #1e293b;
+    border-color: #334155;
+
+    :deep(th) { background: #0f172a; color: #e2e8f0; border-bottom-color: #334155; }
+    :deep(td) { color: #e2e8f0; }
+    :deep(tr:nth-child(even) td) { background: #24334a; }
+    :deep(tr td) { border-bottom-color: #334155; }
+  }
+}
 </style>
