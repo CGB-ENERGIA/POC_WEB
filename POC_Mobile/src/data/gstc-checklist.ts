@@ -154,40 +154,10 @@ export const gstcChecklist: CategoriaGstc[] = [
     "perguntas": [
       {
         "id": "gstc-021",
-        "texto": "Cumpriu a etapa da Regra de Ouro: DESLIGAR?",
+        "texto": "Cumpriu todas as regras de ouro (Desligar, Bloquear, Sinalizar, Testar, Aterrar, Proteger)?",
         "peso": 5,
         "gravidade": "Grave"
-      },
-      {
-        "id": "gstc-022",
-        "texto": "Cumpriu a etapa da Regra de Ouro: BLOQUEAR?",
-        "peso": 5,
-        "gravidade": "Grave"
-      },
-      {
-        "id": "gstc-023",
-        "texto": "Cumpriu a etapa da Regra de Ouro: SINALIZAR?",
-        "peso": 5,
-        "gravidade": "Grave"
-      },
-      {
-        "id": "gstc-024",
-        "texto": "Cumpriu a etapa da Regra de Ouro: TESTAR?",
-        "peso": 5,
-        "gravidade": "Grave"
-      },
-      {
-        "id": "gstc-025",
-        "texto": "Cumpriu a etapa da Regra de Ouro: ATERRAR?",
-        "peso": 5,
-        "gravidade": "Grave"
-      },
-      {
-        "id": "gstc-026",
-        "texto": "Cumpriu a etapa da Regra de Ouro: PROTEGER?",
-        "peso": 5,
-        "gravidade": "Grave"
-      },
+      }
     ]
   },
   {

@@ -113,37 +113,7 @@ export const gomanChecklist: CategoriaGoman[] = [
     "perguntas": [
       {
         "id": "goman-012",
-        "texto": "Cumpriu a etapa da Regra de Ouro: DESLIGAR?",
-        "peso": 5,
-        "gravidade": "Grave"
-      },
-      {
-        "id": "goman-013",
-        "texto": "Cumpriu a etapa da Regra de Ouro: BLOQUEAR?",
-        "peso": 5,
-        "gravidade": "Grave"
-      },
-      {
-        "id": "goman-014",
-        "texto": "Cumpriu a etapa da Regra de Ouro: SINALIZAR?",
-        "peso": 5,
-        "gravidade": "Grave"
-      },
-      {
-        "id": "goman-015",
-        "texto": "Cumpriu a etapa da Regra de Ouro: TESTAR?",
-        "peso": 5,
-        "gravidade": "Grave"
-      },
-      {
-        "id": "goman-016",
-        "texto": "Cumpriu a etapa da Regra de Ouro: ATERRAR?",
-        "peso": 5,
-        "gravidade": "Grave"
-      },
-      {
-        "id": "goman-017",
-        "texto": "Cumpriu a etapa da Regra de Ouro: PROTEGER?",
+        "texto": "Cumpriu todas as regras de ouro (Desligar, Bloquear, Sinalizar, Testar, Aterrar, Proteger)?",
         "peso": 5,
         "gravidade": "Grave"
       }
