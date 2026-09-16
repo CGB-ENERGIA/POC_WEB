@@ -446,7 +446,7 @@ watch(evidencias, (val) => {
 }, { deep: true });
 
 const membros = ref<{ nome: string; matricula: string }[]>(
-  Array.from({ length: 6 }, () => ({ nome: "", matricula: "" }))
+  Array.from({ length: 2 }, () => ({ nome: "", matricula: "" }))
 );
 const saving = ref(false);
 
