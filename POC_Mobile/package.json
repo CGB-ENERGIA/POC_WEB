@@ -24,6 +24,7 @@
     "@quasar/app-vite": "^3.0.0-rc.3",
     "@types/node": "^22.19.11",
     "autoprefixer": "^10.4.27",
+    "sharp": "^0.35.4",
     "typescript": "^6.0.0",
     "vue-tsc": "^3.3.3"
   },
