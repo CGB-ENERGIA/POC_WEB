@@ -58,6 +58,12 @@
           :equipe="equipe"
           :observador="session.employee?.nomeCompleto ?? session.employee?.nome ?? ''"
         />
+
+        <FotosAdicionais
+          v-model="fotosGerais"
+          :equipe="equipe"
+          :observador="session.employee?.nomeCompleto ?? session.employee?.nome ?? ''"
+        />
       </q-card>
 
       <q-card flat bordered class="mobile-card q-pa-md q-mb-md">
@@ -387,6 +393,7 @@ import { extrairItensPergunta } from "@/utils/pergunta-itens";
 import { useChecklistDraft } from "@/composables/useChecklistDraft";
 import CameraModal from "@/components/CameraModal.vue";
 import EvidenciasObrigatorias from "@/components/EvidenciasObrigatorias.vue";
+import FotosAdicionais from "@/components/FotosAdicionais.vue";
 
 interface NaoConformeDetalhe {
   observacao: string;
@@ -432,16 +439,23 @@ function filterEquipes(val: string, update: (fn: () => void) => void) {
 
 const draftKey = `cgb-fotos-local-${props.auditagem.toLowerCase()}-${session.employee?.matricula ?? "anon"}`;
 const evidencias = ref<(string | null)[]>([null, null, null]);
-const fotosLocal = computed(() => evidencias.value.filter((f): f is string => !!f));
+const fotosGerais = ref<string[]>([]);
+const fotosLocal = computed(() => [
+  ...evidencias.value.filter((f): f is string => !!f),
+  ...fotosGerais.value,
+]);
 const evidenciasCompletas = computed(() => evidencias.value.every(Boolean));
 
 onMounted(() => {
-  const saved = LocalStorage.getItem<(string | null)[]>(draftKey);
-  if (saved?.length) evidencias.value = [0, 1, 2].map(i => saved[i] ?? null);
+  const saved = LocalStorage.getItem<{ evidencias: (string | null)[]; fotosGerais: string[] }>(draftKey);
+  if (saved) {
+    evidencias.value = [0, 1, 2].map(i => saved.evidencias?.[i] ?? null);
+    fotosGerais.value = saved.fotosGerais ?? [];
+  }
 });
 
-watch(evidencias, (val) => {
-  if (val.some(Boolean)) LocalStorage.set(draftKey, val);
+watch([evidencias, fotosGerais], ([ev, fg]) => {
+  if (ev.some(Boolean) || fg.length) LocalStorage.set(draftKey, { evidencias: ev, fotosGerais: fg });
   else LocalStorage.remove(draftKey);
 }, { deep: true });
 
