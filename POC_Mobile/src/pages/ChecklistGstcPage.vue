@@ -525,7 +525,7 @@ const observacoes = useObservacoesStore();
 
 const editId = route.query.editId as string | undefined;
 
-const base = ref(session.employee?.base ?? "");
+const base = ref("");
 const equipe = ref("");
 
 const equipesOptions = computed(() => equipesPorBase(base.value, "GSTC"));

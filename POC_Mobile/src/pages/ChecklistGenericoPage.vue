@@ -417,7 +417,7 @@ const router = useRouter();
 const session = useSessionStore();
 const observacoes = useObservacoesStore();
 
-const base = ref(session.employee?.base ?? "");
+const base = ref("");
 const equipe = ref("");
 
 const equipesOptions = computed(() => equipesPorBase(base.value));
