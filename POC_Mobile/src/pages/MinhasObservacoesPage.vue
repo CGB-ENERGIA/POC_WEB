@@ -108,6 +108,7 @@
                   @click="reenviar(obs)"
                 />
                 <q-btn
+                  v-if="podeEditar(obs)"
                   outline
                   dense
                   no-caps
@@ -116,6 +117,10 @@
                   label="Editar"
                   @click="editar(obs)"
                 />
+                <div v-else class="text-caption text-grey-5 row items-center">
+                  <q-icon name="mdi-lock-outline" size="14px" class="q-mr-xs" />
+                  Edição disponível só até 24h após o envio
+                </div>
               </div>
             </div>
           </div>
@@ -238,6 +243,11 @@ async function reenviar(obs: ObservacaoChecklist) {
   } else {
     $q.notify({ type: "negative", message: `Falha: ${erro}`, position: "top", timeout: 6000 });
   }
+}
+
+const UM_DIA_MS = 24 * 60 * 60 * 1000;
+function podeEditar(obs: ObservacaoChecklist): boolean {
+  return Date.now() - new Date(obs.data).getTime() < UM_DIA_MS;
 }
 
 function editar(obs: ObservacaoChecklist) {

@@ -4,7 +4,8 @@ import { LocalStorage } from "quasar";
 import type { AuditagemCategoria } from "@/data/auditagem";
 import type { Employee } from "@/data/employees";
 import type { ChecklistResumo, ObservacaoChecklist, RespostaSalva } from "@/types/checklist";
-import { isRemoteSyncEnabled, isSupabaseSyncEnabled } from "@/lib/config";
+import type { ItemVerificado } from "@/data/goman-checklist";
+import { appConfig, isRemoteSyncEnabled, isSupabaseSyncEnabled } from "@/lib/config";
 import { syncChecklistToRemote } from "@/services/checklist-sync";
 import { syncObservacaoLivreToRemote } from "@/services/observacao-sync";
 import { refreshServerTimeSync } from "@/utils/server-time";
@@ -44,6 +45,64 @@ function loadItems(): RegistroObservacao[] {
 
 export function isChecklist(item: RegistroObservacao): item is ObservacaoChecklist {
   return "respostas" in item && Array.isArray(item.respostas);
+}
+
+/** Resolve a chave R2 (ou URL do Supabase Storage) salva em foto_r2_key para uma URL exibível. */
+function resolveFotoUrl(key: string | null | undefined): string | undefined {
+  if (!key) return undefined;
+  if (key.startsWith("http")) return key;
+  const base = appConfig.r2PublicBaseUrl;
+  if (!base) return undefined;
+  return `${base.replace(/\/$/, "")}/${key}`;
+}
+
+/**
+ * Busca as não conformidades (checklist_responses) dos itens sincronizados,
+ * já que user_observations guarda só o resumo (total/conformes/naoConformes).
+ * Retorna um mapa client_id (= id em user_observations) -> respostas nao_conforme.
+ */
+async function fetchNaoConformesParaItens(clientIds: string[]): Promise<Map<string, RespostaSalva[]>> {
+  const result = new Map<string, RespostaSalva[]>();
+  if (!clientIds.length) return result;
+  const supabase = getSupabase();
+
+  const { data: subs } = await supabase
+    .from("checklist_submissions")
+    .select("id,client_id")
+    .in("client_id", clientIds);
+  if (!subs?.length) return result;
+
+  const subToClient = new Map<string, string>();
+  for (const s of subs) if (s.client_id) subToClient.set(s.id, s.client_id);
+  const subIds = subs.map((s) => s.id);
+
+  const { data: resps } = await supabase
+    .from("checklist_responses")
+    .select("submission_id,pergunta_id,categoria,pergunta,gravidade,peso,resposta,observacao,foto_r2_key,resolvido,itens")
+    .in("submission_id", subIds)
+    .eq("resposta", "nao_conforme");
+  if (!resps) return result;
+
+  for (const r of resps) {
+    const clientId = subToClient.get(r.submission_id);
+    if (!clientId) continue;
+    const list = result.get(clientId) ?? [];
+    const foto = resolveFotoUrl(r.foto_r2_key);
+    list.push({
+      perguntaId: r.pergunta_id,
+      categoria: r.categoria,
+      pergunta: r.pergunta,
+      gravidade: r.gravidade,
+      peso: r.peso,
+      resposta: "nao_conforme",
+      ...(r.observacao ? { observacao: r.observacao } : {}),
+      ...(foto ? { foto } : {}),
+      ...(typeof r.resolvido === "boolean" ? { resolvido: r.resolvido } : {}),
+      ...(r.itens ? { itens: r.itens as unknown as ItemVerificado[] } : {}),
+    });
+    result.set(clientId, list);
+  }
+  return result;
 }
 
 export const useObservacoesStore = defineStore("observacoes", {
@@ -98,19 +157,20 @@ export const useObservacoesStore = defineStore("observacoes", {
         .order("data", { ascending: false });
 
       if (!data) return;
+      const respostasPorItem = await fetchNaoConformesParaItens(data.map((row) => row.id));
       this.syncedItems = data.map((row) => ({
         id: row.id,
         matricula: row.matricula,
         observador: row.observador,
-        auditagem: row.auditagem,
+        auditagem: row.auditagem as AuditagemCategoria,
         data: row.data,
         base: row.base,
         equipe: row.equipe,
         membros: [],
         fotosLocal: [],
-        respostas: [],
-        resumo: row.resumo,
-        syncStatus: "synced" as SyncStatus,
+        respostas: respostasPorItem.get(row.id) ?? [],
+        resumo: row.resumo as unknown as ChecklistResumo,
+        syncStatus: "synced",
       }));
     },
 
