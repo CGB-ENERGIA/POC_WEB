@@ -263,7 +263,7 @@
       <q-btn
         id="checklist-finalizar"
         type="submit"
-        class="full-width btn-primary-lg q-mt-lg q-mb-md"
+        class="full-width btn-primary-lg q-mt-lg"
         color="primary"
         size="lg"
         unelevated
@@ -272,6 +272,18 @@
         icon="mdi-content-save"
         :loading="saving"
         :disable="!isTestUser && (respondidas < totalPerguntas || !evidenciasCompletas)"
+      />
+      <q-btn
+        type="button"
+        class="full-width q-mt-sm q-mb-md"
+        outline
+        no-caps
+        color="primary"
+        size="lg"
+        icon="mdi-clock-outline"
+        label="Concluir mais tarde"
+        :disable="saving"
+        @click="onConcluirMaisTarde"
       />
     </q-form>
 
@@ -680,7 +692,7 @@ const expandedCategories = reactive<Record<string, boolean>>(
   Object.fromEntries(gomanChecklist.map((cat, index) => [cat.id, index === 0]))
 );
 
-const { clearDraft: clearChecklistDraft } = useChecklistDraft(
+const { persistDraft, clearDraft: clearChecklistDraft } = useChecklistDraft(
   "GOMAN",
   session.employee?.matricula ?? "anon",
   {
@@ -933,6 +945,18 @@ function gravidadeColor(g: Gravidade) {
 
 const isTestUser = computed(() => session.employee?.matricula === "12690");
 const required = (v: string) => isTestUser.value || !!v?.trim() || "Campo obrigatório";
+
+async function onConcluirMaisTarde() {
+  persistDraft();
+  $q.notify({
+    type: "info",
+    icon: "mdi-content-save-outline",
+    message: "Progresso salvo neste aparelho. Você pode continuar depois.",
+    position: "top",
+    timeout: 3500,
+  });
+  await router.replace({ name: "home" });
+}
 
 async function onSubmit() {
   if (!session.employee || (!isTestUser.value && (respondidas.value < totalPerguntas || !evidenciasCompletas.value))) return;

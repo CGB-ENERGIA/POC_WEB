@@ -64,6 +64,7 @@ export function useChecklistDraft(
   watch(state.expandedCategories, persistDraft, { deep: true });
 
   return {
+    persistDraft,
     clearDraft: () => clearChecklistDraft(key),
   };
 }

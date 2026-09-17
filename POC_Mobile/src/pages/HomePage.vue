@@ -100,7 +100,10 @@
               </q-item-section>
               <q-item-section>
                 <q-item-label class="text-weight-bold">Checklist GOMAN</q-item-label>
-                <q-item-label caption>{{ totalPerguntasGoman }} perguntas · Conforme / Não conforme</q-item-label>
+                <q-item-label v-if="draftGoman" caption class="text-primary">
+                  Em andamento — toque para continuar
+                </q-item-label>
+                <q-item-label v-else caption>{{ totalPerguntasGoman }} perguntas · Conforme / Não conforme</q-item-label>
               </q-item-section>
               <q-item-section side>
                 <q-icon name="mdi-chevron-right" color="primary" />
@@ -122,7 +125,10 @@
               </q-item-section>
               <q-item-section>
                 <q-item-label class="text-weight-bold">Checklist GSTC/GERE</q-item-label>
-                <q-item-label caption>{{ totalPerguntasGstc }} perguntas · Conforme / Não conforme</q-item-label>
+                <q-item-label v-if="draftGstc" caption class="text-primary">
+                  Em andamento — toque para continuar
+                </q-item-label>
+                <q-item-label v-else caption>{{ totalPerguntasGstc }} perguntas · Conforme / Não conforme</q-item-label>
               </q-item-section>
               <q-item-section side>
                 <q-icon name="mdi-chevron-right" color="primary" />
@@ -169,7 +175,10 @@
               </q-item-section>
               <q-item-section>
                 <q-item-label class="text-weight-bold">Administrativo</q-item-label>
-                <q-item-label caption>EPI · Procedimento · Instalações prediais</q-item-label>
+                <q-item-label v-if="draftAdministrativo" caption class="text-primary">
+                  Em andamento — toque para continuar
+                </q-item-label>
+                <q-item-label v-else caption>EPI · Procedimento · Instalações prediais</q-item-label>
               </q-item-section>
               <q-item-section side><q-icon name="mdi-chevron-right" color="primary" /></q-item-section>
             </q-item>
@@ -184,7 +193,10 @@
               </q-item-section>
               <q-item-section>
                 <q-item-label class="text-weight-bold">Alojamento</q-item-label>
-                <q-item-label caption>Repúblicas · Higiene · Estrutura</q-item-label>
+                <q-item-label v-if="draftAlojamento" caption class="text-primary">
+                  Em andamento — toque para continuar
+                </q-item-label>
+                <q-item-label v-else caption>Repúblicas · Higiene · Estrutura</q-item-label>
               </q-item-section>
               <q-item-section side><q-icon name="mdi-chevron-right" color="primary" /></q-item-section>
             </q-item>
@@ -199,7 +211,10 @@
               </q-item-section>
               <q-item-section>
                 <q-item-label class="text-weight-bold">Logística</q-item-label>
-                <q-item-label caption>APR · EPI · Veículos e equipamentos</q-item-label>
+                <q-item-label v-if="draftLogistica" caption class="text-primary">
+                  Em andamento — toque para continuar
+                </q-item-label>
+                <q-item-label v-else caption>APR · EPI · Veículos e equipamentos</q-item-label>
               </q-item-section>
               <q-item-section side><q-icon name="mdi-chevron-right" color="primary" /></q-item-section>
             </q-item>
@@ -214,7 +229,10 @@
               </q-item-section>
               <q-item-section>
                 <q-item-label class="text-weight-bold">Oficina</q-item-label>
-                <q-item-label caption>EPI · Procedimento · Segurança veicular</q-item-label>
+                <q-item-label v-if="draftOficina" caption class="text-primary">
+                  Em andamento — toque para continuar
+                </q-item-label>
+                <q-item-label v-else caption>EPI · Procedimento · Segurança veicular</q-item-label>
               </q-item-section>
               <q-item-section side><q-icon name="mdi-chevron-right" color="primary" /></q-item-section>
             </q-item>
@@ -253,7 +271,7 @@ import { useObservacoesStore } from "@/stores/observacoes";
 import { totalPerguntasGoman } from "@/data/goman-checklist";
 import { totalPerguntasGstc } from "@/data/gstc-checklist";
 import { PERIODO_VISAO_STORAGE_KEY } from "@/constants/theme";
-import { useGoals } from "@/composables/useGoals";
+import { hasChecklistDraft } from "@/utils/checklist-draft";
 
 type PeriodoVisao = "semana" | "mes";
 
@@ -269,6 +287,14 @@ const operacionalAberto = ref(false);
 const administrativoAberto = ref(false);
 const { getGoal, ensureLoaded } = useGoals();
 
+const matriculaAtual = computed(() => session.employee?.matricula ?? "");
+const draftGoman = computed(() => hasChecklistDraft("GOMAN", matriculaAtual.value));
+const draftGstc = computed(() => hasChecklistDraft("GSTC", matriculaAtual.value));
+const draftAdministrativo = computed(() => hasChecklistDraft("ADMINISTRATIVO", matriculaAtual.value));
+const draftAlojamento = computed(() => hasChecklistDraft("ALOJAMENTO", matriculaAtual.value));
+const draftLogistica = computed(() => hasChecklistDraft("LOGISTICA", matriculaAtual.value));
+const draftOficina = computed(() => hasChecklistDraft("OFICINA", matriculaAtual.value));
+
 watch(periodo, (valor) => {
   LocalStorage.set(PERIODO_VISAO_STORAGE_KEY, valor);
 });
@@ -276,6 +302,10 @@ watch(periodo, (valor) => {
 onMounted(() => {
   void ensureLoaded();
   if (session.matricula) void observacoes.fetchSynced(session.matricula);
+  if (draftGoman.value || draftGstc.value) operacionalAberto.value = true;
+  if (draftAdministrativo.value || draftAlojamento.value || draftLogistica.value || draftOficina.value) {
+    administrativoAberto.value = true;
+  }
 });
 
 const matricula = computed(() => session.matricula);

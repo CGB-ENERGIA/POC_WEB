@@ -9,11 +9,13 @@ export interface ChecklistDraftData {
   expandedCategories: Record<string, boolean>;
 }
 
-export function checklistDraftKey(
-  auditagem: "GOMAN" | "GSTC",
-  matricula: string
-): string {
+export function checklistDraftKey(auditagem: string, matricula: string): string {
   return `cgb-checklist-draft-${auditagem}-${matricula}`;
+}
+
+export function hasChecklistDraft(auditagem: string, matricula: string): boolean {
+  const data = loadChecklistDraft(checklistDraftKey(auditagem, matricula));
+  return Boolean(data && draftHasContent(data));
 }
 
 export function loadChecklistDraft(key: string): ChecklistDraftData | null {
