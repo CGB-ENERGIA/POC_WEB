@@ -272,6 +272,7 @@ import { totalPerguntasGoman } from "@/data/goman-checklist";
 import { totalPerguntasGstc } from "@/data/gstc-checklist";
 import { PERIODO_VISAO_STORAGE_KEY } from "@/constants/theme";
 import { hasChecklistDraft } from "@/utils/checklist-draft";
+import { useGoals } from "@/composables/useGoals";
 
 type PeriodoVisao = "semana" | "mes";
 
