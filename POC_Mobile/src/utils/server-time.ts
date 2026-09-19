@@ -62,7 +62,9 @@ function persistSync(date: Date, provider: "supabase" | "cloudflare") {
 
 async function fetchSupabaseServerTime(): Promise<Date> {
   const supabase = getSupabase();
-  const { data, error } = await supabase.rpc("get_server_time");
+  const { data, error } = await supabase
+    .rpc("get_server_time")
+    .abortSignal(AbortSignal.timeout(5000));
   if (error || !data) {
     throw error ?? new Error("Resposta de hora inválida");
   }
