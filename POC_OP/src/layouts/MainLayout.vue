@@ -69,12 +69,18 @@
           v-bind="link"
         />
 
-        <template v-if="isAdmin">
+        <template v-if="!isMember">
           <q-separator class="q-my-md" />
           <q-item-label header class="sidebar-section-label">
             Administração
           </q-item-label>
           <EssentialLink
+            v-for="link in restrictedLinks"
+            :key="link.label"
+            v-bind="link"
+          />
+          <EssentialLink
+            v-if="isAdmin"
             label="Aprovações de Acesso"
             icon="mdi-shield-account"
             link="/aprovacoes"
@@ -104,7 +110,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { useQuasar } from "quasar";
 import { useRouter } from "vue-router";
 import BrandLogo from "@/components/BrandLogo.vue";
@@ -113,6 +119,7 @@ import EssentialLink, {
   type EssentialLinkProps
 } from "@/components/EssentialLink.vue";
 import { useAuth } from "@/composables/useAuth";
+import { getRole, type Role } from "@/lib/role";
 
 const ADMIN_EMAIL = "italo.fontes@cgbengenharia.com.br";
 
@@ -120,6 +127,16 @@ const $q = useQuasar();
 const router = useRouter();
 const { user, signOut } = useAuth();
 const isAdmin = computed(() => user.value?.email === ADMIN_EMAIL);
+
+const role = ref<Role | null>(null);
+watch(
+  user,
+  async (u) => {
+    role.value = u && u.email !== ADMIN_EMAIL ? await getRole(u.id) : null;
+  },
+  { immediate: true }
+);
+const isMember = computed(() => role.value === "member");
 
 async function logout() {
   await signOut();
@@ -191,7 +208,11 @@ const linksList: EssentialLinkProps[] = [
     label: "Banco de Inconformidades",
     icon: "mdi-database-alert",
     link: "/banco-inconformidades"
-  },
+  }
+];
+
+// Páginas de gestão/escrita — ocultas para o papel "member" (somente visões).
+const restrictedLinks: EssentialLinkProps[] = [
   {
     label: "Validação",
     icon: "mdi-clipboard-check",

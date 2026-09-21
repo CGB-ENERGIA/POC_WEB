@@ -1,6 +1,7 @@
 import { ref, readonly } from "vue";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { clearRoleCache } from "@/lib/role";
 
 const user = ref<User | null>(null);
 const loading = ref(true);
@@ -17,6 +18,7 @@ supabase.auth.onAuthStateChange((_event, session) => {
 export function useAuth() {
   async function signOut() {
     await supabase.auth.signOut();
+    clearRoleCache();
   }
 
   return {

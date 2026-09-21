@@ -22,3 +22,5 @@ const key =
 export const supabase = createClient(url, key, {
   auth: { persistSession: true, autoRefreshToken: true },
 });
+
+export const supabaseUrl = url;

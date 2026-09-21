@@ -8,6 +8,26 @@ import {
 
 import routes from "./routes";
 import { supabase } from "@/lib/supabase";
+import { getRole } from "@/lib/role";
+
+// Páginas de gráficos/visões liberadas para o papel "member" (somente
+// leitura). Qualquer outra rota autenticada é bloqueada para esse papel.
+const MEMBER_ALLOWED_PATHS = new Set([
+  "",
+  "acompanhamento-semanal",
+  "acompanhamento-mensal",
+  "indice-conformidade",
+  "icit",
+  "historico-icit",
+  "relatorio-equipes",
+  "tolerancia-zero",
+  "indicadores-categoria",
+  "observadores",
+  "mapa-calor-base",
+  "mapa-calor-mensal",
+  "matriz-responsabilidade",
+  "banco-inconformidades",
+]);
 
 /*
  * If not building with SSR mode, you can
@@ -41,7 +61,17 @@ export default defineRouter((/* { store, ssrContext } */) => {
     if (to.meta.public) return true;
     const { data } = await supabase.auth.getSession();
     if (!data.session) return "/login";
-    if (to.meta.requiresAdmin && data.session.user.email !== ADMIN_EMAIL) return "/";
+    const email = data.session.user.email;
+    if (to.meta.requiresAdmin && email !== ADMIN_EMAIL) return "/";
+
+    if (email !== ADMIN_EMAIL) {
+      const role = await getRole(data.session.user.id);
+      if (role === "member") {
+        const relPath = to.path.replace(/^\/+/, "");
+        if (!MEMBER_ALLOWED_PATHS.has(relPath)) return "/";
+      }
+    }
+
     return true;
   });
 

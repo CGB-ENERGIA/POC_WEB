@@ -90,6 +90,102 @@
 
     <q-separator class="ap-sep" />
 
+    <!-- Criar usuário -->
+    <section class="ap-section">
+      <div class="ap-users-head">
+        <p class="ap-section-label q-mb-none">
+          <q-icon name="mdi-account-multiple" size="14px" class="q-mr-xs" />
+          USUÁRIOS
+        </p>
+        <q-btn
+          unelevated
+          color="primary"
+          icon="mdi-account-plus"
+          label="Criar Usuário"
+          size="sm"
+          @click="newUserDialog = true"
+        />
+      </div>
+
+      <q-card v-if="members.length" flat bordered class="q-mt-md">
+        <q-list separator>
+          <q-item v-for="m in members" :key="m.id">
+            <q-item-section avatar>
+              <q-icon
+                :name="m.role === 'admin' ? 'mdi-shield-account' : 'mdi-chart-box-outline'"
+                :color="m.role === 'admin' ? 'primary' : 'grey-6'"
+              />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label class="ap-hist-name">{{ m.email }}</q-item-label>
+              <q-item-label caption>
+                {{ m.role === 'admin' ? 'Administrador' : 'Somente gráficos e visões' }}
+              </q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-btn
+                flat round dense
+                icon="mdi-delete-outline"
+                color="negative"
+                size="sm"
+                :loading="actionId === m.id + '_userdel'"
+                @click="removerUsuario(m)"
+              >
+                <q-tooltip>Remover usuário</q-tooltip>
+              </q-btn>
+            </q-item-section>
+          </q-item>
+        </q-list>
+      </q-card>
+      <p v-else class="ap-users-empty">Nenhum usuário criado por aqui ainda.</p>
+    </section>
+
+    <q-dialog v-model="newUserDialog">
+      <q-card style="min-width: 360px; max-width: 420px;">
+        <q-card-section>
+          <p class="text-subtitle1 text-weight-bold q-mb-none">Criar Usuário</p>
+        </q-card-section>
+        <q-card-section class="q-gutter-md q-pt-none">
+          <q-input v-model="newUser.name" label="Nome" dense outlined />
+          <q-input v-model="newUser.email" label="E-mail" type="email" dense outlined />
+          <q-input
+            v-model="newUser.password"
+            label="Senha (mín. 8 caracteres)"
+            :type="showPassword ? 'text' : 'password'"
+            dense outlined
+          >
+            <template #append>
+              <q-icon
+                :name="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                class="cursor-pointer"
+                @click="showPassword = !showPassword"
+              />
+            </template>
+          </q-input>
+          <q-select
+            v-model="newUser.role"
+            label="Nível de acesso"
+            :options="roleOptions"
+            emit-value map-options
+            dense outlined
+          />
+          <p v-if="newUserError" class="text-negative text-caption q-mb-none">
+            {{ newUserError }}
+          </p>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
+          <q-btn
+            unelevated
+            color="primary"
+            label="Criar"
+            :loading="creatingUser"
+            @click="criarUsuario"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <!-- Pendentes -->
     <section v-if="pending.length" class="ap-section">
       <p class="ap-section-label">
@@ -240,7 +336,7 @@
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useQuasar } from "quasar";
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseUrl } from "@/lib/supabase";
 
 const ADMIN_EMAIL = "italo.fontes@cgbengenharia.com.br";
 
@@ -257,12 +353,29 @@ interface Registration {
   source: "web" | "mobile";
 }
 
+interface Profile {
+  id: string;
+  email: string;
+  role: "admin" | "member";
+}
+
 const router   = useRouter();
 const $q       = useQuasar();
 const loading  = ref(true);
 const actionId = ref<string | null>(null);
 const pending  = ref<Registration[]>([]);
 const history  = ref<Registration[]>([]);
+const members  = ref<Profile[]>([]);
+
+const newUserDialog = ref(false);
+const creatingUser   = ref(false);
+const showPassword   = ref(false);
+const newUserError   = ref("");
+const newUser = ref({ name: "", email: "", password: "", role: "member" as "admin" | "member" });
+const roleOptions = [
+  { label: "Somente gráficos e visões", value: "member" },
+  { label: "Administrador (acesso total)", value: "admin" },
+];
 
 onMounted(async () => {
   const { data: { user } } = await supabase.auth.getUser();
@@ -271,7 +384,98 @@ onMounted(async () => {
     return;
   }
   await fetchAll();
+  await fetchMembers();
 });
+
+async function fetchMembers() {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, email, role")
+    .order("email");
+  if (!error && data) members.value = data as Profile[];
+}
+
+async function criarUsuario() {
+  newUserError.value = "";
+  if (!newUser.value.email || !newUser.value.password) {
+    newUserError.value = "Preencha e-mail e senha.";
+    return;
+  }
+  if (newUser.value.password.length < 8) {
+    newUserError.value = "A senha precisa ter no mínimo 8 caracteres.";
+    return;
+  }
+
+  creatingUser.value = true;
+  const { data: { session } } = await supabase.auth.getSession();
+  try {
+    const resp = await fetch(
+      `${supabaseUrl}/functions/v1/create-user`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          action: "create",
+          email: newUser.value.email,
+          password: newUser.value.password,
+          name: newUser.value.name || undefined,
+          role: newUser.value.role,
+        }),
+      }
+    );
+    const result = await resp.json();
+    if (!resp.ok || result.error) {
+      newUserError.value = result.error ?? "Erro ao criar usuário.";
+      return;
+    }
+    $q.notify({ type: "positive", message: `Usuário ${newUser.value.email} criado.` });
+    newUserDialog.value = false;
+    newUser.value = { name: "", email: "", password: "", role: "member" };
+    await fetchMembers();
+  } catch {
+    newUserError.value = "Falha de conexão ao criar usuário.";
+  } finally {
+    creatingUser.value = false;
+  }
+}
+
+function removerUsuario(m: Profile) {
+  $q.dialog({
+    title: "Remover usuário",
+    message: `Isso excluirá o acesso de <b>${m.email}</b> permanentemente.`,
+    html: true,
+    ok: { label: "Remover", color: "negative", unelevated: true },
+    cancel: { label: "Cancelar", flat: true },
+  }).onOk(async () => {
+    actionId.value = m.id + "_userdel";
+    const { data: { session } } = await supabase.auth.getSession();
+    try {
+      const resp = await fetch(
+        `${supabaseUrl}/functions/v1/create-user`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({ action: "delete", userId: m.id }),
+        }
+      );
+      const result = await resp.json();
+      if (!resp.ok || result.error) {
+        $q.notify({ type: "negative", message: result.error ?? "Erro ao remover." });
+        return;
+      }
+      $q.notify({ type: "positive", message: `Usuário ${m.email} removido.` });
+      await fetchMembers();
+    } finally {
+      actionId.value = null;
+    }
+  });
+}
 
 async function fetchAll() {
   loading.value = true;
@@ -487,6 +691,18 @@ function formatDate(iso: string | null): string {
     flex-direction: column;
     align-items: stretch;
   }
+}
+
+// Criar usuário
+.ap-users-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ap-users-empty {
+  font-size: 12.5px;
+  opacity: .5;
+  margin: 10px 0 0;
 }
 
 // Histórico
