@@ -15,6 +15,13 @@ export type SyncStatus = "pending" | "synced" | "failed" | "local";
 
 const STORAGE_KEY = "cgb-observacoes";
 
+function isQuotaExceeded(err: unknown): boolean {
+  return (
+    err instanceof DOMException &&
+    (err.name === "QuotaExceededError" || err.name === "NS_ERROR_DOM_QUOTA_REACHED" || err.code === 22)
+  );
+}
+
 /** Registro legado (formulário livre) — mantido para GSTC e registros antigos. */
 export interface Observacao {
   id: string;
@@ -141,7 +148,34 @@ export const useObservacoesStore = defineStore("observacoes", {
 
   actions: {
     persist() {
-      LocalStorage.set(STORAGE_KEY, this.items);
+      try {
+        LocalStorage.set(STORAGE_KEY, this.items);
+      } catch (err) {
+        if (!isQuotaExceeded(err)) return;
+        // localStorage cheio de fotos base64 de checklists antigos já sincronizados
+        // (o servidor já tem essas fotos — não precisam continuar ocupando espaço local).
+        // Libera o máximo possível e tenta salvar de novo antes de desistir.
+        if (this.freeSpaceForQuota()) {
+          try {
+            LocalStorage.set(STORAGE_KEY, this.items);
+          } catch {
+            // ainda não coube — não trava o app por isso, o envio remoto continua tentando.
+          }
+        }
+      }
+    },
+
+    /** Remove fotos locais (base64) de itens já sincronizados para liberar espaço no localStorage.
+     *  Retorna true se algo foi removido (vale a pena tentar salvar de novo). */
+    freeSpaceForQuota(): boolean {
+      let freed = false;
+      for (const item of this.items) {
+        if (isChecklist(item) && item.syncStatus === "synced" && item.fotosLocal.length > 0) {
+          item.fotosLocal = [];
+          freed = true;
+        }
+      }
+      return freed;
     },
 
     /** Carrega observações sincronizadas do banco (user_observations, últimos 35 dias). */
@@ -191,7 +225,7 @@ export const useObservacoesStore = defineStore("observacoes", {
         if (!isChecklist(item) || item.syncStatus !== "failed") continue;
         item.syncStatus = "pending";
         void syncChecklistToRemote(item, employee)
-          .then(() => { item.syncStatus = "synced"; this.persist(); })
+          .then(() => { item.syncStatus = "synced"; item.fotosLocal = []; this.persist(); })
           .catch(() => { item.syncStatus = "failed"; this.persist(); });
       }
     },
@@ -236,6 +270,8 @@ export const useObservacoesStore = defineStore("observacoes", {
         void syncChecklistToRemote(entry, payload.employee)
           .then(async () => {
             entry.syncStatus = "synced";
+            // As fotos já foram enviadas ao servidor — não precisa mais do base64 local.
+            entry.fotosLocal = [];
             this.persist();
             await refreshServerTimeSync();
             await this.fetchSynced(payload.matricula);
@@ -271,6 +307,7 @@ export const useObservacoesStore = defineStore("observacoes", {
       try {
         await syncChecklistToRemote(item, employee);
         item.syncStatus = "synced";
+        item.fotosLocal = [];
         await refreshServerTimeSync();
         this.persist();
         await this.fetchSynced(item.matricula);
