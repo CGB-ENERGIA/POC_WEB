@@ -335,7 +335,7 @@
         <q-separator />
 
         <!-- ── ENVIADO PARA ANÁLISE / APROVADO / REPROVADO ── -->
-        <template v-if="detalhe.nc.resolucao">
+        <template v-if="detalhe.nc.resolucao && !reenvioMode">
           <q-card-section class="q-pb-xs">
             <div class="resolucao-header">
               <q-icon
@@ -370,17 +370,35 @@
             <div class="text-caption text-grey-6 text-uppercase q-mb-xs" style="letter-spacing:.5px">Foto da Resolução</div>
             <img :src="detalhe.nc.resolucao.fotoUrl" class="foto-evidencia" alt="Foto da resolução" />
           </q-card-section>
-          <q-card-actions align="right">
+          <q-card-actions align="right" class="q-px-md q-pb-md">
             <q-btn flat label="Fechar" color="grey-7" v-close-popup />
+            <q-btn
+              v-if="detalhe.nc.resolucao.status === 'reprovado'"
+              unelevated color="primary"
+              icon="mdi-refresh"
+              label="Enviar Nova Resolução"
+              @click="reenvioMode = true"
+            />
           </q-card-actions>
         </template>
 
-        <!-- ── FORM DE RESOLUÇÃO ── -->
+        <!-- ── FORM DE RESOLUÇÃO (novo envio ou re-envio após reprovação) ── -->
         <template v-else>
+          <!-- Banner de reprovação (visível apenas no re-envio) -->
+          <q-card-section v-if="reenvioMode && detalhe.nc.resolucao?.comentario" class="q-pt-none q-pb-sm">
+            <div class="reenvio-aviso">
+              <q-icon name="mdi-close-circle" color="negative" size="16px" style="flex-shrink:0;margin-top:2px" />
+              <div>
+                <div class="text-caption text-weight-bold text-negative">Motivo da reprovação anterior</div>
+                <div class="text-caption text-grey-7 q-mt-xs">{{ detalhe.nc.resolucao.comentario }}</div>
+              </div>
+            </div>
+          </q-card-section>
+
           <q-card-section class="q-pb-sm">
             <div class="resolver-header q-mb-md">
               <q-icon name="mdi-wrench-check-outline" color="grey-6" size="20px" />
-              <span class="resolver-titulo">Registrar Resolução</span>
+              <span class="resolver-titulo">{{ reenvioMode ? 'Corrigir e Reenviar' : 'Registrar Resolução' }}</span>
             </div>
 
             <div class="resolver-email q-mb-sm">
@@ -419,7 +437,7 @@
               v-else
               outline color="grey-7"
               icon="mdi-camera-plus-outline"
-              label="Adicionar Foto da Resolução (opcional)"
+              :label="reenvioMode ? 'Trocar Foto da Resolução (opcional)' : 'Adicionar Foto da Resolução (opcional)'"
               class="full-width q-mb-xs"
               :disable="resolverForm.saving"
               @click="fotoInput?.click()"
@@ -431,7 +449,11 @@
           </q-card-section>
 
           <q-card-actions align="right" class="q-pt-none q-px-md q-pb-md">
-            <q-btn flat label="Fechar" color="grey-7" v-close-popup :disable="resolverForm.saving" />
+            <q-btn
+              flat color="grey-7" :disable="resolverForm.saving"
+              :label="reenvioMode ? 'Voltar' : 'Fechar'"
+              @click="cancelarOuFechar"
+            />
             <q-btn
               unelevated color="primary"
               icon="mdi-send"
@@ -451,7 +473,7 @@
 <script setup lang="ts">
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { fetchResolucoes, inserirResolucao, type ResolucaoRow } from "@/lib/dashboard";
+import { fetchResolucoes, inserirResolucao, reabrirResolucao, type ResolucaoRow } from "@/lib/dashboard";
 import { useAuth } from "@/composables/useAuth";
 
 // ─── R2 upload ────────────────────────────────────────────────────────────────
@@ -672,12 +694,14 @@ const taxaResolucao = computed(() =>
 // ─── Dialog de detalhe ────────────────────────────────────────────────────────
 const dialogOpen = ref(false);
 const detalhe = ref<{ sub: SubRow; nc: NcRow } | null>(null);
+const reenvioMode = ref(false);
 
 function abrirDetalhe(sub: SubRow, nc: NcRow) {
   detalhe.value = { sub, nc };
   resolverForm.obs = "";
   resolverForm.fotoBase64 = null;
   resolverForm.error = null;
+  reenvioMode.value = false;
   dialogOpen.value = true;
 }
 
@@ -703,6 +727,21 @@ function onFotoChange(event: Event) {
   (event.target as HTMLInputElement).value = "";
 }
 
+function cancelarReenvio() {
+  reenvioMode.value = false;
+  resolverForm.obs = "";
+  resolverForm.fotoBase64 = null;
+  resolverForm.error = null;
+}
+
+function cancelarOuFechar() {
+  if (reenvioMode.value) {
+    cancelarReenvio();
+  } else {
+    dialogOpen.value = false;
+  }
+}
+
 async function resolverNc() {
   if (!detalhe.value || !user.value?.email) return;
   resolverForm.saving = true;
@@ -720,15 +759,37 @@ async function resolverNc() {
         return;
       }
     }
-    const nova = await inserirResolucao({
-      submission_id: sub.submissionId,
-      pergunta_id: nc.perguntaId,
-      resolvido_por: user.value.email,
-      observacao: resolverForm.obs.trim() || undefined,
-      data_resolucao: new Date().toISOString(),
-      foto_r2_key: r2Key,
-    });
-    resolucoes.value = [...resolucoes.value, nova];
+
+    let nova: ResolucaoRow;
+    if (reenvioMode.value && nc.resolucao) {
+      // Re-envio após reprovação: atualiza o registro existente
+      const existingRow = resolucoes.value.find((r) => r.id === nc.resolucao!.id);
+      const fotoKey = r2Key || existingRow?.foto_r2_key || "";
+      nova = await reabrirResolucao(
+        nc.resolucao.id,
+        user.value.email,
+        fotoKey,
+        resolverForm.obs.trim() || undefined
+      );
+      const idx = resolucoes.value.findIndex((r) => r.id === nova.id);
+      if (idx >= 0) {
+        const updated = [...resolucoes.value];
+        updated[idx] = nova;
+        resolucoes.value = updated;
+      }
+      reenvioMode.value = false;
+    } else {
+      // Primeiro envio: insere novo registro
+      nova = await inserirResolucao({
+        submission_id: sub.submissionId,
+        pergunta_id: nc.perguntaId,
+        resolvido_por: user.value.email,
+        observacao: resolverForm.obs.trim() || undefined,
+        data_resolucao: new Date().toISOString(),
+        foto_r2_key: r2Key,
+      });
+      resolucoes.value = [...resolucoes.value, nova];
+    }
     dialogOpen.value = false;
   } catch (e) {
     const msg = (e as { message?: string }).message ?? String(e);
@@ -1111,6 +1172,14 @@ $header-bg:    #fce4e8;
   letter-spacing: .5px; color: #86efac; min-width: 90px;
 }
 .resolucao-valor { font-size: 13px; color: #14532d; font-weight: 500; }
+
+.reenvio-aviso {
+  display: flex; align-items: flex-start; gap: 8px;
+  background: #fef2f2;
+  border: 1px solid rgba(220, 38, 38, .25);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
 
 .resolver-header {
   display: flex; align-items: center; gap: 8px;

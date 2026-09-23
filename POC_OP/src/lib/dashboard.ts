@@ -371,6 +371,40 @@ export async function atualizarStatusAnalise(
   return (data ?? { id, status, analisado_por: analisadoPor, comentario_analise: comentario ?? null }) as ResolucaoRow;
 }
 
+/**
+ * Reabre uma resolução reprovada: atualiza o registro existente com nova foto/observação
+ * e volta status para "pendente" para que o admin possa analisar novamente.
+ */
+export async function reabrirResolucao(
+  id: string,
+  resolvidoPor: string,
+  fotoR2Key: string,
+  observacao?: string
+): Promise<ResolucaoRow> {
+  const { error } = await supabase
+    .from("nc_resolucoes")
+    .update({
+      status: "pendente",
+      analisado_por: null,
+      comentario_analise: null,
+      data_analise: null,
+      resolvido_por: resolvidoPor,
+      foto_r2_key: fotoR2Key,
+      observacao: observacao ?? null,
+      data_resolucao: new Date().toISOString(),
+    })
+    .eq("id", id);
+  if (error) throw error;
+
+  const { data, error: selErr } = await supabase
+    .from("nc_resolucoes")
+    .select(RESOLUCAO_FIELDS)
+    .eq("id", id)
+    .maybeSingle();
+  if (selErr) throw selErr;
+  return (data ?? { id, status: "pendente" as AnaliseStatus, resolvido_por: resolvidoPor, foto_r2_key: fotoR2Key }) as ResolucaoRow;
+}
+
 export async function editarAnalise(
   id: string,
   updates: { resolvido_por?: string; comentario_analise?: string }
