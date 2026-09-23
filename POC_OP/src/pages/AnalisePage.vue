@@ -167,12 +167,14 @@
               <q-btn
                 unelevated color="positive" icon="mdi-check" label="Aprovar"
                 size="sm" class="q-mr-sm"
-                @click="abrirAcao(item, 'aprovar')"
+                :loading="loadingId === item.id"
+                @click="aprovarDireto(item)"
               />
               <q-btn
                 unelevated color="negative" icon="mdi-close" label="Reprovar"
                 size="sm" class="q-mr-sm"
-                @click="abrirAcao(item, 'reprovar')"
+                :disable="loadingId === item.id"
+                @click="abrirAcao(item)"
               />
             </template>
             <q-btn
@@ -194,35 +196,23 @@
       </q-tab-panel>
     </q-tab-panels>
 
-    <!-- Dialog ação (aprovar / reprovar) -->
+    <!-- Dialog reprovar resolução (aprovação é direta, sem dialog) -->
     <q-dialog v-model="acaoDialog.open" persistent>
       <q-card style="min-width:340px;max-width:480px;width:100%">
         <q-card-section class="row items-center q-pb-none">
-          <q-icon
-            :name="acaoDialog.tipo === 'aprovar' ? 'mdi-check-circle' : 'mdi-close-circle'"
-            :color="acaoDialog.tipo === 'aprovar' ? 'positive' : 'negative'"
-            size="24px" class="q-mr-sm"
-          />
-          <div class="text-subtitle1 text-weight-bold">
-            {{ acaoDialog.tipo === 'aprovar' ? 'Aprovar Resolução' : 'Reprovar Resolução' }}
-          </div>
+          <q-icon name="mdi-close-circle" color="negative" size="24px" class="q-mr-sm" />
+          <div class="text-subtitle1 text-weight-bold">Reprovar Resolução</div>
           <q-space />
           <q-btn flat round dense icon="mdi-close" @click="acaoDialog.open = false" />
         </q-card-section>
         <q-card-section>
           <q-input
-            v-model="acaoDialog.analisadoPor"
-            outlined dense label="Seu nome"
-            placeholder="Quem está analisando"
-            class="q-mb-sm"
-            :disable="acaoDialog.saving"
-          />
-          <q-input
             v-model="acaoDialog.comentario"
             outlined dense type="textarea" rows="3"
-            :label="acaoDialog.tipo === 'reprovar' ? 'Motivo da reprovação *' : 'Comentário (opcional)'"
-            :placeholder="acaoDialog.tipo === 'reprovar' ? 'Explique o motivo...' : 'Observações...'"
+            label="Motivo da reprovação *"
+            placeholder="Explique o motivo..."
             :disable="acaoDialog.saving"
+            autofocus
           />
           <div v-if="acaoDialog.error" class="text-negative text-caption q-mt-xs">
             <q-icon name="mdi-alert-circle-outline" size="14px" /> {{ acaoDialog.error }}
@@ -231,12 +221,10 @@
         <q-card-actions align="right" class="q-pb-md q-px-md">
           <q-btn flat label="Cancelar" color="grey-7" @click="acaoDialog.open = false" :disable="acaoDialog.saving" />
           <q-btn
-            unelevated
-            :color="acaoDialog.tipo === 'aprovar' ? 'positive' : 'negative'"
-            :label="acaoDialog.tipo === 'aprovar' ? 'Confirmar Aprovação' : 'Confirmar Reprovação'"
+            unelevated color="negative" label="Confirmar Reprovação"
             :loading="acaoDialog.saving"
-            :disable="!acaoDialog.analisadoPor.trim() || (acaoDialog.tipo === 'reprovar' && !acaoDialog.comentario.trim())"
-            @click="confirmarAcao"
+            :disable="!acaoDialog.comentario.trim()"
+            @click="confirmarReprovacao"
           />
         </q-card-actions>
       </q-card>
@@ -311,6 +299,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, reactive } from "vue";
+import { useQuasar } from "quasar";
 import {
   fetchAnalisePendentes,
   atualizarStatusAnalise,
@@ -320,12 +309,21 @@ import {
   type ResponseRow,
 } from "@/lib/dashboard";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/composables/useAuth";
 import AnaliseChecklistsTab from "@/pages/AnaliseChecklistsTab.vue";
 
+const $q = useQuasar();
+const { user } = useAuth();
 const abaAtiva = ref<"checklists" | "resolucoes">("checklists");
 const checklistsTabRef = ref<InstanceType<typeof AnaliseChecklistsTab> | null>(null);
 
 const R2_PUBLIC_BASE = (import.meta.env.VITE_R2_PUBLIC_BASE_URL as string ?? "").replace(/\/$/, "");
+
+function nomeAnalista(): string {
+  return (user.value?.user_metadata?.name as string | undefined)
+    ?? user.value?.email
+    ?? "Sistema";
+}
 
 function fotoUrl(key: string | null | undefined): string | null {
   if (!key) return null;
@@ -449,40 +447,53 @@ function catClass(cat?: string): string {
   return cat ? (m[cat] ?? "") : "";
 }
 
-// ── Dialog ação ───────────────────────────────────────────────────────────────
+// ── Aprovação direta (sem dialog) ─────────────────────────────────────────────
+const loadingId = ref<string | null>(null);
+
+async function aprovarDireto(item: ItemAnalise) {
+  loadingId.value = item.id;
+  try {
+    const updated = await atualizarStatusAnalise(item.id, "aprovado", nomeAnalista(), undefined);
+    const idx = itens.value.findIndex((i) => i.id === updated.id);
+    if (idx >= 0) itens.value[idx] = { ...itens.value[idx], ...updated };
+    $q.notify({ type: "positive", message: "Resolução aprovada com sucesso!", position: "top", timeout: 3000 });
+  } catch (e) {
+    $q.notify({ type: "negative", message: `Erro: ${(e as Error).message}`, position: "top", timeout: 6000 });
+  } finally {
+    loadingId.value = null;
+  }
+}
+
+// ── Dialog reprovar ───────────────────────────────────────────────────────────
 const acaoDialog = reactive({
   open: false,
-  tipo: "aprovar" as "aprovar" | "reprovar",
   item: null as ItemAnalise | null,
-  analisadoPor: "",
   comentario: "",
   saving: false,
   error: null as string | null,
 });
 
-function abrirAcao(item: ItemAnalise, tipo: "aprovar" | "reprovar") {
+function abrirAcao(item: ItemAnalise) {
   acaoDialog.item = item;
-  acaoDialog.tipo = tipo;
-  acaoDialog.analisadoPor = "";
   acaoDialog.comentario = "";
   acaoDialog.error = null;
   acaoDialog.open = true;
 }
 
-async function confirmarAcao() {
+async function confirmarReprovacao() {
   if (!acaoDialog.item) return;
   acaoDialog.saving = true;
   acaoDialog.error = null;
   try {
-    const status = acaoDialog.tipo === "aprovar" ? "aprovado" : "reprovado";
     const updated = await atualizarStatusAnalise(
-      acaoDialog.item.id, status,
-      acaoDialog.analisadoPor.trim(),
-      acaoDialog.comentario.trim() || undefined
+      acaoDialog.item.id, "reprovado",
+      nomeAnalista(),
+      acaoDialog.comentario.trim()
     );
     const idx = itens.value.findIndex((i) => i.id === updated.id);
     if (idx >= 0) itens.value[idx] = { ...itens.value[idx], ...updated };
     acaoDialog.open = false;
+    $q.notify({ type: "warning", message: "Resolução reprovada.", position: "top", timeout: 3000 });
   } catch (e) {
     acaoDialog.error = (e as Error).message;
   } finally {

@@ -350,7 +350,7 @@ export async function atualizarStatusAnalise(
   analisadoPor: string,
   comentario?: string
 ): Promise<ResolucaoRow> {
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("nc_resolucoes")
     .update({
       status,
@@ -358,25 +358,36 @@ export async function atualizarStatusAnalise(
       data_analise: new Date().toISOString(),
       comentario_analise: comentario ?? null,
     })
-    .eq("id", id)
-    .select(RESOLUCAO_FIELDS)
-    .single();
+    .eq("id", id);
   if (error) throw error;
-  return data as ResolucaoRow;
+
+  // Busca separada para evitar "Cannot coerce" quando RLS limita o SELECT pós-UPDATE
+  const { data, error: selErr } = await supabase
+    .from("nc_resolucoes")
+    .select(RESOLUCAO_FIELDS)
+    .eq("id", id)
+    .maybeSingle();
+  if (selErr) throw selErr;
+  return (data ?? { id, status, analisado_por: analisadoPor, comentario_analise: comentario ?? null }) as ResolucaoRow;
 }
 
 export async function editarAnalise(
   id: string,
   updates: { resolvido_por?: string; comentario_analise?: string }
 ): Promise<ResolucaoRow> {
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("nc_resolucoes")
     .update(updates)
-    .eq("id", id)
-    .select(RESOLUCAO_FIELDS)
-    .single();
+    .eq("id", id);
   if (error) throw error;
-  return data as ResolucaoRow;
+
+  const { data, error: selErr } = await supabase
+    .from("nc_resolucoes")
+    .select(RESOLUCAO_FIELDS)
+    .eq("id", id)
+    .maybeSingle();
+  if (selErr) throw selErr;
+  return (data ?? { id, ...updates }) as ResolucaoRow;
 }
 
 export async function deletarResolucao(id: string): Promise<void> {

@@ -245,6 +245,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, reactive } from "vue";
+import { useQuasar } from "quasar";
 import {
   fetchChecklistsParaAnalise,
   atualizarStatusChecklist,
@@ -258,6 +259,7 @@ import { useAuth } from "@/composables/useAuth";
 
 const R2_PUBLIC_BASE = (import.meta.env.VITE_R2_PUBLIC_BASE_URL as string ?? "").replace(/\/$/, "");
 
+const $q = useQuasar();
 const { user } = useAuth();
 function nomeAnalista(): string {
   return (user.value?.user_metadata?.name as string | undefined)
@@ -381,6 +383,10 @@ async function abrirAcao(item: ChecklistParaAnalise, tipo: AnaliseStatus) {
     const updated = await atualizarStatusChecklist(item.id, tipo, nomeAnalista(), undefined);
     const idx = itens.value.findIndex((i) => i.id === updated.id);
     if (idx >= 0) itens.value[idx] = { ...itens.value[idx], ...updated };
+    const msg = tipo === "aprovado" ? "Checklist aprovado com sucesso!" : "Checklist revertido para aprovado.";
+    $q.notify({ type: "positive", message: msg, position: "top", timeout: 3000 });
+  } catch (e) {
+    $q.notify({ type: "negative", message: `Erro: ${(e as Error).message}`, position: "top", timeout: 6000 });
   } finally {
     loadingId.value = null;
   }
