@@ -184,9 +184,8 @@ export const useObservacoesStore = defineStore("observacoes", {
       const supabase = getSupabase();
       const { data } = await supabase
         .from("user_observations")
-        .select("id,matricula,observador,auditagem,data,base,equipe,resumo")
+        .select("id,matricula,observador,auditagem,data,base,equipe,resumo,status,comentario_analise,analisado_por")
         .eq("matricula", matricula)
-        .neq("status", "reprovado")
         .gt("expires_at", new Date().toISOString())
         .order("data", { ascending: false });
 
@@ -205,6 +204,9 @@ export const useObservacoesStore = defineStore("observacoes", {
         respostas: respostasPorItem.get(row.id) ?? [],
         resumo: row.resumo as unknown as ChecklistResumo,
         syncStatus: "synced",
+        analiseStatus: (row.status as "aprovado" | "reprovado" | "pendente") ?? "pendente",
+        analiseMotivo: row.comentario_analise ?? null,
+        analisadoPor: row.analisado_por ?? null,
       }));
     },
 

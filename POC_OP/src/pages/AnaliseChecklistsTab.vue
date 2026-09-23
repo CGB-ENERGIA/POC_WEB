@@ -143,11 +143,13 @@
             <q-btn
               unelevated color="positive" icon="mdi-check" label="Aprovar"
               size="sm" class="q-mr-sm"
+              :loading="loadingId === item.id"
               @click="abrirAcao(item, 'aprovado')"
             />
             <q-btn
               unelevated color="negative" icon="mdi-close" label="Reprovar"
               size="sm" class="q-mr-sm"
+              :disable="loadingId === item.id"
               @click="abrirAcao(item, 'reprovado')"
             />
           </template>
@@ -156,6 +158,8 @@
               flat size="sm" color="grey-7"
               :icon="item.status === 'aprovado' ? 'mdi-close' : 'mdi-check'"
               :label="item.status === 'aprovado' ? 'Reverter p/ reprovado' : 'Reverter p/ aprovado'"
+              :loading="item.status === 'aprovado' ? false : loadingId === item.id"
+              :disable="item.status === 'reprovado' && loadingId !== null"
               @click="abrirAcao(item, item.status === 'aprovado' ? 'reprovado' : 'aprovado')"
             />
           </template>
@@ -169,38 +173,26 @@
       </div>
     </div>
 
-    <!-- Dialog aprovar/reprovar -->
+    <!-- Dialog reprovar (aprovação é direta, sem dialog) -->
     <q-dialog v-model="acaoDialog.open" persistent>
       <q-card style="min-width:340px;max-width:480px;width:100%">
         <q-card-section class="row items-center q-pb-none">
-          <q-icon
-            :name="acaoDialog.tipo === 'aprovado' ? 'mdi-check-circle' : 'mdi-close-circle'"
-            :color="acaoDialog.tipo === 'aprovado' ? 'positive' : 'negative'"
-            size="24px" class="q-mr-sm"
-          />
-          <div class="text-subtitle1 text-weight-bold">
-            {{ acaoDialog.tipo === 'aprovado' ? 'Aprovar Checklist' : 'Reprovar Checklist' }}
-          </div>
+          <q-icon name="mdi-close-circle" color="negative" size="24px" class="q-mr-sm" />
+          <div class="text-subtitle1 text-weight-bold">Reprovar Checklist</div>
           <q-space />
           <q-btn flat round dense icon="mdi-close" @click="acaoDialog.open = false" />
         </q-card-section>
         <q-card-section>
-          <div v-if="acaoDialog.tipo === 'reprovado'" class="text-caption text-grey-7 q-mb-sm">
-            O checklist reprovado será desconsiderado nas métricas e não contará mais para o colaborador no PWA.
+          <div class="text-caption text-grey-7 q-mb-sm">
+            O colaborador será notificado da reprovação e verá o motivo no PWA.
           </div>
-          <q-input
-            v-model="acaoDialog.analisadoPor"
-            outlined dense label="Seu nome"
-            placeholder="Quem está analisando"
-            class="q-mb-sm"
-            :disable="acaoDialog.saving"
-          />
           <q-input
             v-model="acaoDialog.comentario"
             outlined dense type="textarea" rows="3"
-            :label="acaoDialog.tipo === 'reprovado' ? 'Motivo da reprovação *' : 'Comentário (opcional)'"
-            :placeholder="acaoDialog.tipo === 'reprovado' ? 'Explique o motivo...' : 'Observações...'"
+            label="Motivo da reprovação *"
+            placeholder="Explique o motivo..."
             :disable="acaoDialog.saving"
+            autofocus
           />
           <div v-if="acaoDialog.error" class="text-negative text-caption q-mt-xs">
             <q-icon name="mdi-alert-circle-outline" size="14px" /> {{ acaoDialog.error }}
@@ -209,12 +201,10 @@
         <q-card-actions align="right" class="q-pb-md q-px-md">
           <q-btn flat label="Cancelar" color="grey-7" @click="acaoDialog.open = false" :disable="acaoDialog.saving" />
           <q-btn
-            unelevated
-            :color="acaoDialog.tipo === 'aprovado' ? 'positive' : 'negative'"
-            :label="acaoDialog.tipo === 'aprovado' ? 'Confirmar Aprovação' : 'Confirmar Reprovação'"
+            unelevated color="negative" label="Confirmar Reprovação"
             :loading="acaoDialog.saving"
-            :disable="!acaoDialog.analisadoPor.trim() || (acaoDialog.tipo === 'reprovado' && !acaoDialog.comentario.trim())"
-            @click="confirmarAcao"
+            :disable="!acaoDialog.comentario.trim()"
+            @click="confirmarReprovacao"
           />
         </q-card-actions>
       </q-card>
@@ -264,8 +254,16 @@ import {
   type ResponseRow,
   type AnaliseStatus,
 } from "@/lib/dashboard";
+import { useAuth } from "@/composables/useAuth";
 
 const R2_PUBLIC_BASE = (import.meta.env.VITE_R2_PUBLIC_BASE_URL as string ?? "").replace(/\/$/, "");
+
+const { user } = useAuth();
+function nomeAnalista(): string {
+  return (user.value?.user_metadata?.name as string | undefined)
+    ?? user.value?.email
+    ?? "Sistema";
+}
 
 function fotoUrl(key: string | null | undefined): string | null {
   if (!key) return null;
@@ -366,35 +364,46 @@ async function toggleExpand(id: string) {
   }
 }
 
-// ── Dialog ação ───────────────────────────────────────────────────────────────
+// ── Aprovação direta (sem dialog) ─────────────────────────────────────────────
+const loadingId = ref<string | null>(null);
+
+async function abrirAcao(item: ChecklistParaAnalise, tipo: AnaliseStatus) {
+  if (tipo === "reprovado") {
+    acaoDialog.item = item;
+    acaoDialog.comentario = "";
+    acaoDialog.error = null;
+    acaoDialog.open = true;
+    return;
+  }
+  // aprovado: executa direto
+  loadingId.value = item.id;
+  try {
+    const updated = await atualizarStatusChecklist(item.id, tipo, nomeAnalista(), undefined);
+    const idx = itens.value.findIndex((i) => i.id === updated.id);
+    if (idx >= 0) itens.value[idx] = { ...itens.value[idx], ...updated };
+  } finally {
+    loadingId.value = null;
+  }
+}
+
+// ── Dialog reprovar ───────────────────────────────────────────────────────────
 const acaoDialog = reactive({
   open: false,
-  tipo: "aprovado" as AnaliseStatus,
   item: null as ChecklistParaAnalise | null,
-  analisadoPor: "",
   comentario: "",
   saving: false,
   error: null as string | null,
 });
 
-function abrirAcao(item: ChecklistParaAnalise, tipo: AnaliseStatus) {
-  acaoDialog.item = item;
-  acaoDialog.tipo = tipo;
-  acaoDialog.analisadoPor = "";
-  acaoDialog.comentario = "";
-  acaoDialog.error = null;
-  acaoDialog.open = true;
-}
-
-async function confirmarAcao() {
+async function confirmarReprovacao() {
   if (!acaoDialog.item) return;
   acaoDialog.saving = true;
   acaoDialog.error = null;
   try {
     const updated = await atualizarStatusChecklist(
-      acaoDialog.item.id, acaoDialog.tipo,
-      acaoDialog.analisadoPor.trim(),
-      acaoDialog.comentario.trim() || undefined
+      acaoDialog.item.id, "reprovado",
+      nomeAnalista(),
+      acaoDialog.comentario.trim()
     );
     const idx = itens.value.findIndex((i) => i.id === updated.id);
     if (idx >= 0) itens.value[idx] = { ...itens.value[idx], ...updated };

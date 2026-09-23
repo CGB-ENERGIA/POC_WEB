@@ -64,6 +64,17 @@
                 </div>
               </div>
 
+              <!-- banner de reprovação -->
+              <div v-if="obs.analiseStatus === 'reprovado'" class="reprovado-aviso q-mt-sm">
+                <q-icon name="mdi-close-circle" color="negative" size="16px" class="q-mr-xs" style="flex-shrink:0" />
+                <div>
+                  <div class="text-caption text-weight-bold text-negative">Checklist reprovado</div>
+                  <div v-if="obs.analiseMotivo" class="text-caption text-grey-7 q-mt-xs">
+                    <span v-if="obs.analisadoPor" class="text-weight-medium">{{ obs.analisadoPor }}: </span>{{ obs.analiseMotivo }}
+                  </div>
+                </div>
+              </div>
+
               <!-- não conformidades -->
               <q-expansion-item
                 v-if="obs.resumo.naoConformes > 0"
@@ -97,7 +108,7 @@
               <!-- ações -->
               <div class="row q-gutter-sm q-mt-md">
                 <q-btn
-                  v-if="obs.syncStatus !== 'synced'"
+                  v-if="obs.syncStatus !== 'synced' && obs.analiseStatus !== 'reprovado'"
                   outline
                   dense
                   no-caps
@@ -108,7 +119,7 @@
                   @click="reenviar(obs)"
                 />
                 <q-btn
-                  v-if="podeEditar(obs)"
+                  v-if="podeEditar(obs) && obs.analiseStatus !== 'reprovado'"
                   outline
                   dense
                   no-caps
@@ -117,7 +128,7 @@
                   label="Editar"
                   @click="editar(obs)"
                 />
-                <div v-else class="text-caption text-grey-5 row items-center">
+                <div v-else-if="obs.analiseStatus !== 'reprovado'" class="text-caption text-grey-5 row items-center">
                   <q-icon name="mdi-lock-outline" size="14px" class="q-mr-xs" />
                   Edição disponível só até 24h após o envio
                 </div>
@@ -210,14 +221,18 @@ function tipoLabel(tipo: string) {
 }
 
 function syncColor(obs: ObservacaoChecklist) {
+  if (obs.analiseStatus === "reprovado") return "negative";
+  if (obs.analiseStatus === "aprovado") return "positive";
   const s = obs.syncStatus;
-  if (s === "synced") return "positive";
+  if (s === "synced") return "grey-6";
   if (s === "failed") return "negative";
   if (s === "pending") return "warning";
   return "grey-6";
 }
 
 function syncLabel(obs: ObservacaoChecklist) {
+  if (obs.analiseStatus === "reprovado") return "Reprovado";
+  if (obs.analiseStatus === "aprovado") return "Aprovado";
   const s = obs.syncStatus;
   if (s === "synced") return "Enviado";
   if (s === "failed") return "Falhou";
@@ -226,8 +241,10 @@ function syncLabel(obs: ObservacaoChecklist) {
 }
 
 function syncIcon(obs: ObservacaoChecklist) {
+  if (obs.analiseStatus === "reprovado") return "mdi-close-circle";
+  if (obs.analiseStatus === "aprovado") return "mdi-check-circle";
   const s = obs.syncStatus;
-  if (s === "synced") return "mdi-check-circle";
+  if (s === "synced") return "mdi-cloud-check-outline";
   if (s === "failed") return "mdi-alert-circle";
   if (s === "pending") return "mdi-sync";
   return "mdi-cloud-off-outline";
@@ -287,6 +304,15 @@ function naoConformidades(obs: ObservacaoChecklist): RespostaSalva[] {
   background: rgba(var(--q-negative-rgb, 244, 67, 54), 0.06);
   border-radius: 8px;
   border-left: 3px solid var(--q-negative, #f44336);
+}
+.reprovado-aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  background: #fef2f2;
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  border-radius: 8px;
+  padding: 8px 10px;
 }
 .nc-evidencia-foto {
   width: 100%;

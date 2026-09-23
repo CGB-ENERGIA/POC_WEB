@@ -27,4 +27,7 @@ export interface ObservacaoChecklist {
   respostas: RespostaSalva[];
   resumo: ChecklistResumo;
   syncStatus?: "pending" | "synced" | "failed";
+  analiseStatus?: "aprovado" | "reprovado" | "pendente";
+  analiseMotivo?: string | null;
+  analisadoPor?: string | null;
 }

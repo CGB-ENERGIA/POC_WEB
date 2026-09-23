@@ -432,7 +432,11 @@ export async function atualizarStatusChecklist(
 
   const row = data as ChecklistParaAnalise;
   if (row.client_id) {
-    await supabase.from("user_observations").update({ status }).eq("id", row.client_id);
+    await supabase.from("user_observations").update({
+      status,
+      analisado_por: analisadoPor,
+      comentario_analise: comentario ?? null,
+    }).eq("id", row.client_id);
   }
   return row;
 }
