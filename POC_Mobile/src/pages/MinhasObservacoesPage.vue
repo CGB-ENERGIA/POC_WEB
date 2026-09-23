@@ -257,6 +257,8 @@ async function reenviar(obs: ObservacaoChecklist) {
   reenviando.value = null;
   if (!erro) {
     $q.notify({ type: "positive", message: "Checklist enviado com sucesso!", position: "top" });
+  } else if (erro.includes("não pôde") || erro.includes("não puderam")) {
+    $q.notify({ type: "warning", icon: "mdi-image-off-outline", message: erro, position: "top", timeout: 10000 });
   } else {
     $q.notify({ type: "negative", message: `Falha: ${erro}`, position: "top", timeout: 6000 });
   }

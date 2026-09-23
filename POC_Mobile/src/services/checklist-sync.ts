@@ -52,12 +52,14 @@ async function uploadFoto(key: string, base64: string, r2Available: boolean): Pr
  * Sincroniza checklist + fotos + respostas (Supabase).
  * Fotos: R2 como primário (se configurado), Supabase Storage como fallback.
  * Idempotente via client_id = id local do registro.
+ * Uploads de fotos são feitos em paralelo para reduzir tempo de envio.
+ * Retorna { failedPhotos } — número de fotos que não puderam ser enviadas.
  */
 export async function syncChecklistToRemote(
   entry: ObservacaoChecklist,
   employee: Employee
-): Promise<void> {
-  if (!isSupabaseSyncEnabled() || !navigator.onLine) return;
+): Promise<{ failedPhotos: number }> {
+  if (!isSupabaseSyncEnabled() || !navigator.onLine) return { failedPhotos: 0 };
 
   await ensureEmployee(employee);
 
@@ -69,41 +71,50 @@ export async function syncChecklistToRemote(
     .eq("client_id", entry.id)
     .maybeSingle();
 
-  if (existing) return;
+  if (existing) return { failedPhotos: 0 };
 
   const r2Available = isR2Configured();
+  let failedPhotos = 0;
 
-  const localPhotoKeys: { key: string; sortOrder: number }[] = [];
-  for (let i = 0; i < entry.fotosLocal.length; i++) {
-    const key = buildChecklistPhotoKey(entry.id, "local", String(i));
-    const result = await uploadFoto(key, entry.fotosLocal[i], r2Available);
-    if (result) localPhotoKeys.push({ key: result, sortOrder: i });
-  }
+  // Upload de fotos gerais em paralelo
+  const localPhotoResults = await Promise.all(
+    entry.fotosLocal.map(async (foto, i) => {
+      const key = buildChecklistPhotoKey(entry.id, "local", String(i));
+      const result = await uploadFoto(key, foto, r2Available);
+      if (!result) failedPhotos++;
+      return result ? { key: result, sortOrder: i } : null;
+    })
+  );
+  const localPhotoKeys = localPhotoResults.filter(
+    (r): r is { key: string; sortOrder: number } => r !== null
+  );
 
-  const responseRows = [];
-  for (const r of entry.respostas) {
-    let fotoKey: string | null = null;
-    if (r.foto) {
-      const key = buildChecklistPhotoKey(entry.id, "nc", r.perguntaId);
-      fotoKey = await uploadFoto(key, r.foto, r2Available);
-    }
-
-    responseRows.push({
-      pergunta_id: r.perguntaId,
-      categoria: r.categoria,
-      pergunta: r.pergunta,
-      gravidade: r.gravidade,
-      peso: r.peso,
-      resposta: r.resposta,
-      observacao: r.observacao ?? null,
-      foto_r2_key: fotoKey,
-      resolvido: r.resolvido ?? null,
-      itens: r.itens ?? null,
-      atribuido_tipo: r.atribuidoTipo ?? null,
-      atribuido_nome: r.atribuidoNome ?? null,
-      atribuido_matricula: r.atribuidoMatricula ?? null,
-    });
-  }
+  // Upload de fotos de não conformidades em paralelo
+  const responseRows = await Promise.all(
+    entry.respostas.map(async (r) => {
+      let fotoKey: string | null = null;
+      if (r.foto) {
+        const key = buildChecklistPhotoKey(entry.id, "nc", r.perguntaId);
+        fotoKey = await uploadFoto(key, r.foto, r2Available);
+        if (!fotoKey) failedPhotos++;
+      }
+      return {
+        pergunta_id: r.perguntaId,
+        categoria: r.categoria,
+        pergunta: r.pergunta,
+        gravidade: r.gravidade,
+        peso: r.peso,
+        resposta: r.resposta,
+        observacao: r.observacao ?? null,
+        foto_r2_key: fotoKey,
+        resolvido: r.resolvido ?? null,
+        itens: r.itens ?? null,
+        atribuido_tipo: r.atribuidoTipo ?? null,
+        atribuido_nome: r.atribuidoNome ?? null,
+        atribuido_matricula: r.atribuidoMatricula ?? null,
+      };
+    })
+  );
 
   const { data: submission, error: subErr } = await supabase
     .from("checklist_submissions")
@@ -161,4 +172,6 @@ export async function syncChecklistToRemote(
     );
     if (photoErr) throw new ChecklistSyncError(photoErr.message);
   }
+
+  return { failedPhotos };
 }

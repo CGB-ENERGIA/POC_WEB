@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { LocalStorage } from "quasar";
+import { LocalStorage, Notify } from "quasar";
 
 import type { AuditagemCategoria } from "@/data/auditagem";
 import type { Employee } from "@/data/employees";
@@ -227,7 +227,20 @@ export const useObservacoesStore = defineStore("observacoes", {
         if (!isChecklist(item) || item.syncStatus !== "failed") continue;
         item.syncStatus = "pending";
         void syncChecklistToRemote(item, employee)
-          .then(() => { item.syncStatus = "synced"; item.fotosLocal = []; this.persist(); })
+          .then(({ failedPhotos }) => {
+            item.syncStatus = "synced";
+            item.fotosLocal = [];
+            this.persist();
+            if (failedPhotos > 0) {
+              Notify.create({
+                type: "warning",
+                icon: "mdi-image-off-outline",
+                message: `Checklist enviado, mas ${failedPhotos} foto${failedPhotos > 1 ? "s" : ""} não ${failedPhotos > 1 ? "puderam" : "pôde"} ser enviada${failedPhotos > 1 ? "s" : ""}.`,
+                position: "top",
+                timeout: 10000,
+              });
+            }
+          })
           .catch(() => { item.syncStatus = "failed"; this.persist(); });
       }
     },
@@ -270,11 +283,19 @@ export const useObservacoesStore = defineStore("observacoes", {
 
       if (isSupabaseSyncEnabled()) {
         void syncChecklistToRemote(entry, payload.employee)
-          .then(async () => {
+          .then(async ({ failedPhotos }) => {
             entry.syncStatus = "synced";
-            // As fotos já foram enviadas ao servidor — não precisa mais do base64 local.
             entry.fotosLocal = [];
             this.persist();
+            if (failedPhotos > 0) {
+              Notify.create({
+                type: "warning",
+                icon: "mdi-image-off-outline",
+                message: `Checklist enviado, mas ${failedPhotos} foto${failedPhotos > 1 ? "s" : ""} não ${failedPhotos > 1 ? "puderam" : "pôde"} ser enviada${failedPhotos > 1 ? "s" : ""}. Verifique a conexão e tente reenviar.`,
+                position: "top",
+                timeout: 10000,
+              });
+            }
             await refreshServerTimeSync();
             await this.fetchSynced(payload.matricula);
           })
@@ -307,12 +328,15 @@ export const useObservacoesStore = defineStore("observacoes", {
       item.syncStatus = "pending";
       this.persist();
       try {
-        await syncChecklistToRemote(item, employee);
+        const { failedPhotos } = await syncChecklistToRemote(item, employee);
         item.syncStatus = "synced";
         item.fotosLocal = [];
         await refreshServerTimeSync();
         this.persist();
         await this.fetchSynced(item.matricula);
+        if (failedPhotos > 0) {
+          return `${failedPhotos} foto${failedPhotos > 1 ? "s" : ""} não ${failedPhotos > 1 ? "puderam" : "pôde"} ser enviada${failedPhotos > 1 ? "s" : ""} — o restante foi salvo`;
+        }
         return null;
       } catch (err) {
         item.syncStatus = "failed";
