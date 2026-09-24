@@ -11,7 +11,7 @@
 
     <header class="l-header">
       <div class="l-brand-mark">
-        <span class="l-brand-mark__name">CGB Engenharia</span>
+        <span class="l-brand-mark__name">CGB - POC</span>
         <span class="l-brand-mark__sep" />
         <span class="l-brand-mark__product">Programa de Observação Comportamental</span>
       </div>

@@ -6,7 +6,7 @@
 
     <header class="rp-header">
       <div class="rp-brand">
-        <span class="rp-brand__name">CGB Engenharia</span>
+        <span class="rp-brand__name">CGB - POC</span>
         <span class="rp-brand__sep" />
         <span class="rp-brand__product">Programa de Observação Comportamental</span>
       </div>
