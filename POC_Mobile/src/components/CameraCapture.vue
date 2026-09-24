@@ -15,19 +15,41 @@
             <div style="width:40px" />
           </div>
 
+          <!-- BARRA DE BUSCA -->
+          <div class="cc-equipe-search-wrap">
+            <div class="cc-equipe-search">
+              <q-icon name="mdi-magnify" size="20px" class="cc-equipe-search__icon" />
+              <input
+                ref="searchInput"
+                v-model="busca"
+                class="cc-equipe-search__input"
+                placeholder="Buscar equipe (ex: F001, BCB…)"
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <button v-if="busca" class="cc-equipe-search__clear" @click="busca = ''">
+                <q-icon name="mdi-close-circle" size="18px" />
+              </button>
+            </div>
+          </div>
+
           <div class="cc-equipe-body">
-            <p class="cc-equipe-hint">
-              Escolha a equipe para que o carimbo da foto fique igual ao das fotos tiradas nos checklists.
-            </p>
-            <div class="cc-equipe-list">
+            <!-- Sem resultados -->
+            <div v-if="equipesFiltradas.length === 0" class="cc-equipe-empty">
+              <q-icon name="mdi-magnify-remove-outline" size="40px" />
+              <span>Nenhuma equipe encontrada para "{{ busca }}"</span>
+            </div>
+
+            <div v-else class="cc-equipe-list">
               <button
                 v-for="eq in equipesFiltradas"
                 :key="eq.prefixo"
                 class="cc-equipe-item"
                 :class="{ 'cc-equipe-item--sel': equipeSelecionada?.prefixo === eq.prefixo }"
-                @click="equipeSelecionada = eq"
+                @click="selecionarEquipe(eq)"
               >
-                <span class="cc-equipe-item__pref">{{ eq.prefixo }}</span>
+                <!-- Destacar match do texto buscado -->
+                <span class="cc-equipe-item__pref" v-html="destacar(eq.prefixo)" />
                 <span class="cc-equipe-item__base">{{ eq.base }}</span>
                 <q-icon
                   v-if="equipeSelecionada?.prefixo === eq.prefixo"
@@ -140,7 +162,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onUnmounted, computed } from "vue";
+import { ref, watch, onUnmounted, computed, nextTick } from "vue";
 import { useGaleriaStore } from "@/stores/galeria";
 import { useSessionStore } from "@/stores/session";
 import { useQuasar } from "quasar";
@@ -167,16 +189,38 @@ const canvasEl = ref<HTMLCanvasElement | null>(null);
 
 // ── Fluxo ────────────────────────────────────────────────
 type Passo = "equipe" | "camera";
-const passo            = ref<Passo>("equipe");
+const passo             = ref<Passo>("equipe");
 const equipeSelecionada = ref<Equipe | null>(null);
+const busca             = ref("");
+const searchInput       = ref<HTMLInputElement | null>(null);
 
-const equipesFiltradas = computed(() => {
+const equipesBase = computed(() => {
   const base = session.employee?.base;
   return base ? EQUIPES.filter(e => e.base === base) : EQUIPES;
 });
 
+const equipesFiltradas = computed(() => {
+  const q = busca.value.trim().toLowerCase();
+  if (!q) return equipesBase.value;
+  return equipesBase.value.filter(e =>
+    e.prefixo.toLowerCase().includes(q) || e.base.toLowerCase().includes(q)
+  );
+});
+
+function destacar(texto: string): string {
+  const q = busca.value.trim();
+  if (!q) return texto;
+  const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
+  return texto.replace(re, '<mark class="cc-mark">$1</mark>');
+}
+
+function selecionarEquipe(eq: Equipe) {
+  equipeSelecionada.value = eq;
+}
+
 async function confirmarEquipe() {
   if (!equipeSelecionada.value) return;
+  busca.value = "";
   passo.value = "camera";
   await iniciarStream();
 }
@@ -184,7 +228,9 @@ async function confirmarEquipe() {
 function voltarParaEquipe() {
   descartar();
   pararStream();
+  busca.value = "";
   passo.value = "equipe";
+  nextTick(() => searchInput.value?.focus());
 }
 
 // ── Stream ───────────────────────────────────────────────
@@ -311,6 +357,7 @@ function fechar() {
   descartar();
   pararStream();
   passo.value = "equipe";
+  busca.value = "";
   emit("update:modelValue", false);
 }
 
@@ -320,13 +367,16 @@ watch(
     if (aberto) {
       passo.value = "equipe";
       equipeSelecionada.value = null;
+      busca.value = "";
       agora.value = new Date();
       tickId = window.setInterval(() => { agora.value = new Date(); }, 1000);
+      nextTick(() => searchInput.value?.focus());
     } else {
       clearInterval(tickId);
       descartar();
       pararStream();
       passo.value = "equipe";
+      busca.value = "";
     }
   }
 );
@@ -373,23 +423,65 @@ onUnmounted(() => { clearInterval(tickId); descartar(); pararStream(); });
 .cc-icon-btn--disabled { opacity: .35; pointer-events: none; }
 
 /* ── Step equipe ──────────────────────────────────────── */
+.cc-equipe-search-wrap {
+  background: #0f172a;
+  padding: 14px 16px 0;
+  flex-shrink: 0;
+}
+.cc-equipe-search {
+  display: flex;
+  align-items: center;
+  background: rgba(255,255,255,.08);
+  border: 1.5px solid rgba(255,255,255,.14);
+  border-radius: 12px;
+  padding: 0 12px;
+  gap: 8px;
+  transition: border-color .15s;
+}
+.cc-equipe-search:focus-within { border-color: #c4213a; }
+.cc-equipe-search__icon { color: #64748b; flex-shrink: 0; }
+.cc-equipe-search__input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 15px;
+  padding: 12px 0;
+  font-family: monospace;
+  letter-spacing: .02em;
+}
+.cc-equipe-search__input::placeholder { color: #475569; font-family: sans-serif; letter-spacing: normal; }
+.cc-equipe-search__clear {
+  appearance: none; border: none; background: none;
+  color: #475569; cursor: pointer; display: flex; padding: 0;
+  flex-shrink: 0;
+}
+.cc-equipe-search__clear:hover { color: #94a3b8; }
+
 .cc-equipe-body {
   flex: 1;
   overflow-y: auto;
-  padding: 20px 16px 0;
+  padding: 12px 16px 0;
   background: #0f172a;
   color: #fff;
 }
-.cc-equipe-hint {
-  font-size: 13px;
-  color: #94a3b8;
-  margin-bottom: 20px;
-  line-height: 1.55;
+.cc-equipe-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; padding: 48px 16px;
+  color: #475569; text-align: center; font-size: 13px;
 }
 .cc-equipe-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+:deep(.cc-mark) {
+  background: rgba(196,33,58,.5);
+  color: #fff;
+  border-radius: 3px;
+  padding: 0 2px;
+  font-style: normal;
 }
 .cc-equipe-item {
   display: flex;
