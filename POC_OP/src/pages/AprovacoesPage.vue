@@ -93,10 +93,14 @@
     <!-- Criar usuário -->
     <section class="ap-section">
       <div class="ap-users-head">
-        <p class="ap-section-label q-mb-none">
+        <button class="ap-toggle-btn" @click="usersOpen = !usersOpen">
           <q-icon name="mdi-account-multiple" size="14px" class="q-mr-xs" />
           USUÁRIOS · {{ members.length }}
-        </p>
+          <q-icon
+            :name="usersOpen ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+            size="16px" class="q-ml-xs ap-chevron"
+          />
+        </button>
         <q-btn
           unelevated
           color="primary"
@@ -107,32 +111,34 @@
         />
       </div>
 
-      <!-- Busca + filtro de role -->
-      <div class="ap-search-row q-mt-md">
-        <q-input
-          v-model="userSearch"
-          dense outlined clearable
-          placeholder="Buscar por e-mail…"
-          class="ap-search-input"
-        >
-          <template #prepend><q-icon name="mdi-magnify" size="18px" /></template>
-        </q-input>
-        <q-btn-toggle
-          v-model="userRoleFilter"
-          dense unelevated no-caps
-          :options="[
-            { label: 'Todos',  value: 'all'    },
-            { label: 'Admin',  value: 'admin'  },
-            { label: 'Membro', value: 'member' },
-          ]"
-          toggle-color="primary"
-          class="ap-role-toggle"
-        />
-      </div>
+      <q-slide-transition>
+        <div v-show="usersOpen">
+          <!-- Busca + filtro de role -->
+          <div class="ap-search-row q-mt-md">
+            <q-input
+              v-model="userSearch"
+              dense outlined clearable
+              placeholder="Buscar por e-mail…"
+              class="ap-search-input"
+            >
+              <template #prepend><q-icon name="mdi-magnify" size="18px" /></template>
+            </q-input>
+            <q-btn-toggle
+              v-model="userRoleFilter"
+              dense unelevated no-caps
+              :options="[
+                { label: 'Todos',  value: 'all'    },
+                { label: 'Admin',  value: 'admin'  },
+                { label: 'Membro', value: 'member' },
+              ]"
+              toggle-color="primary"
+              class="ap-role-toggle"
+            />
+          </div>
 
-      <q-card v-if="filteredMembers.length" flat bordered class="q-mt-sm">
-        <q-list separator>
-          <q-item v-for="m in filteredMembers" :key="m.id">
+          <q-card v-if="filteredMembers.length" flat bordered class="q-mt-sm">
+            <q-list separator>
+              <q-item v-for="m in filteredMembers" :key="m.id">
             <q-item-section avatar>
               <q-icon
                 :name="m.role === 'admin' ? 'mdi-shield-account' : 'mdi-chart-box-outline'"
@@ -160,9 +166,11 @@
           </q-item>
         </q-list>
       </q-card>
-      <p v-else class="ap-users-empty">
-        {{ members.length ? 'Nenhum usuário encontrado com esse filtro.' : 'Nenhum usuário criado por aqui ainda.' }}
-      </p>
+          <p v-else class="ap-users-empty">
+            {{ members.length ? 'Nenhum usuário encontrado com esse filtro.' : 'Nenhum usuário criado por aqui ainda.' }}
+          </p>
+        </div>
+      </q-slide-transition>
     </section>
 
     <q-dialog v-model="newUserDialog">
@@ -213,12 +221,18 @@
 
     <!-- Digitais cadastradas -->
     <section class="ap-section">
-      <p class="ap-section-label">
+      <button class="ap-toggle-btn" @click="digitaisOpen = !digitaisOpen">
         <q-icon name="mdi-fingerprint" size="14px" class="q-mr-xs" />
         DIGITAL CADASTRADA · {{ digitais.length }}
-      </p>
+        <q-icon
+          :name="digitaisOpen ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+          size="16px" class="q-ml-xs ap-chevron"
+        />
+      </button>
 
-      <q-card v-if="digitais.length" flat bordered>
+      <q-slide-transition>
+        <div v-show="digitaisOpen">
+      <q-card v-if="digitais.length" flat bordered class="q-mt-md">
         <q-list separator>
           <q-item v-for="d in digitais" :key="d.matricula">
             <q-item-section avatar>
@@ -239,16 +253,22 @@
           </q-item>
         </q-list>
       </q-card>
-      <p v-else class="ap-users-empty">Nenhuma digital cadastrada ainda.</p>
+          <p v-else class="ap-users-empty">Nenhuma digital cadastrada ainda.</p>
+        </div>
+      </q-slide-transition>
     </section>
 
     <!-- Pendentes -->
     <section v-if="pending.length" class="ap-section">
       <div class="ap-search-row">
-        <p class="ap-section-label q-mb-none">
+        <button class="ap-toggle-btn" @click="pendingOpen = !pendingOpen">
           <q-icon name="mdi-clock-outline" size="14px" class="q-mr-xs" />
           AGUARDANDO APROVAÇÃO · {{ pending.length }}
-        </p>
+          <q-icon
+            :name="pendingOpen ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+            size="16px" class="q-ml-xs ap-chevron"
+          />
+        </button>
         <q-input
           v-model="faceSearch"
           dense outlined clearable
@@ -260,6 +280,8 @@
         </q-input>
       </div>
 
+      <q-slide-transition>
+        <div v-show="pendingOpen">
       <div class="ap-grid q-mt-md">
         <q-card
           v-for="r in filteredPending"
@@ -325,7 +347,9 @@
             />
           </q-card-actions>
         </q-card>
-      </div>
+        </div>
+        </div>
+      </q-slide-transition>
     </section>
 
     <!-- Vazio -->
@@ -441,6 +465,11 @@ const pending  = ref<Registration[]>([]);
 const history  = ref<Registration[]>([]);
 const members  = ref<Profile[]>([]);
 const digitais = ref<DigitalEntry[]>([]);
+
+// Expandir/recolher seções
+const usersOpen   = ref(false);
+const digitaisOpen = ref(true);
+const pendingOpen  = ref(true);
 
 // Filtros — usuários desktop
 const userSearch     = ref("");
@@ -841,6 +870,17 @@ function formatDate(iso: string | null): string {
 
   p { font-size: 14px; margin: 0; }
 }
+
+// Toggle expandir/recolher
+.ap-toggle-btn {
+  display: flex; align-items: center; gap: 2px;
+  background: none; border: none; cursor: pointer;
+  font-size: 9.5px; font-weight: 700; letter-spacing: .18em;
+  text-transform: uppercase; color: currentColor; opacity: .4;
+  padding: 0; transition: opacity .15s;
+  &:hover { opacity: .7; }
+}
+.ap-chevron { opacity: .6; }
 
 // Busca + filtro
 .ap-search-row {
