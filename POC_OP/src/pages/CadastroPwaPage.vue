@@ -85,11 +85,20 @@
           </button>
         </div>
 
-        <p class="dbp-count">
-          <span v-if="empSearch || empGerenciaFilter !== 'Todas'">{{ filteredEmployees.length }} de </span>{{ employees.length }} registros
-        </p>
+        <button class="dbp-collapse-row" @click="empListOpen = !empListOpen">
+          <span class="dbp-count">
+            <span v-if="empSearch || empGerenciaFilter !== 'Todas'">{{ filteredEmployees.length }} de </span>{{ employees.length }} registros
+          </span>
+          <q-icon
+            name="mdi-chevron-down"
+            size="18px"
+            class="dbp-chevron"
+            :class="{ '--open': empListOpen }"
+          />
+        </button>
 
-        <div class="dbp-records">
+        <q-slide-transition>
+        <div v-show="empListOpen" class="dbp-records">
           <transition-group name="rec" appear>
             <div v-for="e in filteredEmployees" :key="e.matricula" class="dbp-record">
               <div class="dbp-record__av" :data-g="e.gerencia">{{ e.nome.charAt(0) }}</div>
@@ -122,6 +131,7 @@
             <p>Nenhum funcionário encontrado</p>
           </div>
         </div>
+        </q-slide-transition>
       </template>
 
       <!-- ── EQUIPES ───────────────────────────────────────────────────────────── -->
@@ -156,11 +166,20 @@
           </button>
         </div>
 
-        <p class="dbp-count">
-          <span v-if="eqSearch || eqGerenciaFilter !== 'Todas'">{{ filteredEquipes.length }} de </span>{{ equipes.length }} equipes
-        </p>
+        <button class="dbp-collapse-row" @click="eqListOpen = !eqListOpen">
+          <span class="dbp-count">
+            <span v-if="eqSearch || eqGerenciaFilter !== 'Todas'">{{ filteredEquipes.length }} de </span>{{ equipes.length }} equipes
+          </span>
+          <q-icon
+            name="mdi-chevron-down"
+            size="18px"
+            class="dbp-chevron"
+            :class="{ '--open': eqListOpen }"
+          />
+        </button>
 
-        <div class="dbp-records">
+        <q-slide-transition>
+        <div v-show="eqListOpen" class="dbp-records">
           <transition-group name="rec" appear>
             <div v-for="eq in filteredEquipes" :key="eq.id" class="dbp-record">
               <div class="dbp-record__av dbp-record__av--bus" :data-g="eq.gerencia">
@@ -189,6 +208,7 @@
             <p>Nenhuma equipe encontrada</p>
           </div>
         </div>
+        </q-slide-transition>
       </template>
     </div>
 
@@ -264,9 +284,11 @@ import { supabase } from "@/lib/supabase";
 import * as XLSX from "xlsx";
 
 const $q      = useQuasar();
-const loading = ref(false);
-const saving  = ref(false);
-const tab     = ref("funcionarios");
+const loading     = ref(false);
+const saving      = ref(false);
+const tab         = ref("funcionarios");
+const empListOpen = ref(true);
+const eqListOpen  = ref(true);
 
 // ─── Funcionários ─────────────────────────────────────────────────────────────
 
@@ -859,13 +881,35 @@ async function onImportFile(event: Event) {
   &:active { transform: translateY(0); }
 }
 
-// ── Count ─────────────────────────────────────────────────────────────────────
+// ── Count + Collapse ──────────────────────────────────────────────────────────
+.dbp-collapse-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 0 10px;
+  gap: 8px;
+  border-radius: 6px;
+  transition: opacity .14s;
+  &:hover { opacity: .75; }
+}
+
 .dbp-count {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10.5px;
   color: var(--dbp-muted);
-  margin-bottom: 10px;
   letter-spacing: .04em;
+  margin: 0;
+}
+
+.dbp-chevron {
+  color: var(--dbp-muted);
+  transition: transform .22s cubic-bezier(.4,0,.2,1);
+  flex-shrink: 0;
+  &.--open { transform: rotate(180deg); }
 }
 
 // ── Records ───────────────────────────────────────────────────────────────────
