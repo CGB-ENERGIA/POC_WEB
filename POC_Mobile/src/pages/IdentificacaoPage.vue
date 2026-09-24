@@ -250,13 +250,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onMounted, onUnmounted } from "vue";
+import { ref, watch, computed, onMounted, onUnmounted, defineAsyncComponent } from "vue";
 import { useRouter } from "vue-router";
 import { useSessionStore } from "@/stores/session";
 import { getSupabase } from "@/lib/supabase";
 import BrandLogo from "@/components/BrandLogo.vue";
-import FaceGate from "@/components/FaceGate.vue";
 import DigitalGate from "@/components/DigitalGate.vue";
+
+// FaceGate carrega face-api (~1.2 MB) — lazy para não pesar no carregamento inicial
+const FaceGate = defineAsyncComponent(() => import("@/components/FaceGate.vue"));
 import { BRAND } from "@/constants/brand";
 import { employees, findByMatricula, type Employee } from "@/data/employees";
 

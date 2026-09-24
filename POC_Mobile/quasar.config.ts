@@ -7,8 +7,6 @@ export default defineConfig(() => {
     css: ["app.scss"],
 
     extras: [
-      "roboto-font",
-      "material-icons",
       "mdi-v7",
     ],
 
