@@ -81,7 +81,7 @@
           />
           <EssentialLink
             v-if="isAdmin"
-            label="Aprovações de Acesso"
+            label="Acessos"
             icon="mdi-shield-account"
             link="/aprovacoes"
           />
