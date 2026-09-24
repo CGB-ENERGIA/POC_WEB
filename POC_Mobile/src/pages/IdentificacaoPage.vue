@@ -169,6 +169,14 @@
             class="full-width q-mt-sm"
             @click="step = 'scan-face'"
           />
+          <q-btn
+            flat no-caps color="grey-5"
+            label="Entrar pela matrícula"
+            icon="mdi-badge-account-outline"
+            class="full-width q-mt-xs"
+            size="sm"
+            @click="entrarNoSistema()"
+          />
         </template>
 
 
