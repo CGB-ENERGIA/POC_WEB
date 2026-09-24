@@ -55,3 +55,31 @@ export async function dbExcluirFoto(id: string): Promise<void> {
     tx.onerror    = () => reject(tx.error);
   });
 }
+
+/** Remove fotos com mais de 3 meses — chamado ao carregar a galeria. */
+export async function dbLimparExpirados(): Promise<number> {
+  const limite = new Date();
+  limite.setMonth(limite.getMonth() - 3);
+  const limiteISO = limite.toISOString();
+
+  const db = await abrirDB();
+  const fotos: FotoEntry[] = await new Promise((resolve, reject) => {
+    const tx  = db.transaction(STORE, "readonly");
+    const req = tx.objectStore(STORE).getAll();
+    req.onsuccess = () => resolve(req.result as FotoEntry[]);
+    req.onerror   = () => reject(req.error);
+  });
+
+  const expiradas = fotos.filter(f => f.dataHora < limiteISO);
+  if (expiradas.length === 0) return 0;
+
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE, "readwrite");
+    const os = tx.objectStore(STORE);
+    expiradas.forEach(f => os.delete(f.id));
+    tx.oncomplete = () => resolve();
+    tx.onerror    = () => reject(tx.error);
+  });
+
+  return expiradas.length;
+}

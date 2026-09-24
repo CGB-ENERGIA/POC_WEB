@@ -3,92 +3,136 @@
     <transition name="cc-fade">
       <div v-if="modelValue" class="cc-overlay">
 
-        <!-- ── HEADER ───────────────────────────────── -->
-        <div class="cc-header">
-          <button class="cc-icon-btn" @click="fechar">
-            <q-icon name="mdi-close" size="26px" />
-          </button>
-          <span class="cc-header__title">
-            {{ fotoDataUrl ? 'Confirmar foto' : 'Câmera' }}
-          </span>
-          <button
-            class="cc-icon-btn"
-            :class="{ 'cc-icon-btn--disabled': fotoDataUrl !== null }"
-            @click="alternarCamera"
-          >
-            <q-icon name="mdi-camera-flip-outline" size="24px" />
-          </button>
-        </div>
-
-        <!-- ── VIEWFINDER ────────────────────────────── -->
-        <div class="cc-viewfinder">
-          <!-- Live preview -->
-          <video
-            v-show="!fotoDataUrl"
-            ref="videoEl"
-            autoplay
-            playsinline
-            muted
-            class="cc-video"
-          />
-
-          <!-- Captured photo review -->
-          <img
-            v-if="fotoDataUrl"
-            :src="fotoDataUrl"
-            class="cc-preview-img"
-            alt="Foto capturada"
-          />
-
-          <!-- Timestamp overlay -->
-          <div class="cc-timestamp">
-            {{ timestampAtual }}
+        <!-- ════════════════════════════════════════════════
+             STEP 1 — SELEÇÃO DE EQUIPE
+        ════════════════════════════════════════════════ -->
+        <template v-if="passo === 'equipe'">
+          <div class="cc-header">
+            <button class="cc-icon-btn" @click="fechar">
+              <q-icon name="mdi-close" size="26px" />
+            </button>
+            <span class="cc-header__title">Selecione a equipe</span>
+            <div style="width:40px" />
           </div>
-        </div>
 
-        <!-- ── FOOTER ────────────────────────────────── -->
-        <div class="cc-footer">
+          <div class="cc-equipe-body">
+            <p class="cc-equipe-hint">
+              Escolha a equipe para que o carimbo da foto fique igual ao das fotos tiradas nos checklists.
+            </p>
+            <div class="cc-equipe-list">
+              <button
+                v-for="eq in equipesFiltradas"
+                :key="eq.prefixo"
+                class="cc-equipe-item"
+                :class="{ 'cc-equipe-item--sel': equipeSelecionada?.prefixo === eq.prefixo }"
+                @click="equipeSelecionada = eq"
+              >
+                <span class="cc-equipe-item__pref">{{ eq.prefixo }}</span>
+                <span class="cc-equipe-item__base">{{ eq.base }}</span>
+                <q-icon
+                  v-if="equipeSelecionada?.prefixo === eq.prefixo"
+                  name="mdi-check-circle"
+                  size="20px"
+                  class="cc-equipe-item__check"
+                />
+              </button>
+            </div>
+          </div>
 
-          <!-- LIVE MODE: capture button -->
-          <template v-if="!fotoDataUrl">
-            <div class="cc-footer__spacer" />
+          <div class="cc-equipe-footer">
             <button
-              class="cc-capture-btn"
-              :disabled="!streamAtivo"
-              @click="capturar"
+              class="cc-equipe-confirmar"
+              :disabled="!equipeSelecionada"
+              @click="confirmarEquipe"
             >
-              <div class="cc-capture-btn__ring" />
-              <div class="cc-capture-btn__disc" />
+              <q-icon name="mdi-camera" size="22px" />
+              Abrir câmera
             </button>
-            <div class="cc-footer__spacer" />
-          </template>
+          </div>
+        </template>
 
-          <!-- REVIEW MODE: retake + confirm -->
-          <template v-else>
-            <button class="cc-action-btn cc-action-btn--cancel" @click="descartar">
-              <q-icon name="mdi-camera-retake-outline" size="24px" />
-              <span>Refazer</span>
+        <!-- ════════════════════════════════════════════════
+             STEP 2 — CÂMERA + REVISÃO
+        ════════════════════════════════════════════════ -->
+        <template v-else>
+          <!-- HEADER -->
+          <div class="cc-header">
+            <button class="cc-icon-btn" @click="voltarParaEquipe">
+              <q-icon name="mdi-arrow-left" size="26px" />
             </button>
+            <span class="cc-header__title">
+              {{ fotoDataUrl ? 'Confirmar foto' : equipeSelecionada?.prefixo ?? 'Câmera' }}
+            </span>
             <button
-              class="cc-action-btn cc-action-btn--confirm"
-              :disabled="salvando"
-              @click="confirmar"
+              class="cc-icon-btn"
+              :class="{ 'cc-icon-btn--disabled': fotoDataUrl !== null }"
+              @click="alternarCamera"
             >
-              <q-spinner v-if="salvando" size="24px" />
-              <q-icon v-else name="mdi-check-circle-outline" size="24px" />
-              <span>{{ salvando ? 'Salvando…' : 'Salvar' }}</span>
+              <q-icon name="mdi-camera-flip-outline" size="24px" />
             </button>
-          </template>
-        </div>
+          </div>
 
-        <!-- ── ERRO ──────────────────────────────────── -->
-        <div v-if="erroMsg" class="cc-error">
-          <q-icon name="mdi-alert-circle-outline" size="20px" />
-          {{ erroMsg }}
-        </div>
+          <!-- VIEWFINDER -->
+          <div class="cc-viewfinder">
+            <video
+              v-show="!fotoDataUrl"
+              ref="videoEl"
+              autoplay
+              playsinline
+              muted
+              class="cc-video"
+            />
+            <img
+              v-if="fotoDataUrl"
+              :src="fotoDataUrl"
+              class="cc-preview-img"
+              alt="Foto capturada"
+            />
+            <div v-if="!fotoDataUrl" class="cc-timestamp">
+              {{ timestampAtual }}
+            </div>
+          </div>
 
-        <!-- canvas oculto para captura -->
-        <canvas ref="canvasEl" style="display:none" />
+          <!-- FOOTER -->
+          <div class="cc-footer">
+            <template v-if="!fotoDataUrl">
+              <div class="cc-footer__spacer" />
+              <button
+                class="cc-capture-btn"
+                :disabled="!streamAtivo || processando"
+                @click="capturar"
+              >
+                <div class="cc-capture-btn__ring" />
+                <div class="cc-capture-btn__disc" />
+              </button>
+              <div class="cc-footer__spacer" />
+            </template>
+            <template v-else>
+              <button class="cc-action-btn cc-action-btn--cancel" @click="descartar">
+                <q-icon name="mdi-camera-retake-outline" size="24px" />
+                <span>Refazer</span>
+              </button>
+              <button
+                class="cc-action-btn cc-action-btn--confirm"
+                :disabled="salvando"
+                @click="confirmar"
+              >
+                <q-spinner v-if="salvando" size="24px" />
+                <q-icon v-else name="mdi-check-circle-outline" size="24px" />
+                <span>{{ salvando ? 'Salvando…' : 'Salvar' }}</span>
+              </button>
+            </template>
+          </div>
+
+          <!-- ERRO -->
+          <div v-if="erroMsg" class="cc-error">
+            <q-icon name="mdi-alert-circle-outline" size="20px" />
+            {{ erroMsg }}
+          </div>
+
+          <!-- canvas oculto -->
+          <canvas ref="canvasEl" style="display:none" />
+        </template>
 
       </div>
     </transition>
@@ -98,7 +142,12 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted, computed } from "vue";
 import { useGaleriaStore } from "@/stores/galeria";
+import { useSessionStore } from "@/stores/session";
 import { useQuasar } from "quasar";
+import { EQUIPES, type Equipe } from "@/data/equipes";
+import { stampAuditPhoto } from "@/utils/photo-stamp";
+import { getTrustedTime } from "@/utils/server-time";
+import { compressBase64 } from "@/utils/image";
 
 const props = defineProps<{
   modelValue: boolean;
@@ -109,39 +158,46 @@ const emit = defineEmits<{
   (e: "salva", id: string): void;
 }>();
 
-const $q       = useQuasar();
-const galeria  = useGaleriaStore();
+const $q      = useQuasar();
+const galeria = useGaleriaStore();
+const session = useSessionStore();
+
 const videoEl  = ref<HTMLVideoElement | null>(null);
 const canvasEl = ref<HTMLCanvasElement | null>(null);
 
-let stream: MediaStream | null = null;
-const streamAtivo  = ref(false);
-const faceMode     = ref<"environment" | "user">("environment");
-const fotoDataUrl  = ref<string | null>(null);
-const fotoBlob     = ref<Blob | null>(null);
-const erroMsg      = ref<string | null>(null);
-const salvando     = ref(false);
+// ── Fluxo ────────────────────────────────────────────────
+type Passo = "equipe" | "camera";
+const passo            = ref<Passo>("equipe");
+const equipeSelecionada = ref<Equipe | null>(null);
 
-// Timestamp atualizado a cada segundo quando o modal está aberto
-const agora = ref(new Date());
-let   tickId = 0;
-
-const timestampAtual = computed(() => {
-  const d = agora.value;
-  const date = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
-  const time = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  return `${date}  ${time}`;
+const equipesFiltradas = computed(() => {
+  const base = session.employee?.base;
+  return base ? EQUIPES.filter(e => e.base === base) : EQUIPES;
 });
+
+async function confirmarEquipe() {
+  if (!equipeSelecionada.value) return;
+  passo.value = "camera";
+  await iniciarStream();
+}
+
+function voltarParaEquipe() {
+  descartar();
+  pararStream();
+  passo.value = "equipe";
+}
+
+// ── Stream ───────────────────────────────────────────────
+let stream: MediaStream | null = null;
+const streamAtivo = ref(false);
+const faceMode    = ref<"environment" | "user">("environment");
+const erroMsg     = ref<string | null>(null);
 
 async function iniciarStream() {
   erroMsg.value = null;
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: faceMode.value },
-        width:  { ideal: 1920 },
-        height: { ideal: 1080 },
-      },
+      video: { facingMode: { ideal: faceMode.value }, width: { ideal: 1920 }, height: { ideal: 1080 } },
       audio: false,
     });
     if (videoEl.value) {
@@ -163,43 +219,64 @@ async function iniciarStream() {
 }
 
 function pararStream() {
-  stream?.getTracks().forEach((t) => t.stop());
+  stream?.getTracks().forEach(t => t.stop());
   stream = null;
   streamAtivo.value = false;
   if (videoEl.value) videoEl.value.srcObject = null;
 }
 
-function capturar() {
+// ── Timestamp live ───────────────────────────────────────
+const agora = ref(new Date());
+let tickId = 0;
+
+const timestampAtual = computed(() => {
+  const d    = agora.value;
+  const date = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const time = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return `${date}  ${time}`;
+});
+
+// ── Captura + stamp ──────────────────────────────────────
+const fotoDataUrl = ref<string | null>(null);
+const fotoBlob    = ref<Blob | null>(null);
+const salvando    = ref(false);
+const processando = ref(false);
+
+async function capturar() {
   const video  = videoEl.value;
   const canvas = canvasEl.value;
-  if (!video || !canvas || !streamAtivo.value) return;
+  if (!video || !canvas || !streamAtivo.value || !equipeSelecionada.value) return;
 
-  const w = video.videoWidth  || 1280;
-  const h = video.videoHeight || 720;
-  canvas.width  = w;
-  canvas.height = h;
+  processando.value = true;
+  erroMsg.value = null;
 
-  const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(video, 0, 0, w, h);
+  try {
+    // Captura raw do frame
+    const w = video.videoWidth  || 1280;
+    const h = video.videoHeight || 720;
+    canvas.width  = w;
+    canvas.height = h;
+    canvas.getContext("2d")!.drawImage(video, 0, 0, w, h);
+    const rawBase64 = canvas.toDataURL("image/jpeg", 0.92);
 
-  // Timestamp gravado diretamente na imagem
-  const ts = timestampAtual.value;
-  const fontSize = Math.max(14, Math.round(w * 0.018));
-  ctx.font      = `bold ${fontSize}px monospace`;
-  ctx.fillStyle = "rgba(0,0,0,.55)";
-  ctx.fillRect(0, h - fontSize * 2.4, w, fontSize * 2.4);
-  ctx.fillStyle = "#fff";
-  ctx.fillText(ts, 12, h - fontSize * 0.7);
+    // Aplicar carimbo igual ao dos checklists
+    const { date } = await getTrustedTime();
+    const compressed = await compressBase64(rawBase64);
+    const carimbada  = await stampAuditPhoto(compressed, {
+      time:     date,
+      observer: session.employee?.nomeCompleto ?? session.employee?.nome ?? "—",
+      equipe:   equipeSelecionada.value.prefixo,
+    });
 
-  canvas.toBlob(
-    (blob) => {
-      if (!blob) return;
-      fotoBlob.value    = blob;
-      fotoDataUrl.value = URL.createObjectURL(blob);
-    },
-    "image/jpeg",
-    0.88
-  );
+    // Converter base64 → blob
+    const resp = await fetch(carimbada);
+    fotoBlob.value    = await resp.blob();
+    fotoDataUrl.value = URL.createObjectURL(fotoBlob.value);
+  } catch {
+    erroMsg.value = "Erro ao processar foto. Tente novamente.";
+  } finally {
+    processando.value = false;
+  }
 }
 
 async function confirmar() {
@@ -209,7 +286,7 @@ async function confirmar() {
     const entry = await galeria.adicionarFoto(fotoBlob.value, props.matricula);
     emit("salva", entry.id);
     $q.notify({ type: "positive", message: "Foto salva na galeria!", position: "top", timeout: 2000 });
-    descartar(); // volta para o preview ao vivo
+    descartar();
   } catch {
     erroMsg.value = "Erro ao salvar foto. Tente novamente.";
   } finally {
@@ -218,10 +295,7 @@ async function confirmar() {
 }
 
 function descartar() {
-  if (fotoDataUrl.value) {
-    URL.revokeObjectURL(fotoDataUrl.value);
-    fotoDataUrl.value = null;
-  }
+  if (fotoDataUrl.value) { URL.revokeObjectURL(fotoDataUrl.value); fotoDataUrl.value = null; }
   fotoBlob.value = null;
   erroMsg.value  = null;
 }
@@ -236,33 +310,32 @@ async function alternarCamera() {
 function fechar() {
   descartar();
   pararStream();
+  passo.value = "equipe";
   emit("update:modelValue", false);
 }
 
 watch(
   () => props.modelValue,
-  async (aberto) => {
+  (aberto) => {
     if (aberto) {
+      passo.value = "equipe";
+      equipeSelecionada.value = null;
       agora.value = new Date();
       tickId = window.setInterval(() => { agora.value = new Date(); }, 1000);
-      await iniciarStream();
     } else {
       clearInterval(tickId);
       descartar();
       pararStream();
+      passo.value = "equipe";
     }
   }
 );
 
-onUnmounted(() => {
-  clearInterval(tickId);
-  descartar();
-  pararStream();
-});
+onUnmounted(() => { clearInterval(tickId); descartar(); pararStream(); });
 </script>
 
 <style scoped>
-/* ── Overlay ─────────────────────────────────────────── */
+/* ── Overlay ──────────────────────────────────────────── */
 .cc-overlay {
   position: fixed;
   inset: 0;
@@ -274,7 +347,7 @@ onUnmounted(() => {
   touch-action: none;
 }
 
-/* ── Header ──────────────────────────────────────────── */
+/* ── Header ───────────────────────────────────────────── */
 .cc-header {
   display: flex;
   align-items: center;
@@ -285,58 +358,103 @@ onUnmounted(() => {
   color: #fff;
   position: relative;
   z-index: 2;
+  flex-shrink: 0;
 }
-.cc-header__title {
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: .01em;
-}
+.cc-header__title { font-size: 16px; font-weight: 700; letter-spacing: .01em; }
 .cc-icon-btn {
-  appearance: none;
-  border: 0;
+  appearance: none; border: 0;
   background: rgba(255,255,255,.12);
-  color: #fff;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background .15s;
+  color: #fff; border-radius: 50%;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .15s;
 }
 .cc-icon-btn:active { background: rgba(255,255,255,.25); }
 .cc-icon-btn--disabled { opacity: .35; pointer-events: none; }
 
-/* ── Viewfinder ──────────────────────────────────────── */
+/* ── Step equipe ──────────────────────────────────────── */
+.cc-equipe-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 16px 0;
+  background: #0f172a;
+  color: #fff;
+}
+.cc-equipe-hint {
+  font-size: 13px;
+  color: #94a3b8;
+  margin-bottom: 20px;
+  line-height: 1.55;
+}
+.cc-equipe-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cc-equipe-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,.06);
+  border: 1.5px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  padding: 14px 16px;
+  color: #fff;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  text-align: left;
+}
+.cc-equipe-item:active   { background: rgba(255,255,255,.12); }
+.cc-equipe-item--sel     { background: rgba(122,18,37,.35); border-color: #c4213a; }
+.cc-equipe-item__pref    { flex: 1; font-size: 15px; font-weight: 700; font-family: monospace; }
+.cc-equipe-item__base    { font-size: 12px; color: #64748b; }
+.cc-equipe-item__check   { color: #c4213a; margin-left: 4px; }
+
+.cc-equipe-footer {
+  padding: 16px;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  background: #0f172a;
+  flex-shrink: 0;
+}
+.cc-equipe-confirmar {
+  width: 100%;
+  height: 52px;
+  background: #7a1225;
+  border: 0;
+  border-radius: 14px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.cc-equipe-confirmar:disabled { opacity: .4; pointer-events: none; }
+.cc-equipe-confirmar:active   { background: #5e0e1c; }
+
+/* ── Viewfinder ───────────────────────────────────────── */
 .cc-viewfinder {
   flex: 1;
   position: relative;
   overflow: hidden;
   background: #111;
 }
-.cc-video,
-.cc-preview-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
+.cc-video, .cc-preview-img {
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
 }
-
 .cc-timestamp {
-  position: absolute;
-  bottom: 12px;
-  left: 12px;
-  right: 12px;
-  font-size: 13px;
-  font-weight: 600;
-  font-family: monospace;
+  position: absolute; bottom: 12px; left: 12px; right: 12px;
+  font-size: 13px; font-weight: 600; font-family: monospace;
   color: rgba(255,255,255,.9);
   text-shadow: 0 1px 4px rgba(0,0,0,.8);
   pointer-events: none;
 }
 
-/* ── Footer ──────────────────────────────────────────── */
+/* ── Footer câmera ────────────────────────────────────── */
 .cc-footer {
   display: flex;
   align-items: center;
@@ -345,82 +463,51 @@ onUnmounted(() => {
   padding-bottom: max(24px, env(safe-area-inset-bottom));
   background: rgba(0,0,0,.6);
   gap: 20px;
+  flex-shrink: 0;
 }
 .cc-footer__spacer { flex: 1; }
 
-/* Capture button */
 .cc-capture-btn {
   position: relative;
   width: 72px; height: 72px;
-  background: none;
-  border: 0;
+  background: none; border: 0;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
 .cc-capture-btn:disabled { opacity: .4; }
-.cc-capture-btn__ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 3px solid #fff;
-}
+.cc-capture-btn__ring { position: absolute; inset: 0; border-radius: 50%; border: 3px solid #fff; }
 .cc-capture-btn__disc {
-  width: 56px; height: 56px;
-  border-radius: 50%;
-  background: #fff;
+  width: 56px; height: 56px; border-radius: 50%; background: #fff;
   transition: transform .1s, background .1s;
 }
-.cc-capture-btn:active .cc-capture-btn__disc {
-  transform: scale(.88);
-  background: #ddd;
-}
+.cc-capture-btn:active .cc-capture-btn__disc { transform: scale(.88); background: #ddd; }
 
-/* Action buttons (review mode) */
 .cc-action-btn {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
   background: rgba(255,255,255,.12);
   border: 1.5px solid rgba(255,255,255,.2);
-  color: #fff;
-  border-radius: 16px;
+  color: #fff; border-radius: 16px;
   padding: 14px 10px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background .15s;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: background .15s;
 }
-.cc-action-btn:active       { background: rgba(255,255,255,.2); }
-.cc-action-btn:disabled     { opacity: .5; pointer-events: none; }
-.cc-action-btn--confirm {
-  background: rgba(122,18,37,.7);
-  border-color: #c4213a;
-}
+.cc-action-btn:active     { background: rgba(255,255,255,.2); }
+.cc-action-btn:disabled   { opacity: .5; pointer-events: none; }
+.cc-action-btn--confirm   { background: rgba(122,18,37,.7); border-color: #c4213a; }
 .cc-action-btn--confirm:active { background: rgba(122,18,37,.9); }
 
-/* ── Error ───────────────────────────────────────────── */
+/* ── Erro ─────────────────────────────────────────────── */
 .cc-error {
-  position: absolute;
-  bottom: 140px;
-  left: 16px; right: 16px;
+  position: absolute; bottom: 140px; left: 16px; right: 16px;
   background: rgba(200,30,30,.88);
-  color: #fff;
-  border-radius: 12px;
-  padding: 12px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  text-align: left;
+  color: #fff; border-radius: 12px;
+  padding: 12px 16px; font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; gap: 8px; text-align: left;
 }
 
-/* ── Transition ──────────────────────────────────────── */
+/* ── Transition ───────────────────────────────────────── */
 .cc-fade-enter-active, .cc-fade-leave-active { transition: opacity .22s; }
-.cc-fade-enter-from,  .cc-fade-leave-to      { opacity: 0; }
+.cc-fade-enter-from, .cc-fade-leave-to { opacity: 0; }
 </style>

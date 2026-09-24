@@ -4,6 +4,7 @@ import {
   dbSalvarFoto,
   dbListarFotos,
   dbExcluirFoto,
+  dbLimparExpirados,
   type FotoEntry,
 } from "@/utils/galeria-db";
 
@@ -19,6 +20,7 @@ export const useGaleriaStore = defineStore("galeria", () => {
     iniciado = true;
     carregando.value = true;
     try {
+      await dbLimparExpirados(); // remove fotos com > 3 meses automaticamente
       const todas = await dbListarFotos();
       fotos.value = todas.sort((a, b) => b.dataHora.localeCompare(a.dataHora));
     } finally {

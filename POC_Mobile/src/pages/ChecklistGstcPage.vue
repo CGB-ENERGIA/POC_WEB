@@ -360,16 +360,14 @@
               <span>Trocar foto</span>
             </div>
           </div>
-          <q-btn
-            v-else
-            class="full-width q-mb-md"
-            outline
-            color="primary"
-            no-caps
-            icon="mdi-camera"
-            label="Tirar foto"
-            @click="abrirCameraNc"
-          />
+          <div v-else class="row q-col-gutter-sm q-mb-md">
+            <div class="col-6">
+              <q-btn class="full-width" outline color="primary" no-caps icon="mdi-camera" label="Tirar foto" @click="abrirCameraNc" />
+            </div>
+            <div class="col-6">
+              <q-btn class="full-width" outline color="secondary" no-caps icon="mdi-image-multiple-outline" label="Da galeria" @click="galeriaPickerAberta = true" />
+            </div>
+          </div>
 
           <div v-if="fotosLocal.length" class="q-mb-md">
             <div class="field-label q-mb-xs">Fotos do local da auditagem</div>
@@ -489,6 +487,7 @@
     </q-dialog>
 
     <CameraModal v-model="cameraNcAberta" @captured="onFotoNcCapturada" />
+    <GaleriaPicker v-model="galeriaPickerAberta" @selected="onFotoGaleriaImportada" />
   </q-page>
 </template>
 
@@ -516,6 +515,7 @@ import { stampAuditPhoto } from "@/utils/photo-stamp";
 import { extrairItensPergunta } from "@/utils/pergunta-itens";
 import { useChecklistDraft } from "@/composables/useChecklistDraft";
 import CameraModal from "@/components/CameraModal.vue";
+import GaleriaPicker from "@/components/GaleriaPicker.vue";
 import EvidenciasObrigatorias from "@/components/EvidenciasObrigatorias.vue";
 import FotosAdicionais from "@/components/FotosAdicionais.vue";
 
@@ -677,7 +677,8 @@ const modalItensStatus = reactive<Record<string, boolean | null>>({});
 const modalItensManuais = ref<Set<string>>(new Set());
 const modalNovoItem = ref("");
 const modalTouched = ref(false);
-const cameraNcAberta = ref(false);
+const cameraNcAberta      = ref(false);
+const galeriaPickerAberta = ref(false);
 const modalEraNaoConforme = ref(false);
 const proximaPerguntaId = ref<string | null>(null);
 
@@ -841,6 +842,28 @@ async function onFotoNcCapturada(base64: string) {
       time: date,
       observer: session.employee?.nomeCompleto ?? session.employee?.nome ?? "—",
       equipe: equipe.value.trim(),
+    });
+  } catch (err) {
+    const message =
+      err instanceof ServerTimeError ? err.message : "Não foi possível processar a foto";
+    $q.notify({ type: "negative", message, position: "top" });
+  }
+}
+
+async function onFotoGaleriaImportada(blob: Blob) {
+  try {
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload  = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+    const { date } = await getTrustedTime();
+    const compressed = await compressBase64(base64);
+    modalFotoPreview.value = await stampAuditPhoto(compressed, {
+      time:     date,
+      observer: session.employee?.nomeCompleto ?? session.employee?.nome ?? "—",
+      equipe:   equipe.value.trim(),
     });
   } catch (err) {
     const message =
