@@ -151,7 +151,7 @@
             :matricula="employee?.matricula"
             :nome="employee?.nomeCompleto"
             @enrolled="onFaceEnrolled"
-            @cancel="step = 'enroll-choice'"
+            @cancel="step = 'ident'"
           />
         </template>
 
@@ -241,7 +241,7 @@ const scanKey      = ref(0);
 const hasFace           = ref(false);
 const hasDigital        = ref(false);
 const credentialIds     = ref<string[]>([]);
-const enrollDigitalFrom = ref<Step>("enroll-choice");
+const enrollDigitalFrom = ref<Step>("ident");
 
 const canContinue = computed(() => employee.value !== null);
 const initials    = computed(() => {
