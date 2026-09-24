@@ -130,6 +130,7 @@
             :credential-ids="credentialIds"
             @matched="onDigitalMatched"
             @cancel="voltarChoice"
+            @enroll-here="enrollDigitalAqui"
           />
           <q-btn
             v-if="hasFace"
@@ -324,6 +325,11 @@ function onFaceMatched(matchedMatricula: string) {
 }
 
 function onDigitalMatched() { entrarNoSistema(); }
+
+function enrollDigitalAqui() {
+  enrollDigitalFrom.value = "ident";
+  step.value = "enroll-digital";
+}
 
 function onFaceEnrolled()    { step.value = "enroll-face-done"; }
 function onDigitalEnrolled() {

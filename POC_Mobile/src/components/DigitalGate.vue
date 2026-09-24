@@ -52,11 +52,29 @@
       <p class="dgw-title">{{ mode === 'enroll' ? 'Digital cadastrada!' : 'Verificado!' }}</p>
     </div>
 
-    <!-- Erro -->
+    <!-- Erro genérico -->
     <div v-else-if="status === 'error'" class="dgw-center">
       <q-icon name="mdi-alert-circle-outline" size="46px" color="negative" />
       <p class="dgw-sub dgw-sub--err">{{ errorMsg }}</p>
       <q-btn color="primary" unelevated no-caps label="Tentar novamente" @click="status = 'idle'" />
+      <q-btn flat no-caps color="grey-7" label="Cancelar" class="q-mt-xs" @click="emit('cancel')" />
+    </div>
+
+    <!-- Sem passkey neste dispositivo (apenas modo scan) -->
+    <div v-else-if="status === 'new-device'" class="dgw-center">
+      <q-icon name="mdi-cellphone-key" size="46px" color="warning" />
+      <p class="dgw-title">Digital não encontrada</p>
+      <p class="dgw-sub">
+        Nenhuma biometria cadastrada neste dispositivo.<br>
+        Deseja cadastrar sua digital aqui agora?
+      </p>
+      <q-btn
+        class="full-width btn-primary-lg q-mt-sm"
+        color="primary" unelevated no-caps
+        icon="mdi-fingerprint"
+        label="Cadastrar neste dispositivo"
+        @click="emit('enroll-here')"
+      />
       <q-btn flat no-caps color="grey-7" label="Cancelar" class="q-mt-xs" @click="emit('cancel')" />
     </div>
 
@@ -78,11 +96,12 @@ const emit = defineEmits<{
   enrolled: [credentialId: string];
   matched: [matricula: string];
   cancel: [];
+  "enroll-here": [];
 }>();
 
 const supabase = getSupabase();
 
-type Status = "idle" | "done" | "error";
+type Status = "idle" | "done" | "error" | "new-device";
 const supported = ref(true);
 const status    = ref<Status>("idle");
 const working   = ref(false);
@@ -211,9 +230,13 @@ async function scan() {
     status.value = "done";
     setTimeout(() => emit("matched", props.matricula ?? ""), 600);
   } catch (e: unknown) {
-    const msg = (e as Error).message ?? "";
-    if (msg.includes("NotAllowedError") || msg.includes("cancelled") || msg.includes("cancel")) {
-      emit("cancel");
+    const err = e as Error;
+    const name = err.name ?? "";
+    const msg  = err.message ?? "";
+    if (name === "NotAllowedError" || msg.includes("NotAllowedError") || msg.includes("cancelled") || msg.includes("cancel")) {
+      // NotAllowedError no scan = sem passkey neste dispositivo ou cancelamento
+      // Oferece recadastro em vez de apenas cancelar
+      status.value = "new-device";
       return;
     }
     if (msg.includes("não reconhecida")) {
