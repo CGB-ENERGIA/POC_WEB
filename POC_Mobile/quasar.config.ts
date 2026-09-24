@@ -27,6 +27,7 @@ export default defineConfig(() => {
       config: {
         dark: false,
       },
+      iconSet: "mdi-v7",
       lang: "pt-BR",
       plugins: ["Notify", "Dialog", "LocalStorage"],
     },
