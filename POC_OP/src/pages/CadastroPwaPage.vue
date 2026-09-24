@@ -1,179 +1,256 @@
 <template>
-  <q-page class="cp-page">
+  <q-page class="dbp-page">
 
-    <div class="cp-topbar">
-      <div>
-        <p class="cp-eyebrow">Administração · PWA</p>
-        <h1 class="cp-title">Banco de Dados da PWA</h1>
+    <!-- ══ HEADER ══════════════════════════════════════════════════════════════ -->
+    <header class="dbp-header">
+      <div class="dbp-header__left">
+        <p class="dbp-eyebrow">Administração · PWA</p>
+        <h1 class="dbp-title">Banco de Dados</h1>
+        <div class="dbp-stats">
+          <span class="dbp-stat">
+            <span class="dbp-stat__n">{{ employees.length }}</span>
+            <span class="dbp-stat__label">funcionários</span>
+          </span>
+          <span class="dbp-stat__div" />
+          <span class="dbp-stat">
+            <span class="dbp-stat__n">{{ equipes.length }}</span>
+            <span class="dbp-stat__label">equipes</span>
+          </span>
+        </div>
       </div>
-      <div class="row gap-xs items-center">
-        <q-btn flat dense round icon="mdi-refresh" :loading="loading" @click="fetchAll">
-          <q-tooltip>Atualizar</q-tooltip>
-        </q-btn>
-        <q-btn flat dense round icon="mdi-download" color="primary" @click="exportExcel">
-          <q-tooltip>Exportar Excel</q-tooltip>
-        </q-btn>
-        <q-btn flat dense round icon="mdi-upload" color="teal" :loading="importing" @click="triggerImport">
-          <q-tooltip>Importar Excel</q-tooltip>
-        </q-btn>
+      <div class="dbp-header__right">
+        <button class="dbp-hbtn dbp-hbtn--ghost" :class="{ 'is-loading': loading }" @click="fetchAll" title="Atualizar">
+          <q-icon name="mdi-refresh" size="16px" :class="{ 'spin': loading }" />
+        </button>
+        <button class="dbp-hbtn dbp-hbtn--export" @click="exportExcel">
+          <q-icon name="mdi-arrow-down-circle-outline" size="15px" />
+          Exportar
+        </button>
+        <button class="dbp-hbtn dbp-hbtn--import" :class="{ 'is-loading': importing }" @click="triggerImport">
+          <q-icon name="mdi-arrow-up-circle-outline" size="15px" />
+          Importar
+        </button>
         <input ref="importInput" type="file" accept=".xlsx,.xls" style="display:none" @change="onImportFile" />
+      </div>
+    </header>
+
+    <!-- ══ TABS ═════════════════════════════════════════════════════════════════ -->
+    <div class="dbp-tabs-wrap">
+      <div class="dbp-tabs">
+        <button class="dbp-tab" :class="{ '--active': tab === 'funcionarios' }" @click="tab = 'funcionarios'">
+          <q-icon name="mdi-account-group-outline" size="15px" />
+          <span>Funcionários</span>
+          <span class="dbp-tab__ct">{{ employees.length }}</span>
+        </button>
+        <button class="dbp-tab" :class="{ '--active': tab === 'equipes' }" @click="tab = 'equipes'">
+          <q-icon name="mdi-bus-multiple" size="15px" />
+          <span>Equipes</span>
+          <span class="dbp-tab__ct">{{ equipes.length }}</span>
+        </button>
       </div>
     </div>
 
-    <q-separator class="cp-sep" />
+    <!-- ══ BODY ══════════════════════════════════════════════════════════════════ -->
+    <div class="dbp-body">
 
-    <q-tabs v-model="tab" dense align="left" active-color="primary" indicator-color="primary" class="cp-tabs">
-      <q-tab name="funcionarios" icon="mdi-account-group" label="Funcionários" />
-      <q-tab name="equipes"      icon="mdi-bus-multiple"  label="Equipes" />
-    </q-tabs>
-
-    <q-tab-panels v-model="tab" animated class="cp-panels">
-
-      <!-- ─── ABA FUNCIONÁRIOS ─────────────────────────────────────────────── -->
-      <q-tab-panel name="funcionarios" class="q-pa-none">
-        <div class="cp-toolbar">
-          <q-input v-model="empSearch" dense outlined clearable placeholder="Buscar por nome ou matrícula…" class="cp-search">
-            <template #prepend><q-icon name="mdi-magnify" size="18px" /></template>
-          </q-input>
-          <q-select
-            v-model="empGerenciaFilter"
-            :options="['Todas', 'GOMAN', 'GSTC', 'GERE', 'SESMT']"
-            dense outlined label="Gerência"
-            style="min-width:140px"
-          />
-          <q-btn unelevated color="primary" icon="mdi-plus" label="Adicionar" size="sm" @click="openEmpDialog()" />
-        </div>
-
-        <div class="cp-count">{{ filteredEmployees.length }} funcionários</div>
-
-        <q-card flat bordered class="q-mt-sm">
-          <q-list separator>
-            <q-item v-for="e in filteredEmployees" :key="e.matricula" class="cp-item">
-              <q-item-section avatar>
-                <q-avatar size="36px" color="blue-grey-8" text-color="white" class="text-weight-bold" style="font-size:13px">
-                  {{ e.nome.charAt(0) }}
-                </q-avatar>
-              </q-item-section>
-              <q-item-section>
-                <q-item-label class="cp-name">
-                  {{ e.nome_completo }}
-                  <q-badge v-if="!e.ativo" color="grey-6" label="Inativo" class="q-ml-xs" />
-                </q-item-label>
-                <q-item-label caption>Mat. {{ e.matricula }} · {{ e.funcao }} · {{ e.gerencia }} · {{ e.base }}</q-item-label>
-              </q-item-section>
-              <q-item-section side>
-                <div class="row gap-xs">
-                  <q-btn flat round dense icon="mdi-pencil-outline" color="grey-6" size="sm" @click="openEmpDialog(e)">
-                    <q-tooltip>Editar</q-tooltip>
-                  </q-btn>
-                  <q-btn flat round dense icon="mdi-delete-outline" color="negative" size="sm" @click="deleteEmployee(e)">
-                    <q-tooltip>Remover</q-tooltip>
-                  </q-btn>
-                </div>
-              </q-item-section>
-            </q-item>
-          </q-list>
-        </q-card>
-      </q-tab-panel>
-
-      <!-- ─── ABA EQUIPES ──────────────────────────────────────────────────── -->
-      <q-tab-panel name="equipes" class="q-pa-none">
-        <div class="cp-toolbar">
-          <q-input v-model="eqSearch" dense outlined clearable placeholder="Buscar por prefixo ou base…" class="cp-search">
-            <template #prepend><q-icon name="mdi-magnify" size="18px" /></template>
-          </q-input>
-          <q-select
-            v-model="eqGerenciaFilter"
-            :options="['Todas', 'GOMAN', 'GSTC', 'GERE']"
-            dense outlined label="Gerência"
-            style="min-width:140px"
-          />
-          <q-btn unelevated color="primary" icon="mdi-plus" label="Adicionar" size="sm" @click="openEqDialog()" />
-        </div>
-
-        <div class="cp-count">{{ filteredEquipes.length }} equipes</div>
-
-        <q-card flat bordered class="q-mt-sm">
-          <q-list separator>
-            <q-item v-for="eq in filteredEquipes" :key="eq.id" class="cp-item">
-              <q-item-section avatar>
-                <q-icon name="mdi-bus-multiple" color="blue-grey-6" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label class="cp-name">{{ eq.prefixo }}</q-item-label>
-                <q-item-label caption>Base {{ eq.base }} · {{ eq.gerencia }}</q-item-label>
-              </q-item-section>
-              <q-item-section side>
-                <div class="row gap-xs">
-                  <q-btn flat round dense icon="mdi-pencil-outline" color="grey-6" size="sm" @click="openEqDialog(eq)">
-                    <q-tooltip>Editar</q-tooltip>
-                  </q-btn>
-                  <q-btn flat round dense icon="mdi-delete-outline" color="negative" size="sm" @click="deleteEquipe(eq)">
-                    <q-tooltip>Remover</q-tooltip>
-                  </q-btn>
-                </div>
-              </q-item-section>
-            </q-item>
-          </q-list>
-        </q-card>
-      </q-tab-panel>
-    </q-tab-panels>
-
-    <!-- ─── DIALOG FUNCIONÁRIO ───────────────────────────────────────────────── -->
-    <q-dialog v-model="empDialog" persistent>
-      <q-card style="min-width:380px;max-width:460px">
-        <q-card-section>
-          <p class="text-subtitle1 text-weight-bold q-mb-none">
-            {{ empIsEditing ? 'Editar Funcionário' : 'Novo Funcionário' }}
-          </p>
-        </q-card-section>
-        <q-card-section class="q-gutter-sm q-pt-none">
-          <q-input v-model="empForm.matricula"     label="Matrícula *"      dense outlined />
-          <q-input v-model="empForm.nome"          label="Nome curto *"     dense outlined />
-          <q-input v-model="empForm.nome_completo" label="Nome completo *"  dense outlined />
-          <div class="row q-gutter-sm">
-            <q-select
-              v-model="empForm.gerencia"
-              :options="['GOMAN','GSTC','GERE','SESMT']"
-              label="Gerência *" dense outlined class="col"
+      <!-- ── FUNCIONÁRIOS ─────────────────────────────────────────────────────── -->
+      <template v-if="tab === 'funcionarios'">
+        <div class="dbp-toolbar">
+          <div class="dbp-search-shell">
+            <q-icon name="mdi-magnify" size="17px" class="dbp-search-icon" />
+            <input
+              v-model="empSearch"
+              class="dbp-search"
+              placeholder="Buscar por nome ou matrícula…"
+              autocomplete="off"
             />
-            <q-input v-model="empForm.base"  label="Base *"   dense outlined class="col" />
+            <button v-if="empSearch" class="dbp-search-x" @click="empSearch = ''">
+              <q-icon name="mdi-close" size="13px" />
+            </button>
+          </div>
+
+          <div class="dbp-pills">
+            <button
+              v-for="g in ['Todas', 'GOMAN', 'GSTC', 'GERE', 'SESMT']"
+              :key="g"
+              class="dbp-pill"
+              :class="[{ '--active': empGerenciaFilter === g }, g !== 'Todas' ? `--${g.toLowerCase()}` : '']"
+              @click="empGerenciaFilter = g"
+            >{{ g }}</button>
+          </div>
+
+          <button class="dbp-add-btn" @click="openEmpDialog()">
+            <q-icon name="mdi-plus" size="16px" />
+            Adicionar
+          </button>
+        </div>
+
+        <p class="dbp-count">
+          <span v-if="empSearch || empGerenciaFilter !== 'Todas'">{{ filteredEmployees.length }} de </span>{{ employees.length }} registros
+        </p>
+
+        <div class="dbp-records">
+          <transition-group name="rec" appear>
+            <div v-for="e in filteredEmployees" :key="e.matricula" class="dbp-record">
+              <div class="dbp-record__av" :data-g="e.gerencia">{{ e.nome.charAt(0) }}</div>
+              <div class="dbp-record__main">
+                <span class="dbp-record__name">{{ e.nome_completo }}</span>
+                <span class="dbp-record__sub">
+                  <code class="dbp-mat">{{ e.matricula }}</code>
+                  <span class="dbp-record__dot">·</span>
+                  {{ e.funcao }}
+                </span>
+              </div>
+              <div class="dbp-record__chips">
+                <span class="dbp-chip" :data-g="e.gerencia">{{ e.gerencia }}</span>
+                <span class="dbp-chip dbp-chip--base">{{ e.base }}</span>
+                <span v-if="!e.ativo" class="dbp-chip dbp-chip--off">INATIVO</span>
+              </div>
+              <div class="dbp-record__acts">
+                <button class="dbp-act" @click="openEmpDialog(e)" title="Editar">
+                  <q-icon name="mdi-pencil-outline" size="14px" />
+                </button>
+                <button class="dbp-act dbp-act--del" @click="deleteEmployee(e)" title="Remover">
+                  <q-icon name="mdi-delete-outline" size="14px" />
+                </button>
+              </div>
+            </div>
+          </transition-group>
+
+          <div v-if="!filteredEmployees.length" class="dbp-empty">
+            <q-icon name="mdi-account-search-outline" size="40px" />
+            <p>Nenhum funcionário encontrado</p>
+          </div>
+        </div>
+      </template>
+
+      <!-- ── EQUIPES ───────────────────────────────────────────────────────────── -->
+      <template v-if="tab === 'equipes'">
+        <div class="dbp-toolbar">
+          <div class="dbp-search-shell">
+            <q-icon name="mdi-magnify" size="17px" class="dbp-search-icon" />
+            <input
+              v-model="eqSearch"
+              class="dbp-search"
+              placeholder="Buscar por prefixo ou base…"
+              autocomplete="off"
+            />
+            <button v-if="eqSearch" class="dbp-search-x" @click="eqSearch = ''">
+              <q-icon name="mdi-close" size="13px" />
+            </button>
+          </div>
+
+          <div class="dbp-pills">
+            <button
+              v-for="g in ['Todas', 'GOMAN', 'GSTC', 'GERE']"
+              :key="g"
+              class="dbp-pill"
+              :class="[{ '--active': eqGerenciaFilter === g }, g !== 'Todas' ? `--${g.toLowerCase()}` : '']"
+              @click="eqGerenciaFilter = g"
+            >{{ g }}</button>
+          </div>
+
+          <button class="dbp-add-btn" @click="openEqDialog()">
+            <q-icon name="mdi-plus" size="16px" />
+            Adicionar
+          </button>
+        </div>
+
+        <p class="dbp-count">
+          <span v-if="eqSearch || eqGerenciaFilter !== 'Todas'">{{ filteredEquipes.length }} de </span>{{ equipes.length }} equipes
+        </p>
+
+        <div class="dbp-records">
+          <transition-group name="rec" appear>
+            <div v-for="eq in filteredEquipes" :key="eq.id" class="dbp-record">
+              <div class="dbp-record__av dbp-record__av--bus" :data-g="eq.gerencia">
+                <q-icon name="mdi-bus" size="16px" />
+              </div>
+              <div class="dbp-record__main">
+                <span class="dbp-record__name">{{ eq.prefixo }}</span>
+                <span class="dbp-record__sub">Base {{ eq.base }}</span>
+              </div>
+              <div class="dbp-record__chips">
+                <span class="dbp-chip" :data-g="eq.gerencia">{{ eq.gerencia }}</span>
+              </div>
+              <div class="dbp-record__acts">
+                <button class="dbp-act" @click="openEqDialog(eq)" title="Editar">
+                  <q-icon name="mdi-pencil-outline" size="14px" />
+                </button>
+                <button class="dbp-act dbp-act--del" @click="deleteEquipe(eq)" title="Remover">
+                  <q-icon name="mdi-delete-outline" size="14px" />
+                </button>
+              </div>
+            </div>
+          </transition-group>
+
+          <div v-if="!filteredEquipes.length" class="dbp-empty">
+            <q-icon name="mdi-bus-alert" size="40px" />
+            <p>Nenhuma equipe encontrada</p>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- ══ DIALOG FUNCIONÁRIO ══════════════════════════════════════════════════ -->
+    <q-dialog v-model="empDialog" persistent transition-show="scale" transition-hide="scale">
+      <q-card class="dbp-dlg">
+        <div class="dbp-dlg__bar" :data-g="empForm.gerencia || 'GOMAN'" />
+        <div class="dbp-dlg__head">
+          <div>
+            <p class="dbp-dlg__title">{{ empIsEditing ? 'Editar Funcionário' : 'Novo Funcionário' }}</p>
+            <p class="dbp-dlg__sub">{{ empIsEditing ? `Mat. ${empForm.matricula}` : 'Preencha os dados do colaborador' }}</p>
+          </div>
+          <button class="dbp-dlg__x" v-close-popup><q-icon name="mdi-close" size="18px" /></button>
+        </div>
+        <div class="dbp-dlg__body">
+          <q-input v-model="empForm.matricula" label="Matrícula *" dense outlined :disable="empIsEditing" />
+          <q-input v-model="empForm.nome" label="Nome curto *" dense outlined />
+          <q-input v-model="empForm.nome_completo" label="Nome completo *" dense outlined />
+          <div class="row q-gutter-sm">
+            <q-select v-model="empForm.gerencia" :options="['GOMAN','GSTC','GERE','SESMT']" label="Gerência *" dense outlined class="col" />
+            <q-input v-model="empForm.base" label="Base *" dense outlined class="col" />
           </div>
           <div class="row q-gutter-sm items-center">
             <q-input v-model="empForm.funcao" label="Função *" dense outlined class="col" />
-            <q-toggle v-model="empForm.ativo" label="Ativo" class="q-ml-sm" />
+            <q-toggle v-model="empForm.ativo" label="Ativo" color="positive" />
           </div>
           <p v-if="empError" class="text-negative text-caption q-mb-none">{{ empError }}</p>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
-          <q-btn unelevated color="primary" label="Salvar" :loading="saving" @click="saveEmployee" />
-        </q-card-actions>
+        </div>
+        <div class="dbp-dlg__foot">
+          <button class="dbp-dlg__cancel" v-close-popup>Cancelar</button>
+          <button class="dbp-dlg__save" :disabled="saving" @click="saveEmployee">
+            <q-spinner v-if="saving" size="13px" color="white" />
+            {{ saving ? 'Salvando…' : 'Salvar' }}
+          </button>
+        </div>
       </q-card>
     </q-dialog>
 
-    <!-- ─── DIALOG EQUIPE ────────────────────────────────────────────────────── -->
-    <q-dialog v-model="eqDialog" persistent>
-      <q-card style="min-width:340px;max-width:420px">
-        <q-card-section>
-          <p class="text-subtitle1 text-weight-bold q-mb-none">
-            {{ eqForm.id ? 'Editar Equipe' : 'Nova Equipe' }}
-          </p>
-        </q-card-section>
-        <q-card-section class="q-gutter-sm q-pt-none">
-          <q-input v-model="eqForm.base"     label="Base *"     dense outlined />
-          <q-input v-model="eqForm.prefixo"  label="Prefixo *"  dense outlined />
-          <q-select
-            v-model="eqForm.gerencia"
-            :options="['GOMAN','GSTC','GERE']"
-            label="Gerência *" dense outlined
-          />
+    <!-- ══ DIALOG EQUIPE ════════════════════════════════════════════════════════ -->
+    <q-dialog v-model="eqDialog" persistent transition-show="scale" transition-hide="scale">
+      <q-card class="dbp-dlg">
+        <div class="dbp-dlg__bar" :data-g="eqForm.gerencia || 'GOMAN'" />
+        <div class="dbp-dlg__head">
+          <div>
+            <p class="dbp-dlg__title">{{ eqForm.id ? 'Editar Equipe' : 'Nova Equipe' }}</p>
+            <p class="dbp-dlg__sub">{{ eqForm.id ? eqForm.prefixo : 'Preencha os dados da equipe' }}</p>
+          </div>
+          <button class="dbp-dlg__x" v-close-popup><q-icon name="mdi-close" size="18px" /></button>
+        </div>
+        <div class="dbp-dlg__body">
+          <q-input v-model="eqForm.base" label="Base *" dense outlined />
+          <q-input v-model="eqForm.prefixo" label="Prefixo *" dense outlined />
+          <q-select v-model="eqForm.gerencia" :options="['GOMAN','GSTC','GERE']" label="Gerência *" dense outlined />
           <p v-if="eqError" class="text-negative text-caption q-mb-none">{{ eqError }}</p>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
-          <q-btn unelevated color="primary" label="Salvar" :loading="saving" @click="saveEquipe" />
-        </q-card-actions>
+        </div>
+        <div class="dbp-dlg__foot">
+          <button class="dbp-dlg__cancel" v-close-popup>Cancelar</button>
+          <button class="dbp-dlg__save" :disabled="saving" @click="saveEquipe">
+            <q-spinner v-if="saving" size="13px" color="white" />
+            {{ saving ? 'Salvando…' : 'Salvar' }}
+          </button>
+        </div>
       </q-card>
     </q-dialog>
 
@@ -374,7 +451,6 @@ const importing   = ref(false);
 function exportExcel() {
   const wb = XLSX.utils.book_new();
 
-  // Aba Funcionários
   const empData = employees.value.map((e) => ({
     Matricula:     e.matricula,
     Nome:          e.nome,
@@ -388,7 +464,6 @@ function exportExcel() {
   wsEmp["!cols"] = [10, 22, 40, 8, 8, 22, 6].map((w) => ({ wch: w }));
   XLSX.utils.book_append_sheet(wb, wsEmp, "Funcionarios");
 
-  // Aba Equipes
   const eqData = equipes.value.map((eq) => ({
     ID:       eq.id,
     Base:     eq.base,
@@ -419,9 +494,8 @@ async function onImportFile(event: Event) {
     const buffer = await file.arrayBuffer();
     const wb     = XLSX.read(buffer, { type: "array" });
 
-    let empUpdated = 0, empInserted = 0, eqUpdated = 0, eqInserted = 0;
+    let empUpdated = 0, eqUpdated = 0;
 
-    // ── Funcionários ──────────────────────────────────────────────
     const wsEmp = wb.Sheets["Funcionarios"];
     if (wsEmp) {
       const rows = XLSX.utils.sheet_to_json<Record<string, string>>(wsEmp);
@@ -439,18 +513,14 @@ async function onImportFile(event: Event) {
         ativo:         String(r["Ativo"] ?? "SIM").trim().toUpperCase() !== "NÃO",
       })).filter((r) => r.matricula);
 
-      // Upsert em lotes de 50
       for (let i = 0; i < payload.length; i += 50) {
         const batch = payload.slice(i, i + 50);
-        const { error } = await supabase
-          .from("employees")
-          .upsert(batch, { onConflict: "matricula" });
+        const { error } = await supabase.from("employees").upsert(batch, { onConflict: "matricula" });
         if (error) throw new Error("Erro ao importar funcionários: " + error.message);
       }
       empUpdated = payload.length;
     }
 
-    // ── Equipes ───────────────────────────────────────────────────
     const wsEq = wb.Sheets["Equipes"];
     if (wsEq) {
       const rows = XLSX.utils.sheet_to_json<Record<string, string>>(wsEq);
@@ -471,9 +541,7 @@ async function onImportFile(event: Event) {
 
         for (let i = 0; i < payload.length; i += 50) {
           const batch = payload.slice(i, i + 50);
-          const { error } = await supabase
-            .from("pwa_equipes")
-            .upsert(batch, { onConflict: "prefixo" });
+          const { error } = await supabase.from("pwa_equipes").upsert(batch, { onConflict: "prefixo" });
           if (error) throw new Error("Erro ao importar equipes: " + error.message);
         }
         eqUpdated = payload.length;
@@ -495,35 +563,577 @@ async function onImportFile(event: Event) {
 </script>
 
 <style scoped lang="scss">
-.cp-page {
-  padding: 32px 40px;
-  max-width: 1100px;
-  margin: 0 auto;
-}
-.cp-topbar {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  margin-bottom: 20px;
-}
-.cp-eyebrow {
-  font-size: 10px; font-weight: 700; letter-spacing: .18em;
-  text-transform: uppercase; color: $primary; margin: 0 0 6px; opacity: .85;
-}
-.cp-title { font-size: 22px; font-weight: 800; margin: 0; letter-spacing: -.02em; }
-.cp-sep   { margin-bottom: 24px; }
-.cp-tabs  { margin-bottom: 20px; }
-.cp-panels { background: transparent !important; }
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
-.cp-toolbar {
-  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  margin-bottom: 8px;
+// ── Tokens ────────────────────────────────────────────────────────────────────
+:root {
+  --dbp-surface:  rgba(255,255,255,.035);
+  --dbp-border:   rgba(255,255,255,.08);
+  --dbp-border2:  rgba(255,255,255,.05);
+  --dbp-txt:      rgba(255,255,255,.92);
+  --dbp-muted:    rgba(255,255,255,.38);
+  --dbp-accent:   #8B1C2B;
+  --dbp-radius:   10px;
+  // Gerência
+  --c-goman:  #F59E0B;
+  --c-gstc:   #3B82F6;
+  --c-gere:   #10B981;
+  --c-sesmt:  #A78BFA;
 }
-.cp-search { flex: 1; min-width: 200px; }
-.cp-count  { font-size: 11px; opacity: .4; margin-bottom: 4px; }
 
-.cp-item { padding: 10px 16px; }
-.cp-name { font-size: 13px; font-weight: 600; }
+// ── Page ──────────────────────────────────────────────────────────────────────
+.dbp-page {
+  min-height: 100vh;
+  padding: 0;
+  background: transparent;
+}
 
-@media (max-width: 600px) {
-  .cp-page { padding: 20px 16px; }
+// ── Header ────────────────────────────────────────────────────────────────────
+.dbp-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 40px 48px 32px;
+  border-bottom: 1px solid var(--dbp-border);
+  flex-wrap: wrap;
+
+  @media (max-width: 640px) { padding: 28px 20px 24px; }
+}
+
+.dbp-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--dbp-accent);
+  margin: 0 0 8px;
+  opacity: .9;
+}
+
+.dbp-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  margin: 0 0 14px;
+  color: var(--dbp-txt);
+  line-height: 1;
+}
+
+.dbp-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.dbp-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.dbp-stat__n {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--dbp-txt);
+  line-height: 1;
+}
+.dbp-stat__label {
+  font-size: 12px;
+  color: var(--dbp-muted);
+  font-weight: 500;
+}
+.dbp-stat__div {
+  width: 1px;
+  height: 20px;
+  background: var(--dbp-border);
+}
+
+.dbp-header__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 2px;
+  flex-shrink: 0;
+}
+
+.dbp-hbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  border: 1px solid var(--dbp-border);
+  border-radius: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: all .18s ease;
+  background: var(--dbp-surface);
+  color: var(--dbp-txt);
+
+  &:hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.15); }
+
+  &--ghost {
+    padding: 7px;
+    color: var(--dbp-muted);
+    &:hover { color: var(--dbp-txt); }
+    .spin { animation: spin .7s linear infinite; }
+  }
+
+  &--export {
+    color: #60A5FA;
+    border-color: rgba(96,165,250,.25);
+    background: rgba(59,130,246,.08);
+    &:hover { background: rgba(59,130,246,.16); border-color: rgba(96,165,250,.4); }
+  }
+
+  &--import {
+    color: #34D399;
+    border-color: rgba(52,211,153,.25);
+    background: rgba(16,185,129,.08);
+    &:hover { background: rgba(16,185,129,.16); border-color: rgba(52,211,153,.4); }
+  }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+.dbp-tabs-wrap {
+  padding: 0 48px;
+  border-bottom: 1px solid var(--dbp-border);
+  @media (max-width: 640px) { padding: 0 20px; }
+}
+
+.dbp-tabs {
+  display: flex;
+  gap: 0;
+}
+
+.dbp-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 16px 20px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--dbp-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all .16s ease;
+  position: relative;
+  bottom: -1px;
+
+  &:hover { color: var(--dbp-txt); }
+
+  &.--active {
+    color: var(--dbp-txt);
+    border-bottom-color: var(--dbp-accent);
+  }
+}
+
+.dbp-tab__ct {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 20px;
+  background: var(--dbp-surface);
+  border: 1px solid var(--dbp-border);
+  color: var(--dbp-muted);
+  transition: all .16s;
+
+  .dbp-tab.--active & {
+    background: rgba(139,28,43,.18);
+    border-color: rgba(139,28,43,.3);
+    color: #F87171;
+  }
+}
+
+// ── Body ──────────────────────────────────────────────────────────────────────
+.dbp-body {
+  padding: 28px 48px 48px;
+  @media (max-width: 640px) { padding: 20px 16px 40px; }
+}
+
+// ── Toolbar ───────────────────────────────────────────────────────────────────
+.dbp-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.dbp-search-shell {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--dbp-border);
+  border-radius: var(--dbp-radius);
+  background: var(--dbp-surface);
+  padding: 0 10px;
+  transition: border-color .16s;
+
+  &:focus-within {
+    border-color: rgba(255,255,255,.2);
+    background: rgba(255,255,255,.05);
+  }
+}
+.dbp-search-icon { color: var(--dbp-muted); flex-shrink: 0; }
+.dbp-search {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--dbp-txt);
+  font-size: 13px;
+  padding: 9px 8px;
+  &::placeholder { color: var(--dbp-muted); }
+}
+.dbp-search-x {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--dbp-muted);
+  padding: 4px;
+  border-radius: 4px;
+  line-height: 1;
+  &:hover { color: var(--dbp-txt); }
+}
+
+.dbp-pills {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.dbp-pill {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  padding: 5px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--dbp-border);
+  background: transparent;
+  color: var(--dbp-muted);
+  cursor: pointer;
+  transition: all .14s;
+
+  &:hover { color: var(--dbp-txt); border-color: rgba(255,255,255,.15); }
+
+  &.--active {
+    color: var(--dbp-txt);
+    background: var(--dbp-surface);
+    border-color: rgba(255,255,255,.18);
+  }
+
+  &.--active.--goman { color: var(--c-goman); border-color: rgba(245,158,11,.35); background: rgba(245,158,11,.08); }
+  &.--active.--gstc  { color: var(--c-gstc);  border-color: rgba(59,130,246,.35);  background: rgba(59,130,246,.08);  }
+  &.--active.--gere  { color: var(--c-gere);  border-color: rgba(16,185,129,.35);  background: rgba(16,185,129,.08);  }
+  &.--active.--sesmt { color: var(--c-sesmt); border-color: rgba(167,139,250,.35); background: rgba(167,139,250,.08); }
+}
+
+.dbp-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  padding: 8px 14px;
+  border-radius: var(--dbp-radius);
+  background: var(--dbp-accent);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: opacity .15s, transform .12s;
+  white-space: nowrap;
+
+  &:hover { opacity: .88; transform: translateY(-1px); }
+  &:active { transform: translateY(0); }
+}
+
+// ── Count ─────────────────────────────────────────────────────────────────────
+.dbp-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  color: var(--dbp-muted);
+  margin-bottom: 10px;
+  letter-spacing: .04em;
+}
+
+// ── Records ───────────────────────────────────────────────────────────────────
+.dbp-records {
+  border: 1px solid var(--dbp-border);
+  border-radius: var(--dbp-radius);
+  overflow: hidden;
+}
+
+.dbp-record {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--dbp-border2);
+  transition: background .12s;
+  position: relative;
+
+  &:last-child { border-bottom: none; }
+  &:hover { background: rgba(255,255,255,.03); }
+  &:hover .dbp-record__acts { opacity: 1; }
+}
+
+.dbp-record__av {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  flex-shrink: 0;
+  letter-spacing: -.01em;
+
+  &[data-g="GOMAN"] { background: rgba(245,158,11,.15); color: var(--c-goman); }
+  &[data-g="GSTC"]  { background: rgba(59,130,246,.15);  color: var(--c-gstc);  }
+  &[data-g="GERE"]  { background: rgba(16,185,129,.15);  color: var(--c-gere);  }
+  &[data-g="SESMT"] { background: rgba(167,139,250,.15); color: var(--c-sesmt); }
+
+  &--bus {
+    font-size: 0;
+    i { font-size: 16px !important; }
+  }
+}
+
+.dbp-record__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.dbp-record__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dbp-txt);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -.01em;
+}
+.dbp-record__sub {
+  font-size: 11.5px;
+  color: var(--dbp-muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+.dbp-mat {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255,255,255,.5);
+  background: rgba(255,255,255,.05);
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--dbp-border);
+  flex-shrink: 0;
+}
+.dbp-record__dot {
+  opacity: .3;
+  flex-shrink: 0;
+}
+
+.dbp-record__chips {
+  display: flex;
+  gap: 5px;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  @media (max-width: 600px) { display: none; }
+}
+
+.dbp-chip {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+
+  &[data-g="GOMAN"] { color: var(--c-goman); background: rgba(245,158,11,.1);  border-color: rgba(245,158,11,.2);  }
+  &[data-g="GSTC"]  { color: var(--c-gstc);  background: rgba(59,130,246,.1);  border-color: rgba(59,130,246,.2);  }
+  &[data-g="GERE"]  { color: var(--c-gere);  background: rgba(16,185,129,.1);  border-color: rgba(16,185,129,.2);  }
+  &[data-g="SESMT"] { color: var(--c-sesmt); background: rgba(167,139,250,.1); border-color: rgba(167,139,250,.2); }
+
+  &--base {
+    color: rgba(255,255,255,.5);
+    background: rgba(255,255,255,.05);
+    border-color: var(--dbp-border);
+  }
+  &--off {
+    color: #F87171;
+    background: rgba(248,113,113,.08);
+    border-color: rgba(248,113,113,.2);
+  }
+}
+
+.dbp-record__acts {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity .14s;
+  flex-shrink: 0;
+}
+
+.dbp-act {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--dbp-muted);
+  cursor: pointer;
+  transition: all .14s;
+
+  &:hover {
+    background: rgba(255,255,255,.08);
+    color: var(--dbp-txt);
+  }
+  &--del:hover {
+    background: rgba(248,113,113,.12);
+    color: #F87171;
+  }
+}
+
+// ── Empty ─────────────────────────────────────────────────────────────────────
+.dbp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 56px 20px;
+  color: var(--dbp-muted);
+  i { opacity: .4; }
+  p { font-size: 13px; margin: 0; }
+}
+
+// ── Record entrance animation ─────────────────────────────────────────────────
+.rec-enter-active {
+  transition: opacity .22s ease, transform .22s ease;
+}
+.rec-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+// ── Dialog ────────────────────────────────────────────────────────────────────
+.dbp-dlg {
+  min-width: 380px;
+  max-width: 460px;
+  border-radius: 14px !important;
+  overflow: hidden;
+  border: 1px solid var(--dbp-border) !important;
+}
+
+.dbp-dlg__bar {
+  height: 3px;
+  &[data-g="GOMAN"] { background: var(--c-goman); }
+  &[data-g="GSTC"]  { background: var(--c-gstc);  }
+  &[data-g="GERE"]  { background: var(--c-gere);  }
+  &[data-g="SESMT"] { background: var(--c-sesmt); }
+}
+
+.dbp-dlg__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px 20px 12px;
+  border-bottom: 1px solid var(--dbp-border);
+}
+.dbp-dlg__title {
+  font-family: 'Syne', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 3px;
+  letter-spacing: -.01em;
+}
+.dbp-dlg__sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--dbp-muted);
+  margin: 0;
+}
+.dbp-dlg__x {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--dbp-muted);
+  padding: 4px;
+  border-radius: 6px;
+  line-height: 1;
+  margin-top: -2px;
+  flex-shrink: 0;
+  &:hover { background: rgba(255,255,255,.06); color: var(--dbp-txt); }
+}
+
+.dbp-dlg__body {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dbp-dlg__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 18px;
+  border-top: 1px solid var(--dbp-border);
+}
+.dbp-dlg__cancel {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--dbp-border);
+  background: transparent;
+  color: var(--dbp-muted);
+  cursor: pointer;
+  transition: all .14s;
+  &:hover { background: rgba(255,255,255,.05); color: var(--dbp-txt); }
+}
+.dbp-dlg__save {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 20px;
+  border-radius: 8px;
+  border: none;
+  background: var(--dbp-accent);
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity .14s, transform .12s;
+  &:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
+  &:disabled { opacity: .5; cursor: not-allowed; }
+}
+
+@media (max-width: 500px) {
+  .dbp-dlg { min-width: calc(100vw - 32px); }
 }
 </style>
