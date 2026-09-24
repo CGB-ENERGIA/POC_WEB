@@ -26,7 +26,8 @@ const routes: RouteRecordRaw[] = [
       { path: "banco-inconformidades",   component: () => import("@/pages/BancoInconformidades.vue")      },
       { path: "analise-nc",              component: () => import("@/pages/AnalisePage.vue")               },
       { path: "config-metas",           component: () => import("@/pages/ConfigMetas.vue")             },
-      { path: "aprovacoes",             component: () => import("@/pages/AprovacoesPage.vue"), meta: { requiresAdmin: true } },
+      { path: "aprovacoes",             component: () => import("@/pages/AprovacoesPage.vue"),    meta: { requiresAdmin: true } },
+      { path: "cadastro-pwa",           component: () => import("@/pages/CadastroPwaPage.vue"),  meta: { requiresAdmin: true } },
       { path: "second", component: () => import("@/pages/SecondPage.vue") }
     ]
   },

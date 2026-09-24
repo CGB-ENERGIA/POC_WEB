@@ -85,6 +85,12 @@
             icon="mdi-shield-account"
             link="/aprovacoes"
           />
+          <EssentialLink
+            v-if="isAdmin"
+            label="Banco de Dados PWA"
+            icon="mdi-database-edit-outline"
+            link="/cadastro-pwa"
+          />
         </template>
       </q-list>
 
