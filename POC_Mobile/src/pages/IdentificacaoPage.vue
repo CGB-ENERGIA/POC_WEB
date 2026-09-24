@@ -1,9 +1,38 @@
 <template>
-  <q-page class="mobile-page mobile-page--centered hero-surface q-pa-md">
-    <div class="full-width login-shell">
-      <div class="text-center q-mb-lg relative-position" style="z-index: 1">
+  <q-page
+    class="hero-surface ip-page"
+    :class="{ 'ip--compact': isCompact, 'ip--tablet': isTablet }"
+  >
+
+    <!-- ══ BRANDING (só aparece em tablet, coluna esquerda) ══════════════════ -->
+    <aside class="ip-brand">
+      <div class="ip-brand__inner">
         <BrandLogo
-          :size="88"
+          :size="120"
+          show-text
+          stacked
+          :title="BRAND.product"
+          :subtitle="BRAND.tagline"
+          class="ip-brand__logo"
+        />
+        <p class="ip-brand__desc">
+          Sistema de monitoramento comportamental<br>em campo para equipes CGB.
+        </p>
+        <div class="ip-brand__orbs" aria-hidden="true">
+          <span class="ip-orb ip-orb--1" />
+          <span class="ip-orb ip-orb--2" />
+          <span class="ip-orb ip-orb--3" />
+        </div>
+      </div>
+    </aside>
+
+    <!-- ══ FORM SHELL ════════════════════════════════════════════════════════ -->
+    <div class="ip-shell">
+
+      <!-- Logo (mobile only) -->
+      <div class="ip-logo-mobile text-center q-mb-md">
+        <BrandLogo
+          :size="logoSize"
           show-text
           stacked
           :title="BRAND.product"
@@ -11,17 +40,17 @@
         />
       </div>
 
-      <q-card flat class="mobile-card q-pa-lg relative-position" style="z-index: 1">
+      <q-card flat class="mobile-card ip-card relative-position" style="z-index: 1">
 
         <!-- ══ 1. Matrícula ══ -->
         <template v-if="step === 'ident'">
           <div class="section-title q-mb-xs">Entrar no POC</div>
-          <div class="section-subtitle q-mb-lg">Informe sua matrícula para iniciar a auditagem</div>
+          <div class="section-subtitle q-mb-md">Informe sua matrícula para iniciar a auditagem</div>
 
           <div class="field-label">Matrícula do colaborador</div>
           <q-select
             v-model="matricula"
-            class="input-shell q-mb-md"
+            class="input-shell q-mb-sm"
             :options="filteredOptions"
             option-label="matricula"
             option-value="matricula"
@@ -56,14 +85,14 @@
           </q-select>
 
           <transition name="fade">
-            <div v-if="employee" class="employee-chip q-pa-md q-mb-lg">
+            <div v-if="employee" class="employee-chip ip-employee-chip q-mb-md">
               <div class="row items-center no-wrap">
-                <q-avatar color="primary" text-color="white" size="52px" class="q-mr-md" font-size="18px">
+                <q-avatar color="primary" text-color="white" :size="isCompact ? '42px' : '52px'" class="q-mr-md" font-size="16px">
                   {{ initials }}
                 </q-avatar>
                 <div class="col">
                   <div class="text-caption employee-chip__label">Colaborador identificado</div>
-                  <div class="text-subtitle1 text-weight-bold employee-chip__name">{{ employee.nomeCompleto }}</div>
+                  <div class="text-subtitle1 text-weight-bold employee-chip__name ip-emp-name">{{ employee.nomeCompleto }}</div>
                   <div class="text-caption employee-chip__meta q-mt-xs">
                     {{ employee.funcao }} · {{ employee.base }} · {{ employee.gerencia }}
                   </div>
@@ -74,7 +103,7 @@
           </transition>
 
           <q-btn
-            class="full-width btn-primary-lg q-mt-md"
+            class="full-width btn-primary-lg"
             color="primary" size="lg" unelevated no-caps
             label="Continuar" icon-right="mdi-arrow-right"
             :disable="!canContinue" :loading="loading"
@@ -169,7 +198,7 @@
           />
         </template>
 
-        <!-- ══ 6a. Face cadastrada (aguarda aprovação) ══ -->
+        <!-- ══ 6a. Face cadastrada ══ -->
         <template v-else-if="step === 'enroll-face-done'">
           <div class="text-center">
             <div class="face-badge q-mx-auto q-mb-md" style="border-color:rgba(217,164,65,.5);background:rgba(217,164,65,.08)">
@@ -185,7 +214,7 @@
           </div>
         </template>
 
-        <!-- ══ 6b. Digital cadastrada (pode entrar já) ══ -->
+        <!-- ══ 6b. Digital cadastrada ══ -->
         <template v-else-if="step === 'enroll-digital-done'">
           <div class="text-center">
             <div class="face-badge face-badge--ok q-mx-auto q-mb-md">
@@ -202,16 +231,18 @@
 
       </q-card>
 
-      <div class="text-center text-caption text-grey-6 q-mt-lg relative-position" style="z-index: 1">
+      <!-- Footer -->
+      <div class="ip-footer text-caption">
         <q-icon name="mdi-cellphone-link" size="14px" class="q-mr-xs" />
         Otimizado para celulares e tablets
       </div>
     </div>
+
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from "vue";
+import { ref, watch, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { useSessionStore } from "@/stores/session";
 import { getSupabase } from "@/lib/supabase";
@@ -225,6 +256,22 @@ const router   = useRouter();
 const session  = useSessionStore();
 const supabase = getSupabase();
 
+// ── Viewport reactivo ─────────────────────────────────────────────────────────
+const viewW = ref(window.innerWidth);
+const viewH = ref(window.innerHeight);
+function onResize() { viewW.value = window.innerWidth; viewH.value = window.innerHeight; }
+onMounted(() => window.addEventListener("resize", onResize));
+onUnmounted(() => window.removeEventListener("resize", onResize));
+
+const isTablet  = computed(() => viewW.value >= 768);
+const isCompact = computed(() => viewH.value < 660 && !isTablet.value);
+const logoSize  = computed(() => {
+  if (viewH.value < 580) return 52;
+  if (viewH.value < 680) return 66;
+  return 88;
+});
+
+// ── Steps ─────────────────────────────────────────────────────────────────────
 type Step =
   | "ident"
   | "scan-face" | "scan-digital"
@@ -287,15 +334,12 @@ async function onContinue() {
     hasDigital.value = digRes.data  === "registered";
 
     if (hasDigital.value) {
-      // Tem digital → carrega credentials e abre biometria direto
       const { data: creds } = await supabase.rpc("mobile_digital_credentials", { p_matricula: mat });
       credentialIds.value = (creds ?? []).map((r: { credential_id: string }) => r.credential_id);
       step.value = "scan-digital";
     } else if (hasFace.value) {
-      // Sem digital mas tem Face ID → usa face direto
       step.value = "scan-face";
     } else {
-      // Sem nenhuma biometria → cadastrar digital direto
       enrollDigitalFrom.value = "ident";
       step.value = "enroll-digital";
     }
@@ -342,8 +386,185 @@ function voltarChoice() { step.value = "ident"; scanErro.value = null; }
 </script>
 
 <style scoped>
-.login-shell { max-width: 440px; margin: 0 auto; width: 100%; }
+/* ── Layout base ─────────────────────────────────────────────────────────────*/
+.ip-page {
+  min-height: 100dvh;       /* dvh: height excluding mobile browser chrome */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 16px;
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  max-width: 100%;          /* override mobile-page max-width on this page */
+}
 
+/* ── Branding aside (hidden on mobile) ───────────────────────────────────────*/
+.ip-brand {
+  display: none;
+}
+
+/* ── Mobile form shell ───────────────────────────────────────────────────────*/
+.ip-shell {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.ip-logo-mobile {
+  display: block;
+  margin-bottom: 16px;
+}
+
+/* ── Card padding adaptive ────────────────────────────────────────────────────*/
+.ip-card {
+  padding: 24px;
+}
+.ip--compact .ip-card {
+  padding: 18px 16px;
+}
+
+/* ── Employee name truncation ─────────────────────────────────────────────────*/
+.ip-emp-name {
+  font-size: 14px;
+  line-height: 1.3;
+}
+.ip-employee-chip {
+  padding: 12px 14px;
+}
+.ip--compact .ip-employee-chip {
+  padding: 10px 12px;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────────*/
+.ip-footer {
+  text-align: center;
+  color: rgba(100, 116, 139, 0.6);
+  margin-top: 14px;
+  font-size: 11px;
+}
+.ip--compact .ip-footer {
+  margin-top: 8px;
+}
+
+/* ── Compact mode: shrink gaps ───────────────────────────────────────────────*/
+.ip--compact .ip-logo-mobile {
+  margin-bottom: 10px;
+}
+
+/* ── Very small phones (≤ 360px width) ───────────────────────────────────────*/
+@media (max-width: 360px) {
+  .ip-page     { padding: 14px 12px; }
+  .ip-card     { padding: 16px 14px; }
+}
+
+/* ── Large phones (≥ 430px) slight breathing room ────────────────────────────*/
+@media (min-width: 430px) and (max-width: 767px) {
+  .ip-shell    { max-width: 460px; }
+  .ip-card     { padding: 28px; }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   TABLET LAYOUT (≥ 768px) — coluna esquerda branding + coluna direita form
+   ═════════════════════════════════════════════════════════════════════════════*/
+@media (min-width: 768px) {
+  .ip-page {
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 0;
+    gap: 0;
+  }
+
+  /* Left: branding */
+  .ip-brand {
+    display: flex;
+    flex: 1 1 45%;
+    align-items: center;
+    justify-content: center;
+    background:
+      radial-gradient(ellipse at 30% 20%, rgba(196,33,58,.35) 0%, transparent 55%),
+      radial-gradient(ellipse at 80% 80%, rgba(92,14,28,.5) 0%, transparent 50%),
+      linear-gradient(145deg, #7a1225 0%, #5c0e1c 50%, #3d0912 100%);
+    position: relative;
+    overflow: hidden;
+    padding: 48px 40px;
+    flex-direction: column;
+  }
+
+  .ip-brand__inner {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0;
+  }
+
+  /* Force white text inside brand panel */
+  .ip-brand :deep(*) { color: #fff !important; }
+  .ip-brand :deep(.brand-logo__sub) { opacity: .75; }
+
+  .ip-brand__desc {
+    margin: 24px 0 0;
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: rgba(255,255,255,.65) !important;
+    max-width: 280px;
+  }
+
+  /* Decorative orbs */
+  .ip-brand__orbs { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+  .ip-orb {
+    position: absolute;
+    border-radius: 50%;
+    opacity: .12;
+    background: #fff;
+  }
+  .ip-orb--1 { width: 320px; height: 320px; top: -80px; left: -80px; }
+  .ip-orb--2 { width: 200px; height: 200px; bottom: -60px; right: -60px; opacity: .08; }
+  .ip-orb--3 { width: 100px; height: 100px; top: 50%; left: 55%; transform: translate(-50%,-50%); opacity: .06; }
+
+  /* Right: form */
+  .ip-shell {
+    flex: 1 1 55%;
+    max-width: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 48px;
+    overflow-y: auto;
+  }
+
+  /* Hide mobile logo — branding is on the left panel */
+  .ip-logo-mobile {
+    display: none;
+  }
+
+  .ip-card {
+    width: 100%;
+    max-width: 440px;
+    padding: 32px;
+  }
+
+  .ip-footer {
+    width: 100%;
+    max-width: 440px;
+  }
+}
+
+/* ── Tablet large (≥ 1024px) ─────────────────────────────────────────────────*/
+@media (min-width: 1024px) {
+  .ip-brand   { flex: 0 0 42%; }
+  .ip-shell   { padding: 48px 64px; }
+  .ip-card    { max-width: 460px; padding: 36px; }
+}
+
+/* ══ Reused from old scoped (mantidos) ══════════════════════════════════════ */
 .face-badge {
   width: 56px; height: 56px; border-radius: 50%;
   background: rgba(139,28,43,.08); border: 1.5px solid rgba(139,28,43,.3);
@@ -354,10 +575,8 @@ function voltarChoice() { step.value = "ident"; scanErro.value = null; }
 .ident-banner { background: rgba(217,164,65,.12); font-size: 12.5px; line-height: 1.45; }
 .ident-banner--err { background: rgba(224,96,112,.12); }
 
-/* Botões biométricos */
 .biometric-btn { border-radius: 12px !important; padding: 0 !important; height: auto !important; }
 .biometric-btn--alt { opacity: .88; }
-
 .biometric-btn__inner {
   display: flex; align-items: center; gap: 14px;
   width: 100%; padding: 14px 16px; text-align: left;
