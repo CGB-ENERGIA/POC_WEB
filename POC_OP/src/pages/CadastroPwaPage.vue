@@ -46,7 +46,10 @@
                 </q-avatar>
               </q-item-section>
               <q-item-section>
-                <q-item-label class="cp-name">{{ e.nome_completo }}</q-item-label>
+                <q-item-label class="cp-name">
+                  {{ e.nome_completo }}
+                  <q-badge v-if="!e.ativo" color="grey-6" label="Inativo" class="q-ml-xs" />
+                </q-item-label>
                 <q-item-label caption>Mat. {{ e.matricula }} · {{ e.funcao }} · {{ e.gerencia }} · {{ e.base }}</q-item-label>
               </q-item-section>
               <q-item-section side>
@@ -112,7 +115,7 @@
       <q-card style="min-width:380px;max-width:460px">
         <q-card-section>
           <p class="text-subtitle1 text-weight-bold q-mb-none">
-            {{ empForm.id ? 'Editar Funcionário' : 'Novo Funcionário' }}
+            {{ empIsEditing ? 'Editar Funcionário' : 'Novo Funcionário' }}
           </p>
         </q-card-section>
         <q-card-section class="q-gutter-sm q-pt-none">
@@ -127,9 +130,9 @@
             />
             <q-input v-model="empForm.base"  label="Base *"   dense outlined class="col" />
           </div>
-          <div class="row q-gutter-sm">
-            <q-input v-model="empForm.funcao" label="Função *"  dense outlined class="col" />
-            <q-input v-model.number="empForm.meta" label="Meta semanal" type="number" dense outlined class="col" style="max-width:130px" />
+          <div class="row q-gutter-sm items-center">
+            <q-input v-model="empForm.funcao" label="Função *" dense outlined class="col" />
+            <q-toggle v-model="empForm.ativo" label="Ativo" class="q-ml-sm" />
           </div>
           <p v-if="empError" class="text-negative text-caption q-mb-none">{{ empError }}</p>
         </q-card-section>
@@ -181,14 +184,13 @@ const tab     = ref("funcionarios");
 // ─── Funcionários ─────────────────────────────────────────────────────────────
 
 interface Employee {
-  id: string;
   matricula: string;
   nome: string;
   nome_completo: string;
   gerencia: string;
   base: string;
   funcao: string;
-  meta: number;
+  ativo: boolean;
 }
 
 const employees        = ref<Employee[]>([]);
@@ -196,21 +198,23 @@ const empSearch        = ref("");
 const empGerenciaFilter = ref("Todas");
 const empDialog        = ref(false);
 const empError         = ref("");
+const empIsEditing     = ref(false);
 const empForm          = ref<Partial<Employee>>({});
 
 const filteredEmployees = computed(() => {
   const q  = empSearch.value.toLowerCase();
   const gr = empGerenciaFilter.value;
   return employees.value.filter((e) => {
-    const matchSearch  = !q || e.nome_completo.toLowerCase().includes(q) || e.matricula.includes(q) || e.nome.toLowerCase().includes(q);
+    const matchSearch   = !q || e.nome_completo.toLowerCase().includes(q) || e.matricula.includes(q) || e.nome.toLowerCase().includes(q);
     const matchGerencia = gr === "Todas" || e.gerencia === gr;
     return matchSearch && matchGerencia;
   });
 });
 
 function openEmpDialog(e?: Employee) {
-  empError.value = "";
-  empForm.value  = e ? { ...e } : { gerencia: "GOMAN", base: "BCB", meta: 2 };
+  empError.value  = "";
+  empIsEditing.value = !!e;
+  empForm.value   = e ? { ...e } : { gerencia: "GOMAN", base: "BCB", ativo: true };
   empDialog.value = true;
 }
 
@@ -225,17 +229,17 @@ async function saveEmployee() {
 
   const payload = {
     matricula: f.matricula, nome: f.nome, nome_completo: f.nome_completo,
-    gerencia: f.gerencia, base: f.base, funcao: f.funcao, meta: f.meta ?? 2,
+    gerencia: f.gerencia, base: f.base, funcao: f.funcao, ativo: f.ativo ?? true,
   };
 
-  const { error } = f.id
-    ? await supabase.from("pwa_employees").update(payload).eq("id", f.id)
-    : await supabase.from("pwa_employees").insert(payload);
+  const { error } = empIsEditing.value
+    ? await supabase.from("employees").update(payload).eq("matricula", f.matricula!)
+    : await supabase.from("employees").insert(payload);
 
   saving.value = false;
   if (error) { empError.value = error.message; return; }
 
-  $q.notify({ type: "positive", message: f.id ? "Funcionário atualizado." : "Funcionário adicionado." });
+  $q.notify({ type: "positive", message: empIsEditing.value ? "Funcionário atualizado." : "Funcionário adicionado." });
   empDialog.value = false;
   await fetchEmployees();
 }
@@ -248,7 +252,7 @@ async function deleteEmployee(e: Employee) {
     ok: { label: "Remover", color: "negative", unelevated: true },
     cancel: { label: "Cancelar", flat: true },
   }).onOk(async () => {
-    const { error } = await supabase.from("pwa_employees").delete().eq("id", e.id);
+    const { error } = await supabase.from("employees").delete().eq("matricula", e.matricula);
     if (error) { $q.notify({ type: "negative", message: error.message }); return; }
     $q.notify({ type: "positive", message: "Funcionário removido." });
     await fetchEmployees();
@@ -329,8 +333,8 @@ async function deleteEquipe(eq: Equipe) {
 
 async function fetchEmployees() {
   const { data } = await supabase
-    .from("pwa_employees")
-    .select("*")
+    .from("employees")
+    .select("matricula, nome, nome_completo, gerencia, base, funcao, ativo")
     .order("nome_completo");
   if (data) employees.value = data as Employee[];
 }
