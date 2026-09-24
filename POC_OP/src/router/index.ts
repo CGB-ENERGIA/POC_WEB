@@ -8,7 +8,7 @@ import {
 
 import routes from "./routes";
 import { supabase } from "@/lib/supabase";
-import { getRole } from "@/lib/role";
+import { getProfile } from "@/lib/role";
 
 // Páginas de gráficos/visões liberadas para o papel "member" (somente
 // leitura). Qualquer outra rota autenticada é bloqueada para esse papel.
@@ -62,14 +62,23 @@ export default defineRouter((/* { store, ssrContext } */) => {
     const { data } = await supabase.auth.getSession();
     if (!data.session) return "/login";
     const email = data.session.user.email;
-    if (to.meta.requiresAdmin && email !== ADMIN_EMAIL) return "/";
 
     if (email !== ADMIN_EMAIL) {
-      const role = await getRole(data.session.user.id);
-      if (role === "member") {
+      const profile = await getProfile(data.session.user.id);
+
+      // Força troca de senha antes de qualquer outra página
+      if (profile.mustChangePassword && to.path !== "/alterar-senha") {
+        return "/alterar-senha";
+      }
+
+      if (to.meta.requiresAdmin) return "/";
+
+      if (profile.role === "member") {
         const relPath = to.path.replace(/^\/+/, "");
         if (!MEMBER_ALLOWED_PATHS.has(relPath)) return "/";
       }
+    } else {
+      if (to.meta.requiresAdmin && email !== ADMIN_EMAIL) return "/";
     }
 
     return true;

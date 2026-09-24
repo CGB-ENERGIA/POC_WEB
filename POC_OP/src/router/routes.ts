@@ -32,6 +32,10 @@ const routes: RouteRecordRaw[] = [
   },
 
   {
+    path: "/alterar-senha",
+    component: () => import("@/pages/AlterarSenhaPage.vue"),
+  },
+  {
     path: "/reset-password",
     component: () => import("@/pages/ResetPasswordPage.vue"),
     meta: { public: true },
