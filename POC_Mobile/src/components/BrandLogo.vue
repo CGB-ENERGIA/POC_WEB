@@ -99,12 +99,14 @@ const markStyle = computed(() => ({
 }
 
 .brand-logo--header {
+  display: flex;
   width: 100%;
 }
 
 .brand-logo--header .brand-logo__text {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 
 .brand-logo__mark {

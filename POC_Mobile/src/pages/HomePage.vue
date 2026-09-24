@@ -195,6 +195,31 @@
         </q-slide-transition>
       </div>
 
+      <!-- ── CÂMERA ─────────────────────────────── -->
+      <button class="hp-cam" @click="cameraAberta = true">
+        <div class="hp-cam__icon">
+          <q-icon name="mdi-camera-plus" size="22px" color="white" />
+        </div>
+        <div class="hp-cam__body">
+          <div class="hp-cam__title">Câmera</div>
+          <div class="hp-cam__sub">Registrar com timestamp</div>
+        </div>
+        <q-icon name="mdi-chevron-right" size="20px" color="grey-5" />
+      </button>
+
+      <!-- ── GALERIA ─────────────────────────────── -->
+      <button class="hp-gal" @click="$router.push({ name: 'galeria' })">
+        <div class="hp-gal__icon">
+          <q-icon name="mdi-image-multiple-outline" size="22px" color="primary" />
+        </div>
+        <div class="hp-gal__body">
+          <div class="hp-gal__title">Galeria</div>
+          <div class="hp-gal__sub">Fotos registradas</div>
+        </div>
+        <div v-if="galeriaTotal > 0" class="hp-gal__count">{{ galeriaTotal }}</div>
+        <q-icon name="mdi-chevron-right" size="20px" color="grey-5" />
+      </button>
+
       <!-- ── MINHAS OBSERVAÇÕES ─────────────────── -->
       <button
         class="hp-solo"
@@ -215,6 +240,12 @@
 
     <!-- espaço de segurança para scroll na home -->
     <div class="hp-spacer" />
+
+    <!-- ── CÂMERA MODAL ─────────────────────────────── -->
+    <CameraCapture
+      v-model="cameraAberta"
+      :matricula="session.matricula"
+    />
   </q-page>
 </template>
 
@@ -223,11 +254,13 @@ import { computed, ref, watch, onMounted } from "vue";
 import { LocalStorage } from "quasar";
 import { useSessionStore } from "@/stores/session";
 import { useObservacoesStore } from "@/stores/observacoes";
+import { useGaleriaStore } from "@/stores/galeria";
 import { totalPerguntasGoman } from "@/data/goman-checklist";
 import { totalPerguntasGstc } from "@/data/gstc-checklist";
 import { PERIODO_VISAO_STORAGE_KEY } from "@/constants/theme";
 import { hasChecklistDraft } from "@/utils/checklist-draft";
 import { useGoals } from "@/composables/useGoals";
+import CameraCapture from "@/components/CameraCapture.vue";
 
 type PeriodoVisao = "semana" | "mes";
 
@@ -238,10 +271,14 @@ function loadPeriodoSalvo(): PeriodoVisao {
 
 const session      = useSessionStore();
 const observacoes  = useObservacoesStore();
+const galeriaStore = useGaleriaStore();
 const periodo      = ref<PeriodoVisao>(loadPeriodoSalvo());
 const operacionalAberto    = ref(false);
 const administrativoAberto = ref(false);
+const cameraAberta = ref(false);
 const { getGoal, ensureLoaded } = useGoals();
+
+const galeriaTotal = computed(() => galeriaStore.total);
 
 const matriculaAtual    = computed(() => session.employee?.matricula ?? "");
 const draftGoman        = computed(() => hasChecklistDraft("GOMAN",        matriculaAtual.value));
@@ -256,6 +293,7 @@ watch(periodo, (val) => LocalStorage.set(PERIODO_VISAO_STORAGE_KEY, val));
 onMounted(() => {
   void ensureLoaded();
   if (session.matricula) void observacoes.fetchSynced(session.matricula);
+  void galeriaStore.carregar();
   if (draftGoman.value || draftGstc.value)                                          operacionalAberto.value    = true;
   if (draftAdministrativo.value || draftAlojamento.value || draftLogistica.value || draftOficina.value) administrativoAberto.value = true;
 });
@@ -537,6 +575,66 @@ const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.valu
 }
 
 /* ═══════════════════════════════════════════════════════════
+   CÂMERA + GALERIA (par de cards)
+════════════════════════════════════════════════════════════ */
+.hp-cam,
+.hp-gal {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(15,23,42,.07);
+  box-shadow: 0 2px 12px rgba(15,23,42,.05);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  -webkit-tap-highlight-color: transparent;
+  transition: box-shadow .18s;
+}
+.hp-cam:active,
+.hp-gal:active { box-shadow: none; opacity: .85; }
+
+.hp-cam {
+  background: linear-gradient(135deg, #8b1b30, #7a1225);
+  border-color: transparent;
+}
+.hp-gal {
+  background: #fff;
+}
+
+.hp-cam__icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: rgba(255,255,255,.18);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.hp-gal__icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: rgba(122,18,37,.08);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.hp-cam__body,
+.hp-gal__body { flex: 1; min-width: 0; }
+
+.hp-cam__title { font-size: 15px; font-weight: 700; color: #fff; }
+.hp-cam__sub   { font-size: 11.5px; color: rgba(255,255,255,.75); margin-top: 2px; }
+
+.hp-gal__title { font-size: 15px; font-weight: 700; color: #0f172a; }
+.hp-gal__sub   { font-size: 11.5px; color: #94a3b8; margin-top: 2px; }
+
+.hp-gal__count {
+  font-size: 18px;
+  font-weight: 800;
+  color: #7a1225;
+  min-width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════
    SOLO CARD (Minhas Observações)
 ════════════════════════════════════════════════════════════ */
 .hp-solo {
@@ -612,6 +710,10 @@ const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.valu
   /* Grupos lado a lado */
   .hp-group { grid-column: auto; }
 
+  /* Câmera e Galeria lado a lado */
+  .hp-cam { grid-column: 1; }
+  .hp-gal { grid-column: 2; }
+
   /* Minhas Obs ocupa as 2 colunas */
   .hp-solo { grid-column: 1 / -1; }
 
@@ -627,7 +729,8 @@ const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.valu
 ════════════════════════════════════════════════════════════ */
 :global(body.body--dark) {
   .hp-group,
-  .hp-solo {
+  .hp-solo,
+  .hp-gal {
     background: #1e293b;
     border-color: rgba(148,163,184,.1);
     box-shadow: 0 2px 12px rgba(0,0,0,.22);
@@ -637,10 +740,12 @@ const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.valu
     box-shadow: 0 4px 20px rgba(0,0,0,.3);
   }
   .hp-group__title,
-  .hp-solo__title  { color: #f1f5f9; }
+  .hp-solo__title,
+  .hp-gal__title   { color: #f1f5f9; }
   .hp-item__label  { color: #e2e8f0; }
   .hp-item-sep     { background: rgba(148,163,184,.12); }
-  .hp-solo__icon   { background: rgba(122,18,37,.2); }
+  .hp-solo__icon,
+  .hp-gal__icon    { background: rgba(122,18,37,.2); }
   .hp-section-label { color: #475569; }
   .hp-chevron      { color: #475569; }
 }

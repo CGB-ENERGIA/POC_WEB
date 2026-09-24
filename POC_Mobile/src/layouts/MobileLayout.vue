@@ -77,12 +77,17 @@ const router = useRouter();
 const session = useSessionStore();
 
 const titles: Record<string, string> = {
-  identificacao: "POC - CGB",
-  home: "Início",
-  "nova-observacao": "Nova Observação",
-  "checklist-goman": "Checklist GOMAN",
-  "checklist-gstc": "Checklist GSTC/GERE",
-  "minhas-observacoes": "Minhas Observações",
+  identificacao:             "POC - CGB",
+  home:                      "Início",
+  "nova-observacao":         "Nova Observação",
+  "checklist-goman":         "Checklist GOMAN",
+  "checklist-gstc":          "Checklist GSTC/GERE",
+  "checklist-administrativo":"Checklist Administrativo",
+  "checklist-alojamento":    "Checklist Alojamento",
+  "checklist-logistica":     "Checklist Logística",
+  "checklist-oficina":       "Checklist Oficina",
+  "minhas-observacoes":      "Minhas Observações",
+  galeria:                   "Galeria de Fotos",
 };
 
 const title = computed(() => titles[String(route.name)] ?? "POC - CGB");
