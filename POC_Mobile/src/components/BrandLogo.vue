@@ -95,7 +95,16 @@ const markStyle = computed(() => ({
 
 .brand-logo--header .brand-logo__subtitle {
   color: rgba(255, 255, 255, 0.82);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
+}
+
+.brand-logo--header {
+  width: 100%;
+}
+
+.brand-logo--header .brand-logo__text {
+  flex: 1;
+  min-width: 0;
 }
 
 .brand-logo__mark {

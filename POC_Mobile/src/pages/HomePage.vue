@@ -14,7 +14,7 @@
 
       <div class="hp-banner__body">
         <div class="hp-banner__left">
-          <div class="hp-banner__name">Olá, {{ session.displayName }}!</div>
+          <div class="hp-banner__name">{{ saudacao }}, {{ nomeExibicao }}!</div>
           <div class="hp-banner__sub">
             {{ session.matricula }} &nbsp;·&nbsp;
             Meta: <strong>{{ metaAtual }}</strong> {{ periodoLabel === 'semana' ? 'obs/sem' : 'obs/mês' }}
@@ -272,6 +272,18 @@ const metaMensal = computed(() => {
 });
 const metaAtual    = computed(() => periodo.value === "semana" ? metaSemanal.value : metaMensal.value);
 const periodoLabel = computed(() => periodo.value === "semana" ? "semana" : "mês");
+
+const saudacao = computed(() => {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 12) return "Bom dia";
+  if (h >= 12 && h < 18) return "Boa tarde";
+  return "Boa noite";
+});
+
+const nomeExibicao = computed(() => {
+  const partes = (session.employee?.nomeCompleto ?? session.displayName ?? "").trim().split(/\s+/);
+  return partes.slice(0, 2).join(" ");
+});
 
 const minhasObs  = computed(() => observacoes.byMatricula(matricula.value));
 const totalGeral = computed(() => minhasObs.value.length);
