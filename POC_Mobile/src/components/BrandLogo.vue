@@ -8,7 +8,7 @@
     }"
   >
     <div class="brand-logo__mark" :style="markStyle">
-      <img :src="LOGO_URL" alt="CGB Engenharia" class="brand-logo__img" />
+      <img :src="LOGO_URL" alt="CGB POC" class="brand-logo__img" />
     </div>
     <div v-if="showText" class="brand-logo__text">
       <div class="brand-logo__title">{{ title }}</div>
