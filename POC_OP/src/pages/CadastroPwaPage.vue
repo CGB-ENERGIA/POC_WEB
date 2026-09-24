@@ -6,9 +6,18 @@
         <p class="cp-eyebrow">Administração · PWA</p>
         <h1 class="cp-title">Banco de Dados da PWA</h1>
       </div>
-      <q-btn flat dense round icon="mdi-refresh" :loading="loading" @click="fetchAll">
-        <q-tooltip>Atualizar</q-tooltip>
-      </q-btn>
+      <div class="row gap-xs items-center">
+        <q-btn flat dense round icon="mdi-refresh" :loading="loading" @click="fetchAll">
+          <q-tooltip>Atualizar</q-tooltip>
+        </q-btn>
+        <q-btn flat dense round icon="mdi-download" color="primary" @click="exportExcel">
+          <q-tooltip>Exportar Excel</q-tooltip>
+        </q-btn>
+        <q-btn flat dense round icon="mdi-upload" color="teal" :loading="importing" @click="triggerImport">
+          <q-tooltip>Importar Excel</q-tooltip>
+        </q-btn>
+        <input ref="importInput" type="file" accept=".xlsx,.xls" style="display:none" @change="onImportFile" />
+      </div>
     </div>
 
     <q-separator class="cp-sep" />
@@ -39,7 +48,7 @@
 
         <q-card flat bordered class="q-mt-sm">
           <q-list separator>
-            <q-item v-for="e in filteredEmployees" :key="e.id" class="cp-item">
+            <q-item v-for="e in filteredEmployees" :key="e.matricula" class="cp-item">
               <q-item-section avatar>
                 <q-avatar size="36px" color="blue-grey-8" text-color="white" class="text-weight-bold" style="font-size:13px">
                   {{ e.nome.charAt(0) }}
@@ -175,6 +184,7 @@
 import { ref, computed, onMounted } from "vue";
 import { useQuasar } from "quasar";
 import { supabase } from "@/lib/supabase";
+import * as XLSX from "xlsx";
 
 const $q      = useQuasar();
 const loading = ref(false);
@@ -355,6 +365,133 @@ async function fetchAll() {
 }
 
 onMounted(fetchAll);
+
+// ─── Export / Import ──────────────────────────────────────────────────────────
+
+const importInput = ref<HTMLInputElement | null>(null);
+const importing   = ref(false);
+
+function exportExcel() {
+  const wb = XLSX.utils.book_new();
+
+  // Aba Funcionários
+  const empData = employees.value.map((e) => ({
+    Matricula:     e.matricula,
+    Nome:          e.nome,
+    Nome_Completo: e.nome_completo,
+    Gerencia:      e.gerencia,
+    Base:          e.base,
+    Funcao:        e.funcao,
+    Ativo:         e.ativo ? "SIM" : "NÃO",
+  }));
+  const wsEmp = XLSX.utils.json_to_sheet(empData);
+  wsEmp["!cols"] = [10, 22, 40, 8, 8, 22, 6].map((w) => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, wsEmp, "Funcionarios");
+
+  // Aba Equipes
+  const eqData = equipes.value.map((eq) => ({
+    ID:       eq.id,
+    Base:     eq.base,
+    Prefixo:  eq.prefixo,
+    Gerencia: eq.gerencia,
+  }));
+  const wsEq = XLSX.utils.json_to_sheet(eqData);
+  wsEq["!cols"] = [38, 8, 14, 8].map((w) => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, wsEq, "Equipes");
+
+  XLSX.writeFile(wb, "banco_pwa.xlsx");
+  $q.notify({ type: "positive", message: "Arquivo exportado com sucesso." });
+}
+
+function triggerImport() {
+  importInput.value?.click();
+}
+
+async function onImportFile(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file  = input.files?.[0];
+  if (!file) return;
+  input.value = "";
+
+  importing.value = true;
+
+  try {
+    const buffer = await file.arrayBuffer();
+    const wb     = XLSX.read(buffer, { type: "array" });
+
+    let empUpdated = 0, empInserted = 0, eqUpdated = 0, eqInserted = 0;
+
+    // ── Funcionários ──────────────────────────────────────────────
+    const wsEmp = wb.Sheets["Funcionarios"];
+    if (wsEmp) {
+      const rows = XLSX.utils.sheet_to_json<Record<string, string>>(wsEmp);
+      const REQUIRED = ["Matricula", "Nome", "Nome_Completo", "Gerencia", "Base", "Funcao"];
+      const missing  = REQUIRED.filter((k) => !rows[0]?.[k]);
+      if (missing.length) throw new Error(`Colunas ausentes na aba Funcionarios: ${missing.join(", ")}`);
+
+      const payload = rows.map((r) => ({
+        matricula:     String(r["Matricula"]).trim(),
+        nome:          String(r["Nome"]).trim(),
+        nome_completo: String(r["Nome_Completo"]).trim(),
+        gerencia:      String(r["Gerencia"]).trim(),
+        base:          String(r["Base"]).trim(),
+        funcao:        String(r["Funcao"]).trim(),
+        ativo:         String(r["Ativo"] ?? "SIM").trim().toUpperCase() !== "NÃO",
+      })).filter((r) => r.matricula);
+
+      // Upsert em lotes de 50
+      for (let i = 0; i < payload.length; i += 50) {
+        const batch = payload.slice(i, i + 50);
+        const { error } = await supabase
+          .from("employees")
+          .upsert(batch, { onConflict: "matricula" });
+        if (error) throw new Error("Erro ao importar funcionários: " + error.message);
+      }
+      empUpdated = payload.length;
+    }
+
+    // ── Equipes ───────────────────────────────────────────────────
+    const wsEq = wb.Sheets["Equipes"];
+    if (wsEq) {
+      const rows = XLSX.utils.sheet_to_json<Record<string, string>>(wsEq);
+      if (rows.length) {
+        const REQUIRED = ["Base", "Prefixo", "Gerencia"];
+        const missing  = REQUIRED.filter((k) => !rows[0]?.[k]);
+        if (missing.length) throw new Error(`Colunas ausentes na aba Equipes: ${missing.join(", ")}`);
+
+        const payload = rows.map((r) => {
+          const obj: Record<string, string> = {
+            base:     String(r["Base"]).trim(),
+            prefixo:  String(r["Prefixo"]).trim(),
+            gerencia: String(r["Gerencia"]).trim(),
+          };
+          if (r["ID"]) obj["id"] = String(r["ID"]).trim();
+          return obj;
+        }).filter((r) => r["base"] && r["prefixo"]);
+
+        for (let i = 0; i < payload.length; i += 50) {
+          const batch = payload.slice(i, i + 50);
+          const { error } = await supabase
+            .from("pwa_equipes")
+            .upsert(batch, { onConflict: "prefixo" });
+          if (error) throw new Error("Erro ao importar equipes: " + error.message);
+        }
+        eqUpdated = payload.length;
+      }
+    }
+
+    await fetchAll();
+    $q.notify({
+      type: "positive",
+      message: `Importação concluída: ${empUpdated} funcionários · ${eqUpdated} equipes`,
+      timeout: 5000,
+    });
+  } catch (e: unknown) {
+    $q.notify({ type: "negative", message: (e as Error).message ?? "Erro ao importar." });
+  } finally {
+    importing.value = false;
+  }
+}
 </script>
 
 <style scoped lang="scss">
