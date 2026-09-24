@@ -82,7 +82,7 @@
         flat dense round
         icon="mdi-refresh"
         :loading="loading"
-        @click="fetchAll"
+        @click="() => { fetchAll(); fetchDigitais(); fetchMembers(); }"
       >
         <q-tooltip>Atualizar</q-tooltip>
       </q-btn>
@@ -95,7 +95,7 @@
       <div class="ap-users-head">
         <p class="ap-section-label q-mb-none">
           <q-icon name="mdi-account-multiple" size="14px" class="q-mr-xs" />
-          USUÁRIOS
+          USUÁRIOS · {{ members.length }}
         </p>
         <q-btn
           unelevated
@@ -185,6 +185,37 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Digitais cadastradas -->
+    <section class="ap-section">
+      <p class="ap-section-label">
+        <q-icon name="mdi-fingerprint" size="14px" class="q-mr-xs" />
+        DIGITAL CADASTRADA · {{ digitais.length }}
+      </p>
+
+      <q-card v-if="digitais.length" flat bordered>
+        <q-list separator>
+          <q-item v-for="d in digitais" :key="d.matricula">
+            <q-item-section avatar>
+              <q-icon name="mdi-fingerprint" color="teal-6" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label class="ap-hist-name">{{ d.nome }}</q-item-label>
+              <q-item-label caption>Matrícula {{ d.matricula }}</q-item-label>
+            </q-item-section>
+            <q-item-section side class="ap-hist-side">
+              <q-badge
+                v-if="d.count > 1"
+                color="blue-grey-7"
+                :label="`${d.count} dispositivos`"
+              />
+              <q-item-label caption class="q-mt-xs">{{ formatDate(d.created_at) }}</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
+      </q-card>
+      <p v-else class="ap-users-empty">Nenhuma digital cadastrada ainda.</p>
+    </section>
 
     <!-- Pendentes -->
     <section v-if="pending.length" class="ap-section">
@@ -359,6 +390,13 @@ interface Profile {
   role: "admin" | "member";
 }
 
+interface DigitalEntry {
+  matricula: string;
+  nome: string;
+  count: number;
+  created_at: string;
+}
+
 const router   = useRouter();
 const $q       = useQuasar();
 const loading  = ref(true);
@@ -366,6 +404,7 @@ const actionId = ref<string | null>(null);
 const pending  = ref<Registration[]>([]);
 const history  = ref<Registration[]>([]);
 const members  = ref<Profile[]>([]);
+const digitais = ref<DigitalEntry[]>([]);
 
 const newUserDialog = ref(false);
 const creatingUser   = ref(false);
@@ -385,6 +424,7 @@ onMounted(async () => {
   }
   await fetchAll();
   await fetchMembers();
+  await fetchDigitais();
 });
 
 async function fetchMembers() {
@@ -393,6 +433,27 @@ async function fetchMembers() {
     .select("id, email, role")
     .order("email");
   if (!error && data) members.value = data as Profile[];
+}
+
+async function fetchDigitais() {
+  const { data, error } = await supabase
+    .from("mobile_device_credentials")
+    .select("matricula, nome, created_at")
+    .order("nome");
+  if (error || !data) return;
+
+  // Agrupa por matrícula: conta dispositivos e pega o mais recente
+  const map = new Map<string, DigitalEntry>();
+  for (const row of data) {
+    const existing = map.get(row.matricula);
+    if (!existing) {
+      map.set(row.matricula, { matricula: row.matricula, nome: row.nome, count: 1, created_at: row.created_at ?? "" });
+    } else {
+      existing.count++;
+      if ((row.created_at ?? "") > existing.created_at) existing.created_at = row.created_at ?? "";
+    }
+  }
+  digitais.value = Array.from(map.values()).sort((a, b) => a.nome.localeCompare(b.nome));
 }
 
 async function criarUsuario() {
