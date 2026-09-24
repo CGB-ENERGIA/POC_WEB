@@ -107,9 +107,32 @@
         />
       </div>
 
-      <q-card v-if="members.length" flat bordered class="q-mt-md">
+      <!-- Busca + filtro de role -->
+      <div class="ap-search-row q-mt-md">
+        <q-input
+          v-model="userSearch"
+          dense outlined clearable
+          placeholder="Buscar por e-mail…"
+          class="ap-search-input"
+        >
+          <template #prepend><q-icon name="mdi-magnify" size="18px" /></template>
+        </q-input>
+        <q-btn-toggle
+          v-model="userRoleFilter"
+          dense unelevated no-caps
+          :options="[
+            { label: 'Todos',  value: 'all'    },
+            { label: 'Admin',  value: 'admin'  },
+            { label: 'Membro', value: 'member' },
+          ]"
+          toggle-color="primary"
+          class="ap-role-toggle"
+        />
+      </div>
+
+      <q-card v-if="filteredMembers.length" flat bordered class="q-mt-sm">
         <q-list separator>
-          <q-item v-for="m in members" :key="m.id">
+          <q-item v-for="m in filteredMembers" :key="m.id">
             <q-item-section avatar>
               <q-icon
                 :name="m.role === 'admin' ? 'mdi-shield-account' : 'mdi-chart-box-outline'"
@@ -137,7 +160,9 @@
           </q-item>
         </q-list>
       </q-card>
-      <p v-else class="ap-users-empty">Nenhum usuário criado por aqui ainda.</p>
+      <p v-else class="ap-users-empty">
+        {{ members.length ? 'Nenhum usuário encontrado com esse filtro.' : 'Nenhum usuário criado por aqui ainda.' }}
+      </p>
     </section>
 
     <q-dialog v-model="newUserDialog">
@@ -219,14 +244,25 @@
 
     <!-- Pendentes -->
     <section v-if="pending.length" class="ap-section">
-      <p class="ap-section-label">
-        <q-icon name="mdi-clock-outline" size="14px" class="q-mr-xs" />
-        AGUARDANDO APROVAÇÃO · {{ pending.length }}
-      </p>
+      <div class="ap-search-row">
+        <p class="ap-section-label q-mb-none">
+          <q-icon name="mdi-clock-outline" size="14px" class="q-mr-xs" />
+          AGUARDANDO APROVAÇÃO · {{ pending.length }}
+        </p>
+        <q-input
+          v-model="faceSearch"
+          dense outlined clearable
+          placeholder="Buscar nome ou e-mail…"
+          class="ap-search-input"
+          style="max-width: 260px"
+        >
+          <template #prepend><q-icon name="mdi-magnify" size="18px" /></template>
+        </q-input>
+      </div>
 
-      <div class="ap-grid">
+      <div class="ap-grid q-mt-md">
         <q-card
-          v-for="r in pending"
+          v-for="r in filteredPending"
           :key="r.id"
           flat bordered
           class="ap-card"
@@ -364,7 +400,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useQuasar } from "quasar";
 import { supabase, supabaseUrl } from "@/lib/supabase";
@@ -405,6 +441,27 @@ const pending  = ref<Registration[]>([]);
 const history  = ref<Registration[]>([]);
 const members  = ref<Profile[]>([]);
 const digitais = ref<DigitalEntry[]>([]);
+
+// Filtros — usuários desktop
+const userSearch     = ref("");
+const userRoleFilter = ref<"all" | "admin" | "member">("all");
+const filteredMembers = computed(() => {
+  const q = userSearch.value.toLowerCase();
+  return members.value.filter((m) => {
+    const matchSearch = !q || m.email.toLowerCase().includes(q);
+    const matchRole   = userRoleFilter.value === "all" || m.role === userRoleFilter.value;
+    return matchSearch && matchRole;
+  });
+});
+
+// Filtro — aprovações de Face ID
+const faceSearch = ref("");
+const filteredPending = computed(() => {
+  const q = faceSearch.value.toLowerCase();
+  return !q ? pending.value : pending.value.filter(
+    (r) => r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q)
+  );
+});
 
 const newUserDialog = ref(false);
 const creatingUser   = ref(false);
@@ -784,6 +841,16 @@ function formatDate(iso: string | null): string {
 
   p { font-size: 14px; margin: 0; }
 }
+
+// Busca + filtro
+.ap-search-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.ap-search-input { flex: 1; min-width: 180px; }
+.ap-role-toggle  { flex-shrink: 0; }
 
 // Mobile
 @media (max-width: 600px) {
