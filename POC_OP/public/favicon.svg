@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- CGB logo mark — transparent background, 4 sub-diamonds + white center -->
+
+  <!-- Top sub-diamond: dark maroon -->
+  <polygon points="50,2 75,26 50,50 25,26" fill="#7a1225"/>
+
+  <!-- Left sub-diamond: raspberry -->
+  <polygon points="25,26 50,50 25,74 2,50" fill="#bf2660"/>
+
+  <!-- Right sub-diamond: raspberry -->
+  <polygon points="75,26 98,50 75,74 50,50" fill="#bf2660"/>
+
+  <!-- Bottom sub-diamond: dark maroon -->
+  <polygon points="50,50 75,74 50,98 25,74" fill="#7a1225"/>
+
+  <!-- Center white diamond -->
+  <polygon points="50,34 66,50 50,66 34,50" fill="white"/>
+</svg>
