@@ -5,9 +5,10 @@ const VERSION = 1;
 export interface FotoEntry {
   id: string;
   matricula: string;
-  dataHora: string;  // ISO 8601
+  dataHora: string;   // ISO 8601
   blob: Blob;
-  tamanho: number;   // bytes
+  tamanho: number;    // bytes
+  cloudUrl: string | null;  // URL pública no Supabase Storage (null = ainda não sincronizado)
 }
 
 function abrirDB(): Promise<IDBDatabase> {

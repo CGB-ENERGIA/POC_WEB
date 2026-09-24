@@ -11,6 +11,10 @@
         <q-icon name="mdi-database-outline" size="16px" class="gl-info-bar__icon" />
         <span>{{ tamanhoFormatado }}</span>
       </div>
+      <div v-if="galeria.sincronizando" class="gl-info-bar__item gl-info-bar__sync">
+        <q-spinner size="14px" />
+        <span>Sincronizando…</span>
+      </div>
       <q-space />
       <button v-if="galeria.total > 0" class="gl-btn-cam" @click="cameraAberta = true">
         <q-icon name="mdi-camera-plus-outline" size="18px" />
@@ -130,7 +134,11 @@ const $q      = useQuasar();
 
 const cameraAberta = ref(false);
 
-onMounted(() => galeria.carregar());
+onMounted(async () => {
+  await galeria.carregar();
+  // Sincroniza com Supabase em background após carregar o cache local
+  if (session.matricula) galeria.sincronizarNuvem(session.matricula);
+});
 
 // ── Object URL pool ──────────────────────────────────
 const urlPool = new Map<string, string>();
@@ -272,6 +280,7 @@ const tamanhoFormatado = computed(() => {
   font-weight: 500;
 }
 .gl-info-bar__item { display: flex; align-items: center; gap: 5px; }
+.gl-info-bar__sync { font-size: 11px; color: #64748b; gap: 4px; }
 .gl-info-bar__icon { opacity: .7; }
 
 .gl-btn-cam {

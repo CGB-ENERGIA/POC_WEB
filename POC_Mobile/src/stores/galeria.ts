@@ -7,20 +7,27 @@ import {
   dbLimparExpirados,
   type FotoEntry,
 } from "@/utils/galeria-db";
+import {
+  cloudUploadFoto,
+  cloudExcluirFoto,
+  cloudLimparExpirados,
+} from "@/services/galeria-cloud";
 
 export type { FotoEntry };
 
 export const useGaleriaStore = defineStore("galeria", () => {
-  const fotos      = ref<FotoEntry[]>([]);
-  const carregando = ref(false);
-  let   iniciado   = false;
+  const fotos        = ref<FotoEntry[]>([]);
+  const carregando   = ref(false);
+  const sincronizando = ref(false);
+  let   iniciado     = false;
 
+  // ── Carregamento principal ──────────────────────────────
   async function carregar() {
     if (iniciado) return;
     iniciado = true;
     carregando.value = true;
     try {
-      await dbLimparExpirados(); // remove fotos com > 3 meses automaticamente
+      await dbLimparExpirados(); // limpa entradas locais > 3 meses
       const todas = await dbListarFotos();
       fotos.value = todas.sort((a, b) => b.dataHora.localeCompare(a.dataHora));
     } finally {
@@ -28,23 +35,59 @@ export const useGaleriaStore = defineStore("galeria", () => {
     }
   }
 
+  // ── Adicionar + upload nuvem em background ──────────────
   async function adicionarFoto(blob: Blob, matricula: string): Promise<FotoEntry> {
     const entry: FotoEntry = {
-      id:       `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      id:        `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       matricula,
-      dataHora: new Date().toISOString(),
+      dataHora:  new Date().toISOString(),
       blob,
-      tamanho:  blob.size,
+      tamanho:   blob.size,
+      cloudUrl:  null,
     };
+
     await dbSalvarFoto(entry);
     fotos.value.unshift(entry);
+
+    // Upload para Supabase Storage em background (não bloqueia o UI)
+    cloudUploadFoto(entry.id, matricula, blob)
+      .then((url) => {
+        entry.cloudUrl = url;
+        // Atualizar entry no IndexedDB com a URL
+        dbSalvarFoto({ ...entry, cloudUrl: url }).catch(() => {/* silencioso */});
+      })
+      .catch(() => {/* offline: tentará de novo quando reconectar */});
+
     return entry;
   }
 
+  // ── Excluir local + nuvem ───────────────────────────────
   async function excluirFoto(id: string) {
+    const foto = fotos.value.find(f => f.id === id);
     await dbExcluirFoto(id);
-    const idx = fotos.value.findIndex((f) => f.id === id);
+    const idx = fotos.value.findIndex(f => f.id === id);
     if (idx !== -1) fotos.value.splice(idx, 1);
+
+    if (foto) {
+      cloudExcluirFoto(id, foto.matricula).catch(() => {/* silencioso */});
+    }
+  }
+
+  // ── Sincronizar com nuvem (carregar fotos do servidor) ──
+  async function sincronizarNuvem(matricula: string) {
+    if (sincronizando.value) return;
+    sincronizando.value = true;
+    try {
+      await cloudLimparExpirados(matricula); // limpa > 3 meses no Supabase também
+
+      // Recarregar lista local após limpeza
+      const todas = await dbListarFotos();
+      fotos.value = todas.sort((a, b) => b.dataHora.localeCompare(a.dataHora));
+    } catch {
+      // Offline — ok, usa cache local
+    } finally {
+      sincronizando.value = false;
+    }
   }
 
   function forcarRecarregar() {
@@ -53,6 +96,7 @@ export const useGaleriaStore = defineStore("galeria", () => {
     return carregar();
   }
 
+  // ── Computeds ───────────────────────────────────────────
   const porData = computed(() => {
     const mapa = new Map<string, FotoEntry[]>();
     for (const f of fotos.value) {
@@ -67,8 +111,8 @@ export const useGaleriaStore = defineStore("galeria", () => {
   const tamanhoTotalBytes = computed(() => fotos.value.reduce((s, f) => s + f.tamanho, 0));
 
   return {
-    fotos, carregando,
-    carregar, adicionarFoto, excluirFoto, forcarRecarregar,
+    fotos, carregando, sincronizando,
+    carregar, adicionarFoto, excluirFoto, sincronizarNuvem, forcarRecarregar,
     porData, total, tamanhoTotalBytes,
   };
 });
