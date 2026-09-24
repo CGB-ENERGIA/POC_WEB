@@ -536,6 +536,7 @@ const session = useSessionStore();
 const observacoes = useObservacoesStore();
 
 const editId = route.query.editId as string | undefined;
+const continuarId = route.query.continuarId as string | undefined;
 
 const base = ref("");
 const equipe = ref("");
@@ -569,8 +570,9 @@ const fotosLocal = computed(() => [
 const evidenciasCompletas = computed(() => evidencias.value.every(Boolean));
 
 onMounted(() => {
-  if (editId) {
-    const existing = observacoes.items.find(o => o.id === editId);
+  const restoreId = editId ?? continuarId;
+  if (restoreId) {
+    const existing = observacoes.items.find(o => o.id === restoreId);
     if (existing && isChecklist(existing)) {
       base.value = existing.base;
       equipe.value = existing.equipe;
@@ -967,13 +969,61 @@ const isTestUser = computed(() => session.employee?.matricula === "12690");
 const required = (v: string) => isTestUser.value || !!v?.trim() || "Campo obrigatório";
 
 async function onConcluirMaisTarde() {
-  persistDraft();
+  if (!session.employee) return;
+
+  const respostasSalvas: RespostaSalva[] = [];
+  for (const cat of gstcChecklist) {
+    for (const p of cat.perguntas) {
+      const resposta = respostas[p.id];
+      if (!resposta) continue;
+      const detalhe = detalhesMap[p.id];
+      respostasSalvas.push({
+        perguntaId: p.id,
+        categoria: cat.label,
+        pergunta: p.texto,
+        gravidade: p.gravidade,
+        peso: p.peso,
+        resposta,
+        ...(detalhe?.observacao ? { observacao: detalhe.observacao } : {}),
+        ...(detalhe?.foto ? { foto: detalhe.foto } : {}),
+        ...(detalhe?.resolvido !== undefined ? { resolvido: detalhe.resolvido } : {}),
+        ...(detalhe?.itens ? { itens: detalhe.itens } : {}),
+        ...(detalhe?.atribuidoTipo ? { atribuidoTipo: detalhe.atribuidoTipo } : {}),
+        ...(detalhe?.atribuidoNome ? { atribuidoNome: detalhe.atribuidoNome } : {}),
+        ...(detalhe?.atribuidoMatricula ? { atribuidoMatricula: detalhe.atribuidoMatricula } : {}),
+      });
+    }
+  }
+
+  if (editId) observacoes.remove(editId);
+  if (continuarId) observacoes.remove(continuarId);
+
+  observacoes.addChecklist({
+    auditagem: "GSTC",
+    matricula: session.employee.matricula,
+    observador: session.employee.nome,
+    base: base.value,
+    equipe: equipe.value.trim(),
+    membros: membros.value.filter((m) => m.nome.trim() || m.matricula.trim()).map((m) => ({
+      nome: m.nome.trim(),
+      matricula: m.matricula.trim(),
+    })),
+    fotosLocal: [...fotosLocal.value],
+    respostas: respostasSalvas,
+    data: new Date().toISOString(),
+    employee: session.employee,
+    status: "em_andamento",
+  });
+
+  LocalStorage.remove(draftKey);
+  clearChecklistDraft();
+
   $q.notify({
     type: "info",
-    icon: "mdi-content-save-outline",
-    message: "Progresso salvo neste aparelho. Você pode continuar depois.",
+    icon: "mdi-progress-clock",
+    message: "Checklist salvo como Em Andamento. Continue por Minhas Observações.",
     position: "top",
-    timeout: 3500,
+    timeout: 4000,
   });
   await router.replace({ name: "home" });
 }
@@ -1024,6 +1074,7 @@ async function onSubmit() {
   }
 
   if (editId) observacoes.remove(editId);
+  if (continuarId) observacoes.remove(continuarId);
 
   observacoes.addChecklist({
     auditagem: "GSTC",

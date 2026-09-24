@@ -396,10 +396,10 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { LocalStorage, useQuasar } from "quasar";
 import { useSessionStore } from "@/stores/session";
-import { useObservacoesStore } from "@/stores/observacoes";
+import { useObservacoesStore, isChecklist } from "@/stores/observacoes";
 import { basesOperacionais } from "@/data/checklist";
 import { equipesPorBase } from "@/data/equipes";
 import { employees } from "@/data/employees";
@@ -435,8 +435,11 @@ const props = defineProps<{
 
 const $q = useQuasar();
 const router = useRouter();
+const route = useRoute();
 const session = useSessionStore();
 const observacoes = useObservacoesStore();
+
+const continuarId = route.query.continuarId as string | undefined;
 
 const base = ref("");
 const equipe = ref("");
@@ -468,6 +471,34 @@ const fotosLocal = computed(() => [
 const evidenciasCompletas = computed(() => evidencias.value.every(Boolean));
 
 onMounted(() => {
+  if (continuarId) {
+    const existing = observacoes.items.find(o => o.id === continuarId);
+    if (existing && isChecklist(existing)) {
+      base.value = existing.base;
+      equipe.value = existing.equipe;
+      evidencias.value = [0, 1, 2].map(i => existing.fotosLocal[i] ?? null);
+      fotosGerais.value = existing.fotosLocal.slice(3);
+      const existingMembros = existing.membros.length > 0 ? existing.membros : [];
+      membros.value = [
+        ...existingMembros.map(m => ({ nome: m.nome, matricula: m.matricula })),
+        ...Array.from({ length: Math.max(0, 2 - existingMembros.length) }, () => ({ nome: "", matricula: "" })),
+      ];
+      for (const r of existing.respostas) {
+        respostas[r.perguntaId] = r.resposta as "conforme" | "nao_conforme";
+        if (r.resposta === "nao_conforme" && (r.observacao || r.foto)) {
+          detalhesMap[r.perguntaId] = {
+            observacao: r.observacao ?? "",
+            foto: r.foto ?? "",
+            resolvido: r.resolvido ?? false,
+            atribuidoTipo: r.atribuidoTipo ?? "equipe",
+            ...(r.atribuidoNome ? { atribuidoNome: r.atribuidoNome } : {}),
+            ...(r.atribuidoMatricula ? { atribuidoMatricula: r.atribuidoMatricula } : {}),
+          };
+        }
+      }
+    }
+    return;
+  }
   const saved = LocalStorage.getItem<{ evidencias: (string | null)[]; fotosGerais: string[] }>(draftKey);
   if (saved) {
     evidencias.value = [0, 1, 2].map(i => saved.evidencias?.[i] ?? null);
@@ -799,13 +830,60 @@ const isTestUser = computed(() => session.employee?.matricula === "12690");
 const required = (v: string) => isTestUser.value || !!v?.trim() || "Campo obrigatório";
 
 async function onConcluirMaisTarde() {
-  persistDraft();
+  if (!session.employee) return;
+
+  const respostasSalvas: RespostaSalva[] = [];
+  for (const cat of props.checklist) {
+    for (const p of cat.perguntas) {
+      const resposta = respostas[p.id];
+      if (!resposta) continue;
+      const detalhe = detalhesMap[p.id];
+      respostasSalvas.push({
+        perguntaId: p.id,
+        categoria: cat.label,
+        pergunta: p.texto,
+        gravidade: p.gravidade,
+        peso: p.peso,
+        resposta,
+        ...(detalhe?.observacao ? { observacao: detalhe.observacao } : {}),
+        ...(detalhe?.foto ? { foto: detalhe.foto } : {}),
+        ...(detalhe?.resolvido !== undefined ? { resolvido: detalhe.resolvido } : {}),
+        ...(detalhe?.itens ? { itens: detalhe.itens } : {}),
+        ...(detalhe?.atribuidoTipo ? { atribuidoTipo: detalhe.atribuidoTipo } : {}),
+        ...(detalhe?.atribuidoNome ? { atribuidoNome: detalhe.atribuidoNome } : {}),
+        ...(detalhe?.atribuidoMatricula ? { atribuidoMatricula: detalhe.atribuidoMatricula } : {}),
+      });
+    }
+  }
+
+  if (continuarId) observacoes.remove(continuarId);
+
+  observacoes.addChecklist({
+    auditagem: props.auditagem,
+    matricula: session.employee.matricula,
+    observador: session.employee.nome,
+    base: base.value,
+    equipe: equipe.value.trim(),
+    membros: membros.value.filter((m) => m.nome.trim() || m.matricula.trim()).map((m) => ({
+      nome: m.nome.trim(),
+      matricula: m.matricula.trim(),
+    })),
+    fotosLocal: [...fotosLocal.value],
+    respostas: respostasSalvas,
+    data: new Date().toISOString(),
+    employee: session.employee,
+    status: "em_andamento",
+  });
+
+  LocalStorage.remove(draftKey);
+  clearChecklistDraft();
+
   $q.notify({
     type: "info",
-    icon: "mdi-content-save-outline",
-    message: "Progresso salvo neste aparelho. Você pode continuar depois.",
+    icon: "mdi-progress-clock",
+    message: "Checklist salvo como Em Andamento. Continue por Minhas Observações.",
     position: "top",
-    timeout: 3500,
+    timeout: 4000,
   });
   await router.replace({ name: "home" });
 }
@@ -849,6 +927,8 @@ async function onSubmit() {
       });
     }
   }
+
+  if (continuarId) observacoes.remove(continuarId);
 
   observacoes.addChecklist({
     auditagem: props.auditagem,

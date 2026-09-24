@@ -256,12 +256,15 @@ export const useObservacoesStore = defineStore("observacoes", {
       respostas: RespostaSalva[];
       data: string;
       employee: Employee;
+      status?: "finalizado" | "em_andamento";
     }) {
       const resumo: ChecklistResumo = {
         total: payload.respostas.length,
         conformes: payload.respostas.filter((r) => r.resposta === "conforme").length,
         naoConformes: payload.respostas.filter((r) => r.resposta === "nao_conforme").length,
       };
+
+      const emAndamento = payload.status === "em_andamento";
 
       const entry: ObservacaoChecklist = {
         id: crypto.randomUUID(),
@@ -275,13 +278,14 @@ export const useObservacoesStore = defineStore("observacoes", {
         fotosLocal: payload.fotosLocal,
         respostas: payload.respostas,
         resumo,
-        syncStatus: isSupabaseSyncEnabled() ? "pending" : undefined,
+        syncStatus: (!emAndamento && isSupabaseSyncEnabled()) ? "pending" : undefined,
+        status: payload.status,
       };
 
       this.items.unshift(entry);
       this.persist();
 
-      if (isSupabaseSyncEnabled()) {
+      if (!emAndamento && isSupabaseSyncEnabled()) {
         void syncChecklistToRemote(entry, payload.employee)
           .then(async ({ failedPhotos }) => {
             entry.syncStatus = "synced";

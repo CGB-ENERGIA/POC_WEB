@@ -253,7 +253,7 @@
 import { computed, ref, watch, onMounted } from "vue";
 import { LocalStorage } from "quasar";
 import { useSessionStore } from "@/stores/session";
-import { useObservacoesStore } from "@/stores/observacoes";
+import { useObservacoesStore, isChecklist } from "@/stores/observacoes";
 import { useGaleriaStore } from "@/stores/galeria";
 import { totalPerguntasGoman } from "@/data/goman-checklist";
 import { totalPerguntasGstc } from "@/data/gstc-checklist";
@@ -281,12 +281,19 @@ const { getGoal, ensureLoaded } = useGoals();
 const galeriaTotal = computed(() => galeriaStore.total);
 
 const matriculaAtual    = computed(() => session.employee?.matricula ?? "");
-const draftGoman        = computed(() => hasChecklistDraft("GOMAN",        matriculaAtual.value));
-const draftGstc         = computed(() => hasChecklistDraft("GSTC",         matriculaAtual.value));
-const draftAdministrativo = computed(() => hasChecklistDraft("ADMINISTRATIVO", matriculaAtual.value));
-const draftAlojamento   = computed(() => hasChecklistDraft("ALOJAMENTO",   matriculaAtual.value));
-const draftLogistica    = computed(() => hasChecklistDraft("LOGISTICA",    matriculaAtual.value));
-const draftOficina      = computed(() => hasChecklistDraft("OFICINA",      matriculaAtual.value));
+
+function temEmAndamento(auditagem: string) {
+  return observacoes.items.some(
+    o => isChecklist(o) && o.auditagem === auditagem && o.matricula === matriculaAtual.value && o.status === "em_andamento"
+  );
+}
+
+const draftGoman        = computed(() => hasChecklistDraft("GOMAN",        matriculaAtual.value) || temEmAndamento("GOMAN"));
+const draftGstc         = computed(() => hasChecklistDraft("GSTC",         matriculaAtual.value) || temEmAndamento("GSTC"));
+const draftAdministrativo = computed(() => hasChecklistDraft("ADMINISTRATIVO", matriculaAtual.value) || temEmAndamento("ADMINISTRATIVO"));
+const draftAlojamento   = computed(() => hasChecklistDraft("ALOJAMENTO",   matriculaAtual.value) || temEmAndamento("ALOJAMENTO"));
+const draftLogistica    = computed(() => hasChecklistDraft("LOGISTICA",    matriculaAtual.value) || temEmAndamento("LOGISTICA"));
+const draftOficina      = computed(() => hasChecklistDraft("OFICINA",      matriculaAtual.value) || temEmAndamento("OFICINA"));
 
 watch(periodo, (val) => LocalStorage.set(PERIODO_VISAO_STORAGE_KEY, val));
 

@@ -30,4 +30,5 @@ export interface ObservacaoChecklist {
   analiseStatus?: "aprovado" | "reprovado" | "pendente";
   analiseMotivo?: string | null;
   analisadoPor?: string | null;
+  status?: "finalizado" | "em_andamento";
 }

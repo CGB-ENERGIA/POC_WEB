@@ -37,6 +37,13 @@
                 <q-badge outline color="grey-6" :label="obs.base" />
                 <span class="text-caption text-grey-5">{{ formatDate(obs.data) }}</span>
                 <q-badge
+                  v-if="obs.status === 'em_andamento'"
+                  color="orange"
+                  icon="mdi-progress-clock"
+                  label="Em andamento"
+                />
+                <q-badge
+                  v-else
                   :color="syncColor(obs)"
                   :label="syncLabel(obs)"
                   :icon="syncIcon(obs)"
@@ -107,31 +114,44 @@
 
               <!-- ações -->
               <div class="row q-gutter-sm q-mt-md">
-                <q-btn
-                  v-if="obs.syncStatus !== 'synced' && obs.analiseStatus !== 'reprovado'"
-                  outline
-                  dense
-                  no-caps
-                  color="primary"
-                  icon="mdi-cloud-upload-outline"
-                  label="Reenviar"
-                  :loading="reenviando === obs.id"
-                  @click="reenviar(obs)"
-                />
-                <q-btn
-                  v-if="podeEditar(obs) && obs.analiseStatus !== 'reprovado'"
-                  outline
-                  dense
-                  no-caps
-                  color="grey-7"
-                  icon="mdi-pencil-outline"
-                  label="Editar"
-                  @click="editar(obs)"
-                />
-                <div v-else-if="obs.analiseStatus !== 'reprovado'" class="text-caption text-grey-5 row items-center">
-                  <q-icon name="mdi-lock-outline" size="14px" class="q-mr-xs" />
-                  Edição disponível só até 24h após o envio
-                </div>
+                <template v-if="obs.status === 'em_andamento'">
+                  <q-btn
+                    unelevated
+                    dense
+                    no-caps
+                    color="orange"
+                    icon="mdi-play-circle-outline"
+                    label="Continuar"
+                    @click="continuar(obs)"
+                  />
+                </template>
+                <template v-else>
+                  <q-btn
+                    v-if="obs.syncStatus !== 'synced' && obs.analiseStatus !== 'reprovado'"
+                    outline
+                    dense
+                    no-caps
+                    color="primary"
+                    icon="mdi-cloud-upload-outline"
+                    label="Reenviar"
+                    :loading="reenviando === obs.id"
+                    @click="reenviar(obs)"
+                  />
+                  <q-btn
+                    v-if="podeEditar(obs) && obs.analiseStatus !== 'reprovado'"
+                    outline
+                    dense
+                    no-caps
+                    color="grey-7"
+                    icon="mdi-pencil-outline"
+                    label="Editar"
+                    @click="editar(obs)"
+                  />
+                  <div v-else-if="obs.analiseStatus !== 'reprovado'" class="text-caption text-grey-5 row items-center">
+                    <q-icon name="mdi-lock-outline" size="14px" class="q-mr-xs" />
+                    Edição disponível só até 24h após o envio
+                  </div>
+                </template>
               </div>
             </div>
           </div>
@@ -272,6 +292,20 @@ function podeEditar(obs: ObservacaoChecklist): boolean {
 function editar(obs: ObservacaoChecklist) {
   const name = obs.auditagem === "GOMAN" ? "checklist-goman" : "checklist-gstc";
   router.push({ name, query: { editId: obs.id } });
+}
+
+const AUDITAGEM_ROTA: Record<string, string> = {
+  GOMAN: "checklist-goman",
+  GSTC: "checklist-gstc",
+  ADMINISTRATIVO: "checklist-administrativo",
+  ALOJAMENTO: "checklist-alojamento",
+  LOGISTICA: "checklist-logistica",
+  OFICINA: "checklist-oficina",
+};
+
+function continuar(obs: ObservacaoChecklist) {
+  const name = AUDITAGEM_ROTA[obs.auditagem];
+  if (name) router.push({ name, query: { continuarId: obs.id } });
 }
 
 function naoConformidades(obs: ObservacaoChecklist): RespostaSalva[] {
