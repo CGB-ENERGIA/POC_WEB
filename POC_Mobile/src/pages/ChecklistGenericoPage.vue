@@ -151,7 +151,6 @@
                   <div class="text-body2 pergunta-texto">{{ pergunta.texto }}</div>
                   <div class="row q-gutter-xs q-mt-xs">
                     <q-badge :color="gravidadeColor(pergunta.gravidade)" :label="pergunta.gravidade" />
-                    <q-badge outline color="grey-5" :label="`Peso ${pergunta.peso}`" />
                   </div>
                 </div>
               </div>

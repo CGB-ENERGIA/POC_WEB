@@ -202,7 +202,6 @@
                       :color="gravidadeColor(pergunta.gravidade)"
                       :label="pergunta.gravidade"
                     />
-                    <q-badge outline color="grey-5" :label="`Peso ${pergunta.peso}`" />
                   </div>
                 </div>
               </div>
