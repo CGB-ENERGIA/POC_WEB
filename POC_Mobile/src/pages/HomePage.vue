@@ -414,9 +414,10 @@ const metaProgress = computed(() => {
   border-radius: 20px;
   padding: 18px 18px 16px;
   margin-bottom: 16px;
-  background: linear-gradient(135deg, var(--brand-warm) 0%, var(--brand) 45%, var(--brand-deep) 100%);
-  color: #fff;
-  box-shadow: 0 10px 32px rgba(var(--brand-rgb), .28);
+  /* !important garante que nenhum CSS do Quasar ou layout sobreponha o gradiente */
+  background: linear-gradient(135deg, #8b1b30 0%, #7a1225 45%, #5c0e1c 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 10px 32px rgba(122, 18, 37, .28);
 }
 
 .hp-banner__top {
@@ -506,7 +507,7 @@ const metaProgress = computed(() => {
 }
 .hp-period__btn--on {
   background: #fff;
-  color: var(--brand);
+  color: #7a1225 !important; /* hardcode: herança de color:#fff do banner ocultava o texto */
   box-shadow: 0 2px 8px rgba(0,0,0,.18);
 }
 
