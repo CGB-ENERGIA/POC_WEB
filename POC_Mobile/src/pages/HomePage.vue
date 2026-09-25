@@ -10,13 +10,16 @@
           <q-icon name="mdi-shield-check" size="12px" />
           {{ session.auditagemLabel }}
         </span>
+        <span v-if="isOffline" class="hp-offline-badge">
+          <q-icon name="mdi-wifi-off" size="12px" />
+          Sem conexão
+        </span>
       </div>
 
       <div class="hp-banner__body">
         <div class="hp-banner__left">
           <div class="hp-banner__name">{{ saudacao }}, {{ nomeExibicao }}!</div>
           <div class="hp-banner__sub">
-            {{ session.matricula }} &nbsp;·&nbsp;
             Meta: <strong>{{ metaAtual }}</strong> {{ periodoLabel === 'semana' ? 'obs/sem' : 'obs/mês' }}
           </div>
           <div class="hp-period">
@@ -45,19 +48,30 @@
             <span class="hp-ring-pct">{{ metaProgress }}%</span>
           </q-circular-progress>
           <div class="hp-ring-label">
-            <div class="hp-ring-count">{{ totalPeriodo }} {{ periodo === 'semana' ? 'esta sem.' : 'este mês' }}</div>
+            <div class="hp-ring-count">
+              {{ totalPeriodo }} {{ periodo === 'semana' ? 'esta sem.' : 'este mês' }}
+              <span v-if="syncLoading" class="hp-sync-dot" aria-hidden="true" />
+            </div>
             <div class="hp-ring-total">{{ totalGeral }} no total</div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ═══════════════════════════════════════════
-         SEÇÃO DE AÇÕES
-    ════════════════════════════════════════════ -->
-    <div class="hp-section-label">O que deseja fazer?</div>
-
     <div class="hp-grid">
+
+      <!-- ── ACESSO RÁPIDO ──────────────────────── -->
+      <button class="hp-quick" @click="$router.push({ name: acaoRapida.route })">
+        <div class="hp-quick__icon">
+          <q-icon :name="acaoRapida.icon" size="22px" color="white" />
+        </div>
+        <div class="hp-quick__body">
+          <div class="hp-quick__title">{{ acaoRapida.label }}</div>
+          <div class="hp-quick__sub">{{ acaoRapida.sub }}</div>
+        </div>
+        <span v-if="acaoRapida.hasDraft" class="hp-quick__chip">em andamento</span>
+        <q-icon name="mdi-arrow-right" size="20px" color="grey-5" />
+      </button>
 
       <!-- ── OPERACIONAL ────────────────────────── -->
       <div class="hp-group" :class="{ 'hp-group--open': operacionalAberto }">
@@ -67,7 +81,7 @@
           </div>
           <div class="hp-group__info">
             <div class="hp-group__title">Operacional</div>
-            <div class="hp-group__sub">GOMAN · GSTC · GERE</div>
+            <div class="hp-group__sub">GOMAN · GSTC/GERE</div>
           </div>
           <q-icon
             name="mdi-chevron-down"
@@ -81,7 +95,6 @@
           <div v-if="operacionalAberto" class="hp-items">
 
             <button class="hp-item" @click="$router.push({ name: 'checklist-goman' })">
-              <div class="hp-item__dot" />
               <div class="hp-item__body">
                 <div class="hp-item__label">
                   <q-icon name="mdi-wrench-outline" size="15px" class="q-mr-xs" />
@@ -96,7 +109,6 @@
             <div class="hp-item-sep" />
 
             <button class="hp-item" @click="$router.push({ name: 'checklist-gstc' })">
-              <div class="hp-item__dot" />
               <div class="hp-item__body">
                 <div class="hp-item__label">
                   <q-icon name="mdi-crane" size="15px" class="q-mr-xs" />
@@ -134,7 +146,6 @@
           <div v-if="administrativoAberto" class="hp-items">
 
             <button class="hp-item" @click="$router.push({ name: 'checklist-administrativo' })">
-              <div class="hp-item__dot" />
               <div class="hp-item__body">
                 <div class="hp-item__label">
                   <q-icon name="mdi-domain" size="15px" class="q-mr-xs" />
@@ -149,7 +160,6 @@
             <div class="hp-item-sep" />
 
             <button class="hp-item" @click="$router.push({ name: 'checklist-alojamento' })">
-              <div class="hp-item__dot" />
               <div class="hp-item__body">
                 <div class="hp-item__label">
                   <q-icon name="mdi-home-outline" size="15px" class="q-mr-xs" />
@@ -164,7 +174,6 @@
             <div class="hp-item-sep" />
 
             <button class="hp-item" @click="$router.push({ name: 'checklist-logistica' })">
-              <div class="hp-item__dot" />
               <div class="hp-item__body">
                 <div class="hp-item__label">
                   <q-icon name="mdi-truck-outline" size="15px" class="q-mr-xs" />
@@ -179,7 +188,6 @@
             <div class="hp-item-sep" />
 
             <button class="hp-item" @click="$router.push({ name: 'checklist-oficina' })">
-              <div class="hp-item__dot" />
               <div class="hp-item__body">
                 <div class="hp-item__label">
                   <q-icon name="mdi-car-wrench" size="15px" class="q-mr-xs" />
@@ -198,11 +206,11 @@
       <!-- ── CÂMERA ─────────────────────────────── -->
       <button class="hp-cam" @click="cameraAberta = true">
         <div class="hp-cam__icon">
-          <q-icon name="mdi-camera-plus" size="22px" color="white" />
+          <q-icon name="mdi-camera-plus" size="22px" color="primary" />
         </div>
         <div class="hp-cam__body">
           <div class="hp-cam__title">Câmera</div>
-          <div class="hp-cam__sub">Registrar com timestamp</div>
+          <div class="hp-cam__sub">Registrar com data e hora</div>
         </div>
         <q-icon name="mdi-chevron-right" size="20px" color="grey-5" />
       </button>
@@ -250,8 +258,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from "vue";
-import { LocalStorage } from "quasar";
+import { computed, ref, watch, onMounted, onUnmounted } from "vue";
+import { LocalStorage, Notify } from "quasar";
 import { useSessionStore } from "@/stores/session";
 import { useObservacoesStore, isChecklist } from "@/stores/observacoes";
 import { useGaleriaStore } from "@/stores/galeria";
@@ -276,11 +284,15 @@ const periodo      = ref<PeriodoVisao>(loadPeriodoSalvo());
 const operacionalAberto    = ref(false);
 const administrativoAberto = ref(false);
 const cameraAberta = ref(false);
+const syncLoading  = ref(false);
+const isOffline    = ref(!navigator.onLine);
 const { getGoal, ensureLoaded } = useGoals();
+
+function updateOnlineStatus() { isOffline.value = !navigator.onLine; }
 
 const galeriaTotal = computed(() => galeriaStore.total);
 
-const matriculaAtual    = computed(() => session.employee?.matricula ?? "");
+const matriculaAtual = computed(() => session.employee?.matricula ?? "");
 
 function temEmAndamento(auditagem: string) {
   return observacoes.items.some(
@@ -288,21 +300,61 @@ function temEmAndamento(auditagem: string) {
   );
 }
 
-const draftGoman        = computed(() => hasChecklistDraft("GOMAN",        matriculaAtual.value) || temEmAndamento("GOMAN"));
-const draftGstc         = computed(() => hasChecklistDraft("GSTC",         matriculaAtual.value) || temEmAndamento("GSTC"));
+const draftGoman          = computed(() => hasChecklistDraft("GOMAN",          matriculaAtual.value) || temEmAndamento("GOMAN"));
+const draftGstc           = computed(() => hasChecklistDraft("GSTC",           matriculaAtual.value) || temEmAndamento("GSTC"));
 const draftAdministrativo = computed(() => hasChecklistDraft("ADMINISTRATIVO", matriculaAtual.value) || temEmAndamento("ADMINISTRATIVO"));
-const draftAlojamento   = computed(() => hasChecklistDraft("ALOJAMENTO",   matriculaAtual.value) || temEmAndamento("ALOJAMENTO"));
-const draftLogistica    = computed(() => hasChecklistDraft("LOGISTICA",    matriculaAtual.value) || temEmAndamento("LOGISTICA"));
-const draftOficina      = computed(() => hasChecklistDraft("OFICINA",      matriculaAtual.value) || temEmAndamento("OFICINA"));
+const draftAlojamento     = computed(() => hasChecklistDraft("ALOJAMENTO",     matriculaAtual.value) || temEmAndamento("ALOJAMENTO"));
+const draftLogistica      = computed(() => hasChecklistDraft("LOGISTICA",      matriculaAtual.value) || temEmAndamento("LOGISTICA"));
+const draftOficina        = computed(() => hasChecklistDraft("OFICINA",        matriculaAtual.value) || temEmAndamento("OFICINA"));
+
+const acaoRapida = computed(() => {
+  if (draftGoman.value)
+    return { route: "checklist-goman" as const, label: "Continuar GOMAN", sub: "Rascunho em andamento", icon: "mdi-wrench-outline", hasDraft: true };
+  if (draftGstc.value)
+    return { route: "checklist-gstc" as const, label: "Continuar GSTC/GERE", sub: "Rascunho em andamento", icon: "mdi-crane", hasDraft: true };
+  if (draftAdministrativo.value)
+    return { route: "checklist-administrativo" as const, label: "Continuar Administrativo", sub: "Rascunho em andamento", icon: "mdi-domain", hasDraft: true };
+  if (draftAlojamento.value)
+    return { route: "checklist-alojamento" as const, label: "Continuar Alojamento", sub: "Rascunho em andamento", icon: "mdi-home-outline", hasDraft: true };
+  if (draftLogistica.value)
+    return { route: "checklist-logistica" as const, label: "Continuar Logística", sub: "Rascunho em andamento", icon: "mdi-truck-outline", hasDraft: true };
+  if (draftOficina.value)
+    return { route: "checklist-oficina" as const, label: "Continuar Oficina", sub: "Rascunho em andamento", icon: "mdi-car-wrench", hasDraft: true };
+  return { route: "checklist-goman" as const, label: "Iniciar GOMAN", sub: "Checklist operacional principal", icon: "mdi-wrench-outline", hasDraft: false };
+});
 
 watch(periodo, (val) => LocalStorage.set(PERIODO_VISAO_STORAGE_KEY, val));
 
 onMounted(() => {
+  window.addEventListener("online",  updateOnlineStatus);
+  window.addEventListener("offline", updateOnlineStatus);
+
   void ensureLoaded();
-  if (session.matricula) void observacoes.fetchSynced(session.matricula);
+
+  if (session.matricula) {
+    syncLoading.value = true;
+    void observacoes.fetchSynced(session.matricula)
+      .catch(() => {
+        Notify.create({
+          type: "warning",
+          icon: "mdi-wifi-off",
+          message: "Não foi possível atualizar as observações. Verifique a conexão.",
+          position: "top",
+          timeout: 5000,
+        });
+      })
+      .finally(() => { syncLoading.value = false; });
+  }
+
   void galeriaStore.carregar();
-  if (draftGoman.value || draftGstc.value)                                          operacionalAberto.value    = true;
-  if (draftAdministrativo.value || draftAlojamento.value || draftLogistica.value || draftOficina.value) administrativoAberto.value = true;
+
+  if (draftGoman.value || draftGstc.value)                                                                      operacionalAberto.value    = true;
+  if (draftAdministrativo.value || draftAlojamento.value || draftLogistica.value || draftOficina.value)         administrativoAberto.value = true;
+});
+
+onUnmounted(() => {
+  window.removeEventListener("online",  updateOnlineStatus);
+  window.removeEventListener("offline", updateOnlineStatus);
 });
 
 const matricula = computed(() => session.matricula);
@@ -339,8 +391,11 @@ function isMesmaSemana(d: Date, r: Date) { return isMesmoMes(d, r) && semanaDoMe
 
 const totalMes    = computed(() => { const n = new Date(); return minhasObs.value.filter(o => isMesmoMes(new Date(o.data), n)).length; });
 const totalSemana = computed(() => { const n = new Date(); return minhasObs.value.filter(o => isMesmaSemana(new Date(o.data), n)).length; });
-const totalPeriodo  = computed(() => periodo.value === "semana" ? totalSemana.value : totalMes.value);
-const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.value / metaAtual.value) * 100)));
+const totalPeriodo = computed(() => periodo.value === "semana" ? totalSemana.value : totalMes.value);
+const metaProgress = computed(() => {
+  if (!metaAtual.value) return 0;
+  return Math.min(100, Math.round((totalPeriodo.value / metaAtual.value) * 100));
+});
 </script>
 
 <style scoped>
@@ -358,10 +413,18 @@ const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.valu
 .hp-banner {
   border-radius: 20px;
   padding: 18px 18px 16px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   background: linear-gradient(135deg, #8b1b30 0%, #7a1225 45%, #5c0e1c 100%);
   color: #fff;
   box-shadow: 0 10px 32px rgba(122, 18, 37, .28);
+}
+
+.hp-banner__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
 }
 
 .hp-badge {
@@ -376,7 +439,21 @@ const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.valu
   border: 1px solid rgba(255,255,255,.18);
   border-radius: 99px;
   padding: 3px 10px;
-  margin-bottom: 10px;
+}
+
+.hp-offline-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  background: rgba(0,0,0,.22);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 99px;
+  padding: 3px 10px;
+  color: rgba(255,255,255,.85);
 }
 
 .hp-banner__body {
@@ -392,14 +469,14 @@ const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.valu
   font-weight: 800;
   letter-spacing: -.02em;
   line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .hp-banner__sub {
   font-size: 12px;
   opacity: .8;
   margin-top: 3px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* Period toggle */
@@ -419,10 +496,13 @@ const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.valu
   color: rgba(255,255,255,.75);
   font-size: 12px;
   font-weight: 600;
-  padding: 4px 14px;
+  padding: 9px 16px;
   border-radius: 99px;
   cursor: pointer;
   transition: background .18s, color .18s, box-shadow .18s;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
 }
 .hp-period__btn--on {
   background: #fff;
@@ -433,19 +513,30 @@ const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.valu
 /* Ring */
 .hp-ring-pct { font-size: 12px; font-weight: 800; }
 .hp-ring-label { text-align: center; }
-.hp-ring-count { font-size: 11px; font-weight: 700; line-height: 1.2; }
+.hp-ring-count {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
 .hp-ring-total { font-size: 10px; opacity: .7; }
 
-/* ═══════════════════════════════════════════════════════════
-   SECTION LABEL
-════════════════════════════════════════════════════════════ */
-.hp-section-label {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  color: #94a3b8;
-  margin-bottom: 10px;
+/* Sync indicator dot */
+.hp-sync-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.65);
+  animation: hp-pulse 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes hp-pulse {
+  0%, 100% { opacity: .3; transform: scale(.8); }
+  50%       { opacity: 1;  transform: scale(1); }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -455,6 +546,50 @@ const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.valu
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ACESSO RÁPIDO
+════════════════════════════════════════════════════════════ */
+.hp-quick {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #fff;
+  border: 2px solid rgba(122,18,37,.18);
+  box-shadow: 0 2px 16px rgba(122,18,37,.1);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  -webkit-tap-highlight-color: transparent;
+  transition: box-shadow .18s;
+}
+.hp-quick:active { box-shadow: none; opacity: .85; }
+
+.hp-quick__icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: linear-gradient(135deg, #8b1b30, #7a1225);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(122,18,37,.22);
+}
+.hp-quick__body { flex: 1; min-width: 0; }
+.hp-quick__title { font-size: 15px; font-weight: 700; color: #0f172a; }
+.hp-quick__sub   { font-size: 11.5px; color: #64748b; margin-top: 2px; }
+
+.hp-quick__chip {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  background: rgba(122,18,37,.1);
+  color: #7a1225;
+  border-radius: 99px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -495,7 +630,8 @@ const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.valu
   box-shadow: 0 4px 12px rgba(122,18,37,.22);
 }
 .hp-group__icon--adm {
-  background: linear-gradient(135deg, #9b2035, #6d1020);
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  box-shadow: 0 4px 12px rgba(29,78,216,.22);
 }
 
 .hp-group__info { flex: 1; min-width: 0; }
@@ -507,7 +643,7 @@ const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.valu
 }
 .hp-group__sub {
   font-size: 11.5px;
-  color: #94a3b8;
+  color: #64748b;
   margin-top: 2px;
   white-space: nowrap;
   overflow: hidden;
@@ -529,7 +665,7 @@ const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.valu
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 11px 0;
+  padding: 12px 0;
   background: none;
   border: 0;
   cursor: pointer;
@@ -538,12 +674,6 @@ const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.valu
 }
 .hp-item:active { opacity: .7; }
 
-.hp-item__dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: #7a1225;
-  flex-shrink: 0;
-  opacity: .5;
-}
 .hp-item__body { flex: 1; min-width: 0; }
 .hp-item__label {
   display: flex;
@@ -557,7 +687,7 @@ const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.valu
 }
 .hp-item__cap {
   font-size: 11.5px;
-  color: #94a3b8;
+  color: #64748b;
   margin-top: 1px;
   white-space: nowrap;
   overflow: hidden;
@@ -591,6 +721,7 @@ const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.valu
   gap: 12px;
   padding: 14px 16px;
   border-radius: 16px;
+  background: #fff;
   border: 1px solid rgba(15,23,42,.07);
   box-shadow: 0 2px 12px rgba(15,23,42,.05);
   cursor: pointer;
@@ -602,17 +733,9 @@ const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.valu
 .hp-cam:active,
 .hp-gal:active { box-shadow: none; opacity: .85; }
 
-.hp-cam {
-  background: linear-gradient(135deg, #8b1b30, #7a1225);
-  border-color: transparent;
-}
-.hp-gal {
-  background: #fff;
-}
-
 .hp-cam__icon {
   width: 44px; height: 44px; border-radius: 12px;
-  background: rgba(255,255,255,.18);
+  background: rgba(122,18,37,.08);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -626,11 +749,11 @@ const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.valu
 .hp-cam__body,
 .hp-gal__body { flex: 1; min-width: 0; }
 
-.hp-cam__title { font-size: 15px; font-weight: 700; color: #fff; }
-.hp-cam__sub   { font-size: 11.5px; color: rgba(255,255,255,.75); margin-top: 2px; }
+.hp-cam__title { font-size: 15px; font-weight: 700; color: #0f172a; }
+.hp-cam__sub   { font-size: 11.5px; color: #64748b; margin-top: 2px; }
 
 .hp-gal__title { font-size: 15px; font-weight: 700; color: #0f172a; }
-.hp-gal__sub   { font-size: 11.5px; color: #94a3b8; margin-top: 2px; }
+.hp-gal__sub   { font-size: 11.5px; color: #64748b; margin-top: 2px; }
 
 .hp-gal__count {
   font-size: 18px;
@@ -669,7 +792,7 @@ const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.valu
 }
 .hp-solo__body { flex: 1; min-width: 0; }
 .hp-solo__title { font-size: 15px; font-weight: 700; color: #0f172a; }
-.hp-solo__sub   { font-size: 11.5px; color: #94a3b8; margin-top: 2px; }
+.hp-solo__sub   { font-size: 11.5px; color: #64748b; margin-top: 2px; }
 
 .hp-solo__count {
   font-size: 18px;
@@ -714,6 +837,9 @@ const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.valu
     gap: 14px;
   }
 
+  /* Acesso rápido ocupa as 2 colunas */
+  .hp-quick { grid-column: 1 / -1; }
+
   /* Grupos lado a lado */
   .hp-group { grid-column: auto; }
 
@@ -737,10 +863,16 @@ const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.valu
 :global(body.body--dark) {
   .hp-group,
   .hp-solo,
-  .hp-gal {
+  .hp-gal,
+  .hp-cam {
     background: #1e293b;
     border-color: rgba(148,163,184,.1);
     box-shadow: 0 2px 12px rgba(0,0,0,.22);
+  }
+  .hp-quick {
+    background: #1e293b;
+    border-color: rgba(122,18,37,.35);
+    box-shadow: 0 2px 16px rgba(0,0,0,.22);
   }
   .hp-group--open {
     border-color: rgba(196,33,58,.28);
@@ -748,12 +880,21 @@ const metaProgress  = computed(() => Math.min(100, Math.round((totalPeriodo.valu
   }
   .hp-group__title,
   .hp-solo__title,
-  .hp-gal__title   { color: #f1f5f9; }
+  .hp-gal__title,
+  .hp-cam__title,
+  .hp-quick__title { color: #f1f5f9; }
   .hp-item__label  { color: #e2e8f0; }
   .hp-item-sep     { background: rgba(148,163,184,.12); }
   .hp-solo__icon,
-  .hp-gal__icon    { background: rgba(122,18,37,.2); }
-  .hp-section-label { color: #475569; }
+  .hp-gal__icon,
+  .hp-cam__icon    { background: rgba(122,18,37,.2); }
   .hp-chevron      { color: #475569; }
+  .hp-group__sub,
+  .hp-solo__sub,
+  .hp-gal__sub,
+  .hp-cam__sub,
+  .hp-quick__sub,
+  .hp-item__cap    { color: #94a3b8; }
+  .hp-group__icon--adm { background: linear-gradient(135deg, #1d4ed8, #1e40af); }
 }
 </style>
