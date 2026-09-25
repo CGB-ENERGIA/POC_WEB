@@ -5,6 +5,40 @@ import type { ObservacaoChecklist } from "@/types/checklist";
 import { buildChecklistPhotoKey, uploadImageToR2 } from "@/services/r2-upload";
 import { uploadPhotoToStorage } from "@/services/supabase-storage";
 
+/** Salva o rascunho em_andamento no user_observations para sobreviver a limpeza de localStorage. */
+export async function syncEmAndamentoToRemote(entry: ObservacaoChecklist): Promise<void> {
+  if (!isSupabaseSyncEnabled() || !navigator.onLine) return;
+  const supabase = getSupabase();
+
+  // Respostas sem foto base64 (podem ser grandes demais para JSON)
+  const respostasSemFoto = entry.respostas.map(({ foto: _f, ...r }) => r);
+
+  await supabase.from("user_observations").upsert({
+    id: entry.id,
+    matricula: entry.matricula,
+    observador: entry.observador,
+    auditagem: entry.auditagem,
+    data: entry.data,
+    base: entry.base,
+    equipe: entry.equipe,
+    resumo: {
+      total: entry.resumo.total,
+      conformes: entry.resumo.conformes,
+      naoConformes: entry.resumo.naoConformes,
+      _rascunho: { membros: entry.membros, respostas: respostasSemFoto },
+    } as object,
+    sync_status: "em_andamento",
+    status: "pendente",
+  }, { onConflict: "id" });
+}
+
+/** Remove o rascunho do remote quando o checklist é finalizado ou descartado. */
+export async function deleteEmAndamentoFromRemote(id: string): Promise<void> {
+  if (!isSupabaseSyncEnabled() || !navigator.onLine) return;
+  const supabase = getSupabase();
+  await supabase.from("user_observations").delete().eq("id", id).eq("sync_status", "em_andamento");
+}
+
 export class ChecklistSyncError extends Error {
   constructor(message: string) {
     super(message);

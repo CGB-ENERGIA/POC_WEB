@@ -6,7 +6,7 @@ import type { Employee } from "@/data/employees";
 import type { ChecklistResumo, ObservacaoChecklist, RespostaSalva } from "@/types/checklist";
 import type { ItemVerificado } from "@/data/goman-checklist";
 import { appConfig, isRemoteSyncEnabled, isSupabaseSyncEnabled } from "@/lib/config";
-import { syncChecklistToRemote } from "@/services/checklist-sync";
+import { syncChecklistToRemote, syncEmAndamentoToRemote, deleteEmAndamentoFromRemote } from "@/services/checklist-sync";
 import { syncObservacaoLivreToRemote } from "@/services/observacao-sync";
 import { refreshServerTimeSync } from "@/utils/server-time";
 import { getSupabase } from "@/lib/supabase";
@@ -184,14 +184,53 @@ export const useObservacoesStore = defineStore("observacoes", {
       const supabase = getSupabase();
       const { data } = await supabase
         .from("user_observations")
-        .select("id,matricula,observador,auditagem,data,base,equipe,resumo,status,comentario_analise,analisado_por")
+        .select("id,matricula,observador,auditagem,data,base,equipe,resumo,status,sync_status,comentario_analise,analisado_por")
         .eq("matricula", matricula)
         .gt("expires_at", new Date().toISOString())
         .order("data", { ascending: false });
 
       if (!data) return;
-      const respostasPorItem = await fetchNaoConformesParaItens(data.map((row) => row.id));
-      this.syncedItems = data.map((row) => ({
+
+      // Restaura rascunhos em_andamento ao items local se o localStorage foi limpo
+      let persistNeeded = false;
+      for (const row of data) {
+        if ((row as { sync_status?: string }).sync_status !== "em_andamento") continue;
+        if (this.items.find((o) => o.id === row.id)) continue; // já existe localmente
+        const resumoRaw = row.resumo as unknown as {
+          total?: number; conformes?: number; naoConformes?: number;
+          _rascunho?: { membros?: { nome: string; matricula: string }[]; respostas?: RespostaSalva[] };
+        };
+        const rascunho = resumoRaw?._rascunho;
+        const restorado: ObservacaoChecklist = {
+          id: row.id,
+          matricula: row.matricula,
+          observador: row.observador,
+          auditagem: row.auditagem as AuditagemCategoria,
+          data: row.data,
+          base: row.base,
+          equipe: row.equipe,
+          membros: rascunho?.membros ?? [],
+          fotosLocal: [],
+          respostas: rascunho?.respostas ?? [],
+          resumo: {
+            total: resumoRaw?.total ?? 0,
+            conformes: resumoRaw?.conformes ?? 0,
+            naoConformes: resumoRaw?.naoConformes ?? 0,
+          },
+          syncStatus: undefined,
+          status: "em_andamento",
+        };
+        this.items.push(restorado);
+        persistNeeded = true;
+      }
+      if (persistNeeded) this.persist();
+
+      // Itens finalizados (excluindo rascunhos)
+      const finalizados = data.filter(
+        (row) => (row as { sync_status?: string }).sync_status !== "em_andamento"
+      );
+      const respostasPorItem = await fetchNaoConformesParaItens(finalizados.map((row) => row.id));
+      this.syncedItems = finalizados.map((row) => ({
         id: row.id,
         matricula: row.matricula,
         observador: row.observador,
@@ -285,7 +324,12 @@ export const useObservacoesStore = defineStore("observacoes", {
       this.items.unshift(entry);
       this.persist();
 
-      if (!emAndamento && isSupabaseSyncEnabled()) {
+      if (emAndamento) {
+        void syncEmAndamentoToRemote(entry).catch(() => {/* offline: ok */});
+        return entry;
+      }
+
+      if (isSupabaseSyncEnabled()) {
         void syncChecklistToRemote(entry, payload.employee)
           .then(async ({ failedPhotos }) => {
             entry.syncStatus = "synced";
@@ -315,8 +359,12 @@ export const useObservacoesStore = defineStore("observacoes", {
     },
 
     remove(id: string) {
+      const target = this.items.find((o) => o.id === id);
       this.items = this.items.filter((o) => o.id !== id);
       this.persist();
+      if (target && isChecklist(target) && target.status === "em_andamento") {
+        void deleteEmAndamentoFromRemote(id).catch(() => {});
+      }
     },
 
     getSyncStatus(item: ObservacaoChecklist): SyncStatus {
