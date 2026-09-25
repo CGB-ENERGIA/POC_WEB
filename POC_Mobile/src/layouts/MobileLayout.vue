@@ -20,6 +20,7 @@
             header
             show-text
             :title="title"
+            subtitle=""
             class="toolbar-title__brand"
           />
           <span v-else>{{ title }}</span>
@@ -79,8 +80,8 @@ const router = useRouter();
 const session = useSessionStore();
 
 const titles: Record<string, string> = {
-  identificacao:             "POC - CGB",
-  home:                      "Início",
+  identificacao:             "CGB POC",
+  home:                      "CGB POC",
   "nova-observacao":         "Nova Observação",
   "checklist-goman":         "Checklist GOMAN",
   "checklist-gstc":          "Checklist GSTC/GERE",

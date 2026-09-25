@@ -403,7 +403,7 @@ const metaProgress = computed(() => {
    PAGE
 ════════════════════════════════════════════════════════════ */
 .hp-page {
-  padding: 16px 16px 0;
+  padding: 10px 14px 0;
 }
 .hp-spacer { height: 24px; }
 
@@ -412,8 +412,8 @@ const metaProgress = computed(() => {
 ════════════════════════════════════════════════════════════ */
 .hp-banner {
   border-radius: 20px;
-  padding: 18px 18px 16px;
-  margin-bottom: 16px;
+  padding: 16px 16px 14px;
+  margin-bottom: 10px;
   /* !important garante que nenhum CSS do Quasar ou layout sobreponha o gradiente */
   background: linear-gradient(135deg, #8b1b30 0%, #7a1225 45%, #5c0e1c 100%) !important;
   color: #fff !important;
@@ -546,7 +546,7 @@ const metaProgress = computed(() => {
 .hp-grid {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -556,7 +556,7 @@ const metaProgress = computed(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-radius: 16px;
   background: #fff;
   border: 2px solid rgba(var(--brand-rgb),.18);
@@ -615,7 +615,7 @@ const metaProgress = computed(() => {
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 14px 16px;
+  padding: 12px 14px;
   background: none;
   border: 0;
   cursor: pointer;
@@ -722,7 +722,7 @@ const metaProgress = computed(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-radius: 16px;
   background: #fff;
   border: 1px solid rgba(15,23,42,.07);
@@ -773,7 +773,7 @@ const metaProgress = computed(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-radius: 16px;
   background: #fff;
   border: 1px solid rgba(15,23,42,.07);
@@ -855,8 +855,8 @@ const metaProgress = computed(() => {
   /* Minhas Obs ocupa as 2 colunas */
   .hp-solo { grid-column: 1 / -1; }
 
-  .hp-group__head { padding: 18px 20px; }
-  .hp-solo        { padding: 18px 20px; }
+  .hp-group__head { padding: 14px 18px; }
+  .hp-solo        { padding: 14px 18px; }
   .hp-group__title,
   .hp-solo__title  { font-size: 16px; }
   .hp-items { padding: 0 20px 14px; }
