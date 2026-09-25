@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <q-dialog v-model="isOpen" maximized transition-show="slide-up" transition-hide="slide-down">
     <div class="gp-root">
 
@@ -150,7 +150,7 @@ function formatarHora(iso: string): string {
   justify-content: space-between;
   padding: 14px 16px;
   padding-top: max(14px, env(safe-area-inset-top));
-  background: #7a1225;
+  background: var(--brand);
   flex-shrink: 0;
 }
 .gp-header__title { font-size: 16px; font-weight: 700; }
@@ -198,7 +198,7 @@ function formatarHora(iso: string): string {
   border: 2.5px solid transparent;
   transition: border-color .15s;
 }
-.gp-thumb--sel { border-color: #c4213a; }
+.gp-thumb--sel { border-color: var(--brand-accent); }
 .gp-thumb__img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .gp-thumb__time {
   position: absolute;
@@ -211,7 +211,7 @@ function formatarHora(iso: string): string {
 }
 .gp-thumb__check {
   position: absolute; inset: 0;
-  background: rgba(122,18,37,.45);
+  background: rgba(var(--brand-rgb),.45);
   display: flex; align-items: center; justify-content: center;
 }
 

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <q-page class="hp-page mobile-page">
 
     <!-- ═══════════════════════════════════════════
@@ -414,9 +414,9 @@ const metaProgress = computed(() => {
   border-radius: 20px;
   padding: 18px 18px 16px;
   margin-bottom: 16px;
-  background: linear-gradient(135deg, #8b1b30 0%, #7a1225 45%, #5c0e1c 100%);
+  background: linear-gradient(135deg, var(--brand-warm) 0%, var(--brand) 45%, var(--brand-deep) 100%);
   color: #fff;
-  box-shadow: 0 10px 32px rgba(122, 18, 37, .28);
+  box-shadow: 0 10px 32px rgba(var(--brand-rgb), .28);
 }
 
 .hp-banner__top {
@@ -506,7 +506,7 @@ const metaProgress = computed(() => {
 }
 .hp-period__btn--on {
   background: #fff;
-  color: #7a1225;
+  color: var(--brand);
   box-shadow: 0 2px 8px rgba(0,0,0,.18);
 }
 
@@ -558,8 +558,8 @@ const metaProgress = computed(() => {
   padding: 14px 16px;
   border-radius: 16px;
   background: #fff;
-  border: 2px solid rgba(122,18,37,.18);
-  box-shadow: 0 2px 16px rgba(122,18,37,.1);
+  border: 2px solid rgba(var(--brand-rgb),.18);
+  box-shadow: 0 2px 16px rgba(var(--brand-rgb),.1);
   cursor: pointer;
   text-align: left;
   width: 100%;
@@ -570,10 +570,10 @@ const metaProgress = computed(() => {
 
 .hp-quick__icon {
   width: 44px; height: 44px; border-radius: 12px;
-  background: linear-gradient(135deg, #8b1b30, #7a1225);
+  background: linear-gradient(135deg, var(--brand-warm), var(--brand));
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(122,18,37,.22);
+  box-shadow: 0 4px 12px rgba(var(--brand-rgb),.22);
 }
 .hp-quick__body { flex: 1; min-width: 0; }
 .hp-quick__title { font-size: 15px; font-weight: 700; color: #0f172a; }
@@ -584,8 +584,8 @@ const metaProgress = computed(() => {
   font-weight: 700;
   letter-spacing: .04em;
   text-transform: uppercase;
-  background: rgba(122,18,37,.1);
-  color: #7a1225;
+  background: rgba(var(--brand-rgb),.1);
+  color: var(--brand);
   border-radius: 99px;
   padding: 2px 8px;
   white-space: nowrap;
@@ -604,8 +604,8 @@ const metaProgress = computed(() => {
   transition: box-shadow .18s;
 }
 .hp-group--open {
-  box-shadow: 0 4px 20px rgba(122,18,37,.1);
-  border-color: rgba(122,18,37,.15);
+  box-shadow: 0 4px 20px rgba(var(--brand-rgb),.1);
+  border-color: rgba(var(--brand-rgb),.15);
 }
 
 .hp-group__head {
@@ -624,10 +624,10 @@ const metaProgress = computed(() => {
 
 .hp-group__icon {
   width: 44px; height: 44px; border-radius: 12px;
-  background: linear-gradient(135deg, #8b1b30, #7a1225);
+  background: linear-gradient(135deg, var(--brand-warm), var(--brand));
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(122,18,37,.22);
+  box-shadow: 0 4px 12px rgba(var(--brand-rgb),.22);
 }
 .hp-group__icon--adm {
   background: linear-gradient(135deg, #1d4ed8, #1e40af);
@@ -655,7 +655,7 @@ const metaProgress = computed(() => {
   transition: transform .22s cubic-bezier(.4,0,.2,1);
   flex-shrink: 0;
 }
-.hp-chevron--open { transform: rotate(180deg); color: #7a1225; }
+.hp-chevron--open { transform: rotate(180deg); color: var(--brand); }
 
 /* ── Items dentro do grupo ── */
 .hp-items { padding: 0 16px 12px; }
@@ -699,8 +699,8 @@ const metaProgress = computed(() => {
   font-weight: 700;
   letter-spacing: .04em;
   text-transform: uppercase;
-  background: rgba(122,18,37,.1);
-  color: #7a1225;
+  background: rgba(var(--brand-rgb),.1);
+  color: var(--brand);
   border-radius: 99px;
   padding: 1px 7px;
 }
@@ -735,13 +735,13 @@ const metaProgress = computed(() => {
 
 .hp-cam__icon {
   width: 44px; height: 44px; border-radius: 12px;
-  background: rgba(122,18,37,.08);
+  background: rgba(var(--brand-rgb),.08);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
 .hp-gal__icon {
   width: 44px; height: 44px; border-radius: 12px;
-  background: rgba(122,18,37,.08);
+  background: rgba(var(--brand-rgb),.08);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -758,7 +758,7 @@ const metaProgress = computed(() => {
 .hp-gal__count {
   font-size: 18px;
   font-weight: 800;
-  color: #7a1225;
+  color: var(--brand);
   min-width: 28px;
   text-align: right;
   flex-shrink: 0;
@@ -786,7 +786,7 @@ const metaProgress = computed(() => {
 
 .hp-solo__icon {
   width: 44px; height: 44px; border-radius: 12px;
-  background: rgba(122,18,37,.08);
+  background: rgba(var(--brand-rgb),.08);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -797,7 +797,7 @@ const metaProgress = computed(() => {
 .hp-solo__count {
   font-size: 18px;
   font-weight: 800;
-  color: #7a1225;
+  color: var(--brand);
   min-width: 28px;
   text-align: right;
   flex-shrink: 0;
@@ -871,11 +871,11 @@ const metaProgress = computed(() => {
   }
   .hp-quick {
     background: #1e293b;
-    border-color: rgba(122,18,37,.35);
+    border-color: rgba(var(--brand-rgb),.35);
     box-shadow: 0 2px 16px rgba(0,0,0,.22);
   }
   .hp-group--open {
-    border-color: rgba(196,33,58,.28);
+    border-color: rgba(var(--brand-accent-rgb),.28);
     box-shadow: 0 4px 20px rgba(0,0,0,.3);
   }
   .hp-group__title,
@@ -887,7 +887,7 @@ const metaProgress = computed(() => {
   .hp-item-sep     { background: rgba(148,163,184,.12); }
   .hp-solo__icon,
   .hp-gal__icon,
-  .hp-cam__icon    { background: rgba(122,18,37,.2); }
+  .hp-cam__icon    { background: rgba(var(--brand-rgb),.2); }
   .hp-chevron      { color: #475569; }
   .hp-group__sub,
   .hp-solo__sub,

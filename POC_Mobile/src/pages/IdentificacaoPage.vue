@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <q-page
     class="hero-surface ip-page"
     :class="{ 'ip--compact': isCompact, 'ip--tablet': isTablet }"
@@ -495,9 +495,9 @@ function voltarChoice() { step.value = "ident"; scanErro.value = null; }
     align-items: center;
     justify-content: center;
     background:
-      radial-gradient(ellipse at 30% 20%, rgba(196,33,58,.35) 0%, transparent 55%),
+      radial-gradient(ellipse at 30% 20%, rgba(var(--brand-accent-rgb),.35) 0%, transparent 55%),
       radial-gradient(ellipse at 80% 80%, rgba(92,14,28,.5) 0%, transparent 50%),
-      linear-gradient(145deg, #7a1225 0%, #5c0e1c 50%, #3d0912 100%);
+      linear-gradient(145deg, var(--brand) 0%, var(--brand-deep) 50%, var(--brand-darkest) 100%);
     position: relative;
     overflow: hidden;
     padding: 48px 40px;

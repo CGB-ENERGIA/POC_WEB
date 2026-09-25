@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <q-page class="gl-page mobile-page">
 
     <!-- ── INFO BAR ───────────────────────────────────── -->
@@ -289,7 +289,7 @@ const tamanhoFormatado = computed(() => {
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  background: #7a1225;
+  background: var(--brand);
   color: #fff;
   border: 0;
   border-radius: 99px;
@@ -297,7 +297,7 @@ const tamanhoFormatado = computed(() => {
   font-weight: 600;
   cursor: pointer;
 }
-.gl-btn-cam:active { background: #5c0e1c; }
+.gl-btn-cam:active { background: var(--brand-deep); }
 
 /* ── Empty ───────────────────────────────────────────── */
 .gl-empty {
@@ -316,7 +316,7 @@ const tamanhoFormatado = computed(() => {
   display: flex; align-items: center; gap: 8px;
   margin-top: 8px;
   padding: 12px 24px;
-  background: #7a1225; color: #fff;
+  background: var(--brand); color: #fff;
   border: 0; border-radius: 99px;
   font-size: 14px; font-weight: 700;
   cursor: pointer;
@@ -342,8 +342,8 @@ const tamanhoFormatado = computed(() => {
 .gl-group__count {
   font-size: 12px;
   font-weight: 700;
-  background: rgba(122,18,37,.1);
-  color: #7a1225;
+  background: rgba(var(--brand-rgb),.1);
+  color: var(--brand);
   padding: 2px 9px;
   border-radius: 99px;
 }

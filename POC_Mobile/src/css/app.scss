@@ -1,3 +1,13 @@
+﻿:root {
+  --brand:            #7a1225;
+  --brand-warm:       #8b1b30;
+  --brand-deep:       #5c0e1c;
+  --brand-darkest:    #3d0912;
+  --brand-accent:     #c4213a;
+  --brand-rgb:        122, 18, 37;
+  --brand-accent-rgb: 196, 33, 58;
+}
+
 html,
 body {
   overscroll-behavior: none;
@@ -28,7 +38,7 @@ body {
 }
 
 .mobile-header {
-  background: linear-gradient(135deg, #7a1225 0%, #5c0e1c 55%, #3d0912 100%);
+  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 55%, var(--brand-darkest) 100%);
   color: #fff;
 }
 
@@ -85,8 +95,8 @@ body {
 
 .employee-chip {
   border-radius: 16px;
-  background: linear-gradient(135deg, rgba(122, 18, 37, 0.06), rgba(196, 33, 58, 0.04));
-  border: 1px solid rgba(122, 18, 37, 0.12);
+  background: linear-gradient(135deg, rgba(var(--brand-rgb), 0.06), rgba(var(--brand-accent-rgb), 0.04));
+  border: 1px solid rgba(var(--brand-rgb), 0.12);
 }
 
 .employee-chip__label {
@@ -105,8 +115,8 @@ body {
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(circle at 20% 0%, rgba(196, 33, 58, 0.18), transparent 42%),
-    radial-gradient(circle at 80% 20%, rgba(122, 18, 37, 0.12), transparent 35%),
+    radial-gradient(circle at 20% 0%, rgba(var(--brand-accent-rgb), 0.18), transparent 42%),
+    radial-gradient(circle at 80% 20%, rgba(var(--brand-rgb), 0.12), transparent 35%),
     linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
 }
 
@@ -114,7 +124,7 @@ body {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(122, 18, 37, 0.04), transparent 45%);
+  background: linear-gradient(180deg, rgba(var(--brand-rgb), 0.04), transparent 45%);
   pointer-events: none;
 }
 
@@ -122,8 +132,8 @@ body {
   border-radius: 22px;
   padding: 20px;
   color: #fff;
-  background: linear-gradient(135deg, #7a1225 0%, #9b1b32 50%, #c4213a 100%);
-  box-shadow: 0 16px 40px rgba(122, 18, 37, 0.22);
+  background: linear-gradient(135deg, var(--brand) 0%, #9b1b32 50%, var(--brand-accent) 100%);
+  box-shadow: 0 16px 40px rgba(var(--brand-rgb), 0.22);
 }
 
 .welcome-banner__badge {
@@ -163,7 +173,7 @@ body {
 
 .welcome-banner__period-btn--active {
   background: #fff;
-  color: #7a1225;
+  color: var(--brand);
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
 }
 
@@ -198,14 +208,14 @@ body {
 }
 
 .action-tile--primary {
-  border-color: rgba(122, 18, 37, 0.15);
-  background: linear-gradient(135deg, #fff 0%, rgba(122, 18, 37, 0.03) 100%);
+  border-color: rgba(var(--brand-rgb), 0.15);
+  background: linear-gradient(135deg, #fff 0%, rgba(var(--brand-rgb), 0.03) 100%);
 }
 
 .action-tile__accent {
   width: 4px;
   align-self: stretch;
-  background: linear-gradient(180deg, #7a1225, #c4213a);
+  background: linear-gradient(180deg, var(--brand), var(--brand-accent));
   border-radius: 4px 0 0 4px;
 }
 
@@ -214,7 +224,7 @@ body {
   border-radius: 14px;
   font-weight: 700;
   letter-spacing: 0.01em;
-  box-shadow: 0 10px 24px rgba(122, 18, 37, 0.22);
+  box-shadow: 0 10px 24px rgba(var(--brand-rgb), 0.22);
 }
 
 .auditagem-btn {
@@ -228,7 +238,7 @@ body {
 }
 
 .auditagem-btn--active {
-  box-shadow: 0 10px 24px rgba(122, 18, 37, 0.18);
+  box-shadow: 0 10px 24px rgba(var(--brand-rgb), 0.18);
 }
 
 .input-shell :deep(.q-field__control) {
@@ -253,7 +263,7 @@ body {
   height: 80px;
   margin: 0 auto 16px;
   border-radius: 24px;
-  background: rgba(122, 18, 37, 0.08);
+  background: rgba(var(--brand-rgb), 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -285,14 +295,14 @@ body {
 }
 
 .pergunta-card--answered {
-  border-color: rgba(122, 18, 37, 0.18);
+  border-color: rgba(var(--brand-rgb), 0.18);
   background: #fff;
-  box-shadow: 0 4px 16px rgba(122, 18, 37, 0.06);
+  box-shadow: 0 4px 16px rgba(var(--brand-rgb), 0.06);
 }
 
 .pergunta-card--focus {
-  border-color: rgba(122, 18, 37, 0.35);
-  box-shadow: 0 0 0 3px rgba(122, 18, 37, 0.12);
+  border-color: rgba(var(--brand-rgb), 0.35);
+  box-shadow: 0 0 0 3px rgba(var(--brand-rgb), 0.12);
 }
 
 .resposta-btn {
@@ -320,8 +330,8 @@ body {
 }
 
 .membro-card:focus-within {
-  box-shadow: 0 2px 12px rgba(122, 18, 37, 0.1);
-  border-color: rgba(122, 18, 37, 0.2);
+  box-shadow: 0 2px 12px rgba(var(--brand-rgb), 0.1);
+  border-color: rgba(var(--brand-rgb), 0.2);
 }
 
 .membro-card__label {
@@ -343,7 +353,7 @@ body {
 }
 
 .adicionar-btn {
-  border: 1.5px dashed rgba(122, 18, 37, 0.3);
+  border: 1.5px dashed rgba(var(--brand-rgb), 0.3);
   border-radius: 10px;
   padding: 8px 0;
 }
@@ -505,7 +515,7 @@ body.body--dark {
   }
 
   .employee-chip {
-    background: linear-gradient(135deg, rgba(196, 33, 58, 0.2), rgba(122, 18, 37, 0.14));
+    background: linear-gradient(135deg, rgba(var(--brand-accent-rgb), 0.2), rgba(var(--brand-rgb), 0.14));
     border-color: rgba(248, 113, 113, 0.28);
   }
 
@@ -523,13 +533,13 @@ body.body--dark {
 
   .hero-surface {
     background:
-      radial-gradient(circle at 20% 0%, rgba(196, 33, 58, 0.14), transparent 42%),
-      radial-gradient(circle at 80% 20%, rgba(122, 18, 37, 0.1), transparent 35%),
+      radial-gradient(circle at 20% 0%, rgba(var(--brand-accent-rgb), 0.14), transparent 42%),
+      radial-gradient(circle at 80% 20%, rgba(var(--brand-rgb), 0.1), transparent 35%),
       linear-gradient(180deg, #111827 0%, #0f172a 100%);
   }
 
   .hero-surface::before {
-    background: linear-gradient(180deg, rgba(196, 33, 58, 0.06), transparent 45%);
+    background: linear-gradient(180deg, rgba(var(--brand-accent-rgb), 0.06), transparent 45%);
   }
 
   .kpi-card {
@@ -543,8 +553,8 @@ body.body--dark {
   }
 
   .action-tile--primary {
-    border-color: rgba(196, 33, 58, 0.28);
-    background: linear-gradient(135deg, var(--mobile-surface) 0%, rgba(122, 18, 37, 0.12) 100%);
+    border-color: rgba(var(--brand-accent-rgb), 0.28);
+    background: linear-gradient(135deg, var(--mobile-surface) 0%, rgba(var(--brand-rgb), 0.12) 100%);
   }
 
   .checklist-header {
@@ -571,14 +581,14 @@ body.body--dark {
   }
 
   .pergunta-card--answered {
-    border-color: rgba(196, 33, 58, 0.35);
+    border-color: rgba(var(--brand-accent-rgb), 0.35);
     background: var(--mobile-surface);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   }
 
   .pergunta-card--focus {
-    border-color: rgba(196, 33, 58, 0.45);
-    box-shadow: 0 0 0 3px rgba(196, 33, 58, 0.18);
+    border-color: rgba(var(--brand-accent-rgb), 0.45);
+    box-shadow: 0 0 0 3px rgba(var(--brand-accent-rgb), 0.18);
   }
 
   .resposta-btn--idle {
@@ -624,7 +634,7 @@ body.body--dark {
   }
 
   .empty-state__icon {
-    background: rgba(196, 33, 58, 0.16);
+    background: rgba(var(--brand-accent-rgb), 0.16);
   }
 
   .input-shell :deep(.q-field__control:before),

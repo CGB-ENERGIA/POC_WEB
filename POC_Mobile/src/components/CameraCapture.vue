@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <teleport to="body">
     <transition name="cc-fade">
       <div v-if="modelValue" class="cc-overlay">
@@ -438,7 +438,7 @@ onUnmounted(() => { clearInterval(tickId); descartar(); pararStream(); });
   gap: 8px;
   transition: border-color .15s;
 }
-.cc-equipe-search:focus-within { border-color: #c4213a; }
+.cc-equipe-search:focus-within { border-color: var(--brand-accent); }
 .cc-equipe-search__icon { color: #64748b; flex-shrink: 0; }
 .cc-equipe-search__input {
   flex: 1;
@@ -477,7 +477,7 @@ onUnmounted(() => { clearInterval(tickId); descartar(); pararStream(); });
   gap: 8px;
 }
 :deep(.cc-mark) {
-  background: rgba(196,33,58,.5);
+  background: rgba(var(--brand-accent-rgb),.5);
   color: #fff;
   border-radius: 3px;
   padding: 0 2px;
@@ -497,10 +497,10 @@ onUnmounted(() => { clearInterval(tickId); descartar(); pararStream(); });
   text-align: left;
 }
 .cc-equipe-item:active   { background: rgba(255,255,255,.12); }
-.cc-equipe-item--sel     { background: rgba(122,18,37,.35); border-color: #c4213a; }
+.cc-equipe-item--sel     { background: rgba(var(--brand-rgb),.35); border-color: var(--brand-accent); }
 .cc-equipe-item__pref    { flex: 1; font-size: 15px; font-weight: 700; font-family: monospace; }
 .cc-equipe-item__base    { font-size: 12px; color: #64748b; }
-.cc-equipe-item__check   { color: #c4213a; margin-left: 4px; }
+.cc-equipe-item__check   { color: var(--brand-accent); margin-left: 4px; }
 
 .cc-equipe-footer {
   padding: 16px;
@@ -511,7 +511,7 @@ onUnmounted(() => { clearInterval(tickId); descartar(); pararStream(); });
 .cc-equipe-confirmar {
   width: 100%;
   height: 52px;
-  background: #7a1225;
+  background: var(--brand);
   border: 0;
   border-radius: 14px;
   color: #fff;
@@ -587,8 +587,8 @@ onUnmounted(() => { clearInterval(tickId); descartar(); pararStream(); });
 }
 .cc-action-btn:active     { background: rgba(255,255,255,.2); }
 .cc-action-btn:disabled   { opacity: .5; pointer-events: none; }
-.cc-action-btn--confirm   { background: rgba(122,18,37,.7); border-color: #c4213a; }
-.cc-action-btn--confirm:active { background: rgba(122,18,37,.9); }
+.cc-action-btn--confirm   { background: rgba(var(--brand-rgb),.7); border-color: var(--brand-accent); }
+.cc-action-btn--confirm:active { background: rgba(var(--brand-rgb),.9); }
 
 /* ── Erro ─────────────────────────────────────────────── */
 .cc-error {
