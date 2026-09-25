@@ -571,11 +571,12 @@ const metaProgress = computed(() => {
 
 .hp-quick__icon {
   width: 44px; height: 44px; border-radius: 12px;
-  background: linear-gradient(135deg, var(--brand-warm), var(--brand));
+  background: linear-gradient(135deg, #8b1b30, #7a1225) !important;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(var(--brand-rgb),.22);
+  box-shadow: 0 4px 12px rgba(122,18,37,.22);
 }
+.hp-quick__icon .q-icon { color: #fff !important; }
 .hp-quick__body { flex: 1; min-width: 0; }
 .hp-quick__title { font-size: 15px; font-weight: 700; color: #0f172a; }
 .hp-quick__sub   { font-size: 11.5px; color: #64748b; margin-top: 2px; }
@@ -625,11 +626,12 @@ const metaProgress = computed(() => {
 
 .hp-group__icon {
   width: 44px; height: 44px; border-radius: 12px;
-  background: linear-gradient(135deg, var(--brand-warm), var(--brand));
+  background: linear-gradient(135deg, #8b1b30, #7a1225) !important;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(var(--brand-rgb),.22);
+  box-shadow: 0 4px 12px rgba(122,18,37,.22);
 }
+.hp-group__icon .q-icon { color: #fff !important; }
 .hp-group__icon--adm {
   background: linear-gradient(135deg, #1d4ed8, #1e40af);
   box-shadow: 0 4px 12px rgba(29,78,216,.22);
@@ -737,14 +739,14 @@ const metaProgress = computed(() => {
 .hp-cam__icon,
 .hp-gal__icon {
   width: 44px; height: 44px; border-radius: 12px;
-  background: linear-gradient(135deg, var(--brand-warm), var(--brand));
-  box-shadow: 0 4px 12px rgba(var(--brand-rgb),.22);
+  background: linear-gradient(135deg, #8b1b30, #7a1225) !important;
+  box-shadow: 0 4px 12px rgba(122,18,37,.22);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
 
 .hp-cam__icon .q-icon,
-.hp-gal__icon .q-icon { color: #fff; }
+.hp-gal__icon .q-icon { color: #fff !important; }
 
 .hp-cam__body,
 .hp-gal__body { flex: 1; min-width: 0; }
@@ -786,13 +788,13 @@ const metaProgress = computed(() => {
 
 .hp-solo__icon {
   width: 44px; height: 44px; border-radius: 12px;
-  background: linear-gradient(135deg, var(--brand-warm), var(--brand));
-  box-shadow: 0 4px 12px rgba(var(--brand-rgb),.22);
+  background: linear-gradient(135deg, #8b1b30, #7a1225) !important;
+  box-shadow: 0 4px 12px rgba(122,18,37,.22);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
 
-.hp-solo__icon .q-icon { color: #fff; }
+.hp-solo__icon .q-icon { color: #fff !important; }
 .hp-solo__body { flex: 1; min-width: 0; }
 .hp-solo__title { font-size: 15px; font-weight: 700; color: #0f172a; }
 .hp-solo__sub   { font-size: 11.5px; color: #64748b; margin-top: 2px; }
@@ -888,9 +890,6 @@ const metaProgress = computed(() => {
   .hp-quick__title { color: #f1f5f9; }
   .hp-item__label  { color: #e2e8f0; }
   .hp-item-sep     { background: rgba(148,163,184,.12); }
-  .hp-solo__icon,
-  .hp-gal__icon,
-  .hp-cam__icon    { background: rgba(var(--brand-rgb),.2); }
   .hp-chevron      { color: #475569; }
   .hp-group__sub,
   .hp-solo__sub,
@@ -900,16 +899,16 @@ const metaProgress = computed(() => {
   .hp-item__cap    { color: #94a3b8; }
   .hp-group__icon--adm { background: linear-gradient(135deg, #1d4ed8, #1e40af); }
 
-  /* Ícones de ação (Câmera / Galeria / Minhas Obs) — gradiente + ícone branco */
+  /* Ícones de ação (Câmera / Galeria / Minhas Obs) — reafirma gradiente no dark mode */
   .hp-cam__icon,
   .hp-gal__icon,
   .hp-solo__icon {
-    background: linear-gradient(135deg, var(--brand-warm), var(--brand));
-    box-shadow: 0 4px 12px rgba(var(--brand-rgb),.22);
+    background: linear-gradient(135deg, #8b1b30, #7a1225) !important;
+    box-shadow: 0 4px 12px rgba(122,18,37,.22);
   }
   .hp-cam__icon .q-icon,
   .hp-gal__icon .q-icon,
-  .hp-solo__icon .q-icon { color: #fff; }
+  .hp-solo__icon .q-icon { color: #fff !important; }
 
   /* Chips "em andamento" — texto claro sobre fundo escuro */
   .hp-quick__chip,
