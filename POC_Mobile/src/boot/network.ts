@@ -4,7 +4,7 @@ import { Notify } from "quasar";
 import { refreshServerTimeSync } from "@/utils/server-time";
 import { useObservacoesStore } from "@/stores/observacoes";
 import { useSessionStore } from "@/stores/session";
-import { isRemoteSyncEnabled } from "@/lib/config";
+import { isSupabaseSyncEnabled } from "@/lib/config";
 
 export default defineBoot(() => {
   if (typeof window === "undefined") return;
@@ -21,7 +21,7 @@ export default defineBoot(() => {
   window.addEventListener("online", () => {
     void refreshServerTimeSync();
 
-    if (isRemoteSyncEnabled()) {
+    if (isSupabaseSyncEnabled()) {
       const session = useSessionStore();
       if (session.employee) {
         useObservacoesStore().retryFailedSyncs(session.employee);

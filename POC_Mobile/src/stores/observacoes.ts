@@ -5,7 +5,7 @@ import type { AuditagemCategoria } from "@/data/auditagem";
 import type { Employee } from "@/data/employees";
 import type { ChecklistResumo, ObservacaoChecklist, RespostaSalva } from "@/types/checklist";
 import type { ItemVerificado } from "@/data/goman-checklist";
-import { appConfig, isRemoteSyncEnabled, isSupabaseSyncEnabled } from "@/lib/config";
+import { appConfig, isSupabaseSyncEnabled } from "@/lib/config";
 import { syncChecklistToRemote, syncEmAndamentoToRemote, deleteEmAndamentoFromRemote } from "@/services/checklist-sync";
 import { syncObservacaoLivreToRemote } from "@/services/observacao-sync";
 import { refreshServerTimeSync } from "@/utils/server-time";
@@ -263,7 +263,7 @@ export const useObservacoesStore = defineStore("observacoes", {
     },
 
     retryFailedSyncs(employee: Employee) {
-      if (!isRemoteSyncEnabled() || !navigator.onLine) return;
+      if (!isSupabaseSyncEnabled() || !navigator.onLine) return;
       for (const item of this.items) {
         if (!isChecklist(item) || item.syncStatus !== "failed") continue;
         item.syncStatus = "pending";
@@ -332,24 +332,29 @@ export const useObservacoesStore = defineStore("observacoes", {
       }
 
       if (isSupabaseSyncEnabled()) {
-        void syncChecklistToRemote(entry, payload.employee)
-          .then(async ({ failedPhotos }) => {
-            entry.syncStatus = "synced";
-            entry.fotosLocal = [];
-            this.persist();
-            if (failedPhotos > 0) {
-              Notify.create({
-                type: "warning",
-                icon: "mdi-image-off-outline",
-                message: `Checklist enviado, mas ${failedPhotos} foto${failedPhotos > 1 ? "s" : ""} não ${failedPhotos > 1 ? "puderam" : "pôde"} ser enviada${failedPhotos > 1 ? "s" : ""}. Verifique a conexão e tente reenviar.`,
-                position: "top",
-                timeout: 10000,
-              });
-            }
-            await refreshServerTimeSync();
-            await this.fetchSynced(payload.matricula);
-          })
-          .catch(() => { entry.syncStatus = "failed"; this.persist(); });
+        if (!navigator.onLine) {
+          entry.syncStatus = "failed";
+          this.persist();
+        } else {
+          void syncChecklistToRemote(entry, payload.employee)
+            .then(async ({ failedPhotos }) => {
+              entry.syncStatus = "synced";
+              entry.fotosLocal = [];
+              this.persist();
+              if (failedPhotos > 0) {
+                Notify.create({
+                  type: "warning",
+                  icon: "mdi-image-off-outline",
+                  message: `Checklist enviado, mas ${failedPhotos} foto${failedPhotos > 1 ? "s" : ""} não ${failedPhotos > 1 ? "puderam" : "pôde"} ser enviada${failedPhotos > 1 ? "s" : ""}. Verifique a conexão e tente reenviar.`,
+                  position: "top",
+                  timeout: 10000,
+                });
+              }
+              await refreshServerTimeSync();
+              await this.fetchSynced(payload.matricula);
+            })
+            .catch(() => { entry.syncStatus = "failed"; this.persist(); });
+        }
       }
 
       return entry;
