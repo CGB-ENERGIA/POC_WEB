@@ -34,7 +34,7 @@
               :class="{ 'gp-thumb--sel': selecionada === foto.id }"
               @click="selecionar(foto)"
             >
-              <img :src="getUrl(foto.id, foto.blob)" class="gp-thumb__img" alt="" loading="lazy" />
+              <img :src="getUrl(foto.id, foto.blob, foto.cloudUrl)" class="gp-thumb__img" alt="" loading="lazy" />
               <div class="gp-thumb__time">{{ formatarHora(foto.dataHora) }}</div>
               <div v-if="selecionada === foto.id" class="gp-thumb__check">
                 <q-icon name="mdi-check-circle" size="26px" color="white" />
@@ -61,9 +61,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from "vue";
+import { ref, watch, onMounted, onBeforeUnmount } from "vue";
 import { useGaleriaStore, type FotoEntry } from "@/stores/galeria";
 
+const props = defineProps<{ matricula?: string }>();
 const emit = defineEmits<{
   (e: "selected", blob: Blob): void;
 }>();
@@ -76,11 +77,21 @@ const processando = ref(false);
 
 onMounted(() => galeria.carregar());
 
+// Ao abrir o picker, sincroniza fotos da nuvem (para ver fotos de outros dispositivos)
+watch(isOpen, (aberta) => {
+  if (aberta && props.matricula) {
+    galeria.sincronizarNuvem(props.matricula);
+  }
+});
+
 // ── Object URL pool ─────────────────────────────────
 const urlPool = new Map<string, string>();
-function getUrl(id: string, blob: Blob): string {
-  if (!urlPool.has(id)) urlPool.set(id, URL.createObjectURL(blob));
-  return urlPool.get(id)!;
+function getUrl(id: string, blob: Blob | undefined, cloudUrl: string | null): string {
+  if (blob) {
+    if (!urlPool.has(id)) urlPool.set(id, URL.createObjectURL(blob));
+    return urlPool.get(id)!;
+  }
+  return cloudUrl ?? "";
 }
 onBeforeUnmount(() => { urlPool.forEach(u => URL.revokeObjectURL(u)); urlPool.clear(); });
 
@@ -89,12 +100,23 @@ function selecionar(foto: FotoEntry) {
   fotoSelecionada.value = foto;
 }
 
-function confirmar() {
+async function confirmar() {
   if (!fotoSelecionada.value) return;
-  emit("selected", fotoSelecionada.value.blob);
-  isOpen.value = false;
-  selecionada.value    = null;
-  fotoSelecionada.value = null;
+  processando.value = true;
+  try {
+    let blob = fotoSelecionada.value.blob;
+    if (!blob && fotoSelecionada.value.cloudUrl) {
+      const resp = await fetch(fotoSelecionada.value.cloudUrl);
+      blob = await resp.blob();
+    }
+    if (!blob) return;
+    emit("selected", blob);
+    isOpen.value = false;
+    selecionada.value    = null;
+    fotoSelecionada.value = null;
+  } finally {
+    processando.value = false;
+  }
 }
 
 // ── Formatadores ─────────────────────────────────────

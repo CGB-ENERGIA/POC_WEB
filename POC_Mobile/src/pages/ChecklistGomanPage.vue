@@ -491,7 +491,7 @@
     </q-dialog>
 
     <CameraModal v-model="cameraNcAberta" @captured="onFotoNcCapturada" />
-    <GaleriaPicker v-model="galeriaPickerAberta" @selected="onFotoGaleriaImportada" />
+    <GaleriaPicker v-model="galeriaPickerAberta" :matricula="session.employee?.matricula" @selected="onFotoGaleriaImportada" />
   </q-page>
 </template>
 
@@ -691,6 +691,7 @@ const galeriaPickerAberta = ref(false);
 const modalEraNaoConforme = ref(false);
 const proximaPerguntaId = ref<string | null>(null);
 const modalPhotoLoading = ref(false);
+const modalStep = ref<1 | 2>(1);
 
 const todasPerguntasIds = gomanChecklist.flatMap((cat) =>
   cat.perguntas.map((p) => p.id)

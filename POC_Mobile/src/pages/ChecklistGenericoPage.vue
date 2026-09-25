@@ -390,7 +390,7 @@
     </q-dialog>
 
     <CameraModal v-model="cameraNcAberta" @captured="onFotoNcCapturada" />
-    <GaleriaPicker v-model="galeriaPickerAberta" @selected="onFotoGaleriaImportada" />
+    <GaleriaPicker v-model="galeriaPickerAberta" :matricula="session.employee?.matricula" @selected="onFotoGaleriaImportada" />
   </q-page>
 </template>
 
