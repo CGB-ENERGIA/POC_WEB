@@ -1017,7 +1017,18 @@ function gravidadeColor(g: Gravidade) {
 const isTestUser = computed(() => session.employee?.matricula === "12690");
 const required = (v: string) => isTestUser.value || !!v?.trim() || "Campo obrigatório";
 
-async function onConcluirMaisTarde() {
+function onConcluirMaisTarde() {
+  if (!session.employee) return;
+  $q.dialog({
+    title: "Salvar rascunho?",
+    message: "O progresso será salvo. Você pode retomar pelo Início quando quiser.",
+    ok: { label: "Sim, salvar", unelevated: true, color: "primary", noCaps: true },
+    cancel: { label: "Continuar preenchendo", flat: true, color: "grey-7", noCaps: true },
+    persistent: true,
+  }).onOk(() => _salvarRascunho());
+}
+
+async function _salvarRascunho() {
   if (!session.employee) return;
 
   const respostasSalvas: RespostaSalva[] = [];
