@@ -38,7 +38,7 @@
 
         <div class="hp-banner__right">
           <q-circular-progress
-            :value="metaProgress / 100"
+            :value="metaProgress"
             size="64px"
             :thickness="0.14"
             color="white"
@@ -896,5 +896,27 @@ const metaProgress = computed(() => {
   .hp-quick__sub,
   .hp-item__cap    { color: #94a3b8; }
   .hp-group__icon--adm { background: linear-gradient(135deg, #1d4ed8, #1e40af); }
+
+  /* Ícones de ação (Câmera / Galeria / Minhas Obs) — gradiente + ícone branco */
+  .hp-cam__icon,
+  .hp-gal__icon,
+  .hp-solo__icon {
+    background: linear-gradient(135deg, var(--brand-warm), var(--brand));
+    box-shadow: 0 4px 12px rgba(var(--brand-rgb),.22);
+  }
+  .hp-cam__icon .q-icon,
+  .hp-gal__icon .q-icon,
+  .hp-solo__icon .q-icon { color: #fff; }
+
+  /* Chips "em andamento" — texto claro sobre fundo escuro */
+  .hp-quick__chip,
+  .hp-draft-chip {
+    background: rgba(var(--brand-accent-rgb),.2);
+    color: #fca5a5;
+  }
+
+  /* Contadores numéricos (Galeria / Minhas Obs) */
+  .hp-gal__count,
+  .hp-solo__count { color: #fca5a5; }
 }
 </style>
