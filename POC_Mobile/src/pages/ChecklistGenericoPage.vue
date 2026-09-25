@@ -224,11 +224,16 @@
     <q-dialog v-model="modalAberto" persistent position="bottom">
       <q-card class="nc-modal">
         <q-card-section class="row items-center q-pb-none">
-          <div class="text-subtitle1 text-weight-bold text-negative">Não conforme</div>
+          <div>
+            <div class="text-subtitle1 text-weight-bold text-negative">Não conforme</div>
+            <div class="text-caption text-grey-6">Passo {{ modalStep }} de 2</div>
+          </div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="mdi-close" @click="cancelarModal" />
         </q-card-section>
-        <q-card-section>
+
+        <!-- Passo 1: evidência (foto + itens + observação) -->
+        <q-card-section v-if="modalStep === 1">
           <div v-if="modalPerguntaTexto" class="text-body2 text-grey-8 q-mb-md">{{ modalPerguntaTexto }}</div>
 
           <template v-if="modalItens">
@@ -274,16 +279,20 @@
             </div>
           </template>
 
-          <div class="field-label q-mb-sm">Foto da evidência</div>
-          <div v-if="modalFotoPreview" class="nc-foto-preview q-mb-md" @click="abrirCameraNc">
+          <div class="field-label q-mb-sm">Foto da evidência *</div>
+          <div v-if="modalPhotoLoading" class="nc-photo-loading q-mb-md">
+            <q-spinner-oval size="32px" color="primary" />
+            <span>Processando foto…</span>
+          </div>
+          <div v-else-if="modalFotoPreview" class="nc-foto-preview q-mb-md" @click="abrirCameraNc">
             <img :src="modalFotoPreview" alt="Visualização da foto" />
-            <button class="nc-foto-preview__remove" @click.stop="modalFotoPreview = null">
-              <q-icon name="mdi-close" size="14px" color="white" />
-            </button>
             <div class="nc-foto-preview__overlay">
               <q-icon name="mdi-camera-retake" size="28px" color="white" />
               <span>Trocar foto</span>
             </div>
+            <button class="nc-foto-preview__remove" @click.stop="modalFotoPreview = null">
+              <q-icon name="mdi-close" size="14px" color="white" />
+            </button>
           </div>
           <div v-else class="row q-col-gutter-sm q-mb-md">
             <div class="col-6">
@@ -293,6 +302,10 @@
               <q-btn class="full-width" outline color="secondary" no-caps icon="mdi-image-multiple-outline" label="Da galeria" @click="galeriaPickerAberta = true" />
             </div>
           </div>
+          <div v-if="modalTouched && !modalFotoPreview && !modalPhotoLoading" class="text-caption text-negative q-mb-md">
+            Adicione uma foto da evidência
+          </div>
+
           <div v-if="fotosLocal.length" class="q-mb-md">
             <div class="field-label q-mb-xs">Fotos do local da auditagem</div>
             <div class="fotos-local-picker">
@@ -317,8 +330,16 @@
             :error="modalTouched && !modalObservacao.trim()"
             error-message="Informe a observação"
           />
+        </q-card-section>
 
-          <div class="field-label q-mt-md q-mb-sm">Atribuir não conformidade a *</div>
+        <!-- Passo 2: classificação (atribuição + resolvido) -->
+        <q-card-section v-else>
+          <div class="nc-step2-resumo q-mb-lg">
+            <img v-if="modalFotoPreview" :src="modalFotoPreview" class="nc-step2-resumo__foto" alt="Evidência" />
+            <div class="nc-step2-resumo__obs">{{ modalObservacao.length > 90 ? modalObservacao.slice(0, 90) + '…' : modalObservacao }}</div>
+          </div>
+
+          <div class="field-label q-mb-sm">Atribuir não conformidade a *</div>
           <div class="row q-col-gutter-sm">
             <div class="col-6">
               <q-btn
@@ -382,9 +403,16 @@
             Informe se a não conformidade foi resolvida
           </div>
         </q-card-section>
+
         <q-card-actions class="q-pa-md q-pt-none">
-          <q-btn class="col" flat no-caps color="grey-7" label="Cancelar" @click="cancelarModal" />
-          <q-btn class="col" unelevated no-caps color="negative" label="Confirmar" icon="mdi-check" @click="confirmarNaoConforme" />
+          <template v-if="modalStep === 1">
+            <q-btn class="col" flat no-caps color="grey-7" label="Cancelar" @click="cancelarModal" />
+            <q-btn class="col" unelevated no-caps color="primary" label="Próximo" icon-right="mdi-arrow-right" @click="avancarStep" />
+          </template>
+          <template v-else>
+            <q-btn class="col" flat no-caps color="grey-7" icon="mdi-arrow-left" label="Voltar" @click="modalStep = 1; modalTouched = false" />
+            <q-btn class="col" unelevated no-caps color="negative" label="Confirmar" icon="mdi-check" @click="confirmarNaoConforme" />
+          </template>
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -577,6 +605,8 @@ const cameraNcAberta    = ref(false);
 const galeriaPickerAberta = ref(false);
 const modalEraNaoConforme = ref(false);
 const proximaPerguntaId = ref<string | null>(null);
+const modalPhotoLoading = ref(false);
+const modalStep = ref<1 | 2>(1);
 
 const todasPerguntasIds = computed(() =>
   props.checklist.flatMap((cat) => cat.perguntas.map((p) => p.id))
@@ -609,7 +639,10 @@ function progressoCategoria(catId: string) {
 }
 
 function setConforme(id: string) {
-  if (respostas[id] === "conforme") return;
+  if (respostas[id] === "conforme") {
+    delete respostas[id];
+    return;
+  }
   respostas[id] = "conforme";
   delete detalhesMap[id];
   irParaProximaPergunta(id);
@@ -674,7 +707,31 @@ function abrirModalNaoConforme(pergunta: PerguntaGoman) {
   }
 
   modalTouched.value = false;
+  modalStep.value = (existente?.foto && existente?.observacao) ? 2 : 1;
   modalAberto.value = true;
+}
+
+function avancarStep() {
+  modalTouched.value = true;
+
+  if (!modalFotoPreview.value) {
+    $q.notify({ type: "warning", message: "Adicione uma foto da evidência", position: "top" });
+    return;
+  }
+  if (!modalObservacao.value.trim()) {
+    $q.notify({ type: "warning", message: "Informe a observação", position: "top" });
+    return;
+  }
+  if (modalItens.value) {
+    const faltando = modalItens.value.some(i => modalItensStatus[i] === null || modalItensStatus[i] === undefined);
+    if (faltando) {
+      $q.notify({ type: "warning", message: "Marque a condição de todos os itens", position: "top" });
+      return;
+    }
+  }
+
+  modalTouched.value = false;
+  modalStep.value = 2;
 }
 
 function adicionarItemManual() {
@@ -709,6 +766,7 @@ function abrirCameraNc() {
 function usarFotoLocal(foto: string) { modalFotoPreview.value = foto; }
 
 async function onFotoNcCapturada(base64: string) {
+  modalPhotoLoading.value = true;
   try {
     const { date } = await getTrustedTime();
     modalFotoPreview.value = await stampAuditPhoto(base64, {
@@ -720,10 +778,13 @@ async function onFotoNcCapturada(base64: string) {
     const message =
       err instanceof ServerTimeError ? err.message : "Não foi possível processar a foto";
     $q.notify({ type: "negative", message, position: "top" });
+  } finally {
+    modalPhotoLoading.value = false;
   }
 }
 
 async function onFotoGaleriaImportada(blob: Blob) {
+  modalPhotoLoading.value = true;
   try {
     const base64 = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -742,6 +803,8 @@ async function onFotoGaleriaImportada(blob: Blob) {
     const message =
       err instanceof ServerTimeError ? err.message : "Não foi possível processar a foto";
     $q.notify({ type: "negative", message, position: "top" });
+  } finally {
+    modalPhotoLoading.value = false;
   }
 }
 
@@ -1006,5 +1069,28 @@ async function onSubmit() {
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
   background: rgba(122, 18, 37, 0.38); color: #fff;
+}
+
+.nc-photo-loading {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 8px; height: 100px; border-radius: 16px;
+  border: 1px dashed rgba(122, 18, 37, 0.25);
+  color: #64748b; font-size: 13px;
+}
+
+.nc-step2-resumo {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; background: #f8fafc;
+  border-radius: 12px; border: 1px solid #e2e8f0;
+}
+.nc-step2-resumo__foto {
+  width: 56px; height: 56px; border-radius: 8px;
+  object-fit: cover; flex-shrink: 0;
+}
+.nc-step2-resumo__obs {
+  font-size: 13px; color: #475569; line-height: 1.4; flex: 1;
+  overflow: hidden; display: -webkit-box;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical;
 }
 </style>
