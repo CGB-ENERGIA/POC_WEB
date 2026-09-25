@@ -50,7 +50,7 @@ export function stampAuditPhoto(base64: string, meta: PhotoStampMeta): Promise<s
         ctx.fillText(line, pad, y0 + pad + i * lh);
       });
 
-      resolve(canvas.toDataURL("image/jpeg", 0.88));
+      resolve(canvas.toDataURL("image/jpeg", 0.72));
     };
     img.src = base64;
   });

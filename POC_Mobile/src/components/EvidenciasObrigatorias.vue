@@ -39,7 +39,6 @@
 import { computed, ref } from "vue";
 import { useQuasar } from "quasar";
 import CameraModal from "@/components/CameraModal.vue";
-import { compressBase64 } from "@/utils/image";
 import { getTrustedTime, ServerTimeError } from "@/utils/server-time";
 import { stampAuditPhoto } from "@/utils/photo-stamp";
 
@@ -85,8 +84,7 @@ async function onCaptured(base64: string) {
   carregandoIdx.value = idx;
   try {
     const { date } = await getTrustedTime();
-    const compressed = await compressBase64(base64);
-    const carimbrada = await stampAuditPhoto(compressed, {
+    const carimbrada = await stampAuditPhoto(base64, {
       time: date,
       observer: props.observador || "—",
       equipe: props.equipe.trim(),

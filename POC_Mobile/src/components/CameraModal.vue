@@ -38,6 +38,7 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, onUnmounted } from "vue";
+import { compressBase64 } from "@/utils/image";
 
 const isOpen = defineModel<boolean>({ required: true });
 const emit = defineEmits<{ (e: "captured", base64: string): void }>();
@@ -91,15 +92,17 @@ async function virarCamera() {
   virandoCamera.value = false;
 }
 
-function capturar() {
+async function capturar() {
   const video = videoRef.value;
   if (!video || !pronto.value) return;
   const canvas = document.createElement("canvas");
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
   canvas.getContext("2d")!.drawImage(video, 0, 0);
-  emit("captured", canvas.toDataURL("image/jpeg", 0.95));
+  const raw = canvas.toDataURL("image/jpeg", 0.92);
   isOpen.value = false;
+  const compressed = await compressBase64(raw);
+  emit("captured", compressed);
 }
 
 onUnmounted(pararCamera);

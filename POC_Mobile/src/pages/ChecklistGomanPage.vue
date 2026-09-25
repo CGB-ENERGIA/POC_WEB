@@ -842,8 +842,7 @@ function usarFotoLocal(foto: string) {
 async function onFotoNcCapturada(base64: string) {
   try {
     const { date } = await getTrustedTime();
-    const compressed = await compressBase64(base64);
-    modalFotoPreview.value = await stampAuditPhoto(compressed, {
+    modalFotoPreview.value = await stampAuditPhoto(base64, {
       time: date,
       observer: session.employee?.nomeCompleto ?? session.employee?.nome ?? "—",
       equipe: equipe.value.trim(),

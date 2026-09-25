@@ -1,5 +1,8 @@
 <template>
-  <div class="field-label q-mt-md q-mb-sm">Outras fotos (opcional)</div>
+  <div class="field-label q-mt-md q-mb-sm">
+    Outras fotos (opcional)
+    <span class="fg-count" :class="{ 'fg-count--max': modelValue.length >= MAX_FOTOS }">{{ modelValue.length }}/{{ MAX_FOTOS }}</span>
+  </div>
 
   <div class="fg-grid">
     <div v-for="(foto, i) in modelValue" :key="i" class="fg-thumb">
@@ -9,7 +12,12 @@
       </button>
     </div>
 
-    <div class="fg-add" :class="{ 'fg-add--loading': carregando }" @click="!carregando && abrirCamera()">
+    <div
+      v-if="modelValue.length < MAX_FOTOS"
+      class="fg-add"
+      :class="{ 'fg-add--loading': carregando }"
+      @click="!carregando && abrirCamera()"
+    >
       <q-spinner v-if="carregando" color="primary" size="20px" />
       <q-icon v-else name="mdi-camera-plus-outline" size="22px" color="grey-5" />
     </div>
@@ -22,9 +30,10 @@
 import { ref } from "vue";
 import { useQuasar } from "quasar";
 import CameraModal from "@/components/CameraModal.vue";
-import { compressBase64 } from "@/utils/image";
 import { getTrustedTime, ServerTimeError } from "@/utils/server-time";
 import { stampAuditPhoto } from "@/utils/photo-stamp";
+
+const MAX_FOTOS = 5;
 
 const props = defineProps<{
   modelValue: string[];
@@ -49,8 +58,7 @@ async function onCaptured(base64: string) {
   carregando.value = true;
   try {
     const { date } = await getTrustedTime();
-    const compressed = await compressBase64(base64);
-    const carimbrada = await stampAuditPhoto(compressed, {
+    const carimbrada = await stampAuditPhoto(base64, {
       time: date,
       observer: props.observador || "—",
       equipe: props.equipe.trim(),
@@ -72,6 +80,14 @@ function remover(idx: number) {
 </script>
 
 <style scoped>
+.fg-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  margin-left: 6px;
+}
+.fg-count--max { color: #f59e0b; }
+
 .fg-grid {
   display: flex;
   flex-wrap: wrap;
