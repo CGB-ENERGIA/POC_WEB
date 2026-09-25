@@ -32,9 +32,9 @@ export function stampAuditPhoto(base64: string, meta: PhotoStampMeta): Promise<s
       });
 
       const lines = [
-        `📅 ${dateStr}  🕐 ${timeStr}`,
-        `👷 ${meta.observer}`,
-        `🚧 Equipe: ${meta.equipe || "—"}`,
+        `${dateStr}  |  ${timeStr}`,
+        `Obs: ${meta.observer}`,
+        `Eq.: ${meta.equipe || "—"}`,
       ];
 
       const boxH = pad * 2 + lines.length * lh;

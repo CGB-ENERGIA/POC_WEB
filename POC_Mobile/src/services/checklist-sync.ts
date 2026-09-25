@@ -5,12 +5,46 @@ import type { ObservacaoChecklist } from "@/types/checklist";
 import { buildChecklistPhotoKey, uploadImageToR2 } from "@/services/r2-upload";
 import { uploadPhotoToStorage } from "@/services/supabase-storage";
 
-/** Salva o rascunho em_andamento no user_observations para sobreviver a limpeza de localStorage. */
+const BUCKET_DRAFT = "checklist-photos";
+
+function base64ToBlob(base64: string): Blob {
+  const idx = base64.indexOf(",");
+  const data = idx >= 0 ? base64.slice(idx + 1) : base64;
+  const bytes = atob(data);
+  const ab = new ArrayBuffer(bytes.length);
+  const view = new Uint8Array(ab);
+  for (let i = 0; i < bytes.length; i++) view[i] = bytes.charCodeAt(i);
+  return new Blob([ab], { type: "image/jpeg" });
+}
+
+/** Faz upload das fotosLocal do rascunho para Storage e retorna as URLs públicas. */
+async function uploadFotosRascunho(id: string, matricula: string, fotosLocal: string[]): Promise<string[]> {
+  const supabase = getSupabase();
+  const urls: string[] = [];
+  for (let i = 0; i < fotosLocal.length; i++) {
+    const foto = fotosLocal[i];
+    if (!foto) { urls.push(""); continue; }
+    if (foto.startsWith("http")) { urls.push(foto); continue; } // já é URL
+    try {
+      const blob = base64ToBlob(foto);
+      const path = `rascunho/${matricula}/${id}/foto_${i}.jpg`;
+      await supabase.storage.from(BUCKET_DRAFT).upload(path, blob, { contentType: "image/jpeg", upsert: true });
+      const { data: urlData } = supabase.storage.from(BUCKET_DRAFT).getPublicUrl(path);
+      urls.push(urlData.publicUrl);
+    } catch {
+      urls.push(""); // falhou (offline) — foto será pedida ao retomar
+    }
+  }
+  return urls;
+}
+
+/** Salva o rascunho em_andamento no user_observations para sobreviver a limpeza de localStorage.
+ *  Fotos de evidência são upadas para Storage e as URLs salvas no rascunho. */
 export async function syncEmAndamentoToRemote(entry: ObservacaoChecklist): Promise<void> {
   if (!isSupabaseSyncEnabled() || !navigator.onLine) return;
   const supabase = getSupabase();
 
-  // Respostas sem foto base64 (podem ser grandes demais para JSON)
+  const fotosUrls = await uploadFotosRascunho(entry.id, entry.matricula, entry.fotosLocal);
   const respostasSemFoto = entry.respostas.map(({ foto: _f, ...r }) => r);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -26,18 +60,28 @@ export async function syncEmAndamentoToRemote(entry: ObservacaoChecklist): Promi
       total: entry.resumo.total,
       conformes: entry.resumo.conformes,
       naoConformes: entry.resumo.naoConformes,
-      _rascunho: { membros: entry.membros, respostas: respostasSemFoto },
+      _rascunho: { membros: entry.membros, respostas: respostasSemFoto, fotosUrls },
     },
     sync_status: "em_andamento",
     status: "pendente",
   } as any, { onConflict: "id" });
 }
 
-/** Remove o rascunho do remote quando o checklist é finalizado ou descartado. */
-export async function deleteEmAndamentoFromRemote(id: string): Promise<void> {
+/** Remove o rascunho do remote (user_observations + fotos do Storage). */
+export async function deleteEmAndamentoFromRemote(id: string, matricula?: string): Promise<void> {
   if (!isSupabaseSyncEnabled() || !navigator.onLine) return;
   const supabase = getSupabase();
+
   await supabase.from("user_observations").delete().eq("id", id).eq("sync_status", "em_andamento");
+
+  // Limpa as fotos de rascunho do Storage (best-effort)
+  if (matricula) {
+    const prefix = `rascunho/${matricula}/${id}/`;
+    const { data: files } = await supabase.storage.from(BUCKET_DRAFT).list(`rascunho/${matricula}/${id}`);
+    if (files?.length) {
+      await supabase.storage.from(BUCKET_DRAFT).remove(files.map(f => `${prefix}${f.name}`));
+    }
+  }
 }
 
 export class ChecklistSyncError extends Error {
@@ -68,6 +112,9 @@ async function ensureEmployee(employee: Employee): Promise<void> {
  * Retorna a chave R2 ou a URL pública do Supabase Storage, ou null se ambos falharem.
  */
 async function uploadFoto(key: string, base64: string, r2Available: boolean): Promise<string | null> {
+  // Foto já upada durante o rascunho — reutilizar URL diretamente
+  if (base64.startsWith("http")) return base64;
+
   if (r2Available) {
     try {
       await uploadImageToR2(key, base64);
@@ -151,6 +198,7 @@ export async function syncChecklistToRemote(
     })
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: submission, error: subErr } = await supabase
     .from("checklist_submissions")
     .insert({
@@ -161,8 +209,8 @@ export async function syncChecklistToRemote(
       data: entry.data,
       base: entry.base,
       equipe: entry.equipe,
-      membros: entry.membros,
-      resumo: entry.resumo,
+      membros: entry.membros as any,
+      resumo: entry.resumo as any,
     })
     .select("id")
     .single();
@@ -174,6 +222,7 @@ export async function syncChecklistToRemote(
   const submissionId = submission.id;
 
   // Grava em user_observations (35 dias de retenção, para Minhas Observações no PWA)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await supabase.from("user_observations").upsert({
     id: entry.id,
     matricula: entry.matricula,
@@ -182,16 +231,17 @@ export async function syncChecklistToRemote(
     data: entry.data,
     base: entry.base,
     equipe: entry.equipe,
-    resumo: entry.resumo,
+    resumo: entry.resumo as any,
     sync_status: "synced",
   }, { onConflict: "id" });
 
   if (responseRows.length) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: respErr } = await supabase.from("checklist_responses").insert(
       responseRows.map((row) => ({
         submission_id: submissionId,
         ...row,
-      }))
+      })) as any
     );
     if (respErr) throw new ChecklistSyncError(respErr.message);
   }

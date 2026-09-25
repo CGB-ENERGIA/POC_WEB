@@ -201,7 +201,7 @@ export const useObservacoesStore = defineStore("observacoes", {
         if (this.items.find((o) => o.id === row.id)) continue; // já existe localmente
         const resumoRaw = row.resumo as unknown as {
           total?: number; conformes?: number; naoConformes?: number;
-          _rascunho?: { membros?: { nome: string; matricula: string }[]; respostas?: RespostaSalva[] };
+          _rascunho?: { membros?: { nome: string; matricula: string }[]; respostas?: RespostaSalva[]; fotosUrls?: string[] };
         };
         const rascunho = resumoRaw?._rascunho;
         const restorado: ObservacaoChecklist = {
@@ -213,14 +213,13 @@ export const useObservacoesStore = defineStore("observacoes", {
           base: row.base,
           equipe: row.equipe,
           membros: rascunho?.membros ?? [],
-          fotosLocal: [],
+          fotosLocal: (rascunho?.fotosUrls ?? []).filter(Boolean),
           respostas: rascunho?.respostas ?? [],
           resumo: {
             total: resumoRaw?.total ?? 0,
             conformes: resumoRaw?.conformes ?? 0,
             naoConformes: resumoRaw?.naoConformes ?? 0,
           },
-          syncStatus: undefined,
           status: "em_andamento",
         };
         this.items.push(restorado);
@@ -320,7 +319,7 @@ export const useObservacoesStore = defineStore("observacoes", {
         fotosLocal: payload.fotosLocal,
         respostas: payload.respostas,
         resumo,
-        syncStatus: (!emAndamento && isSupabaseSyncEnabled()) ? "pending" : undefined,
+        ...(!emAndamento && isSupabaseSyncEnabled() ? { syncStatus: "pending" as const } : {}),
         ...(payload.status !== undefined ? { status: payload.status } : {}),
       };
 
@@ -366,7 +365,7 @@ export const useObservacoesStore = defineStore("observacoes", {
       this.items = this.items.filter((o) => o.id !== id);
       this.persist();
       if (target && isChecklist(target) && target.status === "em_andamento") {
-        void deleteEmAndamentoFromRemote(id).catch(() => {});
+        void deleteEmAndamentoFromRemote(id, target.matricula).catch(() => {});
       }
     },
 
