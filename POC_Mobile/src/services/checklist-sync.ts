@@ -28,7 +28,8 @@ async function uploadFotosRascunho(id: string, matricula: string, fotosLocal: st
     try {
       const blob = base64ToBlob(foto);
       const path = `rascunho/${matricula}/${id}/foto_${i}.jpg`;
-      await supabase.storage.from(BUCKET_DRAFT).upload(path, blob, { contentType: "image/jpeg", upsert: true });
+      const { error } = await supabase.storage.from(BUCKET_DRAFT).upload(path, blob, { contentType: "image/jpeg", upsert: true });
+      if (error) throw error;
       const { data: urlData } = supabase.storage.from(BUCKET_DRAFT).getPublicUrl(path);
       urls.push(urlData.publicUrl);
     } catch {
@@ -67,21 +68,12 @@ export async function syncEmAndamentoToRemote(entry: ObservacaoChecklist): Promi
   } as any, { onConflict: "id" });
 }
 
-/** Remove o rascunho do remote (user_observations + fotos do Storage). */
-export async function deleteEmAndamentoFromRemote(id: string, matricula?: string): Promise<void> {
+/** Remove o rascunho do remote. As fotos no Storage são mantidas: o checklist
+ *  retomado (novo rascunho ou envio final) reaproveita essas URLs. */
+export async function deleteEmAndamentoFromRemote(id: string): Promise<void> {
   if (!isSupabaseSyncEnabled() || !navigator.onLine) return;
   const supabase = getSupabase();
-
   await supabase.from("user_observations").delete().eq("id", id).eq("sync_status", "em_andamento");
-
-  // Limpa as fotos de rascunho do Storage (best-effort)
-  if (matricula) {
-    const prefix = `rascunho/${matricula}/${id}/`;
-    const { data: files } = await supabase.storage.from(BUCKET_DRAFT).list(`rascunho/${matricula}/${id}`);
-    if (files?.length) {
-      await supabase.storage.from(BUCKET_DRAFT).remove(files.map(f => `${prefix}${f.name}`));
-    }
-  }
 }
 
 export class ChecklistSyncError extends Error {

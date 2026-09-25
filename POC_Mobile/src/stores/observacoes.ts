@@ -365,7 +365,7 @@ export const useObservacoesStore = defineStore("observacoes", {
       this.items = this.items.filter((o) => o.id !== id);
       this.persist();
       if (target && isChecklist(target) && target.status === "em_andamento") {
-        void deleteEmAndamentoFromRemote(id, target.matricula).catch(() => {});
+        void deleteEmAndamentoFromRemote(id).catch(() => {});
       }
     },
 
