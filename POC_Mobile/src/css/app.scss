@@ -38,13 +38,41 @@ body {
 }
 
 .mobile-header {
-  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 55%, var(--brand-darkest) 100%);
+  background: linear-gradient(135deg, #b52034 0%, #8b1b30 26%, #7a1225 54%, #5c0e1c 80%, #3d0912 100%);
   color: #fff;
+  position: relative;
+  box-shadow: 0 4px 28px rgba(122, 18, 37, 0.45) !important;
+}
+
+/* dot grid texture */
+.mobile-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.065) 1px, transparent 1px);
+  background-size: 18px 18px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* warm radial glow top-right */
+.mobile-header::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 55%;
+  height: 100%;
+  background: radial-gradient(ellipse at 100% 20%, rgba(196, 33, 58, 0.42) 0%, transparent 65%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .mobile-header .q-toolbar {
-  min-height: 56px;
+  min-height: 60px;
   padding-top: env(safe-area-inset-top, 0);
+  position: relative;
+  z-index: 1;
 }
 
 .mobile-header .q-toolbar__title {
@@ -58,6 +86,20 @@ body {
 
 .toolbar-title .brand-logo {
   min-width: 0;
+}
+
+/* glass pill that groups the action icon-buttons */
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 2px 3px;
+  margin-left: 6px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .mobile-card {

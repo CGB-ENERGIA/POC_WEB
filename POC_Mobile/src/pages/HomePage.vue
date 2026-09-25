@@ -206,7 +206,7 @@
       <!-- ── CÂMERA ─────────────────────────────── -->
       <button class="hp-cam" @click="cameraAberta = true">
         <div class="hp-cam__icon">
-          <q-icon name="mdi-camera-plus" size="22px" color="primary" />
+          <q-icon name="mdi-camera-plus" size="22px" color="white" />
         </div>
         <div class="hp-cam__body">
           <div class="hp-cam__title">Câmera</div>
@@ -218,7 +218,7 @@
       <!-- ── GALERIA ─────────────────────────────── -->
       <button class="hp-gal" @click="$router.push({ name: 'galeria' })">
         <div class="hp-gal__icon">
-          <q-icon name="mdi-image-multiple-outline" size="22px" color="primary" />
+          <q-icon name="mdi-image-multiple-outline" size="22px" color="white" />
         </div>
         <div class="hp-gal__body">
           <div class="hp-gal__title">Galeria</div>
@@ -234,7 +234,7 @@
         @click="$router.push({ name: 'minhas-observacoes' })"
       >
         <div class="hp-solo__icon">
-          <q-icon name="mdi-format-list-checks" size="22px" color="primary" />
+          <q-icon name="mdi-format-list-checks" size="22px" color="white" />
         </div>
         <div class="hp-solo__body">
           <div class="hp-solo__title">Minhas Observações</div>
@@ -734,18 +734,17 @@ const metaProgress = computed(() => {
 .hp-cam:active,
 .hp-gal:active { box-shadow: none; opacity: .85; }
 
-.hp-cam__icon {
-  width: 44px; height: 44px; border-radius: 12px;
-  background: rgba(var(--brand-rgb),.08);
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
+.hp-cam__icon,
 .hp-gal__icon {
   width: 44px; height: 44px; border-radius: 12px;
-  background: rgba(var(--brand-rgb),.08);
+  background: linear-gradient(135deg, var(--brand-warm), var(--brand));
+  box-shadow: 0 4px 12px rgba(var(--brand-rgb),.22);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
+
+.hp-cam__icon .q-icon,
+.hp-gal__icon .q-icon { color: #fff; }
 
 .hp-cam__body,
 .hp-gal__body { flex: 1; min-width: 0; }
@@ -787,10 +786,13 @@ const metaProgress = computed(() => {
 
 .hp-solo__icon {
   width: 44px; height: 44px; border-radius: 12px;
-  background: rgba(var(--brand-rgb),.08);
+  background: linear-gradient(135deg, var(--brand-warm), var(--brand));
+  box-shadow: 0 4px 12px rgba(var(--brand-rgb),.22);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
+
+.hp-solo__icon .q-icon { color: #fff; }
 .hp-solo__body { flex: 1; min-width: 0; }
 .hp-solo__title { font-size: 15px; font-weight: 700; color: #0f172a; }
 .hp-solo__sub   { font-size: 11.5px; color: #64748b; margin-top: 2px; }

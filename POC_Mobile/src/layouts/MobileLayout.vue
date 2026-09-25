@@ -27,28 +27,30 @@
 
         <q-space />
 
-        <q-btn
-          flat
-          round
-          dense
-          :icon="$q.dark.isActive ? 'mdi-weather-sunny' : 'mdi-weather-night'"
-          color="white"
-          :aria-label="$q.dark.isActive ? 'Modo claro' : 'Modo escuro'"
-          @click="toggleDarkMode"
-        >
-          <q-tooltip>{{ $q.dark.isActive ? "Modo claro" : "Modo escuro" }}</q-tooltip>
-        </q-btn>
+        <div class="toolbar-actions">
+          <q-btn
+            flat
+            round
+            dense
+            :icon="$q.dark.isActive ? 'mdi-weather-sunny' : 'mdi-weather-night'"
+            color="white"
+            :aria-label="$q.dark.isActive ? 'Modo claro' : 'Modo escuro'"
+            @click="toggleDarkMode"
+          >
+            <q-tooltip>{{ $q.dark.isActive ? "Modo claro" : "Modo escuro" }}</q-tooltip>
+          </q-btn>
 
-        <q-btn
-          v-if="session.isAuthenticated && route.name !== 'identificacao'"
-          flat
-          round
-          dense
-          icon="mdi-logout"
-          aria-label="Sair"
-          class="q-ml-xs"
-          @click="onLogout"
-        />
+          <q-btn
+            v-if="session.isAuthenticated && route.name !== 'identificacao'"
+            flat
+            round
+            dense
+            icon="mdi-logout"
+            color="white"
+            aria-label="Sair"
+            @click="onLogout"
+          />
+        </div>
       </q-toolbar>
     </q-header>
 
