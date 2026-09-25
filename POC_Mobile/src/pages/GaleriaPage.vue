@@ -56,7 +56,7 @@
             class="gl-thumb-wrap"
           >
             <img
-              :src="getUrl(foto.id, foto.blob)"
+              :src="getUrl(foto.id, foto.blob, foto.cloudUrl)"
               class="gl-thumb"
               alt="Foto"
               loading="lazy"
@@ -94,7 +94,7 @@
           </div>
 
           <div class="lb-img-wrap">
-            <img :src="getUrl(lightboxFoto.id, lightboxFoto.blob)" class="lb-img" alt="Foto" />
+            <img :src="getUrl(lightboxFoto.id, lightboxFoto.blob, lightboxFoto.cloudUrl)" class="lb-img" alt="Foto" />
           </div>
 
           <!-- Navegar entre fotos -->
@@ -143,11 +143,12 @@ onMounted(async () => {
 // ── Object URL pool ──────────────────────────────────
 const urlPool = new Map<string, string>();
 
-function getUrl(id: string, blob: Blob): string {
-  if (!urlPool.has(id)) {
-    urlPool.set(id, URL.createObjectURL(blob));
+function getUrl(id: string, blob: Blob | undefined, cloudUrl: string | null): string {
+  if (blob) {
+    if (!urlPool.has(id)) urlPool.set(id, URL.createObjectURL(blob));
+    return urlPool.get(id)!;
   }
-  return urlPool.get(id)!;
+  return cloudUrl ?? "";
 }
 
 function revokeAll() {
@@ -220,7 +221,7 @@ async function excluirDoLightbox(id: string) {
 }
 
 function baixarFoto(foto: FotoEntry) {
-  const url = getUrl(foto.id, foto.blob);
+  const url = getUrl(foto.id, foto.blob, foto.cloudUrl);
   const a   = document.createElement("a");
   a.href     = url;
   a.download = `cgb-foto-${foto.dataHora.replace(/[:.]/g, "-")}.jpg`;

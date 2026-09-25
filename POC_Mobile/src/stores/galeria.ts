@@ -11,6 +11,7 @@ import {
   cloudUploadFoto,
   cloudExcluirFoto,
   cloudLimparExpirados,
+  cloudListarFotos,
 } from "@/services/galeria-cloud";
 
 export type { FotoEntry };
@@ -78,11 +79,28 @@ export const useGaleriaStore = defineStore("galeria", () => {
     if (sincronizando.value) return;
     sincronizando.value = true;
     try {
-      await cloudLimparExpirados(matricula); // limpa > 3 meses no Supabase também
+      await cloudLimparExpirados(matricula);
 
-      // Recarregar lista local após limpeza
-      const todas = await dbListarFotos();
-      fotos.value = todas.sort((a, b) => b.dataHora.localeCompare(a.dataHora));
+      // Busca todas as fotos da matrícula no Supabase Storage
+      const cloudFotos = await cloudListarFotos(matricula);
+
+      // Mescla: adiciona em memória as fotos cloud que não existem localmente
+      const localIds = new Set(fotos.value.map(f => f.id));
+      for (const cf of cloudFotos) {
+        if (!localIds.has(cf.id)) {
+          const entry: FotoEntry = {
+            id:        cf.id,
+            matricula: cf.matricula,
+            dataHora:  cf.dataHora,
+            tamanho:   cf.tamanho,
+            cloudUrl:  cf.url,
+          };
+          fotos.value.push(entry);
+        }
+      }
+
+      // Re-ordena por data decrescente
+      fotos.value.sort((a, b) => b.dataHora.localeCompare(a.dataHora));
     } catch {
       // Offline — ok, usa cache local
     } finally {

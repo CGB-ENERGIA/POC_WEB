@@ -6,7 +6,7 @@ export interface FotoEntry {
   id: string;
   matricula: string;
   dataHora: string;   // ISO 8601
-  blob: Blob;
+  blob?: Blob;        // ausente em entradas cloud-only (outros dispositivos)
   tamanho: number;    // bytes
   cloudUrl: string | null;  // URL pública no Supabase Storage (null = ainda não sincronizado)
 }
