@@ -1,4 +1,4 @@
-import { onMounted, watch, type Ref } from "vue";
+import { onMounted, onUnmounted, ref, watch, type Ref } from "vue";
 import {
   checklistDraftKey,
   clearChecklistDraft,
@@ -23,6 +23,8 @@ export function useChecklistDraft(
   state: ChecklistDraftState
 ) {
   const key = checklistDraftKey(auditagem, matricula);
+  const draftSaved = ref(false);
+  let savedTimer: ReturnType<typeof setTimeout> | undefined;
 
   function snapshot(): ChecklistDraftData {
     return {
@@ -39,10 +41,16 @@ export function useChecklistDraft(
     const data = snapshot();
     if (draftHasContent(data)) {
       saveChecklistDraft(key, data);
+      clearTimeout(savedTimer);
+      draftSaved.value = true;
+      savedTimer = setTimeout(() => { draftSaved.value = false; }, 2000);
     } else {
       clearChecklistDraft(key);
+      draftSaved.value = false;
     }
   }
+
+  onUnmounted(() => clearTimeout(savedTimer));
 
   function restoreDraft() {
     const draft = loadChecklistDraft(key);
@@ -66,5 +74,6 @@ export function useChecklistDraft(
   return {
     persistDraft,
     clearDraft: () => clearChecklistDraft(key),
+    draftSaved,
   };
 }

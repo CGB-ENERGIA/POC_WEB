@@ -24,6 +24,12 @@
           <q-badge color="positive" outline :label="`${respondidas - naoConformes} conformes`" />
           <q-badge color="negative" outline :label="`${naoConformes} não conformes`" />
         </div>
+        <Transition name="cl-autosave">
+          <div v-if="draftSaved" class="cl-autosave-indicator">
+            <q-icon name="mdi-check-circle-outline" size="12px" />
+            Rascunho salvo
+          </div>
+        </Transition>
       </div>
     </div>
 
@@ -616,7 +622,7 @@ const expandedCategories = reactive<Record<string, boolean>>(
   Object.fromEntries(props.checklist.map((cat, i) => [cat.id, i === 0]))
 );
 
-const { persistDraft, clearDraft: clearChecklistDraft } = useChecklistDraft(
+const { persistDraft, clearDraft: clearChecklistDraft, draftSaved } = useChecklistDraft(
   props.auditagem,
   session.employee?.matricula ?? "anon",
   { base, equipe, membros, respostas, detalhesMap, expandedCategories }
