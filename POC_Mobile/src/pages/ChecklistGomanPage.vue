@@ -346,8 +346,12 @@
 
           <div class="field-label q-mb-sm">Foto da evidência</div>
 
+          <div v-if="modalPhotoLoading" class="nc-photo-loading q-mb-md">
+            <q-spinner-oval size="32px" color="primary" />
+            <span>Processando foto…</span>
+          </div>
           <div
-            v-if="modalFotoPreview"
+            v-else-if="modalFotoPreview"
             class="nc-foto-preview q-mb-md"
             @click="abrirCameraNc"
           >
@@ -616,7 +620,7 @@ watch([evidencias, fotosGerais], ([ev, fg]) => {
 
 // ── Membros ───────────────────────────────────────────────────────────────────
 const membros = ref<{ nome: string; matricula: string }[]>(
-  Array.from({ length: 4 }, () => ({ nome: "", matricula: "" }))
+  Array.from({ length: 2 }, () => ({ nome: "", matricula: "" }))
 );
 const saving = ref(false);
 
@@ -686,6 +690,7 @@ const cameraNcAberta      = ref(false);
 const galeriaPickerAberta = ref(false);
 const modalEraNaoConforme = ref(false);
 const proximaPerguntaId = ref<string | null>(null);
+const modalPhotoLoading = ref(false);
 
 const todasPerguntasIds = gomanChecklist.flatMap((cat) =>
   cat.perguntas.map((p) => p.id)
@@ -729,7 +734,10 @@ function progressoCategoria(catId: string) {
 }
 
 function setConforme(id: string) {
-  if (respostas[id] === "conforme") return;
+  if (respostas[id] === "conforme") {
+    delete respostas[id];
+    return;
+  }
   respostas[id] = "conforme";
   delete detalhesMap[id];
   irParaProximaPergunta(id);
@@ -840,6 +848,7 @@ function usarFotoLocal(foto: string) {
 }
 
 async function onFotoNcCapturada(base64: string) {
+  modalPhotoLoading.value = true;
   try {
     const { date } = await getTrustedTime();
     modalFotoPreview.value = await stampAuditPhoto(base64, {
@@ -851,10 +860,13 @@ async function onFotoNcCapturada(base64: string) {
     const message =
       err instanceof ServerTimeError ? err.message : "Não foi possível processar a foto";
     $q.notify({ type: "negative", message, position: "top" });
+  } finally {
+    modalPhotoLoading.value = false;
   }
 }
 
 async function onFotoGaleriaImportada(blob: Blob) {
+  modalPhotoLoading.value = true;
   try {
     const base64 = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -873,6 +885,8 @@ async function onFotoGaleriaImportada(blob: Blob) {
     const message =
       err instanceof ServerTimeError ? err.message : "Não foi possível processar a foto";
     $q.notify({ type: "negative", message, position: "top" });
+  } finally {
+    modalPhotoLoading.value = false;
   }
 }
 
@@ -1121,6 +1135,19 @@ async function onSubmit() {
 
 .hidden-input {
   display: none;
+}
+
+.nc-photo-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100px;
+  border-radius: 16px;
+  border: 1px dashed rgba(122, 18, 37, 0.25);
+  color: #64748b;
+  font-size: 13px;
 }
 
 .nc-foto-preview {
