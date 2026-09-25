@@ -13,6 +13,7 @@ export async function syncEmAndamentoToRemote(entry: ObservacaoChecklist): Promi
   // Respostas sem foto base64 (podem ser grandes demais para JSON)
   const respostasSemFoto = entry.respostas.map(({ foto: _f, ...r }) => r);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await supabase.from("user_observations").upsert({
     id: entry.id,
     matricula: entry.matricula,
@@ -26,10 +27,10 @@ export async function syncEmAndamentoToRemote(entry: ObservacaoChecklist): Promi
       conformes: entry.resumo.conformes,
       naoConformes: entry.resumo.naoConformes,
       _rascunho: { membros: entry.membros, respostas: respostasSemFoto },
-    } as object,
+    },
     sync_status: "em_andamento",
     status: "pendente",
-  }, { onConflict: "id" });
+  } as any, { onConflict: "id" });
 }
 
 /** Remove o rascunho do remote quando o checklist é finalizado ou descartado. */

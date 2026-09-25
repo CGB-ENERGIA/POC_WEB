@@ -182,14 +182,17 @@ export const useObservacoesStore = defineStore("observacoes", {
     async fetchSynced(matricula: string): Promise<void> {
       if (!navigator.onLine) return;
       const supabase = getSupabase();
-      const { data } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: rawData } = await supabase
         .from("user_observations")
         .select("id,matricula,observador,auditagem,data,base,equipe,resumo,status,sync_status,comentario_analise,analisado_por")
         .eq("matricula", matricula)
         .gt("expires_at", new Date().toISOString())
         .order("data", { ascending: false });
 
-      if (!data) return;
+      if (!rawData) return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data = rawData as any[];
 
       // Restaura rascunhos em_andamento ao items local se o localStorage foi limpo
       let persistNeeded = false;
@@ -318,7 +321,7 @@ export const useObservacoesStore = defineStore("observacoes", {
         respostas: payload.respostas,
         resumo,
         syncStatus: (!emAndamento && isSupabaseSyncEnabled()) ? "pending" : undefined,
-        status: payload.status,
+        ...(payload.status !== undefined ? { status: payload.status } : {}),
       };
 
       this.items.unshift(entry);
