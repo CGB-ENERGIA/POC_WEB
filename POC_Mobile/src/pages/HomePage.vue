@@ -465,9 +465,9 @@ const metaProgress = computed(() => {
 .hp-banner__right { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; }
 
 .hp-banner__name {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 800;
-  letter-spacing: -.02em;
+  letter-spacing: -.025em;
   line-height: 1.15;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -828,7 +828,7 @@ const metaProgress = computed(() => {
     padding: 24px 28px 20px;
     border-radius: 24px;
   }
-  .hp-banner__name { font-size: 24px; }
+  .hp-banner__name { font-size: 26px; }
 
   .hp-grid {
     display: grid;
