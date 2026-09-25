@@ -1154,12 +1154,18 @@ async function onSubmit() {
   LocalStorage.remove(draftKey);
   clearChecklistDraft();
 
-  $q.notify({
-    type: "positive",
-    message: "Checklist GSTC/GERE registrado com sucesso!",
-    icon: "mdi-check-circle",
-    position: "top",
-  });
+  $q.notify(
+    navigator.onLine
+      ? { type: "positive", message: "Checklist GSTC/GERE registrado com sucesso!", icon: "mdi-check-circle", position: "top" }
+      : {
+          type: "info",
+          icon: "mdi-content-save-check-outline",
+          message: "Checklist GSTC/GERE salvo no aparelho.",
+          caption: "Será enviado automaticamente quando a internet voltar.",
+          position: "top",
+          timeout: 5000,
+        }
+  );
 
   await router.replace({ name: "home" });
   saving.value = false;

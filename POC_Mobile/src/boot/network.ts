@@ -3,8 +3,6 @@ import { Notify } from "quasar";
 
 import { refreshServerTimeSync } from "@/utils/server-time";
 import { useObservacoesStore } from "@/stores/observacoes";
-import { useSessionStore } from "@/stores/session";
-import { isSupabaseSyncEnabled } from "@/lib/config";
 
 export default defineBoot(() => {
   if (typeof window === "undefined") return;
@@ -12,27 +10,27 @@ export default defineBoot(() => {
   window.addEventListener("offline", () => {
     Notify.create({
       type: "info",
-      message: "Modo offline — você pode continuar preenchendo. Os dados ficam neste aparelho.",
+      icon: "mdi-cloud-off-outline",
+      message: "Modo offline — pode continuar preenchendo.",
+      caption: "Tudo fica salvo no aparelho e é enviado sozinho quando a internet voltar.",
       position: "top",
-      timeout: 4000,
+      timeout: 4500,
     });
   });
 
   window.addEventListener("online", () => {
     void refreshServerTimeSync();
 
-    if (isSupabaseSyncEnabled()) {
-      const session = useSessionStore();
-      if (session.employee) {
-        useObservacoesStore().retryFailedSyncs(session.employee);
-      }
-    }
-
+    const pendentes = useObservacoesStore().pendingCount;
     Notify.create({
       type: "positive",
+      icon: "mdi-wifi",
       message: "Conexão restabelecida.",
+      ...(pendentes > 0
+        ? { caption: `Enviando ${pendentes} checklist${pendentes > 1 ? "s" : ""} salvo${pendentes > 1 ? "s" : ""} no aparelho…` }
+        : {}),
       position: "top",
-      timeout: 2500,
+      timeout: 3000,
     });
   });
 });

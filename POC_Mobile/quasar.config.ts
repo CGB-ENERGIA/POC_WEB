@@ -2,7 +2,7 @@ import { defineConfig } from "#q-app";
 
 export default defineConfig(() => {
   return {
-    boot: ["pinia", "dark-mode", "auth", "lang", "network", "time-sync"],
+    boot: ["pinia", "offline-sync", "dark-mode", "auth", "lang", "network", "time-sync"],
 
     css: ["app.scss"],
 

@@ -102,6 +102,100 @@ body {
   -webkit-backdrop-filter: blur(8px);
 }
 
+/* indicador de sincronização offline no header */
+.sync-pill {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 10px 0 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.12s ease;
+}
+
+.sync-pill:active {
+  transform: scale(0.96);
+}
+
+.sync-pill__count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #fff;
+  color: #7a1225;
+  font-size: 11px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.sync-pill--offline {
+  background: rgba(251, 191, 36, 0.2);
+  border-color: rgba(251, 191, 36, 0.55);
+}
+
+.sync-pill--offline .sync-pill__count {
+  background: #fbbf24;
+  color: #3d0912;
+}
+
+.sync-pill--done {
+  background: rgba(34, 197, 94, 0.24);
+  border-color: rgba(134, 239, 172, 0.6);
+}
+
+.sync-pill--syncing .sync-pill__icon {
+  animation: sync-pill-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes sync-pill-pulse {
+  0%, 100% { opacity: 1; transform: translateY(0); }
+  50% { opacity: 0.55; transform: translateY(-2px); }
+}
+
+.sync-pill-enter-active,
+.sync-pill-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.sync-pill-enter-from,
+.sync-pill-leave-to {
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+@media (max-width: 374px) {
+  .sync-pill__label {
+    display: none;
+  }
+
+  .sync-pill {
+    padding: 0 7px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sync-pill--syncing .sync-pill__icon {
+    animation: none;
+  }
+}
+
 .mobile-card {
   border-radius: 20px;
   border: 1px solid rgba(15, 23, 42, 0.06);

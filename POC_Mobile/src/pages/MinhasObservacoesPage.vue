@@ -55,6 +55,14 @@
                 Equipe: {{ obs.equipe || '—' }}
               </div>
 
+              <div
+                v-if="obs.status !== 'em_andamento' && obs.syncStatus && obs.syncStatus !== 'synced'"
+                class="sync-hint q-mt-xs"
+              >
+                <q-icon name="mdi-information-outline" size="14px" />
+                <span>{{ syncHint(obs) }}</span>
+              </div>
+
               <!-- resumo -->
               <div class="row q-col-gutter-xs q-mt-sm">
                 <div class="col-4 text-center">
@@ -133,7 +141,7 @@
                     no-caps
                     color="primary"
                     icon="mdi-cloud-upload-outline"
-                    label="Reenviar"
+                    label="Enviar agora"
                     :loading="reenviando === obs.id"
                     @click="reenviar(obs)"
                   />
@@ -195,7 +203,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from "vue";
+import { computed, ref, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { useQuasar } from "quasar";
 import { useSessionStore } from "@/stores/session";
@@ -240,47 +248,77 @@ function tipoLabel(tipo: string) {
   return tiposObservacao.find((t) => t.value === tipo)?.label ?? tipo;
 }
 
+const isOnline = ref(navigator.onLine);
+function updateOnline() { isOnline.value = navigator.onLine; }
+onMounted(() => {
+  window.addEventListener("online", updateOnline);
+  window.addEventListener("offline", updateOnline);
+});
+onUnmounted(() => {
+  window.removeEventListener("online", updateOnline);
+  window.removeEventListener("offline", updateOnline);
+});
+
+type SyncVisual = "synced" | "sending" | "queued";
+
+function syncVisual(obs: ObservacaoChecklist): SyncVisual {
+  if (obs.syncStatus === "synced") return "synced";
+  if (obs.syncStatus === "pending" && isOnline.value && (observacoes.syncing || reenviando.value === obs.id)) {
+    return "sending";
+  }
+  return "queued";
+}
+
 function syncColor(obs: ObservacaoChecklist) {
   if (obs.analiseStatus === "reprovado") return "negative";
   if (obs.analiseStatus === "aprovado") return "positive";
-  const s = obs.syncStatus;
-  if (s === "synced") return "grey-6";
-  if (s === "failed") return "negative";
-  if (s === "pending") return "warning";
-  return "grey-6";
+  const v = syncVisual(obs);
+  if (v === "synced") return "grey-6";
+  if (v === "sending") return "info";
+  return "warning";
 }
 
 function syncLabel(obs: ObservacaoChecklist) {
   if (obs.analiseStatus === "reprovado") return "Reprovado";
   if (obs.analiseStatus === "aprovado") return "Aprovado";
-  const s = obs.syncStatus;
-  if (s === "synced") return "Enviado";
-  if (s === "failed") return "Falhou";
-  if (s === "pending") return "Enviando";
-  return "Local";
+  const v = syncVisual(obs);
+  if (v === "synced") return "Enviado";
+  if (v === "sending") return "Enviando…";
+  return isOnline.value ? "Aguardando envio" : "Na fila";
 }
 
 function syncIcon(obs: ObservacaoChecklist) {
   if (obs.analiseStatus === "reprovado") return "mdi-close-circle";
   if (obs.analiseStatus === "aprovado") return "mdi-check-circle";
-  const s = obs.syncStatus;
-  if (s === "synced") return "mdi-cloud-check-outline";
-  if (s === "failed") return "mdi-alert-circle";
-  if (s === "pending") return "mdi-sync";
-  return "mdi-cloud-off-outline";
+  const v = syncVisual(obs);
+  if (v === "synced") return "mdi-cloud-check-outline";
+  if (v === "sending") return "mdi-cloud-sync-outline";
+  return isOnline.value ? "mdi-cloud-clock-outline" : "mdi-cloud-off-outline";
+}
+
+function syncHint(obs: ObservacaoChecklist) {
+  if (!isOnline.value) return "Salvo no aparelho. Envio automático quando a internet voltar.";
+  if (syncVisual(obs) === "sending") return "Enviando para o servidor…";
+  const motivo = obs.syncError ? `${obs.syncError}. ` : "";
+  return `${motivo}Nova tentativa automática em instantes.`;
 }
 
 async function reenviar(obs: ObservacaoChecklist) {
-  if (!session.employee) return;
   reenviando.value = obs.id;
-  const erro = await observacoes.reenviar(obs.id, session.employee);
+  const erro = await observacoes.reenviar(obs.id);
   reenviando.value = null;
   if (!erro) {
-    $q.notify({ type: "positive", message: "Checklist enviado com sucesso!", position: "top" });
-  } else if (erro.includes("não pôde") || erro.includes("não puderam")) {
-    $q.notify({ type: "warning", icon: "mdi-image-off-outline", message: erro, position: "top", timeout: 10000 });
+    $q.notify({ type: "positive", icon: "mdi-cloud-check-outline", message: "Checklist enviado com sucesso!", position: "top" });
+  } else if (!navigator.onLine) {
+    $q.notify({ type: "info", icon: "mdi-cloud-off-outline", message: erro, position: "top", timeout: 5000 });
   } else {
-    $q.notify({ type: "negative", message: `Falha: ${erro}`, position: "top", timeout: 6000 });
+    $q.notify({
+      type: "warning",
+      message: `Não foi possível enviar agora: ${erro}`,
+      caption: "Continuaremos tentando automaticamente.",
+      position: "top",
+      timeout: 6000,
+    });
   }
 }
 
@@ -335,6 +373,27 @@ function naoConformidades(obs: ObservacaoChecklist): RespostaSalva[] {
 <style scoped>
 .sync-badge {
   font-size: 10px;
+}
+.sync-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid rgba(217, 119, 6, 0.22);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+.sync-hint .q-icon {
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+:global(body.body--dark) .sync-hint {
+  color: #fcd34d;
+  background: rgba(217, 119, 6, 0.14);
+  border-color: rgba(252, 211, 77, 0.28);
 }
 .nc-resumo {
   background: rgba(var(--q-negative-rgb, 244, 67, 54), 0.06);

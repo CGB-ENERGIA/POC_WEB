@@ -40,7 +40,7 @@ export function useChecklistDraft(
   function persistDraft() {
     const data = snapshot();
     if (draftHasContent(data)) {
-      saveChecklistDraft(key, data);
+      if (!saveChecklistDraft(key, data)) return;
       clearTimeout(savedTimer);
       draftSaved.value = true;
       savedTimer = setTimeout(() => { draftSaved.value = false; }, 2000);

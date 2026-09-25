@@ -27,6 +27,10 @@ export interface ObservacaoChecklist {
   respostas: RespostaSalva[];
   resumo: ChecklistResumo;
   syncStatus?: "pending" | "synced" | "failed";
+  syncAttempts?: number;
+  syncError?: string | null;
+  /** Epoch ms: antes disso o reenvio automático periódico não tenta de novo (backoff). */
+  syncNextAt?: number;
   analiseStatus?: "aprovado" | "reprovado" | "pendente";
   analiseMotivo?: string | null;
   analisadoPor?: string | null;

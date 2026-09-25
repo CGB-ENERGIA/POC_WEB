@@ -122,48 +122,65 @@ async function uploadFoto(key: string, base64: string, r2Available: boolean): Pr
   }
 }
 
+const UNIQUE_VIOLATION = "23505";
+
+async function findSubmissionId(clientId: string): Promise<string | null> {
+  const { data, error } = await getSupabase()
+    .from("checklist_submissions")
+    .select("id")
+    .eq("client_id", clientId)
+    .maybeSingle();
+  if (error) throw new ChecklistSyncError(error.message);
+  return data?.id ?? null;
+}
+
 /**
- * Sincroniza checklist + fotos + respostas (Supabase).
- * Fotos: R2 como primário (se configurado), Supabase Storage como fallback.
- * Idempotente via client_id = id local do registro.
- * Uploads de fotos são feitos em paralelo para reduzir tempo de envio.
- * Retorna { failedPhotos } — número de fotos que não puderam ser enviadas.
+ * Envia checklist + fotos + respostas ao Supabase.
+ * Retomável e idempotente (client_id = id local): se um envio anterior caiu no
+ * meio, completa só o que faltou, sem duplicar submissão, respostas ou fotos.
+ * Falha de foto aborta o envio (para tentar de novo com a foto ainda no aparelho),
+ * a menos que allowPhotoLoss — usado após várias tentativas, para não travar a fila.
  */
 export async function syncChecklistToRemote(
   entry: ObservacaoChecklist,
-  employee: Employee
+  employee: Employee,
+  opts: { allowPhotoLoss?: boolean } = {}
 ): Promise<{ failedPhotos: number }> {
-  if (!isSupabaseSyncEnabled() || !navigator.onLine) return { failedPhotos: 0 };
+  if (!navigator.onLine) throw new ChecklistSyncError("Sem conexão com a internet");
 
   await ensureEmployee(employee);
-
   const supabase = getSupabase();
 
-  const { data: existing } = await supabase
-    .from("checklist_submissions")
-    .select("id")
-    .eq("client_id", entry.id)
-    .maybeSingle();
+  let submissionId = await findSubmissionId(entry.id);
 
-  if (existing) return { failedPhotos: 0 };
+  let needLocalPhotos = entry.fotosLocal.length > 0;
+  if (submissionId && needLocalPhotos) {
+    const { count, error } = await supabase
+      .from("checklist_photos")
+      .select("id", { count: "exact", head: true })
+      .eq("submission_id", submissionId);
+    if (error) throw new ChecklistSyncError(error.message);
+    needLocalPhotos = (count ?? 0) === 0;
+  }
 
   const r2Available = isR2Configured();
   let failedPhotos = 0;
 
-  // Upload de fotos gerais em paralelo
-  const localPhotoResults = await Promise.all(
-    entry.fotosLocal.map(async (foto, i) => {
-      const key = buildChecklistPhotoKey(entry.id, "local", String(i));
-      const result = await uploadFoto(key, foto, r2Available);
-      if (!result) failedPhotos++;
-      return result ? { key: result, sortOrder: i } : null;
-    })
-  );
+  const localPhotoResults = needLocalPhotos
+    ? await Promise.all(
+        entry.fotosLocal.map(async (foto, i) => {
+          if (!foto) return null;
+          const key = buildChecklistPhotoKey(entry.id, "local", String(i));
+          const result = await uploadFoto(key, foto, r2Available);
+          if (!result) failedPhotos++;
+          return result ? { key: result, sortOrder: i } : null;
+        })
+      )
+    : [];
   const localPhotoKeys = localPhotoResults.filter(
     (r): r is { key: string; sortOrder: number } => r !== null
   );
 
-  // Upload de fotos de não conformidades em paralelo
   const responseRows = await Promise.all(
     entry.respostas.map(async (r) => {
       let fotoKey: string | null = null;
@@ -190,50 +207,47 @@ export async function syncChecklistToRemote(
     })
   );
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: submission, error: subErr } = await supabase
-    .from("checklist_submissions")
-    .insert({
-      client_id: entry.id,
-      matricula: entry.matricula,
-      observador: entry.observador,
-      auditagem: entry.auditagem,
-      data: entry.data,
-      base: entry.base,
-      equipe: entry.equipe,
-      membros: entry.membros as any,
-      resumo: entry.resumo as any,
-    })
-    .select("id")
-    .single();
-
-  if (subErr || !submission) {
-    throw new ChecklistSyncError(subErr?.message ?? "Falha ao salvar checklist");
+  if (failedPhotos > 0 && !opts.allowPhotoLoss) {
+    throw new ChecklistSyncError(
+      `${failedPhotos} foto${failedPhotos > 1 ? "s" : ""} não ${failedPhotos > 1 ? "puderam" : "pôde"} ser enviada${failedPhotos > 1 ? "s" : ""}`
+    );
   }
 
-  const submissionId = submission.id;
+  if (!submissionId) {
+    const { data: submission, error: subErr } = await supabase
+      .from("checklist_submissions")
+      .insert({
+        client_id: entry.id,
+        matricula: entry.matricula,
+        observador: entry.observador,
+        auditagem: entry.auditagem,
+        data: entry.data,
+        base: entry.base,
+        equipe: entry.equipe,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        membros: entry.membros as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        resumo: entry.resumo as any,
+      })
+      .select("id")
+      .single();
 
-  // Grava em user_observations (35 dias de retenção, para Minhas Observações no PWA)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await supabase.from("user_observations").upsert({
-    id: entry.id,
-    matricula: entry.matricula,
-    observador: entry.observador,
-    auditagem: entry.auditagem,
-    data: entry.data,
-    base: entry.base,
-    equipe: entry.equipe,
-    resumo: entry.resumo as any,
-    sync_status: "synced",
-  }, { onConflict: "id" });
+    if (subErr?.code === UNIQUE_VIOLATION) {
+      submissionId = await findSubmissionId(entry.id);
+    } else if (subErr || !submission) {
+      throw new ChecklistSyncError(subErr?.message ?? "Falha ao salvar checklist");
+    } else {
+      submissionId = submission.id;
+    }
+    if (!submissionId) throw new ChecklistSyncError("Falha ao salvar checklist");
+  }
 
   if (responseRows.length) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: respErr } = await supabase.from("checklist_responses").insert(
-      responseRows.map((row) => ({
-        submission_id: submissionId,
-        ...row,
-      })) as any
+    // ON CONFLICT DO NOTHING: completa respostas faltantes de um envio interrompido.
+    const { error: respErr } = await supabase.from("checklist_responses").upsert(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      responseRows.map((row) => ({ submission_id: submissionId, ...row })) as any,
+      { onConflict: "submission_id,pergunta_id", ignoreDuplicates: true }
     );
     if (respErr) throw new ChecklistSyncError(respErr.message);
   }
@@ -250,5 +264,37 @@ export async function syncChecklistToRemote(
     if (photoErr) throw new ChecklistSyncError(photoErr.message);
   }
 
+  // Por último: é o que faz o registro aparecer em Minhas Observações (35 dias).
+  const { error: uoErr } = await supabase.from("user_observations").upsert({
+    id: entry.id,
+    matricula: entry.matricula,
+    observador: entry.observador,
+    auditagem: entry.auditagem,
+    data: entry.data,
+    base: entry.base,
+    equipe: entry.equipe,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resumo: entry.resumo as any,
+    sync_status: "synced",
+  }, { onConflict: "id" });
+  // Não bloqueia a fila: a submissão já está gravada; fetchSynced reconcilia depois.
+  if (uoErr) console.warn("[sync] user_observations:", uoErr.message);
+
   return { failedPhotos };
+}
+
+/** client_ids (entre os informados) que já existem no servidor. */
+export async function fetchExistingClientIds(clientIds: string[]): Promise<Set<string>> {
+  const found = new Set<string>();
+  const supabase = getSupabase();
+  for (let i = 0; i < clientIds.length; i += 100) {
+    const chunk = clientIds.slice(i, i + 100);
+    const { data, error } = await supabase
+      .from("checklist_submissions")
+      .select("client_id")
+      .in("client_id", chunk);
+    if (error) throw new ChecklistSyncError(error.message);
+    for (const row of data ?? []) if (row.client_id) found.add(row.client_id);
+  }
+  return found;
 }

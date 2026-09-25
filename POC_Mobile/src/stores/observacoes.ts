@@ -2,18 +2,84 @@ import { defineStore } from "pinia";
 import { LocalStorage, Notify } from "quasar";
 
 import type { AuditagemCategoria } from "@/data/auditagem";
-import type { Employee } from "@/data/employees";
+import { findByMatricula, type Employee } from "@/data/employees";
 import type { ChecklistResumo, ObservacaoChecklist, RespostaSalva } from "@/types/checklist";
 import type { ItemVerificado } from "@/data/goman-checklist";
-import { appConfig, isSupabaseSyncEnabled } from "@/lib/config";
-import { syncChecklistToRemote, syncEmAndamentoToRemote, deleteEmAndamentoFromRemote } from "@/services/checklist-sync";
+import { appConfig, isRemoteSyncEnabled, isSupabaseSyncEnabled } from "@/lib/config";
+import {
+  syncChecklistToRemote,
+  syncEmAndamentoToRemote,
+  deleteEmAndamentoFromRemote,
+  fetchExistingClientIds,
+} from "@/services/checklist-sync";
 import { syncObservacaoLivreToRemote } from "@/services/observacao-sync";
 import { refreshServerTimeSync } from "@/utils/server-time";
 import { getSupabase } from "@/lib/supabase";
+import { kvGet, kvSet } from "@/utils/offline-db";
+import { useSessionStore } from "@/stores/session";
 
 export type SyncStatus = "pending" | "synced" | "failed" | "local";
 
 const STORAGE_KEY = "cgb-observacoes";
+const IDB_KEY = "observacoes";
+const RECONCILE_FLAG = "cgb-sync-reconciled-v1";
+const DIA_MS = 24 * 60 * 60 * 1000;
+/** Itens já enviados saem do aparelho após esse prazo (o servidor mantém tudo). */
+const LOCAL_RETENTION_MS = 40 * DIA_MS;
+const RECONCILE_WINDOW_MS = 7 * DIA_MS;
+/** Até essa tentativa, falha de foto aborta o envio para não perder evidência. */
+const MAX_ATTEMPTS_KEEP_PHOTOS = 3;
+
+// Estado de runtime do motor de envio (fora do Pinia: não é reativo nem persistido).
+let storageMode: "idb" | "local" = "local";
+let writeChain: Promise<void> = Promise.resolve();
+let localFallbackDirty = false;
+let storageFullWarned = false;
+let reconcileDone = false;
+let queueRun: Promise<void> | null = null;
+const inflight = new Map<string, Promise<boolean>>();
+
+function plainCopy<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function isNetworkError(message: string | null | undefined): boolean {
+  if (!message) return false;
+  return /failed to fetch|load failed|networkerror|network request|sem conexão|timeout|aborted/i.test(message);
+}
+
+function friendlyError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  if (!navigator.onLine || isNetworkError(msg)) return "Sem conexão estável";
+  return msg || "Erro desconhecido";
+}
+
+/** Backoff do reenvio periódico. Rede instável tenta logo; erro de servidor espaça mais. */
+function nextAttemptDelay(attempts: number, networkIssue: boolean): number {
+  const steps = networkIssue
+    ? [15_000, 30_000, 60_000, 120_000]
+    : [20_000, 60_000, 180_000, 600_000, 1_800_000];
+  return steps[Math.min(attempts - 1, steps.length - 1)] ?? steps[steps.length - 1]!;
+}
+
+function resolveEmployee(matricula: string): Employee | null {
+  const session = useSessionStore();
+  if (session.employee?.matricula === matricula) return session.employee;
+  return findByMatricula(matricula) ?? null;
+}
+
+function notifyStorageFull() {
+  if (storageFullWarned) return;
+  storageFullWarned = true;
+  Notify.create({
+    type: "negative",
+    icon: "mdi-harddisk-remove",
+    message: "Armazenamento do aparelho cheio. Conecte-se à internet para enviar os checklists pendentes e liberar espaço.",
+    position: "top",
+    timeout: 0,
+    actions: [{ label: "OK", color: "white" }],
+  });
+}
 
 function isQuotaExceeded(err: unknown): boolean {
   return (
@@ -44,6 +110,10 @@ export type RegistroObservacao = Observacao | ObservacaoChecklist;
 interface ObservacoesState {
   items: RegistroObservacao[];
   syncedItems: ObservacaoChecklist[];
+  hydrated: boolean;
+  syncing: boolean;
+  /** Última rodada da fila que enviou algo (para o indicador "Tudo enviado"). */
+  lastSyncAt: number | null;
 }
 
 function loadItems(): RegistroObservacao[] {
@@ -116,6 +186,9 @@ export const useObservacoesStore = defineStore("observacoes", {
   state: (): ObservacoesState => ({
     items: loadItems(),
     syncedItems: [],  // itens buscados do Supabase (user_observations)
+    hydrated: false,
+    syncing: false,
+    lastSyncAt: null,
   }),
 
   getters: {
@@ -142,26 +215,84 @@ export const useObservacoesStore = defineStore("observacoes", {
       return merged.sort((a, b) => b.data.localeCompare(a.data));
     },
 
-    countByMatricula: (state) => (matricula: string) =>
-      state.items.filter((o) => o.matricula === matricula).length,
+    /** Checklists finalizados que ainda não chegaram ao servidor (todas as matrículas do aparelho). */
+    queue: (state): ObservacaoChecklist[] =>
+      state.items.filter(
+        (o): o is ObservacaoChecklist =>
+          isChecklist(o) && o.status !== "em_andamento" && o.syncStatus !== "synced"
+      ),
+
+    pendingCount(): number {
+      return this.queue.length;
+    },
   },
 
   actions: {
-    persist() {
+    /**
+     * Carrega a fila do IndexedDB (cota de centenas de MB, contra ~5 MB do
+     * localStorage, que estourava com 2–3 checklists com fotos offline).
+     * Migra o que houver no localStorage e poda itens enviados há muito tempo.
+     */
+    async hydrate() {
+      const fromLocal = this.items;
       try {
-        LocalStorage.set(STORAGE_KEY, this.items);
+        const stored = await kvGet<RegistroObservacao[]>(IDB_KEY);
+        const byId = new Map<string, RegistroObservacao>();
+        for (const o of Array.isArray(stored) ? stored : []) byId.set(o.id, o);
+        // localStorage só tem dados se é a 1ª execução ou se o IndexedDB falhou por último → é o mais recente.
+        for (const o of fromLocal) byId.set(o.id, o);
+
+        const limite = Date.now() - LOCAL_RETENTION_MS;
+        this.items = [...byId.values()].filter(
+          (o) => !(isChecklist(o) && o.syncStatus === "synced" && new Date(o.data).getTime() < limite)
+        );
+
+        await kvSet(IDB_KEY, plainCopy(this.items));
+        storageMode = "idb";
+        LocalStorage.remove(STORAGE_KEY);
+      } catch {
+        storageMode = "local";
+      }
+      this.hydrated = true;
+    },
+
+    persist() {
+      const snapshot = plainCopy(this.items);
+      if (storageMode === "idb") {
+        writeChain = writeChain
+          .then(() => kvSet(IDB_KEY, snapshot))
+          .then(() => {
+            if (localFallbackDirty) {
+              LocalStorage.remove(STORAGE_KEY);
+              localFallbackDirty = false;
+            }
+          })
+          .catch(() => {
+            localFallbackDirty = this.persistLocal(snapshot) || localFallbackDirty;
+          });
+        return;
+      }
+      this.persistLocal(snapshot);
+    },
+
+    /** Grava no localStorage. Retorna true se conseguiu. */
+    persistLocal(snapshot: RegistroObservacao[]): boolean {
+      try {
+        LocalStorage.set(STORAGE_KEY, snapshot);
+        return true;
       } catch (err) {
-        if (!isQuotaExceeded(err)) return;
-        // localStorage cheio de fotos base64 de checklists antigos já sincronizados
-        // (o servidor já tem essas fotos — não precisam continuar ocupando espaço local).
-        // Libera o máximo possível e tenta salvar de novo antes de desistir.
+        if (!isQuotaExceeded(err)) return false;
+        // Fotos base64 de checklists já enviados não precisam ocupar espaço local.
         if (this.freeSpaceForQuota()) {
           try {
-            LocalStorage.set(STORAGE_KEY, this.items);
+            LocalStorage.set(STORAGE_KEY, plainCopy(this.items));
+            return true;
           } catch {
-            // ainda não coube — não trava o app por isso, o envio remoto continua tentando.
+            // ainda não coube
           }
         }
+        notifyStorageFull();
+        return false;
       }
     },
 
@@ -262,28 +393,148 @@ export const useObservacoesStore = defineStore("observacoes", {
       return entry;
     },
 
-    retryFailedSyncs(employee: Employee) {
-      if (!isSupabaseSyncEnabled() || !navigator.onLine) return;
-      for (const item of this.items) {
-        if (!isChecklist(item) || item.syncStatus !== "failed") continue;
+    /** Envia um checklist. Nunca roda duas vezes em paralelo para o mesmo item. */
+    syncItem(item: ObservacaoChecklist): Promise<boolean> {
+      const running = inflight.get(item.id);
+      if (running) return running;
+
+      const task = (async () => {
+        const employee = resolveEmployee(item.matricula);
+        const attempts = item.syncAttempts ?? 0;
         item.syncStatus = "pending";
-        void syncChecklistToRemote(item, employee)
-          .then(({ failedPhotos }) => {
-            item.syncStatus = "synced";
-            item.fotosLocal = [];
-            this.persist();
-            if (failedPhotos > 0) {
-              Notify.create({
-                type: "warning",
-                icon: "mdi-image-off-outline",
-                message: `Checklist enviado, mas ${failedPhotos} foto${failedPhotos > 1 ? "s" : ""} não ${failedPhotos > 1 ? "puderam" : "pôde"} ser enviada${failedPhotos > 1 ? "s" : ""}.`,
-                position: "top",
-                timeout: 10000,
-              });
+        try {
+          if (!employee) throw new Error(`Colaborador ${item.matricula} não encontrado`);
+          const { failedPhotos } = await syncChecklistToRemote(item, employee, {
+            allowPhotoLoss: attempts >= MAX_ATTEMPTS_KEEP_PHOTOS,
+          });
+          item.syncStatus = "synced";
+          item.fotosLocal = [];
+          delete item.syncAttempts;
+          delete item.syncError;
+          delete item.syncNextAt;
+          if (failedPhotos > 0) {
+            Notify.create({
+              type: "warning",
+              icon: "mdi-image-off-outline",
+              message: `Checklist da equipe ${item.equipe || "—"} enviado, mas ${failedPhotos} foto${failedPhotos > 1 ? "s" : ""} não ${failedPhotos > 1 ? "puderam" : "pôde"} ser enviada${failedPhotos > 1 ? "s" : ""}.`,
+              position: "top",
+              timeout: 10000,
+            });
+          }
+          return true;
+        } catch (err) {
+          const message = friendlyError(err);
+          const tries = attempts + 1;
+          item.syncStatus = "failed";
+          item.syncAttempts = tries;
+          item.syncError = message;
+          item.syncNextAt = Date.now() + nextAttemptDelay(tries, isNetworkError(message));
+          return false;
+        } finally {
+          this.persist();
+          inflight.delete(item.id);
+        }
+      })();
+
+      inflight.set(item.id, task);
+      return task;
+    },
+
+    /**
+     * Envia a fila inteira, um item por vez (conexão de campo costuma ser fraca).
+     * force=false respeita o backoff de cada item (usado pelo timer periódico).
+     */
+    syncQueue(opts: { force?: boolean } = {}): Promise<void> {
+      if (queueRun) return queueRun;
+      if (!this.hydrated || !navigator.onLine || !isSupabaseSyncEnabled()) return Promise.resolve();
+
+      const agora = Date.now();
+      const alvos = this.queue.filter((o) => opts.force || !o.syncNextAt || o.syncNextAt <= agora);
+      if (!alvos.length) return Promise.resolve();
+
+      this.syncing = true;
+      queueRun = (async () => {
+        let enviados = 0;
+        try {
+          for (const item of alvos) {
+            if (!navigator.onLine) break;
+            if (item.syncStatus === "synced") continue;
+            if (await this.syncItem(item)) {
+              enviados++;
+            } else if (isNetworkError(item.syncError)) {
+              break; // conexão caiu: não adianta tentar os próximos agora
             }
-          })
-          .catch(() => { item.syncStatus = "failed"; this.persist(); });
+          }
+        } finally {
+          this.syncing = false;
+          queueRun = null;
+        }
+
+        if (enviados > 0) {
+          this.lastSyncAt = Date.now();
+          const restantes = this.pendingCount;
+          Notify.create({
+            type: "positive",
+            icon: "mdi-cloud-check-outline",
+            message: enviados === 1
+              ? "1 checklist salvo offline foi enviado automaticamente."
+              : `${enviados} checklists salvos offline foram enviados automaticamente.`,
+            ...(restantes > 0 ? { caption: `${restantes} ainda na fila` } : {}),
+            position: "top",
+            timeout: 4000,
+          });
+          void refreshServerTimeSync();
+          const matricula = useSessionStore().matricula;
+          if (matricula) void this.fetchSynced(matricula).catch(() => {});
+        }
+      })();
+      return queueRun;
+    },
+
+    /**
+     * Uma vez por aparelho: versões antigas marcavam como "Enviado" checklists
+     * finalizados offline que nunca chegaram ao servidor. Confere no servidor e
+     * devolve esses itens à fila.
+     */
+    async reconcileOnce() {
+      if (reconcileDone || !navigator.onLine || !this.hydrated) return;
+      if (LocalStorage.getItem<boolean>(RECONCILE_FLAG)) { reconcileDone = true; return; }
+
+      // Janela curta: o painel admin pode excluir checklists, e não queremos reenviar esses.
+      const desde = Date.now() - RECONCILE_WINDOW_MS;
+      const candidatos = this.items.filter(
+        (o): o is ObservacaoChecklist =>
+          isChecklist(o) &&
+          o.status !== "em_andamento" &&
+          o.syncStatus === "synced" &&
+          new Date(o.data).getTime() >= desde
+      );
+      if (candidatos.length) {
+        let existentes: Set<string>;
+        try {
+          existentes = await fetchExistingClientIds(candidatos.map((o) => o.id));
+        } catch {
+          return; // tenta de novo na próxima rodada
+        }
+        let resgatados = 0;
+        for (const o of candidatos) {
+          if (existentes.has(o.id)) continue;
+          o.syncStatus = "failed";
+          o.syncError = "Não chegou ao servidor";
+          delete o.syncNextAt;
+          resgatados++;
+        }
+        if (resgatados) this.persist();
       }
+      reconcileDone = true;
+      LocalStorage.set(RECONCILE_FLAG, true);
+    },
+
+    /** Ponto único chamado pelos gatilhos automáticos (boot, online, volta ao app, timer). */
+    async autoSync(opts: { force?: boolean } = {}) {
+      if (!this.hydrated || !navigator.onLine) return;
+      await this.reconcileOnce();
+      await this.syncQueue(opts);
     },
 
     addChecklist(payload: {
@@ -331,29 +582,17 @@ export const useObservacoesStore = defineStore("observacoes", {
         return entry;
       }
 
-      if (isSupabaseSyncEnabled()) {
-        if (!navigator.onLine) {
-          entry.syncStatus = "failed";
-          this.persist();
-        } else {
-          void syncChecklistToRemote(entry, payload.employee)
-            .then(async ({ failedPhotos }) => {
-              entry.syncStatus = "synced";
-              entry.fotosLocal = [];
-              this.persist();
-              if (failedPhotos > 0) {
-                Notify.create({
-                  type: "warning",
-                  icon: "mdi-image-off-outline",
-                  message: `Checklist enviado, mas ${failedPhotos} foto${failedPhotos > 1 ? "s" : ""} não ${failedPhotos > 1 ? "puderam" : "pôde"} ser enviada${failedPhotos > 1 ? "s" : ""}. Verifique a conexão e tente reenviar.`,
-                  position: "top",
-                  timeout: 10000,
-                });
-              }
-              await refreshServerTimeSync();
-              await this.fetchSynced(payload.matricula);
-            })
-            .catch(() => { entry.syncStatus = "failed"; this.persist(); });
+      // Offline o item fica "pending" na fila; os gatilhos automáticos enviam quando a rede voltar.
+      if (isSupabaseSyncEnabled() && navigator.onLine) {
+        // Pega o item recém-criado pelo proxy reativo do estado para a UI acompanhar o status.
+        const reativo = this.items.find((o) => o.id === entry.id);
+        if (reativo && isChecklist(reativo)) {
+          void this.syncItem(reativo).then(async (ok) => {
+            if (!ok) return;
+            await refreshServerTimeSync();
+            await this.fetchSynced(payload.matricula).catch(() => {});
+            if (this.pendingCount > 0) void this.syncQueue({ force: true });
+          });
         }
       }
 
@@ -381,27 +620,19 @@ export const useObservacoesStore = defineStore("observacoes", {
       return "local";
     },
 
-    async reenviar(id: string, employee: Employee): Promise<string | null> {
+    /** Envio manual ("Enviar agora"). Retorna null se deu certo, ou a mensagem de erro. */
+    async reenviar(id: string): Promise<string | null> {
       const item = this.items.find((o) => o.id === id);
       if (!item || !isChecklist(item)) return "Registro não encontrado";
-      item.syncStatus = "pending";
-      this.persist();
-      try {
-        const { failedPhotos } = await syncChecklistToRemote(item, employee);
-        item.syncStatus = "synced";
-        item.fotosLocal = [];
-        await refreshServerTimeSync();
-        this.persist();
-        await this.fetchSynced(item.matricula);
-        if (failedPhotos > 0) {
-          return `${failedPhotos} foto${failedPhotos > 1 ? "s" : ""} não ${failedPhotos > 1 ? "puderam" : "pôde"} ser enviada${failedPhotos > 1 ? "s" : ""} — o restante foi salvo`;
-        }
-        return null;
-      } catch (err) {
-        item.syncStatus = "failed";
-        this.persist();
-        return err instanceof Error ? err.message : "Erro desconhecido";
+      if (!navigator.onLine) {
+        return "Sem conexão. Ele será enviado automaticamente quando a internet voltar.";
       }
+      const ok = await this.syncItem(item);
+      if (!ok) return item.syncError ?? "Erro desconhecido";
+      void refreshServerTimeSync();
+      await this.fetchSynced(item.matricula).catch(() => {});
+      if (this.pendingCount > 0) void this.syncQueue({ force: true });
+      return null;
     },
 
     updateChecklist(id: string, updates: Partial<ObservacaoChecklist>) {

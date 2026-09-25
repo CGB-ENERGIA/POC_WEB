@@ -22,8 +22,14 @@ export function loadChecklistDraft(key: string): ChecklistDraftData | null {
   return LocalStorage.getItem<ChecklistDraftData>(key);
 }
 
-export function saveChecklistDraft(key: string, data: ChecklistDraftData) {
-  LocalStorage.set(key, data);
+/** Retorna false se o aparelho não tem espaço (o preenchimento continua em memória). */
+export function saveChecklistDraft(key: string, data: ChecklistDraftData): boolean {
+  try {
+    LocalStorage.set(key, data);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function clearChecklistDraft(key: string) {
