@@ -140,11 +140,7 @@ export async function refreshServerTimeSync(): Promise<boolean> {
   }
 }
 
-/**
- * Hora baseada no servidor (Postgres via Supabase, ou Cloudflare).
- * Offline: extrapola a última sync — nunca usa o relógio absoluto do aparelho.
- */
-export async function getTrustedTime(): Promise<TrustedTime> {
+async function getTrustedTimeOnce(): Promise<TrustedTime> {
   if (navigator.onLine) {
     try {
       const { date, provider } = await fetchAuthoritativeTime();
@@ -173,6 +169,23 @@ export async function getTrustedTime(): Promise<TrustedTime> {
 
   assertSyncFresh(sync);
   return syncResult(sync);
+}
+
+/**
+ * Hora baseada no servidor (Postgres via Supabase, ou Cloudflare).
+ * Offline: extrapola a última sync — nunca usa o relógio absoluto do aparelho.
+ * Em caso de fetch_failed online, tenta uma vez após 1.5 s antes de desistir.
+ */
+export async function getTrustedTime(): Promise<TrustedTime> {
+  try {
+    return await getTrustedTimeOnce();
+  } catch (err) {
+    if (err instanceof ServerTimeError && err.code === "fetch_failed" && navigator.onLine) {
+      await new Promise<void>((r) => setTimeout(r, 1500));
+      return await getTrustedTimeOnce();
+    }
+    throw err;
+  }
 }
 
 /** Estado da última sincronização (útil para UI/diagnóstico). */
