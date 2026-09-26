@@ -63,6 +63,7 @@
           v-model="evidencias"
           :equipe="equipe"
           :observador="session.employee?.nomeCompleto ?? session.employee?.nome ?? ''"
+          :matricula="session.employee?.matricula"
         />
 
         <FotosAdicionais

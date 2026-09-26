@@ -10,7 +10,7 @@
       :key="idx"
       class="evid-slot"
       :class="{ 'evid-slot--filled': modelValue[idx] }"
-      @click="abrirCamera(idx)"
+      @click="abrirSlot(idx)"
     >
       <template v-if="modelValue[idx]">
         <img :src="modelValue[idx]!" class="evid-slot__img" alt="" />
@@ -33,12 +33,14 @@
   </div>
 
   <CameraModal v-model="cameraAberta" @captured="onCaptured" />
+  <GaleriaPicker v-model="galeriaAberta" :matricula="matricula" @selected="onGaleriaImportada" />
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useQuasar } from "quasar";
 import CameraModal from "@/components/CameraModal.vue";
+import GaleriaPicker from "@/components/GaleriaPicker.vue";
 import { getTrustedTime, ServerTimeError } from "@/utils/server-time";
 import { stampAuditPhoto } from "@/utils/photo-stamp";
 
@@ -52,11 +54,13 @@ const props = defineProps<{
   modelValue: (string | null)[];
   equipe: string;
   observador: string;
+  matricula?: string;
 }>();
 const emit = defineEmits<{ (e: "update:modelValue", v: (string | null)[]): void }>();
 
 const $q = useQuasar();
 const cameraAberta = ref(false);
+const galeriaAberta = ref(false);
 const carregandoIdx = ref<number | null>(null);
 const idxAtivo = ref<number | null>(null);
 
@@ -69,18 +73,28 @@ function removerFoto(idx: number) {
   emit("update:modelValue", next);
 }
 
-function abrirCamera(idx: number) {
+function abrirSlot(idx: number) {
   if (!props.equipe.trim()) {
     $q.notify({ type: "warning", message: "Informe a equipe antes de registrar as evidências", position: "top" });
     return;
   }
   idxAtivo.value = idx;
-  cameraAberta.value = true;
+  $q.bottomSheet({
+    dark: $q.dark.isActive,
+    message: SLOTS[idx].label,
+    actions: [
+      { label: "Tirar foto", icon: "mdi-camera", id: "camera", color: "primary" },
+      { label: "Importar da galeria", icon: "mdi-image-multiple-outline", id: "galeria", color: "secondary" },
+    ],
+  }).onOk((action: { id: string }) => {
+    if (action.id === "camera") cameraAberta.value = true;
+    else galeriaAberta.value = true;
+  });
 }
 
-async function onCaptured(base64: string) {
-  if (idxAtivo.value === null) return;
+async function processarFoto(base64: string) {
   const idx = idxAtivo.value;
+  if (idx === null) return;
   carregandoIdx.value = idx;
   try {
     const { date } = await getTrustedTime();
@@ -98,6 +112,20 @@ async function onCaptured(base64: string) {
   } finally {
     carregandoIdx.value = null;
   }
+}
+
+async function onCaptured(base64: string) {
+  await processarFoto(base64);
+}
+
+async function onGaleriaImportada(blob: Blob) {
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+  await processarFoto(base64);
 }
 </script>
 
