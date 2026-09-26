@@ -302,16 +302,26 @@
       <template v-if="tab === 'geral'">
         <div class="dbp-toolbar">
           <div class="dbp-search-shell">
-            <q-icon name="mdi-magnify" size="16px" class="dbp-search-shell__ico" />
-            <input v-model="geralSearch" class="dbp-search" placeholder="Buscar por nome ou chapa..." />
+            <q-icon name="mdi-magnify" size="17px" class="dbp-search-icon" />
+            <input
+              v-model="geralSearch"
+              class="dbp-search"
+              placeholder="Buscar por nome, chapa ou rateio…"
+              autocomplete="off"
+            />
+            <button v-if="geralSearch" class="dbp-search-x" @click="geralSearch = ''">
+              <q-icon name="mdi-close" size="13px" />
+            </button>
           </div>
-        </div>
-        <div class="dbp-filter-bar">
-          <button
-            v-for="b in ['Todas', 'BCB', 'BDC', 'ITM', 'PDS', 'PDT', 'STI', 'ADM']" :key="b"
-            class="dbp-filter-btn" :class="{ '--active': geralBaseFilter === b }"
-            @click="geralBaseFilter = b"
-          >{{ b }}</button>
+
+          <div class="dbp-pills">
+            <button
+              v-for="b in ['Todas', 'BCB', 'BDC', 'ITM', 'PDS', 'PDT', 'STI', 'ADM']" :key="b"
+              class="dbp-pill"
+              :class="{ '--active': geralBaseFilter === b }"
+              @click="geralBaseFilter = b"
+            >{{ b }}</button>
+          </div>
         </div>
 
         <q-slide-transition>
@@ -329,15 +339,19 @@
           <div v-show="geralListOpen" class="dbp-records">
             <transition-group name="rec" appear>
               <div v-for="(f, i) in filteredFuncionarios" :key="i" class="dbp-record">
-                <div class="dbp-record__av dbp-record__av--geral">
+                <div class="dbp-record__av dbp-record__av--geral" :data-base="f.base">
                   <q-icon name="mdi-account-hard-hat-outline" size="16px" />
                 </div>
-                <div class="dbp-record__info">
+                <div class="dbp-record__main">
                   <span class="dbp-record__name">{{ f.nome }}</span>
-                  <span class="dbp-record__sub">{{ f.chapa }} · {{ f.funcao }}</span>
+                  <span class="dbp-record__sub">
+                    <span class="dbp-mat">{{ f.chapa }}</span>
+                    <span class="dbp-record__dot">·</span>
+                    {{ f.funcao }}
+                  </span>
                 </div>
                 <div class="dbp-record__chips">
-                  <span class="dbp-chip dbp-chip--base">{{ f.base }}</span>
+                  <span class="dbp-chip dbp-chip--base-colored" :data-base="f.base">{{ f.base }}</span>
                   <span class="dbp-chip dbp-chip--rateio">{{ f.rateio }}</span>
                 </div>
               </div>
@@ -1361,17 +1375,41 @@ async function onImportFile(event: Event) {
 }
 
 .dbp-record__av--geral {
-  background: rgba(251,146,60,.12);
-  color: #fb923c;
   font-size: 0;
   i { font-size: 16px !important; }
+
+  &[data-base="BCB"] { background: rgba(96,165,250,.12);  color: #60a5fa; }
+  &[data-base="BDC"] { background: rgba(52,211,153,.12);  color: #34d399; }
+  &[data-base="ITM"] { background: rgba(163,230,53,.12);  color: #a3e635; }
+  &[data-base="PDS"] { background: rgba(251,146,60,.12);  color: #fb923c; }
+  &[data-base="PDT"] { background: rgba(192,132,252,.12); color: #c084fc; }
+  &[data-base="STI"] { background: rgba(244,114,182,.12); color: #f472b6; }
+  &[data-base="ADM"] { background: rgba(255,255,255,.06); color: rgba(255,255,255,.4); }
 }
 
 .dbp-chip--rateio {
   background: rgba(99,102,241,.14);
   color: #818cf8;
-  font-family: monospace;
-  letter-spacing: .02em;
+  border-color: rgba(99,102,241,.25);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: .04em;
+}
+
+.dbp-chip--base-colored {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+
+  &[data-base="BCB"] { color: #60a5fa; background: rgba(96,165,250,.1);  border-color: rgba(96,165,250,.25);  }
+  &[data-base="BDC"] { color: #34d399; background: rgba(52,211,153,.1);  border-color: rgba(52,211,153,.25);  }
+  &[data-base="ITM"] { color: #a3e635; background: rgba(163,230,53,.1);  border-color: rgba(163,230,53,.25);  }
+  &[data-base="PDS"] { color: #fb923c; background: rgba(251,146,60,.1);  border-color: rgba(251,146,60,.25);  }
+  &[data-base="PDT"] { color: #c084fc; background: rgba(192,132,252,.1); border-color: rgba(192,132,252,.25); }
+  &[data-base="STI"] { color: #f472b6; background: rgba(244,114,182,.1); border-color: rgba(244,114,182,.25); }
+  &[data-base="ADM"] { color: rgba(255,255,255,.45); background: rgba(255,255,255,.05); border-color: var(--dbp-border); }
 }
 
 .dbp-record__acts {
