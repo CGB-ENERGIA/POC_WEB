@@ -60,18 +60,41 @@
 
     <div class="hp-grid">
 
-      <!-- ── ACESSO RÁPIDO ──────────────────────── -->
-      <button class="hp-quick" @click="$router.push({ name: acaoRapida.route, query: acaoRapida.continuarId ? { continuarId: acaoRapida.continuarId } : undefined })">
-        <div class="hp-quick__icon">
-          <q-icon :name="acaoRapida.icon" size="22px" color="white" />
+      <!-- ── EM ANDAMENTO / NOVA AUDITORIA ──────── -->
+      <template v-if="emAndamentoList.length">
+        <div class="hp-section-label">
+          <q-icon name="mdi-clock-outline" size="13px" class="q-mr-xs" />
+          Em andamento · {{ emAndamentoList.length }}
         </div>
-        <div class="hp-quick__body">
-          <div class="hp-quick__title">{{ acaoRapida.label }}</div>
-          <div class="hp-quick__sub">{{ acaoRapida.sub }}</div>
-        </div>
-        <span v-if="acaoRapida.hasDraft" class="hp-quick__chip">em andamento</span>
-        <q-icon name="mdi-arrow-right" size="20px" color="grey-5" />
-      </button>
+        <button
+          v-for="item in emAndamentoList"
+          :key="item.route"
+          class="hp-quick"
+          @click="$router.push({ name: item.route, query: item.continuarId ? { continuarId: item.continuarId } : undefined })"
+        >
+          <div class="hp-quick__icon">
+            <q-icon :name="item.icon" size="22px" color="white" />
+          </div>
+          <div class="hp-quick__body">
+            <div class="hp-quick__title">{{ item.label }}</div>
+            <div class="hp-quick__sub">Toque para continuar</div>
+          </div>
+          <span class="hp-quick__chip">em andamento</span>
+          <q-icon name="mdi-arrow-right" size="20px" color="grey-5" />
+        </button>
+      </template>
+      <template v-else>
+        <button class="hp-quick hp-quick--new" @click="$router.push({ name: 'checklist-goman' })">
+          <div class="hp-quick__icon hp-quick__icon--new">
+            <q-icon name="mdi-plus" size="22px" color="white" />
+          </div>
+          <div class="hp-quick__body">
+            <div class="hp-quick__title">Nova auditoria</div>
+            <div class="hp-quick__sub">Iniciar checklist GOMAN</div>
+          </div>
+          <q-icon name="mdi-arrow-right" size="20px" color="grey-5" />
+        </button>
+      </template>
 
       <!-- ── OPERACIONAL ────────────────────────── -->
       <div class="hp-group" :class="{ 'hp-group--open': operacionalAberto }">
@@ -313,21 +336,20 @@ const draftAlojamento     = computed(() => hasChecklistDraft("ALOJAMENTO",     m
 const draftLogistica      = computed(() => hasChecklistDraft("LOGISTICA",      matriculaAtual.value) || temEmAndamento("LOGISTICA"));
 const draftOficina        = computed(() => hasChecklistDraft("OFICINA",        matriculaAtual.value) || temEmAndamento("OFICINA"));
 
-const acaoRapida = computed(() => {
-  if (draftGoman.value)
-    return { route: "checklist-goman" as const, label: "Continuar GOMAN", sub: "Rascunho em andamento", icon: "mdi-wrench-outline", hasDraft: true, continuarId: idEmAndamento("GOMAN") };
-  if (draftGstc.value)
-    return { route: "checklist-gstc" as const, label: "Continuar GSTC/GERE", sub: "Rascunho em andamento", icon: "mdi-crane", hasDraft: true, continuarId: idEmAndamento("GSTC") };
-  if (draftAdministrativo.value)
-    return { route: "checklist-administrativo" as const, label: "Continuar Administrativo", sub: "Rascunho em andamento", icon: "mdi-domain", hasDraft: true, continuarId: idEmAndamento("ADMINISTRATIVO") };
-  if (draftAlojamento.value)
-    return { route: "checklist-alojamento" as const, label: "Continuar Alojamento", sub: "Rascunho em andamento", icon: "mdi-home-outline", hasDraft: true, continuarId: idEmAndamento("ALOJAMENTO") };
-  if (draftLogistica.value)
-    return { route: "checklist-logistica" as const, label: "Continuar Logística", sub: "Rascunho em andamento", icon: "mdi-truck-outline", hasDraft: true, continuarId: idEmAndamento("LOGISTICA") };
-  if (draftOficina.value)
-    return { route: "checklist-oficina" as const, label: "Continuar Oficina", sub: "Rascunho em andamento", icon: "mdi-car-wrench", hasDraft: true, continuarId: idEmAndamento("OFICINA") };
-  return { route: "checklist-goman" as const, label: "Iniciar GOMAN", sub: "Checklist operacional principal", icon: "mdi-wrench-outline", hasDraft: false, continuarId: undefined };
-});
+const CHECKLIST_RAPIDO = [
+  { auditagem: "GOMAN",          route: "checklist-goman"          as const, label: "Continuar GOMAN",          icon: "mdi-wrench-outline" },
+  { auditagem: "GSTC",           route: "checklist-gstc"           as const, label: "Continuar GSTC/GERE",      icon: "mdi-crane" },
+  { auditagem: "ADMINISTRATIVO", route: "checklist-administrativo" as const, label: "Continuar Administrativo", icon: "mdi-domain" },
+  { auditagem: "ALOJAMENTO",     route: "checklist-alojamento"     as const, label: "Continuar Alojamento",     icon: "mdi-home-outline" },
+  { auditagem: "LOGISTICA",      route: "checklist-logistica"      as const, label: "Continuar Logística",      icon: "mdi-truck-outline" },
+  { auditagem: "OFICINA",        route: "checklist-oficina"        as const, label: "Continuar Oficina",        icon: "mdi-car-wrench" },
+];
+
+const emAndamentoList = computed(() =>
+  CHECKLIST_RAPIDO
+    .filter(c => hasChecklistDraft(c.auditagem, matriculaAtual.value) || temEmAndamento(c.auditagem))
+    .map(c => ({ ...c, continuarId: idEmAndamento(c.auditagem) }))
+);
 
 watch(periodo, (val) => LocalStorage.set(PERIODO_VISAO_STORAGE_KEY, val));
 
@@ -586,6 +608,22 @@ const metaProgress = computed(() => {
 .hp-quick__body { flex: 1; min-width: 0; }
 .hp-quick__title { font-size: 15px; font-weight: 700; color: #0f172a; }
 .hp-quick__sub   { font-size: 11.5px; color: #64748b; margin-top: 2px; }
+
+.hp-section-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  padding: 4px 2px 0;
+}
+
+.hp-quick__icon--new {
+  background: linear-gradient(135deg, #0f766e, #0d9488) !important;
+  box-shadow: 0 4px 12px rgba(13,148,136,.22) !important;
+}
 
 .hp-quick__chip {
   font-size: 10px;
@@ -915,6 +953,8 @@ const metaProgress = computed(() => {
   .hp-cam__icon .q-icon,
   .hp-gal__icon .q-icon,
   .hp-solo__icon .q-icon { color: #fff !important; }
+
+  .hp-section-label { color: #475569; }
 
   /* Chips "em andamento" — texto claro sobre fundo escuro */
   .hp-quick__chip,
