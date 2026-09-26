@@ -79,15 +79,22 @@ function abrirSlot(idx: number) {
     return;
   }
   idxAtivo.value = idx;
-  $q.bottomSheet({
+  $q.dialog({
+    title: SLOTS[idx].label,
+    message: "Como deseja adicionar a foto?",
     dark: $q.dark.isActive,
-    message: SLOTS[idx].label,
-    actions: [
-      { label: "Tirar foto", icon: "mdi-camera", id: "camera", color: "primary" },
-      { label: "Importar da galeria", icon: "mdi-image-multiple-outline", id: "galeria", color: "secondary" },
-    ],
-  }).onOk((action: { id: string }) => {
-    if (action.id === "camera") cameraAberta.value = true;
+    cancel: { label: "Cancelar", flat: true, noCaps: true },
+    ok: false,
+    options: {
+      type: "radio",
+      model: "camera",
+      items: [
+        { label: "Tirar foto", value: "camera" },
+        { label: "Importar da galeria", value: "galeria" },
+      ],
+    },
+  }).onOk((val: string) => {
+    if (val === "camera") cameraAberta.value = true;
     else galeriaAberta.value = true;
   });
 }
