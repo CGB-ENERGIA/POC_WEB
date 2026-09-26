@@ -1,10 +1,10 @@
 <template>
   <div class="field-label q-mt-md q-mb-sm">
     Evidências obrigatórias
-    <span class="evid-count" :class="{ 'evid-count--ok': completas }">{{ preenchidas }}/3</span>
+    <span class="evid-count" :class="{ 'evid-count--ok': completas }">{{ preenchidas }}/{{ SLOTS.length }}</span>
   </div>
 
-  <div class="evid-grid">
+  <div class="evid-grid" :style="{ gridTemplateColumns: `repeat(${SLOTS.length}, 1fr)` }">
     <div
       v-for="(slot, idx) in SLOTS"
       :key="idx"
@@ -69,18 +69,21 @@ import GaleriaPicker from "@/components/GaleriaPicker.vue";
 import { getTrustedTime, ServerTimeError } from "@/utils/server-time";
 import { stampAuditPhoto } from "@/utils/photo-stamp";
 
-const SLOTS = [
+const SLOTS_PADRAO = [
   { icon: "mdi-account-group-outline", label: "Selfie com a equipe" },
   { icon: "mdi-truck-outline", label: "Foto da viatura (prefixo)" },
   { icon: "mdi-account-hard-hat-outline", label: "Colaboradores em atividade" },
-] as const;
+];
 
 const props = defineProps<{
   modelValue: (string | null)[];
   equipe: string;
   observador: string;
   matricula?: string;
+  slots?: { icon: string; label: string }[];
 }>();
+
+const SLOTS = computed(() => props.slots ?? SLOTS_PADRAO);
 const emit = defineEmits<{ (e: "update:modelValue", v: (string | null)[]): void }>();
 
 const $q = useQuasar();
@@ -92,7 +95,7 @@ const idxAtivo = ref<number | null>(null);
 const slotAtivo = ref<number | null>(null);
 
 const preenchidas = computed(() => props.modelValue.filter(Boolean).length);
-const completas = computed(() => preenchidas.value >= 3);
+const completas = computed(() => preenchidas.value >= SLOTS.value.length);
 
 function removerFoto(idx: number) {
   const next = [...props.modelValue];
@@ -164,7 +167,6 @@ async function onGaleriaImportada(blob: Blob) {
 
 .evid-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
 

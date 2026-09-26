@@ -78,6 +78,7 @@
           :equipe="equipe"
           :observador="session.employee?.nomeCompleto ?? session.employee?.nome ?? ''"
           :matricula="session.employee?.matricula"
+          :slots="isAdministrativo ? SLOTS_ADM : undefined"
         />
 
         <FotosAdicionais
@@ -494,6 +495,14 @@ const base = ref("");
 const equipe = ref("");
 
 const isAlojamento = computed(() => props.auditagem === "ALOJAMENTO");
+const isAdministrativo = computed(() =>
+  ["ADMINISTRATIVO", "ALOJAMENTO", "LOGISTICA", "OFICINA"].includes(props.auditagem)
+);
+
+const SLOTS_ADM = [
+  { icon: "mdi-account-outline", label: "Selfie do colaborador" },
+  { icon: "mdi-image-search-outline", label: "Evidência da observação" },
+];
 
 const equipesOptions = computed(() => equipesPorBase(base.value));
 const equipesFiltered = ref<string[]>([]);
@@ -532,7 +541,7 @@ function filterAlojamentos(val: string, update: (fn: () => void) => void) {
 }
 
 const draftKey = `cgb-fotos-local-${props.auditagem.toLowerCase()}-${session.employee?.matricula ?? "anon"}`;
-const evidencias = ref<(string | null)[]>([null, null, null]);
+const evidencias = ref<(string | null)[]>(isAdministrativo.value ? [null, null] : [null, null, null]);
 const fotosGerais = ref<string[]>([]);
 const fotosLocal = computed(() => [
   ...evidencias.value.filter((f): f is string => !!f),
@@ -546,7 +555,7 @@ onMounted(() => {
     if (existing && isChecklist(existing)) {
       base.value = existing.base;
       equipe.value = existing.equipe;
-      evidencias.value = [0, 1, 2].map(i => existing.fotosLocal[i] ?? null);
+      evidencias.value = (isAdministrativo.value ? [0, 1] : [0, 1, 2]).map(i => existing.fotosLocal[i] ?? null);
       fotosGerais.value = existing.fotosLocal.slice(3);
       const existingMembros = existing.membros.length > 0 ? existing.membros : [];
       membros.value = [
