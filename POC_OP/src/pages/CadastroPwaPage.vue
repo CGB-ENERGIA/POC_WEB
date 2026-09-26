@@ -21,6 +21,11 @@
             <span class="dbp-stat__n">{{ ALOJAMENTOS.length }}</span>
             <span class="dbp-stat__label">alojamentos</span>
           </span>
+          <span class="dbp-stat__div" />
+          <span class="dbp-stat">
+            <span class="dbp-stat__n">{{ FUNCIONARIOS.length }}</span>
+            <span class="dbp-stat__label">colaboradores</span>
+          </span>
         </div>
       </div>
       <div class="dbp-header__right">
@@ -56,6 +61,11 @@
           <q-icon name="mdi-home-city-outline" size="15px" />
           <span>Alojamento</span>
           <span class="dbp-tab__ct">{{ ALOJAMENTOS.length }}</span>
+        </button>
+        <button class="dbp-tab" :class="{ '--active': tab === 'geral' }" @click="tab = 'geral'">
+          <q-icon name="mdi-account-hard-hat-outline" size="15px" />
+          <span>Geral</span>
+          <span class="dbp-tab__ct">{{ FUNCIONARIOS.length }}</span>
         </button>
       </div>
     </div>
@@ -287,6 +297,60 @@
         </div>
         </q-slide-transition>
       </template>
+
+      <!-- ── GERAL ──────────────────────────────────────────────────────────────── -->
+      <template v-if="tab === 'geral'">
+        <div class="dbp-toolbar">
+          <div class="dbp-search-shell">
+            <q-icon name="mdi-magnify" size="16px" class="dbp-search-shell__ico" />
+            <input v-model="geralSearch" class="dbp-search" placeholder="Buscar por nome ou chapa..." />
+          </div>
+        </div>
+        <div class="dbp-filter-bar">
+          <button
+            v-for="b in ['Todas', 'BCB', 'BDC', 'ITM', 'PDS', 'PDT', 'STI', 'ADM']" :key="b"
+            class="dbp-filter-btn" :class="{ '--active': geralBaseFilter === b }"
+            @click="geralBaseFilter = b"
+          >{{ b }}</button>
+        </div>
+
+        <q-slide-transition>
+        <div>
+          <button class="dbp-collapse-row" @click="geralListOpen = !geralListOpen">
+            <span class="dbp-count">
+              <span v-if="geralSearch || geralBaseFilter !== 'Todas'">{{ filteredFuncionarios.length }} de </span>{{ FUNCIONARIOS.length }} colaboradores
+            </span>
+            <q-icon
+              :name="geralListOpen ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+              size="18px" color="grey-6"
+            />
+          </button>
+
+          <div v-show="geralListOpen" class="dbp-records">
+            <transition-group name="rec" appear>
+              <div v-for="(f, i) in filteredFuncionarios" :key="i" class="dbp-record">
+                <div class="dbp-record__av dbp-record__av--geral">
+                  <q-icon name="mdi-account-hard-hat-outline" size="16px" />
+                </div>
+                <div class="dbp-record__info">
+                  <span class="dbp-record__name">{{ f.nome }}</span>
+                  <span class="dbp-record__sub">{{ f.chapa }} · {{ f.funcao }}</span>
+                </div>
+                <div class="dbp-record__chips">
+                  <span class="dbp-chip dbp-chip--base">{{ f.base }}</span>
+                  <span class="dbp-chip dbp-chip--rateio">{{ f.rateio }}</span>
+                </div>
+              </div>
+            </transition-group>
+
+            <div v-if="!filteredFuncionarios.length" class="dbp-empty">
+              <q-icon name="mdi-account-search-outline" size="40px" />
+              <p>Nenhum colaborador encontrado</p>
+            </div>
+          </div>
+        </div>
+        </q-slide-transition>
+      </template>
     </div>
 
     <!-- ══ DIALOG FUNCIONÁRIO ══════════════════════════════════════════════════ -->
@@ -359,6 +423,7 @@ import { ref, computed, onMounted } from "vue";
 import { useQuasar } from "quasar";
 import { supabase } from "@/lib/supabase";
 import * as XLSX from "xlsx";
+import { FUNCIONARIOS } from "@/data/funcionarios";
 
 const $q      = useQuasar();
 const loading     = ref(false);
@@ -487,6 +552,25 @@ const ALOJAMENTOS: Alojamento[] = [
 const alojSearch     = ref("");
 const alojBaseFilter = ref("Todas");
 const alojListOpen   = ref(true);
+
+// ─── Geral (colaboradores do XLS) ─────────────────────────────────────────────
+
+const geralSearch     = ref("");
+const geralBaseFilter = ref("Todas");
+const geralListOpen   = ref(true);
+
+const filteredFuncionarios = computed(() => {
+  const q = geralSearch.value.toLowerCase();
+  const b = geralBaseFilter.value;
+  return FUNCIONARIOS.filter((f) => {
+    const matchSearch = !q
+      || f.nome.toLowerCase().includes(q)
+      || f.chapa.includes(q)
+      || f.rateio.toLowerCase().includes(q);
+    const matchBase = b === "Todas" || f.base === b;
+    return matchSearch && matchBase;
+  });
+});
 
 const filteredAlojamentos = computed(() => {
   const q  = alojSearch.value.toLowerCase();
@@ -1274,6 +1358,20 @@ async function onImportFile(event: Event) {
   color: #34d399;
   font-size: 0;
   i { font-size: 16px !important; }
+}
+
+.dbp-record__av--geral {
+  background: rgba(251,146,60,.12);
+  color: #fb923c;
+  font-size: 0;
+  i { font-size: 16px !important; }
+}
+
+.dbp-chip--rateio {
+  background: rgba(99,102,241,.14);
+  color: #818cf8;
+  font-family: monospace;
+  letter-spacing: .02em;
 }
 
 .dbp-record__acts {
