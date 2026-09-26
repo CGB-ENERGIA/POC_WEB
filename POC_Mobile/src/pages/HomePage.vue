@@ -61,7 +61,7 @@
     <div class="hp-grid">
 
       <!-- ── ACESSO RÁPIDO ──────────────────────── -->
-      <button class="hp-quick" @click="$router.push({ name: acaoRapida.route })">
+      <button class="hp-quick" @click="$router.push({ name: acaoRapida.route, query: acaoRapida.continuarId ? { continuarId: acaoRapida.continuarId } : undefined })">
         <div class="hp-quick__icon">
           <q-icon :name="acaoRapida.icon" size="22px" color="white" />
         </div>
@@ -300,6 +300,12 @@ function temEmAndamento(auditagem: string) {
   );
 }
 
+function idEmAndamento(auditagem: string): string | undefined {
+  return observacoes.items.find(
+    o => isChecklist(o) && o.auditagem === auditagem && o.matricula === matriculaAtual.value && o.status === "em_andamento"
+  )?.id;
+}
+
 const draftGoman          = computed(() => hasChecklistDraft("GOMAN",          matriculaAtual.value) || temEmAndamento("GOMAN"));
 const draftGstc           = computed(() => hasChecklistDraft("GSTC",           matriculaAtual.value) || temEmAndamento("GSTC"));
 const draftAdministrativo = computed(() => hasChecklistDraft("ADMINISTRATIVO", matriculaAtual.value) || temEmAndamento("ADMINISTRATIVO"));
@@ -309,18 +315,18 @@ const draftOficina        = computed(() => hasChecklistDraft("OFICINA",        m
 
 const acaoRapida = computed(() => {
   if (draftGoman.value)
-    return { route: "checklist-goman" as const, label: "Continuar GOMAN", sub: "Rascunho em andamento", icon: "mdi-wrench-outline", hasDraft: true };
+    return { route: "checklist-goman" as const, label: "Continuar GOMAN", sub: "Rascunho em andamento", icon: "mdi-wrench-outline", hasDraft: true, continuarId: idEmAndamento("GOMAN") };
   if (draftGstc.value)
-    return { route: "checklist-gstc" as const, label: "Continuar GSTC/GERE", sub: "Rascunho em andamento", icon: "mdi-crane", hasDraft: true };
+    return { route: "checklist-gstc" as const, label: "Continuar GSTC/GERE", sub: "Rascunho em andamento", icon: "mdi-crane", hasDraft: true, continuarId: idEmAndamento("GSTC") };
   if (draftAdministrativo.value)
-    return { route: "checklist-administrativo" as const, label: "Continuar Administrativo", sub: "Rascunho em andamento", icon: "mdi-domain", hasDraft: true };
+    return { route: "checklist-administrativo" as const, label: "Continuar Administrativo", sub: "Rascunho em andamento", icon: "mdi-domain", hasDraft: true, continuarId: idEmAndamento("ADMINISTRATIVO") };
   if (draftAlojamento.value)
-    return { route: "checklist-alojamento" as const, label: "Continuar Alojamento", sub: "Rascunho em andamento", icon: "mdi-home-outline", hasDraft: true };
+    return { route: "checklist-alojamento" as const, label: "Continuar Alojamento", sub: "Rascunho em andamento", icon: "mdi-home-outline", hasDraft: true, continuarId: idEmAndamento("ALOJAMENTO") };
   if (draftLogistica.value)
-    return { route: "checklist-logistica" as const, label: "Continuar Logística", sub: "Rascunho em andamento", icon: "mdi-truck-outline", hasDraft: true };
+    return { route: "checklist-logistica" as const, label: "Continuar Logística", sub: "Rascunho em andamento", icon: "mdi-truck-outline", hasDraft: true, continuarId: idEmAndamento("LOGISTICA") };
   if (draftOficina.value)
-    return { route: "checklist-oficina" as const, label: "Continuar Oficina", sub: "Rascunho em andamento", icon: "mdi-car-wrench", hasDraft: true };
-  return { route: "checklist-goman" as const, label: "Iniciar GOMAN", sub: "Checklist operacional principal", icon: "mdi-wrench-outline", hasDraft: false };
+    return { route: "checklist-oficina" as const, label: "Continuar Oficina", sub: "Rascunho em andamento", icon: "mdi-car-wrench", hasDraft: true, continuarId: idEmAndamento("OFICINA") };
+  return { route: "checklist-goman" as const, label: "Iniciar GOMAN", sub: "Checklist operacional principal", icon: "mdi-wrench-outline", hasDraft: false, continuarId: undefined };
 });
 
 watch(periodo, (val) => LocalStorage.set(PERIODO_VISAO_STORAGE_KEY, val));
