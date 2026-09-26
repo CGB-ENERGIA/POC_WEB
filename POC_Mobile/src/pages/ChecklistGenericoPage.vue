@@ -63,9 +63,6 @@
               v-else
               v-model="equipe"
               :options="alojamentosFiltered"
-              option-value="value"
-              option-label="label"
-              emit-value map-options
               outlined dense
               label="Alojamento"
               use-input input-debounce="0"
@@ -454,7 +451,6 @@ import { useObservacoesStore, isChecklist } from "@/stores/observacoes";
 import { basesOperacionais } from "@/data/checklist";
 import { equipesPorBase } from "@/data/equipes";
 import { alojamentosPorBase } from "@/data/alojamentos";
-import type { AlojamentoOption } from "@/data/alojamentos";
 import { employees } from "@/data/employees";
 import type { CategoriaGoman, PerguntaGoman, Gravidade, ItemVerificado } from "@/data/goman-checklist";
 import type { AuditagemCategoria } from "@/data/auditagem";
@@ -522,7 +518,7 @@ function filterEquipes(val: string, update: (fn: () => void) => void) {
   });
 }
 
-const alojamentosFiltered = ref<AlojamentoOption[]>([]);
+const alojamentosFiltered = ref<string[]>([]);
 watch(base, (b) => { alojamentosFiltered.value = alojamentosPorBase(b); }, { immediate: true });
 
 function filterAlojamentos(val: string, update: (fn: () => void) => void) {
@@ -530,7 +526,7 @@ function filterAlojamentos(val: string, update: (fn: () => void) => void) {
     const needle = val.toLowerCase();
     const opts = alojamentosPorBase(base.value);
     alojamentosFiltered.value = needle
-      ? opts.filter(o => o.label.toLowerCase().includes(needle) || o.value.toLowerCase().includes(needle))
+      ? opts.filter(o => o.toLowerCase().includes(needle))
       : opts;
   });
 }
