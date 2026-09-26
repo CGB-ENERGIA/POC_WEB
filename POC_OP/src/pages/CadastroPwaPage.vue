@@ -16,6 +16,11 @@
             <span class="dbp-stat__n">{{ equipes.length }}</span>
             <span class="dbp-stat__label">equipes</span>
           </span>
+          <span class="dbp-stat__div" />
+          <span class="dbp-stat">
+            <span class="dbp-stat__n">{{ ALOJAMENTOS.length }}</span>
+            <span class="dbp-stat__label">alojamentos</span>
+          </span>
         </div>
       </div>
       <div class="dbp-header__right">
@@ -46,6 +51,11 @@
           <q-icon name="mdi-bus-multiple" size="15px" />
           <span>Equipes</span>
           <span class="dbp-tab__ct">{{ equipes.length }}</span>
+        </button>
+        <button class="dbp-tab" :class="{ '--active': tab === 'alojamento' }" @click="tab = 'alojamento'">
+          <q-icon name="mdi-home-city-outline" size="15px" />
+          <span>Alojamento</span>
+          <span class="dbp-tab__ct">{{ ALOJAMENTOS.length }}</span>
         </button>
       </div>
     </div>
@@ -210,6 +220,73 @@
         </div>
         </q-slide-transition>
       </template>
+      <!-- ── ALOJAMENTO ──────────────────────────────────────────────────────────── -->
+      <template v-if="tab === 'alojamento'">
+        <div class="dbp-toolbar">
+          <div class="dbp-search-shell">
+            <q-icon name="mdi-magnify" size="17px" class="dbp-search-icon" />
+            <input
+              v-model="alojSearch"
+              class="dbp-search"
+              placeholder="Buscar por imóvel, locador ou localidade…"
+              autocomplete="off"
+            />
+            <button v-if="alojSearch" class="dbp-search-x" @click="alojSearch = ''">
+              <q-icon name="mdi-close" size="13px" />
+            </button>
+          </div>
+
+          <div class="dbp-pills">
+            <button
+              v-for="b in ['Todas', 'BACABAL', 'BARRA DO CORDA', 'ITAPECURU', 'PEDREIRAS', 'PRESIDENTE DUTRA', 'SANTA INES']"
+              :key="b"
+              class="dbp-pill"
+              :class="{ '--active': alojBaseFilter === b }"
+              @click="alojBaseFilter = b"
+            >{{ b === 'Todas' ? 'Todas' : b }}</button>
+          </div>
+        </div>
+
+        <button class="dbp-collapse-row" @click="alojListOpen = !alojListOpen">
+          <span class="dbp-count">
+            <span v-if="alojSearch || alojBaseFilter !== 'Todas'">{{ filteredAlojamentos.length }} de </span>{{ ALOJAMENTOS.length }} alojamentos
+          </span>
+          <q-icon
+            name="mdi-chevron-down"
+            size="18px"
+            class="dbp-chevron"
+            :class="{ '--open': alojListOpen }"
+          />
+        </button>
+
+        <q-slide-transition>
+        <div v-show="alojListOpen" class="dbp-records">
+          <transition-group name="rec" appear>
+            <div v-for="(a, i) in filteredAlojamentos" :key="i" class="dbp-record">
+              <div class="dbp-record__av dbp-record__av--home">
+                <q-icon name="mdi-home-outline" size="16px" />
+              </div>
+              <div class="dbp-record__main">
+                <span class="dbp-record__name">{{ a.imovel }}</span>
+                <span class="dbp-record__sub">{{ a.locador }}</span>
+                <span v-if="a.endereco" class="dbp-record__addr">{{ a.endereco }}</span>
+              </div>
+              <div class="dbp-record__chips">
+                <span class="dbp-chip dbp-chip--base">{{ a.base }}</span>
+                <span v-if="a.prefixo" class="dbp-chip dbp-chip--prefixo">{{ a.prefixo }}</span>
+                <span class="dbp-chip dbp-chip--loc">{{ a.localidade }}</span>
+                <span class="dbp-chip dbp-chip--ct">{{ a.contrato }}</span>
+              </div>
+            </div>
+          </transition-group>
+
+          <div v-if="!filteredAlojamentos.length" class="dbp-empty">
+            <q-icon name="mdi-home-search-outline" size="40px" />
+            <p>Nenhum alojamento encontrado</p>
+          </div>
+        </div>
+        </q-slide-transition>
+      </template>
     </div>
 
     <!-- ══ DIALOG FUNCIONÁRIO ══════════════════════════════════════════════════ -->
@@ -289,6 +366,141 @@ const saving      = ref(false);
 const tab         = ref("funcionarios");
 const empListOpen = ref(true);
 const eqListOpen  = ref(true);
+
+// ─── Alojamento (dados estáticos) ─────────────────────────────────────────────
+
+interface Alojamento {
+  locador: string;
+  endereco: string;
+  contrato: string;
+  base: string;
+  prefixo: string;
+  localidade: string;
+  imovel: string;
+}
+
+const ALOJAMENTOS: Alojamento[] = [
+  { locador: "ARIOSVALDO SANTOS MOUZINHO", endereco: "RUA GONÇALVES DIAS, 165 -N 2B CENTRO", contrato: "CT 127", base: "BACABAL", prefixo: "ALOJ01", localidade: "ALTAMIRA", imovel: "REP. GSTC" },
+  { locador: "FRANCIMARIA SANTOS DOS REIS DA COSTA", endereco: "RUA JOAQUIM TEIXEIRA, 1339 - TRIZIDELA", contrato: "CT 127", base: "BACABAL", prefixo: "ALOJ03", localidade: "COROATA", imovel: "REP. GSTC" },
+  { locador: "WEDESON MESQUITA DE OLIVEIRA", endereco: "RUA PRINCIPAL, S/N- SÃO SEBASTIAO- CENTRO", contrato: "CT 127", base: "BACABAL", prefixo: "ALOJ04", localidade: "SÃO LUIS GONZAGA", imovel: "REP. GSTC" },
+  { locador: "ROGERIO ERICEIRA CARDOSO", endereco: "RUA SÃO FRANCISCO S/N- CENTRO", contrato: "CT 127", base: "BACABAL", prefixo: "ALOJ05", localidade: "LAGO VERDE", imovel: "REP. GSTC" },
+  { locador: "JOSE VERAS FELIX NETO", endereco: "AV RODOVIARIA, 180 A A- CENTRO", contrato: "CT 127", base: "BACABAL", prefixo: "ALOJ06", localidade: "PERITORO", imovel: "REP. GSTC" },
+  { locador: "RC PATRIMONIAL E EMPREENDIMENTOS LTDA", endereco: "RUA BELA VISTA, S/N- KT 11- VILA COELHO DIAS", contrato: "CT 127", base: "BACABAL", prefixo: "", localidade: "BACABAL", imovel: "RESID. JOAO ALEF" },
+  { locador: "MILENE COSTA CHAVES", endereco: "RD BR 135, 45 A, SÃO MATEUS - MA", contrato: "CT 127", base: "BACABAL", prefixo: "ALOJ07", localidade: "SÃO MATEUS", imovel: "REP. GSTC" },
+  { locador: "GERSON FERREIRA DA COSTA", endereco: "RUA PRES C BRANCO, 01 CENTRO- LOT ISADORA TORRES", contrato: "CT 127", base: "BACABAL", prefixo: "ALOJ08", localidade: "VITORINO FREIRE", imovel: "REP. GSTC" },
+  { locador: "JOSE DE RIBAMAR CHAVES", endereco: "RUA - AV 1- C- 07B- RESIDENCIAL JOSE CHAVES- B- AREIA", contrato: "CT 127", base: "BACABAL", prefixo: "ALOJ10", localidade: "BACABAL", imovel: "REP. LINHA VIVA (CASA ROSA)" },
+  { locador: "ADRIANA BEZERRA DE ARUAJO", endereco: "RUA FILOMENO PARGA, 202 COND. EVORA- BLOCO 2- BAIRRO - ESPERANÇA", contrato: "CT 127", base: "BACABAL", prefixo: "ALOJ11", localidade: "BACABAL", imovel: "APTO RUAM VALMIR" },
+  { locador: "JOSE DE RIBAMAR CHAVES", endereco: "RUA - AV 1- C- 07B- RESIDENCIAL JOSE CHAVES- B- AREIA", contrato: "CT 127", base: "BACABAL", prefixo: "ALOJ64", localidade: "BACABAL", imovel: "REP. RUA 0 (CASA BRANCA GRANDE)" },
+  { locador: "JOSE DE RIBAMAR CHAVES", endereco: "TV AV 01, Nº 3- RESIDENCIAL JOSE CHAVES- AREIA", contrato: "CT 169", base: "BACABAL", prefixo: "ALOJ75", localidade: "BACABAL", imovel: "REP. RUA 0 (CASA AZUL)" },
+  { locador: "JOSE MARIA FERREIRA JUNIOR", endereco: "RUA AV 01, 04- AREIA", contrato: "CT 169", base: "BACABAL", prefixo: "ALOJ76", localidade: "BACABAL", imovel: "REP. GERAL CT 169" },
+  { locador: "ROBERIO DE OLIVEIRA BRIGIDO", endereco: "RUA VP 28, 35, QD 46- COHAB III", contrato: "CT 127", base: "BACABAL", prefixo: "", localidade: "BACABAL", imovel: "RESID. WERBERTH" },
+  { locador: "RN MENDES CARNEIRO COMERCIO-ME", endereco: "RUA TEIXEIRA DE FREITAS, 1905- CENTRO", contrato: "CT 127", base: "BACABAL", prefixo: "", localidade: "BACABAL", imovel: "RESID. ANTONIO/EVERALDO" },
+  { locador: "EDMAR GOMES LESSA FILHO", endereco: "AV JOAO ALBERTO, 262- RESID. JARDINS GOLD- AREAL", contrato: "CT 127", base: "BACABAL", prefixo: "", localidade: "BACABAL", imovel: "RESID. JULIO/VALDIR" },
+  { locador: "PEREIRA ADMINISTRACOES LTDA", endereco: "RUA GOMES VIDAL, 07- APTO 401- CONDOMINIO RIO SOL- BAIRRO ESPERANCA", contrato: "CT 127", base: "BACABAL", prefixo: "", localidade: "BACABAL", imovel: "RESID. JACKSON- ALMOX" },
+  { locador: "RN MENDES CARNEIRO COMERCIO-ME", endereco: "RUA TEIXEIRA DE FREITAS, 2001, APT 75- RAMAL", contrato: "CT 127", base: "BACABAL", prefixo: "", localidade: "BACABAL", imovel: "RESID. CIPO" },
+  { locador: "EXATA MOVEIS (FABIOLA SUSANA)", endereco: "", contrato: "CT 127", base: "BACABAL", prefixo: "", localidade: "SÃO LUIS", imovel: "TAXA DE COND. ESCRIT. SÃO LUIS" },
+  { locador: "EXATA MOVEIS (FABIOLA SUSANA)", endereco: "", contrato: "CT 127", base: "BACABAL", prefixo: "", localidade: "SÃO LUIS", imovel: "ESCRITORIO MATRIZ SÃO LUIS" },
+  { locador: "RAYMARA GASPAR PEREIRA OTAVIANO", endereco: "RUA AV GOVERNADOR JOAO ALBERTO, 201, AREAL", contrato: "CT 127", base: "BACABAL", prefixo: "", localidade: "BACABAL", imovel: "RESID. MIKEIAS" },
+  { locador: "CERAMICA PAIZAO LTDA", endereco: "RD BR 316, S/N, OLHO D'AGUA", contrato: "CT 127", base: "BACABAL", prefixo: "", localidade: "BACABAL", imovel: "TERRENO DOS POSTES" },
+  { locador: "AMP CARNEIRO SILVA LTDA", endereco: "AV GOVERNADOR JOAO ALBERTO, S/N, COND. AV PARK RESIDENCE BLC V, APTO 201- AREAL", contrato: "CT 127", base: "BACABAL", prefixo: "", localidade: "BACABAL", imovel: "APTO. ANTONIO ALBERTO" },
+  { locador: "ALESSON HALLYAN REGO FERREIRA", endereco: "AV GOVERNADOR JOAO ALBERTO, 301, BL 05- APTO 301 AREAL", contrato: "CT 127", base: "BACABAL", prefixo: "", localidade: "BACABAL", imovel: "APTO IGOR DIONISIO" },
+  { locador: "JOSE DIOGO OLIVEIRA DE AGUIAR", endereco: "RUA JOSE MARTA MILHOMEM, 1, QD 3A- RESID. GREEN PARK- BAIRRO- AREAL", contrato: "CT 127", base: "BACABAL", prefixo: "", localidade: "BACABAL", imovel: "RESID. RICARDO MALTA" },
+  { locador: "JOSEFAELEN RABELO FERNANDES DE ARAUJO", endereco: "AV GOV. JOAO ALBERTO, 202- BLOCO- 03- AP 202- BAIRRO AREAL", contrato: "CT 127", base: "BACABAL", prefixo: "", localidade: "BACABAL", imovel: "APTO. CAMILA CORREA" },
+  { locador: "AMP CARNEIRO SILVA LTDA", endereco: "RUA NÃO CADASTRADA, 37, RUA JOAO FRANCISCO DE SOUSA FILHO- CENTRO", contrato: "CT 127", base: "BACABAL", prefixo: "", localidade: "BACABAL", imovel: "RESID. VALVICK" },
+  { locador: "JARDSON FABIAN SOUZA RODRIGUES", endereco: "RUA JOSE MARIA MADEIRA, S/N- BAIRRO- CANADA", contrato: "CT 170", base: "BARRA DO CORDA", prefixo: "", localidade: "BARRA DO CORDA", imovel: "RESID. MARCOS ANDRADE" },
+  { locador: "MARIA JUCILENE BATISTA CARNEIRO DA SILVA", endereco: "RUA RIO ARAGUAIA, 197- BAIRRO- TRIZIDELA", contrato: "CT 170", base: "BARRA DO CORDA", prefixo: "ALOJ13", localidade: "BARRA DO CORDA", imovel: "REP. SPOT (ARAGUAIA)" },
+  { locador: "MARLICE OLIVEIRA MIRANDA", endereco: "RUA ADELIA FALCAO, 257- BAIRRO ALTAMIRA", contrato: "CT 170", base: "BARRA DO CORDA", prefixo: "ALOJ77", localidade: "BARRA DO CORDA", imovel: "REP. GERAL" },
+  { locador: "ANTONIO ALMEIDA DOS REIS", endereco: "RUA LULU RODRIGUES, 1354- BAIRRO- ALTAMIRA", contrato: "CT 170", base: "BARRA DO CORDA", prefixo: "ALOJ78", localidade: "BARRA DO CORDA", imovel: "REP. GERAL II" },
+  { locador: "JOAO CARLOS ALMEIDA SANTIAGO", endereco: "RUA 04, Nº 10- CENTRO-FERNANDO FALCAO", contrato: "CT 169", base: "BARRA DO CORDA", prefixo: "ALOJ15", localidade: "FERNANDO FALCAO", imovel: "REP. GSTC" },
+  { locador: "DOMINGAS FERREIRA LIMA", endereco: "RUA RIO NEGRO, 77- BAIRRO TRIZIDELA", contrato: "CT 170", base: "BARRA DO CORDA", prefixo: "ALOJ27", localidade: "BARRA DO CORDA", imovel: "REP. SPOT (RIO NEGRO)" },
+  { locador: "ANGRA PEREIRA LIMA DA SILVA", endereco: "AV. 1, S/N- RESID. MARANATA- COHAB", contrato: "CT 170", base: "BARRA DO CORDA", prefixo: "ALOJ58", localidade: "BARRA DO CORDA", imovel: "REP. GOMAN (CASA DE BAIXO)" },
+  { locador: "ANGRA PEREIRA LIMA DA SILVA", endereco: "AV. 1, S/N- RESID. MARANATA- COHAB", contrato: "CT 170", base: "BARRA DO CORDA", prefixo: "ALOJ62", localidade: "BARRA DO CORDA", imovel: "REP. GOMAN (CASA DE CIMA)" },
+  { locador: "LAZARO DOS PASSOS DE FREITAS", endereco: "RUA TIRADENTES, S/N- CENTRO", contrato: "CT 170", base: "BARRA DO CORDA", prefixo: "ALOJ66", localidade: "BARRA DO CORDA", imovel: "REP. SPOT (BEIRA RIO 2)" },
+  { locador: "LAZARO DOS PASSOS DE FREITAS", endereco: "RUA TIRADENTES, S/N- CENTRO", contrato: "CT 170", base: "BARRA DO CORDA", prefixo: "ALOJ67", localidade: "BARRA DO CORDA", imovel: "REP. SPOT (BEIRA RIO 1)" },
+  { locador: "WCMW CORPORATION LTDA", endereco: "AV FERNANDO FALCAO, S/N- BAIRRO- CANADA", contrato: "CT 170", base: "BARRA DO CORDA", prefixo: "ALOJ69", localidade: "BARRA DO CORDA", imovel: "REP. SPOT (INCRA)" },
+  { locador: "WCMW CORPORATION LTDA", endereco: "AV ROSEANA SARNEY, S/N - BAIRRO TRIZIDELA", contrato: "CT 170", base: "BARRA DO CORDA", prefixo: "", localidade: "BARRA DO CORDA", imovel: "RESID. TEC. DE PLANEJAMENTO" },
+  { locador: "ANTONIA TORRES MACIEL", endereco: "RUA TEFE, 755, B- TRIZIDELA", contrato: "CT 170", base: "BARRA DO CORDA", prefixo: "", localidade: "BARRA DO CORDA", imovel: "REP. IDIALDO" },
+  { locador: "MOACIR ANTONIO DA SILVA GUIMARAES", endereco: "RD BR 226, S/N MORADA DO RIO CORDA QD 12 LT 31- NOVA TRIZIDELA", contrato: "CT 170", base: "BARRA DO CORDA", prefixo: "", localidade: "BARRA DO CORDA", imovel: "RESID. JOSIEL- LV" },
+  { locador: "A. S. FRANCA MADEIRAS LTDA", endereco: "RUA ESTRADA SUJAPE E ESCONDIDO, S/N- BAIRRO- ALTAMIRA", contrato: "CT 170", base: "BARRA DO CORDA", prefixo: "", localidade: "BARRA DO CORDA", imovel: "TERRENO- POSTES- ALMOX" },
+  { locador: "WCMV CORPORATION LTDA", endereco: "RUA RIO TROMBETAS, S/N- TRIZIDELA", contrato: "CT 170", base: "BARRA DO CORDA", prefixo: "", localidade: "BARRA DO CORDA", imovel: "ESC. BARRA DO CORDA" },
+  { locador: "MARIA BARBARA BOTELHO MARQUES", endereco: "TV URCA, S/N- CENTRO", contrato: "CT 127", base: "ITAPECURU", prefixo: "ALOJ40", localidade: "CANTANHEDE", imovel: "REP. GSTC" },
+  { locador: "PAULO ALBERTO GOMES AZEVEDO", endereco: "RUA REGINO RODRIGUES DE PAULA, 10- CENTRO", contrato: "CT 127", base: "ITAPECURU", prefixo: "ALOJ41", localidade: "ANAJATUBA", imovel: "REP. GSTC" },
+  { locador: "MARIA IVONETE COELHO MELO LISBOA", endereco: "RUA BENJAMIM PEREIRA, 475- BAIRRO- MIQUILINA", contrato: "CT 127", base: "ITAPECURU", prefixo: "ALOJ42", localidade: "ITAPECURU", imovel: "REP. GERAL" },
+  { locador: "BENEDITO CARLOS BEZERRA CARDOSO", endereco: "RUA VELHA, S/N- CENTRO", contrato: "CT 127", base: "ITAPECURU", prefixo: "ALOJ43", localidade: "MIRANDA", imovel: "REP. GSTC" },
+  { locador: "JOSE CARLOS IRINEU DE MESQUITA JUNIOR", endereco: "RUA GETULIO VARGAS, 418- CENTRO", contrato: "CT 127", base: "ITAPECURU", prefixo: "ALOJ45", localidade: "ITAPECURU", imovel: "REP. ROÇO" },
+  { locador: "JOANA DE DEUS RODRIGUES AZEVEDO", endereco: "RUA URBANO SANTOS, 369- CENTRO", contrato: "CT 127", base: "ITAPECURU", prefixo: "ALOJ46", localidade: "ITAPECURU", imovel: "REP. LINHA VIVA" },
+  { locador: "JACIELENE DE JESUS LICA OLIVEIRA", endereco: "RD BR 222, S/N- BAIRRO- COREIA", contrato: "CT 127", base: "ITAPECURU", prefixo: "ALOJ47", localidade: "ARARI", imovel: "REP. GSTC" },
+  { locador: "JACKELINE DE JESUS JERONIMO FERREIRA", endereco: "RUA SEBASTIAO DE ABREU, S/N- CENTRO", contrato: "CT 127", base: "ITAPECURU", prefixo: "ALOJ48", localidade: "VARGEM GRANDE", imovel: "REP. GSTC" },
+  { locador: "ALINE MENDES MARTINS", endereco: "RUA JOSE GONCALVES, 56- CENTRO", contrato: "CT 127", base: "ITAPECURU", prefixo: "", localidade: "ITAPECURU", imovel: "RESID. CHRISTOPHE DANIEL" },
+  { locador: "MARIA EDINE ARAUJO DE ABREU", endereco: "RUA COSTA E SILVA, S/N- CENTRO", contrato: "CT 169", base: "PEDREIRAS", prefixo: "ALOJ49", localidade: "ESPERANTINOPOLS", imovel: "REP. PLANTAO" },
+  { locador: "LEILA ALVES SILVA", endereco: "RUA PRINCIPAL, RESIDENCIAL CARMELIA CESAR, 12- B- MULTIRAO", contrato: "CT 169", base: "PEDREIRAS", prefixo: "ALOJ50", localidade: "IGARAPE GRANDE", imovel: "REP. GSTC" },
+  { locador: "WILCILA DE ARAUJO LEITE", endereco: "TV MANECO REGO, 531- CENTRO", contrato: "CT 169", base: "PEDREIRAS", prefixo: "ALOJ51", localidade: "PEDREIRAS", imovel: "REP. LINHA VIVA" },
+  { locador: "RAIMUNDO SERAFIM REGO NETO", endereco: "RUA 3, 15 A, QD 3, PQ PALMEIRAS - PEDREIRAS", contrato: "CT 169", base: "PEDREIRAS", prefixo: "ALOJ52", localidade: "PEDREIRAS", imovel: "REP. CONSTRUÇÃO" },
+  { locador: "MARIA REGINA CARIOCA SOUSA", endereco: "RUA 05, S/N- BAIRRO CACAU", contrato: "CT 169", base: "PEDREIRAS", prefixo: "ALOJ53", localidade: "LAGO DA PEDRA", imovel: "REP. PLANTAO" },
+  { locador: "FRANCISCO SERGIO BEZERRA ALVES", endereco: "RUA LARANJEIRA, 1278- CENTRO", contrato: "CT 169", base: "PEDREIRAS", prefixo: "ALOJ54", localidade: "PEDREIRAS", imovel: "REP. GSTC" },
+  { locador: "RAIMUNDO SERAFIM REGO NETO", endereco: "RUA 03, QDA 03- CASA 15- PQ DAS PALMEIRAS", contrato: "CT 169", base: "PEDREIRAS", prefixo: "ALOJ56", localidade: "PEDREIRAS", imovel: "REP. PODA" },
+  { locador: "ANTONIO SOARES DA SILVA", endereco: "RUA 13 DE MAIO, 16- CENTRO", contrato: "CT 169", base: "PEDREIRAS", prefixo: "ALOJ57", localidade: "LAGOA GRANDE", imovel: "REP. CGB" },
+  { locador: "NILZA MARIA MAIA FERNANDES", endereco: "RUA CORRENTE, 1248- BAIRRO DIOGO", contrato: "CT 169", base: "PEDREIRAS", prefixo: "", localidade: "PEDREIRAS", imovel: "TERRENO DOS POSTES" },
+  { locador: "H TORRES CARVALHO", endereco: "AV OTON GONCALVES SA, Nº 100- CAMPOS DANTAS", contrato: "CT 169", base: "PRESIDENTE DUTRA", prefixo: "ALOJ14", localidade: "PRESID. DUTRA", imovel: "REP. GERAL (POUSADA II)" },
+  { locador: "LUIS GONZAGA VIEIRA DE SOUSA", endereco: "RUA MACARIO OLIVEIRA, S/N, CENTRO", contrato: "CT 169", base: "PRESIDENTE DUTRA", prefixo: "ALOJ16", localidade: "GOV. EUGENIO BARROS", imovel: "REP. PLANTAO" },
+  { locador: "PEDRO VIEIRA SANTOS", endereco: "AV ROSEANA SARNEY, S/N CENTRO", contrato: "CT 169", base: "PRESIDENTE DUTRA", prefixo: "ALOJ17", localidade: "JOSELANDIA", imovel: "REP. AREA COMERCIAL" },
+  { locador: "ERLY ALVES FARIAS BARROS", endereco: "RUA MANGUEIRA, S/N- PAULO FALCAO", contrato: "CT 169", base: "PRESIDENTE DUTRA", prefixo: "ALOJ19", localidade: "PRESID. DUTRA", imovel: "REP. INSPEÇÃO" },
+  { locador: "VITORINO VITORIO GUIMARAES NETO", endereco: "RUA RAINHA DA PAZ, S/N- BAIRRO BOM SUCESSO", contrato: "CT 169", base: "PRESIDENTE DUTRA", prefixo: "ALOJ20", localidade: "PRESID. DUTRA", imovel: "REP. LINHA VIVA" },
+  { locador: "EDNEUZA ROCHA DA SILVA CAVALCANTE", endereco: "RUA HUMBERTO DE CAMPOS, 338, CENTRO", contrato: "CT 169", base: "PRESIDENTE DUTRA", prefixo: "ALOJ21", localidade: "DOM PEDRO", imovel: "REP. GSTC" },
+  { locador: "EVA SILVA DE ARAUJO", endereco: "RUA HUMBERTO DE CAMPOS, S/N - BAIRRO PENIEL", contrato: "CT 169", base: "PRESIDENTE DUTRA", prefixo: "ALOJ22", localidade: "SÃO DOMINGOS", imovel: "REP. GSTC" },
+  { locador: "DILMA REIS SEVERINO DA SILVA", endereco: "AV OTON GOCALVES DE SÁ, 205- RESID. PORTINARI 2- BAIRRO- CAMPOS DANTAS", contrato: "CT 169", base: "PRESIDENTE DUTRA", prefixo: "ALOJ23", localidade: "PRESID. DUTRA", imovel: "REP. CONSTRUÇÃO" },
+  { locador: "CARLOS ALBERTO CRUZ", endereco: "TV DOCA SERENO, S/N- CENTRO", contrato: "CT 169", base: "PRESIDENTE DUTRA", prefixo: "ALOJ28", localidade: "PRESID. DUTRA", imovel: "REP. SPOT" },
+  { locador: "JAILSON ALVES DA SILVA", endereco: "RUA PRESIDENTE MEDICE, 19- BAIRRO- CAMPOS DANTAS", contrato: "CT 169", base: "PRESIDENTE DUTRA", prefixo: "ALOJ70", localidade: "PRESID. DUTRA", imovel: "REP. GERAL (POUSADA I)" },
+  { locador: "LIDAYANA FIGUEIREDO SOARES CALADO", endereco: "RUA 11 S/N CT 11 QD 12 LOT 19, CS- 03 COLINA PARCK I", contrato: "CT 169", base: "PRESIDENTE DUTRA", prefixo: "", localidade: "PRESID. DUTRA", imovel: "RESID. GABRIELA MELO" },
+  { locador: "ERLY ALVES FARIAS BARROS", endereco: "RUA MANGUEIRA, 10 TV- 1 - B- PAULO FALCAO", contrato: "CT 169", base: "PRESIDENTE DUTRA", prefixo: "", localidade: "PRESID. DUTRA", imovel: "RESID. (GLEICY MARA E JACKELINE)" },
+  { locador: "ENZO ALOJAMENTOS E SERVIÇOS LTDA", endereco: "TRAVESSA HONORATO GOMES- COND. ENZO- CASA- 11 CENTRO", contrato: "CT 169", base: "PRESIDENTE DUTRA", prefixo: "", localidade: "PRESID. DUTRA", imovel: "RESID. (ANDERSON E WALYSON)" },
+  { locador: "CELIO ROBERTO MONTEIRO FERREIRA", endereco: "RUA 28 JUNHO SUL, BAIRRO- VILA MILITAR , S/N", contrato: "CT 169", base: "PRESIDENTE DUTRA", prefixo: "", localidade: "PRESID. DUTRA", imovel: "RESID. (RAISSA)" },
+  { locador: "ALYNE LAIS ARAUJO SANTANA", endereco: "RUA ADALTO CRUZ, S/N- CENTRO", contrato: "CT 169", base: "PRESIDENTE DUTRA", prefixo: "", localidade: "PRESID. DUTRA", imovel: "RESID. CESAR AUGUSTO" },
+  { locador: "L GONZAGA BARBOSA LTDA", endereco: "RD BR 135, 2000- CAMPOS DANTAS", contrato: "CT 169", base: "PRESIDENTE DUTRA", prefixo: "", localidade: "PRESID. DUTRA", imovel: "ESCRITORIO" },
+  { locador: "LIDAYANA FIGUEIREDO SOARES CALADO", endereco: "RUA CT 07, S/N- QD 12 LT 04, BAIRRO COLINA PARCK", contrato: "CT 169", base: "PRESIDENTE DUTRA", prefixo: "", localidade: "PRESID. DUTRA", imovel: "RESID. PAULO SILVA" },
+  { locador: "ANA MARIA CRUZ DE SOUSA", endereco: "AVENIDA JOSE OLAVO SAMPAIO, 800- APTO 01- CENTRO", contrato: "CT 169", base: "PRESIDENTE DUTRA", prefixo: "", localidade: "PRESID. DUTRA", imovel: "RESID. ROSIMAR DERICK" },
+  { locador: "GILVAN FERNANDES REGO", endereco: "RUA ADALBERTO MACEDO, S/N- BAIRRO - PAULO FALCAO", contrato: "CT 169", base: "PRESIDENTE DUTRA", prefixo: "", localidade: "PRESID. DUTRA", imovel: "RESID. SR BATATA" },
+  { locador: "WYLANE LOPES DOS SANTOS", endereco: "RUA CAJUEIRO, S/N- BAIRRO COHAB", contrato: "CT 169", base: "PRESIDENTE DUTRA", prefixo: "", localidade: "PRESID. DUTRA", imovel: "RESID. RAFAELA" },
+  { locador: "ENZO ALOJAMENTOS E SERVIÇOS LTDA", endereco: "TV HONORATO GOMES, 04 COND. ENZO-", contrato: "CT 169", base: "PRESIDENTE DUTRA", prefixo: "", localidade: "PRESID. DUTRA", imovel: "RESID. CESAR" },
+  { locador: "JAKSON ALVES OLIVEIRA", endereco: "QD 10, 09- BAIRRO- MUTIRAO", contrato: "CT 127", base: "SANTA INES", prefixo: "ALOJ30", localidade: "SANTA LUZIA DO TIDE", imovel: "REP. GSTC" },
+  { locador: "JOAO BATISTA DE SÁ LOPES GONCALVES", endereco: "RUA DA JAQUEIRA, 15 - CIDADE NOVA", contrato: "CT 127", base: "SANTA INES", prefixo: "ALOJ31", localidade: "MONÇÃO", imovel: "REP. GSTC" },
+  { locador: "JOSE ALVES DOS SANTOS", endereco: "RUA VITORINO FREIRE, 390- CENTRO", contrato: "CT 127", base: "SANTA INES", prefixo: "ALOJ32", localidade: "PIO XII", imovel: "REP. GSTC" },
+  { locador: "GRACILENE LIMA DE OLVEIIRA", endereco: "TRAV SÃO JOSE, 30- MILITAR", contrato: "CT 127", base: "SANTA INES", prefixo: "ALOJ33", localidade: "SANTA INES", imovel: "REP. GERAL" },
+  { locador: "JACQUELINE JANSEN TATENO", endereco: "RUA BARAO DO RIO BRANCO, 111 B - VILA MILITAR", contrato: "CT 127", base: "SANTA INES", prefixo: "ALOJ35", localidade: "SANTA INES", imovel: "REP. LINHA VIVA" },
+  { locador: "RAIMUNDO DO NASCIMENTO SANTOS", endereco: "RUA DA ASSOCIAÇÃO, S/N- VILA ATEMIR", contrato: "CT 127", base: "SANTA INES", prefixo: "ALOJ36", localidade: "ALTO AL. PINDARE", imovel: "REP. GSTC" },
+  { locador: "NATALIA NILDE CARVALHO DO PATROCINIO", endereco: "RUA SÃO LUIS, 265- VL AMORIM", contrato: "CT 127", base: "SANTA INES", prefixo: "ALOJ37", localidade: "ZE DOCA", imovel: "REP. GSTC I" },
+  { locador: "EDILENE MAIA PEREIRA", endereco: "RUA PRESIDENTE MEDICE, 304- VILA MILITAR", contrato: "CT 170", base: "SANTA INES", prefixo: "ALOJ38", localidade: "SANTA INES", imovel: "REP. SPOT I" },
+  { locador: "ADRIANA ESTHER NERES OLIVEIRA DE SOUZA", endereco: "AVENIDA MARECHAL CASTELO BRANCO, 4914 B- SÃO CRISTOVAO", contrato: "CT 170", base: "SANTA INES", prefixo: "ALOJ79", localidade: "SANTA INES", imovel: "REP. SPOT III" },
+  { locador: "RAIMUNDO RALDERI DE FREITAS", endereco: "R. JOSE PATROCINIO, N° 151, JD TROPICA", contrato: "CT 170", base: "SANTA INES", prefixo: "ALOJ39", localidade: "SANTA INES", imovel: "REP. SPOT II" },
+  { locador: "JOAO PAULO GOMES OLIVEIRA", endereco: "RUA LARANJEIRA, 387- BAIRRO LARANJEIRAS", contrato: "CT 127", base: "SANTA INES", prefixo: "ALOJ61", localidade: "SANTA INES", imovel: "REP. CONSTRUCAO" },
+  { locador: "MARCIA CRISTINA DE MORAIS BRITO", endereco: "RUA BENEDITO LEITE, S/N- VILA MUNIZ", contrato: "CT 127", base: "SANTA INES", prefixo: "ALOJ63", localidade: "BOM JARDIM", imovel: "REP. GSTC" },
+  { locador: "ANTONIO CLEILSON DA CRUZ DOS SANTOS", endereco: "TV BOM JARDIM, 177- SÃO CRISTOVAO", contrato: "CT 127", base: "SANTA INES", prefixo: "ALOJ73", localidade: "SANTA INES", imovel: "REP. CONSTRUCAO (RESERVA)" },
+  { locador: "FABRICIO SOUSA NUNES", endereco: "RUA HEITOR PESSOA DE SOUSA, 11- CENTRO", contrato: "CT 127", base: "SANTA INES", prefixo: "ALOJ74", localidade: "ZE DOCA", imovel: "REP. GSTC II" },
+  { locador: "ANTONIETA DE LIMA LEAL", endereco: "RUA FREI DAMIAO, 283- VL MILITAR", contrato: "CT 127", base: "SANTA INES", prefixo: "", localidade: "SANTA INES", imovel: "RESID. EDIVAN CARVALHO" },
+  { locador: "ICONE- INCORPORADORA E CONSTRUTORA NORDESTE LTDA", endereco: "RUA SÃO BENEDITO, 18 CENTRO", contrato: "CT 127", base: "SANTA INES", prefixo: "", localidade: "SANTA INES", imovel: "RESID. JAMERSON MIRANDA" },
+  { locador: "TOMAZ MARTINS REIS NETO", endereco: "RUA 2, N- 98 - CIA VALE DO RIO DOCA", contrato: "CT 127", base: "SANTA INES", prefixo: "", localidade: "SANTA INES", imovel: "RESID. CARLAO" },
+  { locador: "MILTON LOPES DA MOTA", endereco: "RUA DO POSTO, S/N- BAIRRO- SOMRIZAL", contrato: "CT 127", base: "SANTA INES", prefixo: "ALOJ72", localidade: "SÃO JOAO DO CARU", imovel: "REP. GSTC" },
+  { locador: "NIBER JUCA MARQUES JUNIOR", endereco: "RD BR 316, 2580- LOT SANTA CECILIA LT 26 QD 01 - SÃO CRISTOVAO", contrato: "CT 127", base: "SANTA INES", prefixo: "", localidade: "SANTA INES", imovel: "APTO. ANTONIO SESMT" },
+  { locador: "R DE O ROSA TRANSPORTES LTDA", endereco: "ROD BR 222, Nº 2560- BAIRRO SANTA FILOMENA", contrato: "CT 127", base: "SANTA INES", prefixo: "", localidade: "SANTA INES", imovel: "ESCRITORIO" },
+];
+
+const alojSearch     = ref("");
+const alojBaseFilter = ref("Todas");
+const alojListOpen   = ref(true);
+
+const filteredAlojamentos = computed(() => {
+  const q  = alojSearch.value.toLowerCase();
+  const b  = alojBaseFilter.value;
+  return ALOJAMENTOS.filter((a) => {
+    const matchSearch = !q
+      || a.imovel.toLowerCase().includes(q)
+      || a.locador.toLowerCase().includes(q)
+      || a.localidade.toLowerCase().includes(q)
+      || a.prefixo.toLowerCase().includes(q);
+    const matchBase = b === "Todas" || a.base === b;
+    return matchSearch && matchBase;
+  });
+});
 
 // ─── Funcionários ─────────────────────────────────────────────────────────────
 
@@ -1029,6 +1241,39 @@ async function onImportFile(event: Event) {
     background: rgba(248,113,113,.08);
     border-color: rgba(248,113,113,.2);
   }
+  &--prefixo {
+    color: #34d399;
+    background: rgba(52,211,153,.1);
+    border-color: rgba(52,211,153,.2);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  &--loc {
+    color: rgba(255,255,255,.45);
+    background: rgba(255,255,255,.04);
+    border-color: var(--dbp-border2);
+  }
+  &--ct {
+    color: rgba(255,255,255,.3);
+    background: transparent;
+    border-color: var(--dbp-border2);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+  }
+}
+
+.dbp-record__addr {
+  font-size: 10.5px;
+  color: rgba(255,255,255,.28);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dbp-record__av--home {
+  background: rgba(16,185,129,.12);
+  color: #34d399;
+  font-size: 0;
+  i { font-size: 16px !important; }
 }
 
 .dbp-record__acts {
