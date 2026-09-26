@@ -84,7 +84,7 @@ function abrirSlot(idx: number) {
     message: "Como deseja adicionar a foto?",
     dark: $q.dark.isActive,
     cancel: { label: "Cancelar", flat: true, noCaps: true },
-    ok: false,
+    ok: { label: "Confirmar", unelevated: true, color: "primary", noCaps: true },
     options: {
       type: "radio",
       model: "camera",
