@@ -13,7 +13,7 @@
     />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.workers.dev<% if (ctx.dev) { %> ws://localhost:* http://localhost:*<% } %>; worker-src 'self' blob:; font-src 'self' data:;"
+      content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.workers.dev<% if (ctx.dev) { %> ws://localhost:* http://localhost:*<% } %>; worker-src 'self' blob:; font-src 'self' data: https://fonts.gstatic.com;"
     />
 
     <link rel="icon" type="image/png" href="icons/logo-original.png" />
