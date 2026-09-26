@@ -46,7 +46,9 @@
             />
           </div>
           <div class="col-6">
+            <!-- Campo padrão: equipes por base -->
             <q-select
+              v-if="!isAlojamento"
               v-model="equipe"
               :options="equipesFiltered"
               outlined dense
@@ -55,6 +57,21 @@
               hide-selected fill-input
               :rules="[required]"
               @filter="filterEquipes"
+            />
+            <!-- Campo alojamento: prefixo ALOJ com sugestões da base -->
+            <q-select
+              v-else
+              v-model="equipe"
+              :options="alojamentosFiltered"
+              option-value="value"
+              option-label="label"
+              emit-value map-options
+              outlined dense
+              label="Alojamento"
+              use-input input-debounce="0"
+              hide-selected fill-input
+              :rules="[required]"
+              @filter="filterAlojamentos"
             />
           </div>
         </div>
@@ -436,6 +453,8 @@ import { useSessionStore } from "@/stores/session";
 import { useObservacoesStore, isChecklist } from "@/stores/observacoes";
 import { basesOperacionais } from "@/data/checklist";
 import { equipesPorBase } from "@/data/equipes";
+import { alojamentosPorBase } from "@/data/alojamentos";
+import type { AlojamentoOption } from "@/data/alojamentos";
 import { employees } from "@/data/employees";
 import type { CategoriaGoman, PerguntaGoman, Gravidade, ItemVerificado } from "@/data/goman-checklist";
 import type { AuditagemCategoria } from "@/data/auditagem";
@@ -478,12 +497,20 @@ const continuarId = route.query.continuarId as string | undefined;
 const base = ref("");
 const equipe = ref("");
 
+const isAlojamento = computed(() => props.auditagem === "ALOJAMENTO");
+
 const equipesOptions = computed(() => equipesPorBase(base.value));
 const equipesFiltered = ref<string[]>([]);
 
 watch(equipesOptions, (opts) => { equipesFiltered.value = opts; }, { immediate: true });
 watch(base, () => {
-  if (!equipesOptions.value.includes(equipe.value)) equipe.value = "";
+  if (isAlojamento.value) {
+    const opts = alojamentosPorBase(base.value);
+    if (!opts.find(o => o.value === equipe.value)) equipe.value = "";
+    alojamentosFiltered.value = opts;
+  } else {
+    if (!equipesOptions.value.includes(equipe.value)) equipe.value = "";
+  }
 });
 
 function filterEquipes(val: string, update: (fn: () => void) => void) {
@@ -492,6 +519,19 @@ function filterEquipes(val: string, update: (fn: () => void) => void) {
     equipesFiltered.value = needle
       ? equipesOptions.value.filter((e) => e.toLowerCase().includes(needle))
       : equipesOptions.value;
+  });
+}
+
+const alojamentosFiltered = ref<AlojamentoOption[]>([]);
+watch(base, (b) => { alojamentosFiltered.value = alojamentosPorBase(b); }, { immediate: true });
+
+function filterAlojamentos(val: string, update: (fn: () => void) => void) {
+  update(() => {
+    const needle = val.toLowerCase();
+    const opts = alojamentosPorBase(base.value);
+    alojamentosFiltered.value = needle
+      ? opts.filter(o => o.label.toLowerCase().includes(needle) || o.value.toLowerCase().includes(needle))
+      : opts;
   });
 }
 
