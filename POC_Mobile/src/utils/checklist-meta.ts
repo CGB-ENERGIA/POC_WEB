@@ -18,6 +18,31 @@ const TOTAL_POR_AUDITAGEM: Record<string, number> = {
 export function totalPerguntasAuditagem(auditagem: string): number | undefined {
   return TOTAL_POR_AUDITAGEM[auditagem];
 }
+
+export function contarRespondidas(
+  perguntaIds: string[],
+  respostas: Record<string, string | null | undefined>
+): number {
+  return perguntaIds.filter((id) => !!respostas[id]).length;
+}
+
+export function gruposPendentes<T extends { id: string; label: string; perguntas: { id: string }[] }>(
+  checklist: T[],
+  respostas: Record<string, string | null | undefined>
+): { id: string; label: string; faltam: number; primeiraPerguntaId: string }[] {
+  return checklist
+    .map((cat) => {
+      const faltando = cat.perguntas.filter((p) => !respostas[p.id]);
+      return {
+        id: cat.id,
+        label: cat.label,
+        faltam: faltando.length,
+        primeiraPerguntaId: faltando[0]?.id ?? "",
+      };
+    })
+    .filter((g) => g.faltam > 0);
+}
+
 export function contaNaMeta(o: RegistroObservacao): boolean {
   if (!isChecklist(o)) return true;
   if (o.status === "em_andamento") return false;

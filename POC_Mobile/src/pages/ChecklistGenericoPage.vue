@@ -5,7 +5,7 @@
         <div class="row items-center justify-between q-mb-sm">
           <div>
             <div class="section-title">{{ titulo }}</div>
-            <div class="section-subtitle">{{ respondidas }} de {{ totalPerguntas }} respondidas</div>
+            <div class="section-subtitle">{{ respondidas }} de {{ todasPerguntasIds.length }} respondidas</div>
           </div>
           <q-circular-progress
             :value="progresso"
@@ -73,13 +73,15 @@
           </div>
         </div>
 
-        <EvidenciasObrigatorias
-          v-model="evidencias"
-          :equipe="equipe"
-          :observador="session.employee?.nomeCompleto ?? session.employee?.nome ?? ''"
-          :matricula="session.employee?.matricula"
-          :slots="isAdministrativo ? SLOTS_ADM : undefined"
-        />
+        <div id="checklist-evidencias">
+          <EvidenciasObrigatorias
+            v-model="evidencias"
+            :equipe="equipe"
+            :observador="session.employee?.nomeCompleto ?? session.employee?.nome ?? ''"
+            :matricula="session.employee?.matricula"
+            :slots="isAdministrativo ? SLOTS_ADM : undefined"
+          />
+        </div>
 
         <FotosAdicionais
           v-model="fotosGerais"
@@ -139,7 +141,12 @@
           <template #header>
             <q-item-section>
               <q-item-label class="text-weight-bold">{{ cat.label }}</q-item-label>
-              <q-item-label caption>{{ progressoCategoria(cat.id) }}/{{ cat.perguntas.length }} respondidas</q-item-label>
+              <q-item-label
+                caption
+                :class="progressoCategoria(cat.id) < cat.perguntas.length ? 'text-orange-9' : 'text-positive'"
+              >
+                {{ progressoCategoria(cat.id) }}/{{ cat.perguntas.length }} respondidas
+              </q-item-label>
             </q-item-section>
             <q-item-section side>
               <q-circular-progress
@@ -225,8 +232,12 @@
         color="primary" size="lg" unelevated no-caps
         label="Finalizar" icon="mdi-content-save"
         :loading="saving"
-        :disable="!isTestUser && (respondidas < totalPerguntas || !evidenciasCompletas)"
+        :loading="saving"
+        :disable="saving"
       />
+      <div v-if="textoPendencia" class="text-caption text-center q-mt-sm q-mb-xs cl-pendencia">
+        {{ textoPendencia }}
+      </div>
       <q-btn
         type="button"
         class="full-width q-mt-sm q-mb-md"
@@ -460,6 +471,7 @@ import { compressBase64 } from "@/utils/image";
 import { getTrustedTime, ServerTimeError } from "@/utils/server-time";
 import { stampAuditPhoto } from "@/utils/photo-stamp";
 import { extrairItensPergunta } from "@/utils/pergunta-itens";
+import { contarRespondidas, gruposPendentes } from "@/utils/checklist-meta";
 import { useChecklistDraft } from "@/composables/useChecklistDraft";
 import CameraModal from "@/components/CameraModal.vue";
 import GaleriaPicker from "@/components/GaleriaPicker.vue";
@@ -679,14 +691,25 @@ const { persistDraft, clearDraft: clearChecklistDraft, draftSaved } = useCheckli
 );
 
 const respondidas = computed(
-  () => Object.keys(respostas).filter((k) => respostas[k]).length
+  () => contarRespondidas(todasPerguntasIds.value, respostas)
 );
 const naoConformes = computed(
   () => Object.values(respostas).filter((r) => r === "nao_conforme").length
 );
 const progresso = computed(() =>
-  props.totalPerguntas ? respondidas.value / props.totalPerguntas : 0
+  todasPerguntasIds.value.length ? respondidas.value / todasPerguntasIds.value.length : 0
 );
+
+const textoPendencia = computed(() => {
+  if (isTestUser.value) return "";
+  const total = todasPerguntasIds.value.length;
+  if (respondidas.value < total) {
+    const grupos = gruposPendentes(props.checklist, respostas);
+    return `Faltam ${total - respondidas.value} pergunta(s) em: ${grupos.map((g) => g.label).join(", ")}`;
+  }
+  if (!evidenciasCompletas.value) return "Faltam as fotos obrigatórias para finalizar.";
+  return "";
+});
 
 function progressoCategoria(catId: string) {
   const cat = props.checklist.find((c) => c.id === catId);
@@ -1015,8 +1038,44 @@ async function _salvarRascunho() {
   await router.replace({ name: "home" });
 }
 
+function avisarSeIncompleto(): boolean {
+  if (isTestUser.value) return false;
+  const pendentes = gruposPendentes(props.checklist, respostas);
+  if (pendentes.length) {
+    for (const g of pendentes) expandedCategories[g.id] = true;
+    $q.notify({
+      type: "warning",
+      icon: "mdi-clipboard-alert-outline",
+      message: `Faltam perguntas em ${pendentes.length} grupo${pendentes.length > 1 ? "s" : ""}.`,
+      caption: pendentes.map((g) => `${g.label} (${g.faltam})`).join(" · "),
+      position: "top",
+      timeout: 5500,
+    });
+    nextTick(() => {
+      window.setTimeout(
+        () => scrollToElement(`pergunta-${pendentes[0].primeiraPerguntaId}`),
+        280
+      );
+    });
+    return true;
+  }
+  if (!evidenciasCompletas.value) {
+    $q.notify({
+      type: "warning",
+      icon: "mdi-camera-outline",
+      message: "Inclua as fotos obrigatórias para finalizar.",
+      position: "top",
+      timeout: 4500,
+    });
+    scrollToElement("checklist-evidencias");
+    return true;
+  }
+  return false;
+}
+
 async function onSubmit() {
-  if (!session.employee || (!isTestUser.value && (respondidas.value < props.totalPerguntas || !evidenciasCompletas.value))) return;
+  if (!session.employee) return;
+  if (avisarSeIncompleto()) return;
 
   saving.value = true;
 
@@ -1152,5 +1211,11 @@ async function onSubmit() {
   font-size: 13px; color: #475569; line-height: 1.4; flex: 1;
   overflow: hidden; display: -webkit-box;
   -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+
+.cl-pendencia {
+  color: #9a3412;
+  line-height: 1.35;
+  padding: 0 8px;
 }
 </style>

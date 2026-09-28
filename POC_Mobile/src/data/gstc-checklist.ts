@@ -396,4 +396,7 @@ export const gstcChecklist: CategoriaGstc[] = [
   },
 ]
 
-export const totalPerguntasGstc = 60
+export const totalPerguntasGstc = gstcChecklist.reduce(
+  (n, c) => n + c.perguntas.length,
+  0,
+)
