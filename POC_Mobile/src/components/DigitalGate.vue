@@ -9,11 +9,26 @@
 <template>
   <div class="dgw-root">
 
+    <div v-if="checking" class="dgw-center">
+      <q-spinner-dots size="36px" color="primary" />
+    </div>
+
     <!-- Não suportado -->
-    <div v-if="!supported" class="dgw-center">
-      <q-icon name="mdi-alert-circle-outline" size="46px" color="warning" />
-      <p class="dgw-sub">Seu dispositivo não suporta autenticação biométrica pelo navegador.</p>
-      <q-btn flat no-caps color="grey-7" label="Cancelar" @click="emit('cancel')" />
+    <div v-else-if="!supported" class="dgw-center">
+      <q-icon name="mdi-tablet" size="46px" color="warning" />
+      <p class="dgw-title">Sem digital neste aparelho</p>
+      <p class="dgw-sub">
+        Este tablet não tem sensor de digital nem Face ID do sistema.
+        Use a matrícula ou o reconhecimento pela câmera, se disponível.
+      </p>
+      <q-btn
+        class="full-width btn-primary-lg q-mt-sm"
+        color="primary" unelevated no-caps
+        label="Continuar sem digital"
+        icon="mdi-badge-account-outline"
+        @click="emit('unsupported')"
+      />
+      <q-btn flat no-caps color="grey-7" label="Voltar" class="q-mt-xs" @click="emit('cancel')" />
     </div>
 
     <!-- Pronto para agir -->
@@ -82,7 +97,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, watch } from "vue";
 import { getSupabase } from "@/lib/supabase";
 
 const props = defineProps<{
@@ -97,12 +112,14 @@ const emit = defineEmits<{
   matched: [matricula: string];
   cancel: [];
   "enroll-here": [];
+  unsupported: [];
 }>();
 
 const supabase = getSupabase();
 
 type Status = "idle" | "done" | "error" | "new-device";
 const supported = ref(true);
+const checking  = ref(true);
 const status    = ref<Status>("idle");
 const working   = ref(false);
 const errorMsg  = ref("");
@@ -129,12 +146,21 @@ function randomChallenge(): Uint8Array {
 // ── Verificação de suporte ───────────────────────────────────────────────────
 onMounted(async () => {
   try {
-    if (!window.PublicKeyCredential) { supported.value = false; return; }
+    if (!window.PublicKeyCredential) {
+      supported.value = false;
+      return;
+    }
     const ok = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-    if (!ok) supported.value = false;
+    supported.value = ok;
   } catch {
     supported.value = false;
+  } finally {
+    checking.value = false;
   }
+});
+
+watch(supported, (ok) => {
+  if (!ok) emit("unsupported");
 });
 
 // ── Execução ─────────────────────────────────────────────────────────────────

@@ -112,6 +112,36 @@
         </template>
 
 
+        <!-- ══ Sem sensor (tablet) ══ -->
+        <template v-else-if="step === 'sem-sensor'">
+          <div class="text-center">
+            <div class="face-badge q-mx-auto q-mb-md" style="border-color:rgba(217,164,65,.5);background:rgba(217,164,65,.08)">
+              <q-icon name="mdi-tablet" size="26px" color="warning" />
+            </div>
+            <div class="section-title q-mb-xs">Este aparelho não tem digital</div>
+            <div class="section-subtitle q-mb-lg">
+              Tablets sem sensor de digital ou Face ID do sistema entram pela
+              <b>matrícula</b>. Se houver câmera, você também pode cadastrar o reconhecimento facial.
+            </div>
+            <q-btn
+              class="full-width btn-primary-lg q-mb-sm"
+              color="primary" size="lg" unelevated no-caps
+              label="Entrar pela matrícula"
+              icon="mdi-badge-account-outline"
+              @click="entrarNoSistema()"
+            />
+            <q-btn
+              v-if="canUseCamera"
+              class="full-width q-mb-sm"
+              outline no-caps color="primary"
+              :label="hasFace ? 'Usar reconhecimento pela câmera' : 'Cadastrar Face ID pela câmera'"
+              icon="mdi-face-recognition"
+              @click="step = hasFace ? 'scan-face' : 'enroll-face'"
+            />
+            <q-btn flat no-caps color="grey-6" label="Voltar" @click="voltarIdent" />
+          </div>
+        </template>
+
         <!-- ══ 3a. Scan Face ID ══ -->
         <template v-else-if="step === 'scan-face'">
           <div class="section-title q-mb-xs">Face ID</div>
@@ -129,23 +159,21 @@
             @cancel="voltarChoice"
           />
           <q-btn
-            v-if="hasDigital"
+            v-if="hasDigital && canUseDigital"
             flat no-caps color="grey-6"
             label="Usar digital"
             icon="mdi-fingerprint"
             class="full-width q-mt-sm"
             @click="step = 'scan-digital'"
           />
-          <transition name="fade">
-            <q-btn
-              v-if="scanErro"
-              flat no-caps color="grey-6"
-              label="Entrar pela matrícula"
-              icon="mdi-badge-account-outline"
-              class="full-width q-mt-sm"
-              @click="entrarNoSistema()"
-            />
-          </transition>
+          <q-btn
+            flat no-caps color="grey-5"
+            label="Entrar pela matrícula"
+            icon="mdi-badge-account-outline"
+            class="full-width q-mt-sm"
+            size="sm"
+            @click="entrarNoSistema()"
+          />
         </template>
 
         <!-- ══ 3b. Scan Digital ══ -->
@@ -160,6 +188,7 @@
             @matched="onDigitalMatched"
             @cancel="voltarChoice"
             @enroll-here="enrollDigitalAqui"
+            @unsupported="onDigitalUnsupported"
           />
           <q-btn
             v-if="hasFace"
@@ -203,6 +232,7 @@
             :nome="employee?.nomeCompleto"
             @enrolled="onDigitalEnrolled"
             @cancel="step = enrollDigitalFrom"
+            @unsupported="onDigitalUnsupported"
           />
         </template>
 
@@ -218,7 +248,14 @@
               Enquanto isso, você já pode entrar pela matrícula ou cadastrar também a digital.
             </div>
             <q-btn class="full-width btn-primary-lg q-mb-sm" color="primary" size="lg" unelevated no-caps label="Entrar agora" @click="entrarNoSistema()" />
-            <q-btn class="full-width" flat no-caps color="grey-6" label="Cadastrar digital também" icon="mdi-fingerprint" @click="step = 'enroll-digital'" />
+            <q-btn
+              v-if="canUseDigital"
+              class="full-width"
+              flat no-caps color="grey-6"
+              label="Cadastrar digital também"
+              icon="mdi-fingerprint"
+              @click="step = 'enroll-digital'"
+            />
           </div>
         </template>
 
@@ -261,6 +298,7 @@ import DigitalGate from "@/components/DigitalGate.vue";
 const FaceGate = defineAsyncComponent(() => import("@/components/FaceGate.vue"));
 import { BRAND } from "@/constants/brand";
 import { employees, findByMatricula, type Employee } from "@/data/employees";
+import { hasFrontCamera, hasPlatformBiometrics } from "@/utils/device-auth";
 
 const router   = useRouter();
 const session  = useSessionStore();
@@ -270,7 +308,10 @@ const supabase = getSupabase();
 const viewW = ref(window.innerWidth);
 const viewH = ref(window.innerHeight);
 function onResize() { viewW.value = window.innerWidth; viewH.value = window.innerHeight; }
-onMounted(() => window.addEventListener("resize", onResize));
+onMounted(() => {
+  window.addEventListener("resize", onResize);
+  void detectDeviceAuth();
+});
 onUnmounted(() => window.removeEventListener("resize", onResize));
 
 const isTablet  = computed(() => viewW.value >= 768);
@@ -284,6 +325,7 @@ const logoSize  = computed(() => {
 // ── Steps ─────────────────────────────────────────────────────────────────────
 type Step =
   | "ident"
+  | "sem-sensor"
   | "scan-face" | "scan-digital"
   | "enroll-face" | "enroll-digital"
   | "enroll-face-done" | "enroll-digital-done";
@@ -300,6 +342,8 @@ const hasFace           = ref(false);
 const hasDigital        = ref(false);
 const credentialIds     = ref<string[]>([]);
 const enrollDigitalFrom = ref<Step>("ident");
+const canUseDigital     = ref(false);
+const canUseCamera      = ref(false);
 
 const canContinue = computed(() => employee.value !== null);
 const initials    = computed(() => {
@@ -328,12 +372,19 @@ function filterMatricula(val: string, update: (fn: () => void) => void) {
 
 watch(matricula, (val) => { if (typeof val === "string") resolveEmployee(val); });
 
+async function detectDeviceAuth() {
+  const [bio, cam] = await Promise.all([hasPlatformBiometrics(), hasFrontCamera()]);
+  canUseDigital.value = bio;
+  canUseCamera.value = cam;
+}
+
 async function onContinue() {
   if (!employee.value) return;
   loading.value = true;
 
   try {
     const mat = employee.value.matricula;
+    await detectDeviceAuth();
 
     const [faceRes, digRes] = await Promise.all([
       supabase.rpc("mobile_face_status",    { p_matricula: mat }),
@@ -343,21 +394,29 @@ async function onContinue() {
     hasFace.value    = faceRes.data === "approved";
     hasDigital.value = digRes.data  === "registered";
 
-    if (hasDigital.value) {
+    if (hasDigital.value && canUseDigital.value) {
       const { data: creds } = await supabase.rpc("mobile_digital_credentials", { p_matricula: mat });
       credentialIds.value = (creds ?? []).map((r: { credential_id: string }) => r.credential_id);
       step.value = "scan-digital";
-    } else if (hasFace.value) {
+    } else if (hasFace.value && canUseCamera.value) {
       step.value = "scan-face";
-    } else {
+    } else if (canUseDigital.value && !hasDigital.value) {
       enrollDigitalFrom.value = "ident";
       step.value = "enroll-digital";
+    } else if (!canUseDigital.value) {
+      step.value = "sem-sensor";
+    } else {
+      entrarNoSistema();
     }
   } catch {
     entrarNoSistema();
   } finally {
     loading.value = false;
   }
+}
+
+function onDigitalUnsupported() {
+  step.value = "sem-sensor";
 }
 
 function entrarNoSistema(aviso?: string) {
