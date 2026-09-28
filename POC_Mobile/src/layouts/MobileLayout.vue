@@ -78,6 +78,7 @@
         </transition>
       </router-view>
     </q-page-container>
+    <PwaInstallPrompt />
   </q-layout>
 </template>
 
@@ -88,6 +89,7 @@ import { LocalStorage, useQuasar } from "quasar";
 import { useSessionStore } from "@/stores/session";
 import { useObservacoesStore } from "@/stores/observacoes";
 import BrandLogo from "@/components/BrandLogo.vue";
+import PwaInstallPrompt from "@/components/PwaInstallPrompt.vue";
 import { applyThemeColor } from "@/utils/theme";
 import { THEME_STORAGE_KEY } from "@/constants/theme";
 
