@@ -119,6 +119,23 @@
         </div>
       </div>
       </div>
+      <transition name="fade">
+        <div v-if="hasActiveFilters" class="filter-summary">
+          <span class="filter-summary__label">Filtros ativos:</span>
+          <span class="filter-chip">{{ filters.ano }}</span>
+          <span class="filter-chip">{{ mesLabel }}</span>
+          <span v-if="filters.semana" class="filter-chip filter-chip--hit" @click="filters.semana = 0">{{ semanaLabel }}</span>
+          <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ nomeBase(filters.base) }}</span>
+          <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
+          <span v-if="filters.gerente !== 'Todos'" class="filter-chip">{{ filters.gerente }}</span>
+          <span v-if="filters.funcao !== 'Todos'" class="filter-chip">{{ filters.funcao }}</span>
+          <span v-if="viz.observadorNome" class="filter-chip filter-chip--hit" @click="clearObs">{{ viz.observadorNome }}</span>
+          <button class="filter-clear" @click="resetSlice">
+            <q-icon name="mdi-close-circle" size="14px" />
+            Limpar
+          </button>
+        </div>
+      </transition>
     </div>
 
     <!-- ══════════════════════════════════════════════════════
@@ -154,7 +171,7 @@
               <div class="text-caption text-grey-6">Mês atual</div>
             </q-card-section>
             <q-card-section>
-              <v-chart :option="chartMetaMes" autoresize style="height:260px" />
+              <v-chart class="chart-hit" :option="chartMetaMes" autoresize style="height:260px" />
             </q-card-section>
           </q-card>
         </div>
@@ -164,10 +181,10 @@
           <q-card flat bordered class="chart-card">
             <q-card-section class="q-pb-none">
               <div class="text-subtitle1 text-weight-bold">Obs. Realizadas por Semana</div>
-              <div class="text-caption text-grey-6">4 semanas do mês</div>
+              <div class="text-caption text-grey-6">Clique na semana · clique de novo para ver o mês todo</div>
             </q-card-section>
             <q-card-section>
-              <v-chart :option="chartMetaSemana" autoresize style="height:260px" />
+              <v-chart class="chart-hit" :option="chartMetaSemana" autoresize style="height:260px" @click="onWeekClick" />
             </q-card-section>
           </q-card>
         </div>
@@ -177,10 +194,10 @@
           <q-card flat bordered class="chart-card">
             <q-card-section class="q-pb-none">
               <div class="text-subtitle1 text-weight-bold">Nº de Observações por Base</div>
-              <div class="text-caption text-grey-6">Realizado vs Meta</div>
+              <div class="text-caption text-grey-6">Clique numa base para ver só ela</div>
             </q-card-section>
             <q-card-section>
-              <v-chart :option="chartBase" autoresize style="height:260px" />
+              <v-chart class="chart-hit" :option="chartBase" autoresize style="height:260px" @click="onBaseClick" />
             </q-card-section>
           </q-card>
         </div>
@@ -195,10 +212,10 @@
           <q-card flat bordered class="chart-card">
             <q-card-section class="q-pb-none">
               <div class="text-subtitle1 text-weight-bold">Nº de Obs. por Gerência</div>
-              <div class="text-caption text-grey-6">Realizado vs Meta</div>
+              <div class="text-caption text-grey-6">Clique numa gerência para filtrar</div>
             </q-card-section>
             <q-card-section>
-              <v-chart :option="chartGerencia" autoresize style="height:260px" />
+              <v-chart class="chart-hit" :option="chartGerencia" autoresize style="height:260px" @click="onGerenciaClick" />
             </q-card-section>
           </q-card>
         </div>
@@ -208,10 +225,10 @@
           <q-card flat bordered class="chart-card">
             <q-card-section class="q-pb-none">
               <div class="text-subtitle1 text-weight-bold">Observações Realizadas no Mês</div>
-              <div class="text-caption text-grey-6">Todos os observadores · vela = realizado · traço = meta · arraste para ver a lista</div>
+              <div class="text-caption text-grey-6">Clique numa vela para filtrar o observador · arraste para ver a lista</div>
             </q-card-section>
             <q-card-section>
-              <v-chart :option="chartObservador" autoresize style="height:260px" />
+              <v-chart class="chart-hit" :option="chartObservador" autoresize style="height:280px" @click="onObsClick" />
             </q-card-section>
           </q-card>
         </div>
@@ -221,10 +238,10 @@
           <q-card flat bordered class="chart-card">
             <q-card-section class="q-pb-none">
               <div class="text-subtitle1 text-weight-bold">Ranking de Observadores</div>
-              <div class="text-caption text-grey-6">Top 11 do mês</div>
+              <div class="text-caption text-grey-6">Clique no nome para filtrar</div>
             </q-card-section>
             <q-card-section>
-              <v-chart :option="chartRanking" autoresize style="height:260px" />
+              <v-chart class="chart-hit" :option="chartRanking" autoresize style="height:260px" @click="onRankingClick" />
             </q-card-section>
           </q-card>
         </div>
@@ -262,6 +279,7 @@ import {
   matchSubmissionToEmployee,
 } from "@/lib/dashboard";
 import { useGoals } from "@/composables/useGoals";
+const { goalForColaborador } = useGoals();
 
 use([
   CanvasRenderer, BarChart, LineChart, ScatterChart,
@@ -333,42 +351,158 @@ const {
 } = useChecklistData();
 
 async function recarregar() {
+  clearObs();
   await load({
     ano: filters.ano,
     mes: filters.mes,
-    base: filters.base !== "Todos" ? filters.base : undefined,
     contarMeta: true,
   });
 }
 
 onMounted(recarregar);
-watch(() => [filters.ano, filters.mes, filters.base], recarregar);
+watch(() => [filters.ano, filters.mes], recarregar);
 
-const filteredSubs = computed(() => {
-  let s = filterByGerencia(submissions.value, employees.value, filters.gerencia);
-  if (filters.semana) {
-    s = s.filter(sub => semanaDaData(sub.data) === filters.semana);
+const viz = reactive({
+  matricula: null as string | null,
+  observadorNome: null as string | null,
+});
+
+const BASE_NOME: Record<string, string> = {
+  BCB: "Bacabal",
+  BDC: "Barra do Corda",
+  ITM: "Imperatriz",
+  PDS: "Pedreiras",
+  PDT: "Presidente Dutra",
+  STI: "Santa Inês",
+};
+
+function nomeBase(code: string) {
+  return BASE_NOME[code] ? `${BASE_NOME[code]} (${code})` : code;
+}
+
+function clearObs() {
+  viz.matricula = null;
+  viz.observadorNome = null;
+}
+
+function resetSlice() {
+  filters.semana = 0;
+  filters.base = "Todos";
+  filters.funcao = "Todos";
+  filters.gerencia = "Todos";
+  filters.gerente = "Todos";
+  clearObs();
+}
+
+type EcClick = {
+  componentType?: string;
+  dataIndex?: number;
+  name?: string;
+};
+
+function onWeekClick(p: EcClick) {
+  if (p.componentType && p.componentType !== "series") return;
+  let n = 0;
+  const fromName = p.name?.match(/(\d)/);
+  if (fromName) n = Number(fromName[1]);
+  else if (typeof p.dataIndex === "number") n = p.dataIndex + 1;
+  if (n < 1 || n > 4) return;
+  filters.semana = filters.semana === n ? 0 : n;
+}
+
+function onBaseClick(p: EcClick) {
+  if (p.componentType !== "series" || !p.name) return;
+  filters.base = filters.base === p.name ? "Todos" : p.name;
+}
+
+function onGerenciaClick(p: EcClick) {
+  if (p.componentType !== "series" || !p.name) return;
+  filters.gerencia = filters.gerencia === p.name ? "Todos" : p.name;
+}
+
+function onObsClick(p: EcClick) {
+  if (p.componentType !== "series") return;
+  const row = observerRows.value[p.dataIndex ?? -1];
+  if (!row) return;
+  if (viz.matricula === row.matricula) {
+    clearObs();
+    return;
   }
-  s = filterByGerente(s, employees.value, filters.gerente);
-  if (filters.funcao !== "Todos") {
+  viz.matricula = row.matricula;
+  viz.observadorNome = row.short;
+}
+
+function onRankingClick(p: EcClick) {
+  if (p.componentType !== "series") return;
+  const row = rankingRows.value[p.dataIndex ?? -1];
+  if (!row) return;
+  if (viz.matricula === row.matricula) {
+    clearObs();
+    return;
+  }
+  viz.matricula = row.matricula;
+  viz.observadorNome = row.nome.split(" ")[0] || row.nome;
+}
+
+const semanaLabel = computed(() => semanas.find((s) => s.value === filters.semana)?.label ?? "");
+const hasActiveFilters = computed(() =>
+  filters.semana !== 0
+  || filters.base !== "Todos"
+  || filters.gerencia !== "Todos"
+  || filters.gerente !== "Todos"
+  || filters.funcao !== "Todos"
+  || !!viz.matricula,
+);
+
+const barraGerente = computed(() =>
+  filterByGerente(submissions.value, employees.value, filters.gerente),
+);
+
+function applySlice(
+  source: typeof submissions.value,
+  omit: { week?: boolean; base?: boolean; gerencia?: boolean; funcao?: boolean; mat?: boolean } = {},
+) {
+  let s = source;
+  if (!omit.gerencia) s = filterByGerencia(s, employees.value, filters.gerencia);
+  if (!omit.week && filters.semana) {
+    s = s.filter((sub) => semanaDaData(sub.data) === filters.semana);
+  }
+  if (!omit.base && filters.base !== "Todos") {
+    s = s.filter((sub) => sub.base === filters.base);
+  }
+  if (!omit.funcao && filters.funcao !== "Todos") {
     const idx = indexEmployees(employees.value);
-    s = s.filter(sub => matchSubmissionToEmployee(sub, idx)?.funcao === filters.funcao);
+    s = s.filter((sub) => matchSubmissionToEmployee(sub, idx)?.funcao === filters.funcao);
+  }
+  if (!omit.mat && viz.matricula) {
+    const idx = indexEmployees(employees.value);
+    const want = viz.matricula;
+    s = s.filter((sub) => {
+      const emp = matchSubmissionToEmployee(sub, idx);
+      return normMatricula(emp?.matricula ?? sub.matricula) === want;
+    });
   }
   return s;
-});
+}
+
+const filteredSubs = computed(() => applySlice(barraGerente.value));
+const subsNoObs = computed(() => applySlice(barraGerente.value, { mat: true }));
+const subsNoBase = computed(() => applySlice(barraGerente.value, { base: true }));
+const subsNoWeek = computed(() => applySlice(barraGerente.value, { week: true }));
+const subsNoGerencia = computed(() => applySlice(barraGerente.value, { gerencia: true }));
 
 const totalSubmissions = computed(() => filteredSubs.value.length);
 const basesCovertas = computed(() => new Set(filteredSubs.value.map(s => s.base)).size);
 
 const byBase = computed(() => {
   const m: Record<string, number> = {};
-  for (const s of filteredSubs.value) m[s.base] = (m[s.base] ?? 0) + 1;
+  for (const s of subsNoBase.value) m[s.base] = (m[s.base] ?? 0) + 1;
   return m;
 });
 
 const bySemana = computed(() => {
   const m: Record<number, number> = {};
-  for (const s of filteredSubs.value) {
+  for (const s of subsNoWeek.value) {
     const sem = semanaDaData(s.data);
     m[sem] = (m[sem] ?? 0) + 1;
   }
@@ -384,8 +518,20 @@ const observerRoster = computed(() =>
 );
 
 const observerRows = computed(() => {
-  const roster = observerRoster.value;
-  const { counts, extras } = tallyObserverRecords(roster, employees.value, filteredSubs.value);
+  let roster = observerRoster.value;
+  const idx = indexEmployees(employees.value);
+  const slice = subsNoObs.value;
+  if (filters.base !== "Todos") {
+    const fromSlice = new Set<string>();
+    for (const s of slice) {
+      const emp = matchSubmissionToEmployee(s, idx);
+      fromSlice.add(normMatricula(emp?.matricula ?? s.matricula));
+    }
+    roster = roster.filter(
+      (e) => e.base === filters.base || fromSlice.has(normMatricula(e.matricula)),
+    );
+  }
+  const { counts, extras } = tallyObserverRecords(roster, employees.value, slice);
   const list = extras.length ? [...roster, ...extras] : roster;
   const shorts = uniqueChartLabels(
     list.map((e) => e.nome || e.nome_completo.split(/\s+/)[0] || e.matricula),
@@ -394,11 +540,13 @@ const observerRows = computed(() => {
     const g = goalForColaborador(
       emp.matricula, emp.gerencia, filters.ano, filters.mes, filters.semana || undefined, emp.funcao,
     );
+    const key = normMatricula(emp.matricula);
     return {
+      matricula: key,
       nome: emp.nome_completo || emp.nome,
       short: shorts[i]!,
-      realizado: counts.get(normMatricula(emp.matricula)) ?? 0,
-      meta: g.mensal,
+      realizado: counts.get(key) ?? 0,
+      meta: filters.semana ? g.semanal : g.mensal,
       funcao: emp.funcao || "—",
     };
   });
@@ -407,7 +555,7 @@ const observerRows = computed(() => {
 const byGerencia = computed(() => {
   const m: Record<string, number> = {};
   const idx = indexEmployees(employees.value);
-  for (const s of filteredSubs.value) {
+  for (const s of subsNoGerencia.value) {
     const emp = matchSubmissionToEmployee(s, idx);
     const g = emp?.gerencia ?? s.auditagem;
     m[g] = (m[g] ?? 0) + 1;
@@ -416,24 +564,30 @@ const byGerencia = computed(() => {
 });
 
 const conformidadePorObservador = computed(() => {
+  const idx = indexEmployees(employees.value);
   const filteredIds = new Set(filteredSubs.value.map(s => s.id));
   const filteredResps = responses.value.filter(r => filteredIds.has(r.submission_id));
-  const map: Record<string, { nome: string; total: number; conformes: number }> = {};
+  const map: Record<string, { nome: string; total: number; conformes: number; totalObs: number }> = {};
   for (const s of filteredSubs.value) {
-    if (!map[s.matricula]) map[s.matricula] = { nome: s.observador, total: 0, conformes: 0 };
+    const emp = matchSubmissionToEmployee(s, idx);
+    const key = normMatricula(emp?.matricula ?? s.matricula);
+    if (!map[key]) map[key] = { nome: emp?.nome_completo || emp?.nome || s.observador, total: 0, conformes: 0, totalObs: 0 };
+    map[key].totalObs++;
   }
   for (const r of filteredResps) {
     const sub = filteredSubs.value.find(s => s.id === r.submission_id);
     if (!sub) continue;
-    if (!map[sub.matricula]) map[sub.matricula] = { nome: sub.observador, total: 0, conformes: 0 };
-    map[sub.matricula].total++;
-    if (r.resposta === "conforme") map[sub.matricula].conformes++;
+    const emp = matchSubmissionToEmployee(sub, idx);
+    const key = normMatricula(emp?.matricula ?? sub.matricula);
+    if (!map[key]) map[key] = { nome: emp?.nome_completo || emp?.nome || sub.observador, total: 0, conformes: 0, totalObs: 0 };
+    map[key].total++;
+    if (r.resposta === "conforme") map[key].conformes++;
   }
   return Object.entries(map)
     .map(([matricula, d]) => ({
       matricula,
       nome: d.nome,
-      totalObs: filteredSubs.value.filter(s => s.matricula === matricula).length,
+      totalObs: d.totalObs,
       total: d.total,
       conformes: d.conformes,
     }))
@@ -442,23 +596,30 @@ const conformidadePorObservador = computed(() => {
 
 const mesLabel = computed(() => meses.find(m => m.value === filters.mes)?.label ?? "");
 
-// ─── Meta mensal (semanal × 4 semanas, por perfil de observador) ──────────────
-const { goalForColaborador } = useGoals();
+const scopedObservers = computed(() =>
+  viz.matricula
+    ? observerRows.value.filter((x) => x.matricula === viz.matricula)
+    : observerRows.value,
+);
 
-const numObservadores = computed(() => observerRows.value.length);
+const numObservadores = computed(() => scopedObservers.value.length);
 
 const metaMensal = computed(() =>
-  observerRows.value.reduce((total, r) => total + r.meta, 0)
+  scopedObservers.value.reduce((total, r) => total + r.meta, 0)
 );
 
 const obsNoMeta = computed(() =>
-  observerRows.value.filter((r) => r.realizado >= r.meta).length
+  scopedObservers.value.filter((r) => r.realizado >= r.meta).length
 );
 
 const atingimento = computed(() => {
   if (numObservadores.value === 0) return "—";
   return `${Math.round((obsNoMeta.value / numObservadores.value) * 100)}%`;
 });
+
+const rankingRows = computed(() =>
+  [...conformidadePorObservador.value.slice(0, 11)].reverse(),
+);
 
 // ─── KPIs ─────────────────────────────────────────────────────────────────────
 const kpis = computed(() => [
@@ -469,13 +630,38 @@ const kpis = computed(() => [
 ]);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const ttItem = {
-  trigger: "item" as const,
-  backgroundColor: "rgba(255,255,255,0.97)",
-  borderColor: "#e2e8f0", borderWidth: 1,
-  textStyle: { color: chartInk.axis, fontSize: 12 },
-  extraCssText: "box-shadow:0 8px 24px rgba(0,0,0,.12);border-radius:10px;padding:10px 14px;"
-};
+function tooltipSkin(trigger: "axis" | "item") {
+  return {
+    trigger,
+    backgroundColor: chartInk.tipBg,
+    borderColor: chartInk.tipBorder,
+    borderWidth: 1,
+    padding: [12, 14] as [number, number],
+    textStyle: { color: chartInk.tipText, fontSize: 12, fontWeight: 500 as const },
+    extraCssText: "border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.45);",
+  };
+}
+
+function tipHtml(title: string, rows: { label: string; value: string; color?: string }[], foot?: string) {
+  const t = chartInk.tipText;
+  const m = chartInk.tipMuted;
+  const body = rows
+    .map((r) =>
+      `<div style="display:flex;justify-content:space-between;gap:20px;align-items:baseline;margin-top:6px">`
+      + `<span style="color:${m};font-size:11px;font-weight:600;letter-spacing:.02em">${r.label}</span>`
+      + `<span style="color:${r.color ?? t};font-size:13px;font-weight:800">${r.value}</span>`
+      + `</div>`,
+    )
+    .join("");
+  const hint = foot
+    ? `<div style="color:${m};font-size:10px;margin-top:8px;opacity:.9">${foot}</div>`
+    : "";
+  return `<div style="min-width:168px;color:${t};font-family:inherit">`
+    + `<div style="font-weight:800;font-size:14px;line-height:1.25;color:${t}">${title}</div>`
+    + body
+    + hint
+    + `</div>`;
+}
 
 function cleanXAxis(data: string[], extra: Record<string, unknown> = {}) {
   return {
@@ -488,105 +674,139 @@ function cleanXAxis(data: string[], extra: Record<string, unknown> = {}) {
   };
 }
 
-const legend = {
-  bottom: 4, left: "center",
-  itemWidth: 10, itemHeight: 10, itemGap: 16,
-  textStyle: { color: chartInk.muted, fontSize: 11 }
-};
+function yPadMax(values: number[]) {
+  return Math.max(1, ...values, 0) * 1.32;
+}
 
-function singleBar(labels: string[], data: number[]) {
+function barItem(value: number, dimmed: boolean) {
+  return {
+    value,
+    itemStyle: {
+      color: chartInk.ok,
+      opacity: dimmed ? 0.22 : 1,
+      borderRadius: [6, 6, 0, 0],
+      shadowColor: "rgba(22,163,74,.2)",
+      shadowBlur: dimmed ? 0 : 6,
+      shadowOffsetY: dimmed ? 0 : 3,
+    },
+  };
+}
+
+function singleBar(labels: string[], data: number[], selected?: string | number | null) {
   return [{
     name: "Realizado",
     type: "bar" as const,
-    data,
+    cursor: "pointer",
+    data: data.map((v, i) => {
+      const key = labels[i];
+      const dimmed = selected != null && selected !== "" && selected !== key && selected !== i + 1;
+      return barItem(v, dimmed);
+    }),
     barMaxWidth: 48,
-    itemStyle: {
-      color: G.real,
-      borderRadius: [6, 6, 0, 0],
-      shadowColor: "rgba(22,163,74,.2)",
-      shadowBlur: 6, shadowOffsetY: 3
+    clip: false,
+    emphasis: { itemStyle: { color: chartInk.okHi, shadowBlur: 12 } },
+    label: {
+      show: true,
+      position: "top" as const,
+      fontSize: 13,
+      fontWeight: "bold" as const,
+      color: chartInk.ok,
+      distance: 8,
+      textBorderColor: chartInk.halo,
+      textBorderWidth: 3,
     },
-    emphasis: { itemStyle: { color: G.light, shadowBlur: 12 } },
-    label: { show: true, position: "top" as const, fontSize: 12, fontWeight: "bold" as const, color: G.real, distance: 4 }
   }];
-  void labels;
+}
+
+function metaMark(y: number, label: string) {
+  return {
+    silent: true, symbol: "none",
+    lineStyle: { color: "#0ea5e9", type: "dashed" as const, width: 2 },
+    label: { position: "insideEndTop" as const, fontSize: 11, fontWeight: "bold" as const, color: "#0ea5e9", formatter: label },
+    data: [{ yAxis: y }],
+  };
 }
 
 // ─── Chart: Observações x Meta (Mês) ─────────────────────────────────────────
 const chartMetaMes = computed(() => ({
   tooltip: {
-    ...ttItem,
-    formatter: (p: { seriesName: string; value: number }) =>
-      `${p.seriesName}: <b style="color:${G.real}">${p.value}</b>`
+    ...tooltipSkin("item"),
+    formatter: (p: { value: number }) =>
+      tipHtml(`${mesLabel.value} · ${filters.ano}`, [
+        { label: "Realizado", value: String(p.value), color: chartInk.ok },
+        { label: "Meta", value: String(metaMensal.value), color: "#0ea5e9" },
+      ], viz.observadorNome || (filters.base !== "Todos" ? nomeBase(filters.base) : undefined)),
   },
-  legend,
-  grid: { left: 12, right: 12, top: 12, bottom: 36 },
+  grid: { left: 12, right: 16, top: 44, bottom: 28 },
   xAxis: cleanXAxis([mesLabel.value]),
-  yAxis: { show: false },
+  yAxis: { show: false, min: 0, max: yPadMax([totalSubmissions.value, metaMensal.value]) },
   series: [{
     ...singleBar([mesLabel.value], [totalSubmissions.value])[0],
-    markLine: {
-      silent: true, symbol: "none",
-      lineStyle: { color: "#0ea5e9", type: "dashed" as const, width: 2 },
-      label: { position: "insideEndTop" as const, fontSize: 11, fontWeight: "bold" as const, color: "#0ea5e9", formatter: `Meta: ${metaMensal.value}` },
-      data: [{ yAxis: metaMensal.value }]
-    }
-  }]
+    markLine: metaMark(metaMensal.value, `Meta: ${metaMensal.value}`),
+  }],
 }));
 
-// ─── Chart: Obs Realizadas por Semana ─────────────────────────────────────────
-const chartMetaSemana = computed(() => ({
-  tooltip: {
-    ...ttItem,
-    formatter: (p: { name: string; value: number }) =>
-      `<b>${p.name}</b><br/>Realizado: <b style="color:${G.real}">${p.value}</b>`
-  },
-  legend,
-  grid: { left: 12, right: 12, top: 12, bottom: 36 },
-  xAxis: cleanXAxis(["1ª Sem", "2ª Sem", "3ª Sem", "4ª Sem"]),
-  yAxis: { show: false },
-  series: [{
-    ...singleBar(["1ª Sem","2ª Sem","3ª Sem","4ª Sem"], [1,2,3,4].map(s => bySemana.value[s] ?? 0))[0],
-    markLine: {
-      silent: true, symbol: "none",
-      lineStyle: { color: "#0ea5e9", type: "dashed" as const, width: 2 },
-      label: { position: "insideEndTop" as const, fontSize: 11, fontWeight: "bold" as const, color: "#0ea5e9", formatter: `Meta: ${metaMensal.value / 4}` },
-      data: [{ yAxis: metaMensal.value / 4 }]
-    }
-  }]
-}));
+const WEEK_LABELS = ["1ª Sem", "2ª Sem", "3ª Sem", "4ª Sem"];
 
-// ─── Chart: Obs por Base ──────────────────────────────────────────────────────
-const chartBase = computed(() => {
-  const entries = Object.entries(byBase.value).sort((a, b) => b[1] - a[1]);
+const chartMetaSemana = computed(() => {
+  const vals = [1, 2, 3, 4].map((s) => bySemana.value[s] ?? 0);
+  const weekMeta = filters.semana ? metaMensal.value : metaMensal.value / 4;
   return {
     tooltip: {
-      ...ttItem,
-      formatter: (p: { name: string; value: number }) =>
-        `<b>${p.name}</b><br/>Realizado: <b style="color:${G.real}">${p.value}</b>`
+      ...tooltipSkin("item"),
+      formatter: (p: { name: string; value: number; dataIndex: number }) =>
+        tipHtml(p.name, [
+          { label: "Realizado", value: String(p.value), color: chartInk.ok },
+          { label: "Meta da semana", value: String(Math.round(weekMeta)), color: "#0ea5e9" },
+        ], "Clique para filtrar as outras visões"),
     },
-    legend,
-    grid: { left: 12, right: 12, top: 12, bottom: 36 },
-    xAxis: cleanXAxis(entries.map(([n]) => n)),
-    yAxis: { show: false },
-    series: singleBar(entries.map(([n]) => n), entries.map(([, v]) => v))
+    grid: { left: 12, right: 16, top: 44, bottom: 28 },
+    xAxis: cleanXAxis(WEEK_LABELS),
+    yAxis: { show: false, min: 0, max: yPadMax([...vals, weekMeta]) },
+    series: [{
+      ...singleBar(WEEK_LABELS, vals, filters.semana || null)[0],
+      markLine: metaMark(weekMeta, `Meta: ${Math.round(weekMeta)}`),
+    }],
   };
 });
 
-// ─── Chart: Obs por Gerência ──────────────────────────────────────────────────
-const chartGerencia = computed(() => {
-  const entries = Object.entries(byGerencia.value).sort((a, b) => b[1] - a[1]);
+const chartBase = computed(() => {
+  const entries = Object.entries(byBase.value).sort((a, b) => b[1] - a[1]);
+  const names = entries.map(([n]) => n);
+  const vals = entries.map(([, v]) => v);
+  const selected = filters.base !== "Todos" ? filters.base : null;
   return {
     tooltip: {
-      ...ttItem,
+      ...tooltipSkin("item"),
       formatter: (p: { name: string; value: number }) =>
-        `<b>${p.name}</b><br/>Realizado: <b style="color:${G.real}">${p.value}</b>`
+        tipHtml(nomeBase(p.name), [
+          { label: "Realizado", value: String(p.value), color: chartInk.ok },
+        ], "Clique para ver só esta base"),
     },
-    legend,
-    grid: { left: 12, right: 12, top: 12, bottom: 52 },
-    xAxis: cleanXAxis(entries.map(([n]) => n), { rotate: 20 }),
-    yAxis: { show: false },
-    series: singleBar(entries.map(([n]) => n), entries.map(([, v]) => v))
+    grid: { left: 12, right: 12, top: 44, bottom: 28 },
+    xAxis: cleanXAxis(names),
+    yAxis: { show: false, min: 0, max: yPadMax(vals) },
+    series: singleBar(names, vals, selected),
+  };
+});
+
+const chartGerencia = computed(() => {
+  const entries = Object.entries(byGerencia.value).sort((a, b) => b[1] - a[1]);
+  const names = entries.map(([n]) => n);
+  const vals = entries.map(([, v]) => v);
+  const selected = filters.gerencia !== "Todos" ? filters.gerencia : null;
+  return {
+    tooltip: {
+      ...tooltipSkin("item"),
+      formatter: (p: { name: string; value: number }) =>
+        tipHtml(p.name, [
+          { label: "Realizado", value: String(p.value), color: chartInk.ok },
+        ], "Clique para filtrar a gerência"),
+    },
+    grid: { left: 12, right: 12, top: 44, bottom: 52 },
+    xAxis: cleanXAxis(names, { rotate: 20 }),
+    yAxis: { show: false, min: 0, max: yPadMax(vals) },
+    series: singleBar(names, vals, selected),
   };
 });
 
@@ -605,18 +825,19 @@ const chartObservador = computed(() => {
   };
   return {
     tooltip: {
-      ...ttItem,
-      trigger: "axis" as const,
+      ...tooltipSkin("axis"),
       formatter: (params: { dataIndex: number }[]) => {
         const r = rows[params[0]?.dataIndex ?? 0];
         if (!r) return "";
         const ok = r.realizado >= r.meta;
-        return `<b>${r.nome}</b><br/>${r.funcao}<br/>`
-          + `Realizado no mês: <b style="color:${ok ? okColor : missColor}">${r.realizado}</b><br/>`
-          + `Meta: <b style="color:${metaTick}">${r.meta}</b>`;
+        return tipHtml(r.nome, [
+          { label: "Função", value: r.funcao },
+          { label: "Realizado", value: String(r.realizado), color: ok ? okColor : missColor },
+          { label: "Meta", value: String(r.meta), color: metaTick },
+        ], "Clique para filtrar este observador");
       },
     },
-    grid: { left: 12, right: 12, top: 36, bottom: 78 },
+    grid: { left: 12, right: 12, top: 44, bottom: 78 },
     dataZoom: [
       {
         type: "inside" as const,
@@ -653,10 +874,12 @@ const chartObservador = computed(() => {
       {
         name: "Realizado",
         type: "bar" as const,
+        cursor: "pointer",
         data: rows.map(r => ({
           value: r.realizado,
           itemStyle: {
             color: r.realizado >= r.meta ? okColor : chartInk.missBar,
+            opacity: !viz.matricula || r.matricula === viz.matricula ? 1 : 0.22,
             borderRadius: [6, 6, 0, 0],
             shadowColor: r.realizado >= r.meta ? "rgba(74,222,128,.25)" : "rgba(244,63,94,.35)",
             shadowBlur: 4,
@@ -678,16 +901,19 @@ const chartObservador = computed(() => {
       {
         name: "Meta",
         type: "scatter" as const,
-        data: rows.map(r => [r.short, r.meta]),
+        data: rows.map((r) => ({
+          value: [r.short, r.meta],
+          itemStyle: {
+            color: metaTick,
+            opacity: !viz.matricula || r.matricula === viz.matricula ? 1 : 0.22,
+            borderColor: chartInk.halo,
+            borderWidth: 1,
+            shadowColor: "rgba(254,205,211,.45)",
+            shadowBlur: 6,
+          },
+        })),
         symbol: "rect",
         symbolSize: [20, 5],
-        itemStyle: {
-          color: metaTick,
-          borderColor: chartInk.halo,
-          borderWidth: 1,
-          shadowColor: "rgba(254,205,211,.45)",
-          shadowBlur: 6,
-        },
         z: 10,
         label: {
           show: true,
@@ -700,7 +926,8 @@ const chartObservador = computed(() => {
           formatter: (p: { value: [string, number]; dataIndex: number }) => {
             const r = rows[p.dataIndex];
             if (r && r.realizado === r.meta) return "";
-            return String(p.value[1]);
+            const val = Array.isArray(p.value) ? p.value[1] : r?.meta;
+            return String(val ?? "");
           },
         },
         emphasis: { scale: false },
@@ -711,34 +938,47 @@ const chartObservador = computed(() => {
 
 // ─── Chart: Ranking de Observadores ──────────────────────────────────────────
 const chartRanking = computed(() => {
-  const top11 = conformidadePorObservador.value.slice(0, 11).sort((a, b) => b.totalObs - a.totalObs);
-  const names = top11.map(o => o.nome.split(" ")[0]);
-  const vals = top11.map(o => o.totalObs);
-  const rankingColors = vals.map((_, i) => {
-    if (i === 0) return "#f59e0b";
-    if (i === 1) return "#94a3b8";
-    if (i === 2) return "#b45309";
+  const display = rankingRows.value;
+  const names = display.map((o) => o.nome.split(" ")[0]);
+  const vals = display.map((o) => o.totalObs);
+  const rankingColors = display.map((_, i, arr) => {
+    const rank = arr.length - 1 - i;
+    if (rank === 0) return "#f59e0b";
+    if (rank === 1) return "#94a3b8";
+    if (rank === 2) return "#b45309";
     return G.real;
   });
   return {
     tooltip: {
-      ...ttItem,
-      formatter: (p: { name: string; value: number; dataIndex: number }) =>
-        `<b>${p.name}</b>: <b style="color:${rankingColors[p.dataIndex]}">${p.value}</b>`
+      ...tooltipSkin("item"),
+      formatter: (p: { dataIndex: number; value: number }) => {
+        const o = display[p.dataIndex];
+        if (!o) return "";
+        const pct = o.total ? Math.round((o.conformes / o.total) * 100) : 0;
+        return tipHtml(o.nome, [
+          { label: "Observações", value: String(p.value), color: rankingColors[p.dataIndex] },
+          { label: "Conformidade", value: `${pct}%` },
+        ], "Clique para filtrar este observador");
+      },
     },
     grid: { left: 82, right: 36, top: 8, bottom: 8 },
     xAxis: { type: "value" as const, show: false, splitLine: { show: false } },
     yAxis: {
       type: "category" as const,
-      data: [...names].reverse(),
+      data: names,
       axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false },
       axisLabel: { color: chartInk.axis, fontSize: 11 }
     },
     series: [{
       type: "bar" as const,
-      data: [...vals].reverse().map((v, i) => ({
+      cursor: "pointer",
+      data: vals.map((v, i) => ({
         value: v,
-        itemStyle: { color: rankingColors[vals.length - 1 - i], borderRadius: [0, 6, 6, 0] }
+        itemStyle: {
+          color: rankingColors[i],
+          opacity: !viz.matricula || display[i]?.matricula === viz.matricula ? 1 : 0.22,
+          borderRadius: [0, 6, 6, 0],
+        },
       })),
       barMaxWidth: 22,
       emphasis: { itemStyle: { shadowBlur: 8, shadowColor: "rgba(0,0,0,.15)" } },
@@ -900,6 +1140,57 @@ $label-color:  #94a3b8;
   margin: 0 4px;
 }
 
+.filter-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 6px;
+  flex-wrap: wrap;
+}
+
+.filter-summary__label {
+  font-size: 11px;
+  color: $label-color;
+  font-weight: 600;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  background: rgba($brand, .1);
+  color: $brand;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+
+  &--hit { cursor: pointer; }
+  &--hit:hover { filter: brightness(0.92); }
+}
+
+.filter-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  padding: 0 10px;
+  background: none;
+  border: 1px solid $border;
+  border-radius: 999px;
+  font-size: 11px;
+  color: $label-color;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+
+  &:hover {
+    color: $brand;
+    border-color: $brand;
+  }
+}
+
+.chart-hit { cursor: pointer; }
+
 // ── KPI card ──────────────────────────────────────────────────────────────────
 .kpi-card {
   border-radius: 12px;
@@ -935,6 +1226,8 @@ $label-color:  #94a3b8;
   }
 
   .filter-divider  { background: #334155; }
+  .filter-chip { background: rgba($brand, .2); }
+  .filter-clear { border-color: #334155; color: #64748b; }
   .fgroup__label   { color: #64748b; }
 }
 </style>
