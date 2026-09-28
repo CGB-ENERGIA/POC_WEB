@@ -23,7 +23,7 @@
           </span>
           <span class="dbp-stat__div" />
           <span class="dbp-stat">
-            <span class="dbp-stat__n">{{ FUNCIONARIOS.length }}</span>
+            <span class="dbp-stat__n">{{ colaboradores.length }}</span>
             <span class="dbp-stat__label">colaboradores</span>
           </span>
         </div>
@@ -65,7 +65,7 @@
         <button class="dbp-tab" :class="{ '--active': tab === 'geral' }" @click="tab = 'geral'">
           <q-icon name="mdi-account-hard-hat-outline" size="15px" />
           <span>Geral</span>
-          <span class="dbp-tab__ct">{{ FUNCIONARIOS.length }}</span>
+          <span class="dbp-tab__ct">{{ colaboradores.length }}</span>
         </button>
       </div>
     </div>
@@ -328,7 +328,7 @@
         <div>
           <button class="dbp-collapse-row" @click="geralListOpen = !geralListOpen">
             <span class="dbp-count">
-              <span v-if="geralSearch || geralBaseFilter !== 'Todas'">{{ filteredFuncionarios.length }} de </span>{{ FUNCIONARIOS.length }} colaboradores
+              <span v-if="geralSearch || geralBaseFilter !== 'Todas'">{{ filteredFuncionarios.length }} de </span>{{ colaboradores.length }} colaboradores
             </span>
             <q-icon
               :name="geralListOpen ? 'mdi-chevron-up' : 'mdi-chevron-down'"
@@ -573,10 +573,12 @@ const geralSearch     = ref("");
 const geralBaseFilter = ref("Todas");
 const geralListOpen   = ref(true);
 
+const colaboradores = ref([...FUNCIONARIOS]);
+
 const filteredFuncionarios = computed(() => {
   const q = geralSearch.value.toLowerCase();
   const b = geralBaseFilter.value;
-  return FUNCIONARIOS.filter((f) => {
+  return colaboradores.value.filter((f) => {
     const matchSearch = !q
       || f.nome.toLowerCase().includes(q)
       || f.chapa.includes(q)
@@ -750,6 +752,38 @@ async function deleteEquipe(eq: Equipe) {
 
 // ─── Fetch ────────────────────────────────────────────────────────────────────
 
+async function seedColaboradoresSeVazio() {
+  const { count } = await supabase
+    .from("pwa_colaboradores")
+    .select("chapa", { count: "exact", head: true });
+  if ((count ?? 0) >= FUNCIONARIOS.length) return;
+  const payload = FUNCIONARIOS.map((f) => ({
+    chapa: f.chapa,
+    nome: f.nome,
+    funcao: f.funcao,
+    base: f.base,
+    rateio: f.rateio,
+  }));
+  for (let i = 0; i < payload.length; i += 80) {
+    const batch = payload.slice(i, i + 80);
+    const { error } = await supabase.from("pwa_colaboradores").upsert(batch, { onConflict: "chapa" });
+    if (error) throw error;
+  }
+}
+
+async function fetchColaboradores() {
+  try {
+    await seedColaboradoresSeVazio();
+    const { data } = await supabase
+      .from("pwa_colaboradores")
+      .select("chapa,nome,funcao,base,rateio")
+      .order("nome");
+    if (data?.length) colaboradores.value = data;
+  } catch {
+    colaboradores.value = [...FUNCIONARIOS];
+  }
+}
+
 async function fetchEmployees() {
   const { data } = await supabase
     .from("employees")
@@ -769,7 +803,7 @@ async function fetchEquipes() {
 
 async function fetchAll() {
   loading.value = true;
-  await Promise.all([fetchEmployees(), fetchEquipes()]);
+  await Promise.all([fetchEmployees(), fetchEquipes(), fetchColaboradores()]);
   loading.value = false;
 }
 

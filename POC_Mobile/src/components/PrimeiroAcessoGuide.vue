@@ -29,12 +29,51 @@
       <h2 class="pa-guide__title">{{ atual.title }}</h2>
       <p class="pa-guide__lead">{{ atual.lead }}</p>
 
-      <ul class="pa-guide__list">
+      <ul v-if="atual.id !== 'instalar'" class="pa-guide__list">
         <li v-for="item in atual.items" :key="item">
           <q-icon name="mdi-check-circle" size="18px" />
           <span>{{ item }}</span>
         </li>
       </ul>
+
+      <div v-else class="pa-install">
+        <ol v-if="ios" class="pwa-steps">
+          <li>
+            <span class="pwa-steps__n">1</span>
+            <span>Toque em <b>Compartilhar</b> na barra do Safari.</span>
+          </li>
+          <li>
+            <span class="pwa-steps__n">2</span>
+            <span>Escolha <b>Adicionar à Tela de Início</b>.</span>
+          </li>
+          <li>
+            <span class="pwa-steps__n">3</span>
+            <span>Confirme em <b>Adicionar</b>.</span>
+          </li>
+        </ol>
+        <ol v-else-if="!podeInstalarNativo" class="pwa-steps">
+          <li>
+            <span class="pwa-steps__n">1</span>
+            <span>Abra o menu do navegador.</span>
+          </li>
+          <li>
+            <span class="pwa-steps__n">2</span>
+            <span>Toque em <b>Instalar app</b>.</span>
+          </li>
+        </ol>
+        <q-btn
+          v-if="podeInstalarNativo"
+          class="full-width btn-primary-lg q-mb-sm"
+          color="primary"
+          unelevated
+          no-caps
+          size="lg"
+          icon="mdi-download"
+          label="Instalar agora"
+          :loading="instalando"
+          @click="instalarNativo"
+        />
+      </div>
 
       <div class="pa-guide__actions">
         <q-btn
@@ -67,12 +106,22 @@ import { useSessionStore } from "@/stores/session";
 import BrandLogo from "@/components/BrandLogo.vue";
 import { BRAND } from "@/constants/brand";
 import { concluirPrimeiroAcesso, primeiroAcessoPendente } from "@/utils/primeiro-acesso";
+import {
+  clearDeferredInstallPrompt,
+  deferredInstallPrompt,
+  dismissInstallPrompt,
+  isIosDevice,
+  shouldOfferPwaInstall,
+} from "@/utils/pwa-install";
 
 const session = useSessionStore();
 const aberto = ref(false);
 const passo = ref(0);
+const instalando = ref(false);
+const ios = computed(() => isIosDevice());
+const podeInstalarNativo = computed(() => !!deferredInstallPrompt.value && !ios.value);
 
-const passos = [
+const passosBase = [
   {
     id: "boas-vindas",
     icon: "mdi-shield-check-outline",
@@ -118,8 +167,20 @@ const passos = [
   },
 ];
 
-const atual = computed(() => passos[passo.value]);
-const ultimo = computed(() => passo.value >= passos.length - 1);
+const passoInstalar = {
+  id: "instalar",
+  icon: "mdi-cellphone-arrow-down",
+  title: "Instalar no aparelho",
+  lead: "Coloque o POC na tela inicial para abrir como aplicativo e funcionar sem internet no campo.",
+  items: [] as string[],
+};
+
+const passos = computed(() =>
+  shouldOfferPwaInstall() ? [...passosBase, passoInstalar] : passosBase
+);
+
+const atual = computed(() => passos.value[passo.value] ?? passosBase[0]);
+const ultimo = computed(() => passo.value >= passos.value.length - 1);
 
 onMounted(() => {
   if (!primeiroAcessoPendente.value) return;
@@ -130,6 +191,22 @@ onMounted(() => {
   aberto.value = true;
 });
 
+async function instalarNativo() {
+  const evt = deferredInstallPrompt.value;
+  if (!evt) return;
+  instalando.value = true;
+  try {
+    await evt.prompt();
+    await evt.userChoice;
+    clearDeferredInstallPrompt();
+    dismissInstallPrompt();
+  } catch {
+    /* usuário cancelou o prompt nativo */
+  } finally {
+    instalando.value = false;
+  }
+}
+
 function avancar() {
   if (ultimo.value) {
     concluir();
@@ -139,6 +216,7 @@ function avancar() {
 }
 
 function concluir() {
+  if (atual.value.id === "instalar") dismissInstallPrompt();
   concluirPrimeiroAcesso();
   aberto.value = false;
 }
@@ -246,6 +324,39 @@ function concluir() {
   flex-shrink: 0;
 }
 
+.pwa-steps {
+  list-style: none;
+  margin: 4px 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pwa-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: #1e293b;
+}
+
+.pwa-steps__n {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 99px;
+  background: #f3e6e9;
+  color: #7a1225;
+  font-size: 12px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+
 .pa-guide__actions {
   display: flex;
   gap: 8px;
@@ -276,5 +387,14 @@ function concluir() {
 
 :global(body.body--dark) .pa-guide__dot--on {
   background: #e11d48;
+}
+
+:global(body.body--dark) .pwa-steps li {
+  color: #e8d4d8;
+}
+
+:global(body.body--dark) .pwa-steps__n {
+  background: rgba(196, 33, 58, 0.22);
+  color: #fecdd3;
 }
 </style>

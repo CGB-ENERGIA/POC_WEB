@@ -117,27 +117,24 @@
               />
             </div>
             <div class="row q-col-gutter-sm">
-              <div class="col-7">
+              <div class="col-12">
                 <q-select
-                  v-model="membro.nome"
+                  :model-value="rotuloMembro(membro)"
                   :options="membroSugestoes"
-                  outlined dense label="Nome" placeholder="Nome do colaborador"
-                  use-input fill-input hide-selected input-debounce="0"
+                  outlined dense
+                  label="Nome ou matrícula"
+                  placeholder="Busque no banco geral"
+                  use-input fill-input hide-selected input-debounce="150"
                   @filter="filtrarColaborador"
-                  @input-value="(val) => (membro.nome = val)"
+                  @input-value="(val) => onMembroDigitado(idx, val)"
                   @update:model-value="(val) => aplicarColaboradorSelecionado(idx, val)"
-                />
-              </div>
-              <div class="col-5">
-                <q-select
-                  v-model="membro.matricula"
-                  :options="membroSugestoes"
-                  outlined dense label="Matrícula" placeholder="Ex: 12512"
-                  use-input fill-input hide-selected input-debounce="0"
-                  @filter="filtrarColaborador"
-                  @input-value="(val) => (membro.matricula = val)"
-                  @update:model-value="(val) => aplicarColaboradorSelecionado(idx, val)"
-                />
+                >
+                  <template #no-option>
+                    <q-item>
+                      <q-item-section class="text-grey-6">Nenhum colaborador encontrado</q-item-section>
+                    </q-item>
+                  </template>
+                </q-select>
               </div>
             </div>
           </div>
@@ -524,7 +521,7 @@ import { useSessionStore } from "@/stores/session";
 import { useObservacoesStore, isChecklist } from "@/stores/observacoes";
 import { basesOperacionais } from "@/data/checklist";
 import { equipesPorBase } from "@/data/equipes";
-import { employees } from "@/data/employees";
+import { sugerirMembrosEquipe, parseMembroSugestao, rotuloMembro } from "@/utils/membros-equipe";
 import {
   gstcChecklist,
   totalPerguntasGstc,
@@ -659,27 +656,21 @@ const membroSugestoes = ref<string[]>([]);
 
 function filtrarColaborador(val: string, update: (fn: () => void) => void) {
   update(() => {
-    const needle = val.trim();
-    const needleLower = needle.toLowerCase();
-    membroSugestoes.value = needle
-      ? employees
-          .filter((e) =>
-            e.nomeCompleto.toLowerCase().includes(needleLower) ||
-            e.nome.toLowerCase().includes(needleLower) ||
-            e.matricula.includes(needle)
-          )
-          .slice(0, 8)
-          .map((e) => `${e.nomeCompleto} — ${e.matricula}`)
-      : [];
+    membroSugestoes.value = sugerirMembrosEquipe(val);
   });
 }
 
+function onMembroDigitado(idx: number, val: string) {
+  if (val.includes(" — ")) return;
+  membros.value[idx].nome = val;
+  membros.value[idx].matricula = /^\d+$/.test(val.trim()) ? val.trim() : "";
+}
+
 function aplicarColaboradorSelecionado(idx: number, valorSelecionado: string | null) {
-  if (!valorSelecionado) return;
-  const match = valorSelecionado.match(/^(.*) — (\d+)$/);
-  if (!match) return;
-  membros.value[idx].nome = match[1];
-  membros.value[idx].matricula = match[2];
+  const parsed = parseMembroSugestao(valorSelecionado);
+  if (!parsed) return;
+  membros.value[idx].nome = parsed.nome;
+  membros.value[idx].matricula = parsed.matricula;
 }
 
 const respostas = reactive<Record<string, Exclude<RespostaChecklist, null>>>({});
