@@ -554,6 +554,7 @@ const observacoes = useObservacoesStore();
 
 const editId = route.query.editId as string | undefined;
 const continuarId = route.query.continuarId as string | undefined;
+const rascunhoId = ref<string | undefined>(editId ?? continuarId);
 
 const base = ref("");
 const equipe = ref("");
@@ -587,9 +588,11 @@ const fotosLocal = computed(() => [
 const evidenciasCompletas = computed(() => evidencias.value.every(Boolean));
 
 onMounted(() => {
-  // Modo edição ou continuação: pré-preenche com dados existentes
-  const restoreId = editId ?? continuarId;
+  const restoreId =
+    rascunhoId.value ??
+    observacoes.findEmAndamento(session.employee?.matricula ?? "", "GOMAN")?.id;
   if (restoreId) {
+    rascunhoId.value = restoreId;
     const existing = observacoes.items.find(o => o.id === restoreId);
     if (existing && isChecklist(existing)) {
       base.value = existing.base;
@@ -1061,10 +1064,8 @@ async function _salvarRascunho() {
     }
   }
 
-  if (editId) observacoes.remove(editId);
-  if (continuarId) observacoes.remove(continuarId);
-
-  observacoes.addChecklist({
+  const saved = observacoes.saveEmAndamento({
+    id: rascunhoId.value,
     auditagem: "GOMAN",
     matricula: session.employee.matricula,
     observador: session.employee.nome,
@@ -1076,10 +1077,9 @@ async function _salvarRascunho() {
     })),
     fotosLocal: [...fotosLocal.value],
     respostas: respostasSalvas,
-    data: new Date().toISOString(),
     employee: session.employee,
-    status: "em_andamento",
   });
+  rascunhoId.value = saved.id;
 
   LocalStorage.remove(draftKey);
   clearChecklistDraft();
@@ -1139,10 +1139,8 @@ async function onSubmit() {
     }
   }
 
-  if (editId) observacoes.remove(editId);
-  if (continuarId) observacoes.remove(continuarId);
-
   observacoes.addChecklist({
+    id: rascunhoId.value,
     auditagem: "GOMAN",
     matricula: session.employee.matricula,
     observador: session.employee.nome,
@@ -1156,6 +1154,7 @@ async function onSubmit() {
     respostas: respostasSalvas,
     data: dataRegistro,
     employee: session.employee,
+    status: "finalizado",
   });
   LocalStorage.remove(draftKey);
   clearChecklistDraft();

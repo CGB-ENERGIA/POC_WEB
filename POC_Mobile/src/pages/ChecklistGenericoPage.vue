@@ -490,6 +490,7 @@ const session = useSessionStore();
 const observacoes = useObservacoesStore();
 
 const continuarId = route.query.continuarId as string | undefined;
+const rascunhoId = ref<string | undefined>(continuarId);
 
 const base = ref("");
 const equipe = ref("");
@@ -550,8 +551,12 @@ const fotosLocal = computed(() => [
 const evidenciasCompletas = computed(() => evidencias.value.every(Boolean));
 
 onMounted(() => {
-  if (continuarId) {
-    const existing = observacoes.items.find(o => o.id === continuarId);
+  const restoreId =
+    rascunhoId.value ??
+    observacoes.findEmAndamento(session.employee?.matricula ?? "", props.auditagem)?.id;
+  if (restoreId) {
+    rascunhoId.value = restoreId;
+    const existing = observacoes.items.find(o => o.id === restoreId);
     if (existing && isChecklist(existing)) {
       base.value = existing.base;
       equipe.value = existing.equipe;
@@ -980,9 +985,8 @@ async function _salvarRascunho() {
     }
   }
 
-  if (continuarId) observacoes.remove(continuarId);
-
-  observacoes.addChecklist({
+  const saved = observacoes.saveEmAndamento({
+    id: rascunhoId.value,
     auditagem: props.auditagem,
     matricula: session.employee.matricula,
     observador: session.employee.nome,
@@ -994,10 +998,9 @@ async function _salvarRascunho() {
     })),
     fotosLocal: [...fotosLocal.value],
     respostas: respostasSalvas,
-    data: new Date().toISOString(),
     employee: session.employee,
-    status: "em_andamento",
   });
+  rascunhoId.value = saved.id;
 
   LocalStorage.remove(draftKey);
   clearChecklistDraft();
@@ -1052,9 +1055,8 @@ async function onSubmit() {
     }
   }
 
-  if (continuarId) observacoes.remove(continuarId);
-
   observacoes.addChecklist({
+    id: rascunhoId.value,
     auditagem: props.auditagem,
     matricula: session.employee.matricula,
     observador: session.employee.nome,
@@ -1068,6 +1070,7 @@ async function onSubmit() {
     respostas: respostasSalvas,
     data: dataRegistro,
     employee: session.employee,
+    status: "finalizado",
   });
 
   LocalStorage.remove(draftKey);

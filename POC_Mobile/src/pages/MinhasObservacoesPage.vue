@@ -19,9 +19,68 @@
       />
     </div>
 
-    <div v-else class="column q-gutter-md">
+    <div v-else class="column q-gutter-lg">
+      <section v-if="emAndamento.length" class="mo-sec">
+        <div class="mo-sec__head">
+          <div>
+            <div class="mo-sec__title">Em andamento</div>
+            <div class="mo-sec__sub">Retome pelo Continuar. Não conta na meta.</div>
+          </div>
+          <span class="mo-sec__count mo-sec__count--draft">{{ emAndamento.length }}</span>
+        </div>
+        <div class="column q-gutter-md">
+          <q-card
+            v-for="obs in emAndamento"
+            :key="obs.id"
+            flat
+            bordered
+            class="mobile-card obs-item obs-item--draft q-pa-md"
+          >
+            <div class="row items-center q-gutter-xs q-mb-xs">
+              <q-badge :color="obs.auditagem === 'GOMAN' ? 'primary' : 'deep-purple'" :label="`Checklist ${obs.auditagem}`" />
+              <q-badge outline color="grey-6" :label="obs.base" />
+              <span class="text-caption text-grey-5">{{ formatDate(obs.data) }}</span>
+            </div>
+            <div class="text-subtitle2 text-weight-bold text-grey-9">
+              Equipe: {{ obs.equipe || "—" }}
+            </div>
+            <div class="mo-progress q-mt-sm">
+              <div class="row items-center justify-between q-mb-xs">
+                <span class="text-caption text-grey-7">{{ labelProgresso(obs) }}</span>
+                <span class="text-caption text-weight-bold" style="color: #c2410c">{{ pctProgresso(obs) }}%</span>
+              </div>
+              <q-linear-progress
+                :value="fracProgresso(obs)"
+                color="orange"
+                track-color="orange-1"
+                rounded
+                size="6px"
+              />
+            </div>
+            <q-btn
+              class="full-width q-mt-md"
+              unelevated
+              no-caps
+              color="orange"
+              icon="mdi-play-circle-outline"
+              label="Continuar"
+              @click="continuar(obs)"
+            />
+          </q-card>
+        </div>
+      </section>
+
+      <section v-if="concluidos.length" class="mo-sec">
+        <div class="mo-sec__head">
+          <div>
+            <div class="mo-sec__title">Concluídos</div>
+            <div class="mo-sec__sub">Enviados ou na fila de sincronização</div>
+          </div>
+          <span class="mo-sec__count">{{ concluidos.length }}</span>
+        </div>
+        <div class="column q-gutter-md">
       <q-card
-        v-for="obs in items"
+        v-for="obs in concluidos"
         :key="obs.id"
         flat
         bordered
@@ -37,13 +96,6 @@
                 <q-badge outline color="grey-6" :label="obs.base" />
                 <span class="text-caption text-grey-5">{{ formatDate(obs.data) }}</span>
                 <q-badge
-                  v-if="obs.status === 'em_andamento'"
-                  color="orange"
-                  icon="mdi-progress-clock"
-                  label="Em andamento"
-                />
-                <q-badge
-                  v-else
                   :color="syncColor(obs)"
                   :label="syncLabel(obs)"
                   :icon="syncIcon(obs)"
@@ -56,7 +108,7 @@
               </div>
 
               <div
-                v-if="obs.status !== 'em_andamento' && obs.syncStatus && obs.syncStatus !== 'synced'"
+                v-if="obs.syncStatus && obs.syncStatus !== 'synced'"
                 class="sync-hint q-mt-xs"
               >
                 <q-icon name="mdi-information-outline" size="14px" />
@@ -122,18 +174,6 @@
 
               <!-- ações -->
               <div class="row q-gutter-sm q-mt-md">
-                <template v-if="obs.status === 'em_andamento'">
-                  <q-btn
-                    unelevated
-                    dense
-                    no-caps
-                    color="orange"
-                    icon="mdi-play-circle-outline"
-                    label="Continuar"
-                    @click="continuar(obs)"
-                  />
-                </template>
-                <template v-else>
                   <q-btn
                     v-if="obs.syncStatus !== 'synced' && obs.analiseStatus !== 'reprovado'"
                     outline
@@ -159,7 +199,6 @@
                     <q-icon name="mdi-lock-outline" size="14px" class="q-mr-xs" />
                     Edição disponível só até 24h após o envio
                   </div>
-                </template>
               </div>
             </div>
           </div>
@@ -198,6 +237,8 @@
           </div>
         </template>
       </q-card>
+        </div>
+      </section>
     </div>
   </q-page>
 </template>
@@ -212,6 +253,7 @@ import { tiposObservacao } from "@/data/checklist";
 import { gomanChecklist } from "@/data/goman-checklist";
 import { gstcChecklist } from "@/data/gstc-checklist";
 import type { ObservacaoChecklist, RespostaSalva } from "@/types/checklist";
+import { totalPerguntasAuditagem } from "@/utils/checklist-meta";
 
 const $q = useQuasar();
 const router = useRouter();
@@ -223,7 +265,30 @@ onMounted(() => {
 });
 
 const items = computed(() => observacoes.byMatricula(session.matricula));
+const emAndamento = computed(() =>
+  items.value.filter((o): o is ObservacaoChecklist => isChecklist(o) && o.status === "em_andamento")
+);
+const concluidos = computed(() =>
+  items.value.filter((o) => !isChecklist(o) || o.status !== "em_andamento")
+);
 const reenviando = ref<string | null>(null);
+
+function labelProgresso(obs: ObservacaoChecklist) {
+  const total = totalPerguntasAuditagem(obs.auditagem);
+  const feitas = obs.resumo?.total ?? obs.respostas?.length ?? 0;
+  return total ? `${feitas} de ${total} respondidas` : `${feitas} respondidas`;
+}
+
+function fracProgresso(obs: ObservacaoChecklist) {
+  const total = totalPerguntasAuditagem(obs.auditagem);
+  const feitas = obs.resumo?.total ?? obs.respostas?.length ?? 0;
+  if (!total) return feitas > 0 ? 1 : 0;
+  return Math.min(1, feitas / total);
+}
+
+function pctProgresso(obs: ObservacaoChecklist) {
+  return Math.round(fracProgresso(obs) * 100);
+}
 
 function irNova() {
   const destino =
@@ -328,8 +393,8 @@ function podeEditar(obs: ObservacaoChecklist): boolean {
 }
 
 function editar(obs: ObservacaoChecklist) {
-  const name = obs.auditagem === "GOMAN" ? "checklist-goman" : "checklist-gstc";
-  router.push({ name, query: { editId: obs.id } });
+  const name = AUDITAGEM_ROTA[obs.auditagem];
+  if (name) router.push({ name, query: { editId: obs.id } });
 }
 
 const AUDITAGEM_ROTA: Record<string, string> = {
@@ -371,6 +436,54 @@ function naoConformidades(obs: ObservacaoChecklist): RespostaSalva[] {
 </script>
 
 <style scoped>
+.mo-sec__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.mo-sec__title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #3d0912;
+  line-height: 1.2;
+}
+.mo-sec__sub {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #64748b;
+}
+.mo-sec__count {
+  flex-shrink: 0;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #7a1225;
+  background: rgba(122, 18, 37, 0.1);
+}
+.mo-sec__count--draft {
+  color: #c2410c;
+  background: #ffedd5;
+}
+.obs-item--draft {
+  border-color: rgba(234, 88, 12, 0.28) !important;
+  box-shadow: 0 6px 18px rgba(194, 65, 12, 0.08);
+}
+.mo-progress {
+  background: #fff7ed;
+  border-radius: 10px;
+  padding: 8px 10px;
+}
 .sync-badge {
   font-size: 10px;
 }

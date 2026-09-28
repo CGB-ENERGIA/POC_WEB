@@ -254,6 +254,12 @@ export const useObservacoesStore = defineStore("observacoes", {
         storageMode = "local";
       }
       this.hydrated = true;
+      const matriculas = new Set(
+        this.items
+          .filter((o): o is ObservacaoChecklist => isChecklist(o) && o.status === "em_andamento")
+          .map((o) => o.matricula)
+      );
+      for (const matricula of matriculas) this.dedupeEmAndamento(matricula);
     },
 
     persist() {
@@ -357,6 +363,7 @@ export const useObservacoesStore = defineStore("observacoes", {
         persistNeeded = true;
       }
       if (persistNeeded) this.persist();
+      this.dedupeEmAndamento(matricula);
 
       // Itens finalizados (excluindo rascunhos)
       const finalizados = data.filter(
@@ -549,17 +556,16 @@ export const useObservacoesStore = defineStore("observacoes", {
       data: string;
       employee: Employee;
       status?: "finalizado" | "em_andamento";
+      id?: string;
     }) {
+      const emAndamento = payload.status === "em_andamento";
       const resumo: ChecklistResumo = {
         total: payload.respostas.length,
         conformes: payload.respostas.filter((r) => r.resposta === "conforme").length,
         naoConformes: payload.respostas.filter((r) => r.resposta === "nao_conforme").length,
       };
 
-      const emAndamento = payload.status === "em_andamento";
-
-      const entry: ObservacaoChecklist = {
-        id: crypto.randomUUID(),
+      const fields = {
         data: payload.data,
         auditagem: payload.auditagem,
         matricula: payload.matricula,
@@ -570,33 +576,137 @@ export const useObservacoesStore = defineStore("observacoes", {
         fotosLocal: payload.fotosLocal,
         respostas: payload.respostas,
         resumo,
-        ...(!emAndamento && isSupabaseSyncEnabled() ? { syncStatus: "pending" as const } : {}),
-        ...(payload.status !== undefined ? { status: payload.status } : {}),
+        ...(payload.status !== undefined ? { status: payload.status } : { status: "finalizado" as const }),
+        ...(!emAndamento && isSupabaseSyncEnabled() ? { syncStatus: "pending" as const } : { syncStatus: undefined }),
+        syncError: undefined,
+      };
+
+      const existing = payload.id
+        ? this.items.find((o) => o.id === payload.id)
+        : undefined;
+
+      if (existing && isChecklist(existing)) {
+        Object.assign(existing, fields);
+        this.persist();
+        if (emAndamento) {
+          delete existing.syncStatus;
+          delete existing.syncError;
+          void syncEmAndamentoToRemote(existing).catch(() => {});
+          return existing;
+        }
+        this.removeOutrosRascunhos(existing.matricula, existing.auditagem, existing.id);
+        this.kickItemSync(existing, payload.employee, payload.matricula);
+        return existing;
+      }
+
+      const entry: ObservacaoChecklist = {
+        id: payload.id ?? crypto.randomUUID(),
+        ...fields,
       };
 
       this.items.unshift(entry);
       this.persist();
 
       if (emAndamento) {
-        void syncEmAndamentoToRemote(entry).catch(() => {/* offline: ok */});
+        void syncEmAndamentoToRemote(entry).catch(() => {});
         return entry;
       }
 
-      // Offline o item fica "pending" na fila; os gatilhos automáticos enviam quando a rede voltar.
-      if (isSupabaseSyncEnabled() && navigator.onLine) {
-        // Pega o item recém-criado pelo proxy reativo do estado para a UI acompanhar o status.
-        const reativo = this.items.find((o) => o.id === entry.id);
-        if (reativo && isChecklist(reativo)) {
-          void this.syncItem(reativo).then(async (ok) => {
-            if (!ok) return;
-            await refreshServerTimeSync();
-            await this.fetchSynced(payload.matricula).catch(() => {});
-            if (this.pendingCount > 0) void this.syncQueue({ force: true });
-          });
-        }
-      }
-
+      this.removeOutrosRascunhos(entry.matricula, entry.auditagem, entry.id);
+      this.kickItemSync(entry, payload.employee, payload.matricula);
       return entry;
+    },
+
+    findEmAndamento(matricula: string, auditagem: string): ObservacaoChecklist | undefined {
+      const matches = this.items.filter(
+        (o): o is ObservacaoChecklist =>
+          isChecklist(o) &&
+          o.status === "em_andamento" &&
+          o.matricula === matricula &&
+          o.auditagem === auditagem
+      );
+      if (!matches.length) return undefined;
+      return matches.sort((a, b) => {
+        const ra = a.respostas?.length ?? 0;
+        const rb = b.respostas?.length ?? 0;
+        if (rb !== ra) return rb - ra;
+        return b.data.localeCompare(a.data);
+      })[0];
+    },
+
+    /** Um rascunho por colaborador+auditagem: atualiza o existente em vez de criar outro. */
+    saveEmAndamento(payload: {
+      id?: string;
+      auditagem: AuditagemCategoria;
+      matricula: string;
+      observador: string;
+      base: string;
+      equipe: string;
+      membros: { nome: string; matricula: string }[];
+      fotosLocal: string[];
+      respostas: RespostaSalva[];
+      employee: Employee;
+    }): ObservacaoChecklist {
+      const existing =
+        (payload.id ? this.items.find((o) => o.id === payload.id) : undefined) ??
+        this.findEmAndamento(payload.matricula, payload.auditagem);
+
+      const saved = this.addChecklist({
+        ...payload,
+        id: existing && isChecklist(existing) ? existing.id : payload.id,
+        data: existing && isChecklist(existing) ? existing.data : new Date().toISOString(),
+        status: "em_andamento",
+      });
+      this.removeOutrosRascunhos(payload.matricula, payload.auditagem, saved.id);
+      return saved;
+    },
+
+    removeOutrosRascunhos(matricula: string, auditagem: string, keepId: string) {
+      const extras = this.items.filter(
+        (o): o is ObservacaoChecklist =>
+          isChecklist(o) &&
+          o.status === "em_andamento" &&
+          o.matricula === matricula &&
+          o.auditagem === auditagem &&
+          o.id !== keepId
+      );
+      for (const extra of extras) this.remove(extra.id);
+    },
+
+    /** Mantém só o rascunho mais recente por auditagem (remove duplicatas locais e remotas). */
+    dedupeEmAndamento(matricula: string) {
+      const drafts = this.items.filter(
+        (o): o is ObservacaoChecklist =>
+          isChecklist(o) && o.status === "em_andamento" && o.matricula === matricula
+      );
+      const groups = new Map<string, ObservacaoChecklist[]>();
+      for (const d of drafts) {
+        const list = groups.get(d.auditagem) ?? [];
+        list.push(d);
+        groups.set(d.auditagem, list);
+      }
+      for (const list of groups.values()) {
+        if (list.length <= 1) continue;
+        list.sort((a, b) => {
+          const ra = a.respostas?.length ?? 0;
+          const rb = b.respostas?.length ?? 0;
+          if (rb !== ra) return rb - ra;
+          return b.data.localeCompare(a.data);
+        });
+        for (const extra of list.slice(1)) this.remove(extra.id);
+      }
+    },
+
+    kickItemSync(entry: ObservacaoChecklist, employee: Employee, matricula: string) {
+      if (!isSupabaseSyncEnabled() || !navigator.onLine) return;
+      const reativo = this.items.find((o) => o.id === entry.id);
+      if (!reativo || !isChecklist(reativo)) return;
+      void this.syncItem(reativo).then(async (ok) => {
+        if (!ok) return;
+        await refreshServerTimeSync();
+        await this.fetchSynced(matricula).catch(() => {});
+        if (this.pendingCount > 0) void this.syncQueue({ force: true });
+      });
     },
 
     toggleResolvido(id: string) {

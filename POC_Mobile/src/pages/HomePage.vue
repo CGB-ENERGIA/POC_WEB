@@ -285,6 +285,7 @@ import { computed, ref, watch, onMounted, onUnmounted } from "vue";
 import { LocalStorage, Notify } from "quasar";
 import { useSessionStore } from "@/stores/session";
 import { useObservacoesStore, isChecklist } from "@/stores/observacoes";
+import { contaNaMeta } from "@/utils/checklist-meta";
 import { useGaleriaStore } from "@/stores/galeria";
 import { totalPerguntasGoman } from "@/data/goman-checklist";
 import { totalPerguntasGstc } from "@/data/gstc-checklist";
@@ -324,9 +325,7 @@ function temEmAndamento(auditagem: string) {
 }
 
 function idEmAndamento(auditagem: string): string | undefined {
-  return observacoes.items.find(
-    o => isChecklist(o) && o.auditagem === auditagem && o.matricula === matriculaAtual.value && o.status === "em_andamento"
-  )?.id;
+  return observacoes.findEmAndamento(matriculaAtual.value, auditagem)?.id;
 }
 
 const draftGoman          = computed(() => hasChecklistDraft("GOMAN",          matriculaAtual.value) || temEmAndamento("GOMAN"));
@@ -410,7 +409,9 @@ const nomeExibicao = computed(() => {
   return partes.slice(0, 2).join(" ");
 });
 
-const minhasObs  = computed(() => observacoes.byMatricula(matricula.value));
+const minhasObs  = computed(() =>
+  observacoes.byMatricula(matricula.value).filter(contaNaMeta)
+);
 const totalGeral = computed(() => minhasObs.value.length);
 
 function semanaDoMes(d: Date) { const n = d.getDate(); return n <= 8 ? 1 : n <= 15 ? 2 : n <= 22 ? 3 : 4; }
