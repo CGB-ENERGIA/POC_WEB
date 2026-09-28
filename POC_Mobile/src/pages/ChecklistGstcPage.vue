@@ -65,14 +65,21 @@
               :options="equipesFiltered"
               outlined
               dense
-              label="Equipe / Prefixo"
+              :disable="!base"
+              :label="base ? 'Equipe GSTC' : 'Selecione a base'"
               use-input
               input-debounce="0"
               hide-selected
               fill-input
               :rules="[required]"
               @filter="filterEquipes"
-            />
+            >
+              <template #no-option>
+                <q-item>
+                  <q-item-section class="text-grey-6">Nenhuma equipe GSTC nesta base</q-item-section>
+                </q-item>
+              </template>
+            </q-select>
           </div>
         </div>
 

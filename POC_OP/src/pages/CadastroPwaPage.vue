@@ -91,7 +91,7 @@
 
           <div class="dbp-pills">
             <button
-              v-for="g in ['Todas', 'GOMAN', 'GSTC', 'GERE', 'SESMT']"
+              v-for="g in ['Todas', 'GOMAN', 'GSTC', 'GERE', 'ADM', 'LOGISTICA', 'OFICINA', 'SESMT', 'SPOT']"
               :key="g"
               class="dbp-pill"
               :class="[{ '--active': empGerenciaFilter === g }, g !== 'Todas' ? `--${g.toLowerCase()}` : '']"
@@ -172,7 +172,7 @@
 
           <div class="dbp-pills">
             <button
-              v-for="g in ['Todas', 'GOMAN', 'GSTC', 'GERE']"
+              v-for="g in ['Todas', 'GOMAN', 'GSTC', 'GERE', 'ADM', 'LOGISTICA', 'OFICINA', 'SPOT']"
               :key="g"
               class="dbp-pill"
               :class="[{ '--active': eqGerenciaFilter === g }, g !== 'Todas' ? `--${g.toLowerCase()}` : '']"
@@ -180,9 +180,25 @@
             >{{ g }}</button>
           </div>
 
+          <button class="dbp-add-btn" type="button" @click="triggerImport">
+            <q-icon name="mdi-file-excel-outline" size="16px" />
+            Atualizar planilha
+          </button>
           <button class="dbp-add-btn" @click="openEqDialog()">
             <q-icon name="mdi-plus" size="16px" />
             Adicionar
+          </button>
+        </div>
+
+        <div class="dbp-sync">
+          <q-icon name="mdi-microsoft-excel" size="20px" />
+          <div class="dbp-sync__txt">
+            <strong>Atualizar equipes e observadores</strong>
+            <span>Envie o arquivo <em>Equipes - OP e ADM.xlsx</em> (abas Equipes e observadores). Prefixos e matrículas iguais são substituídos.</span>
+          </div>
+          <button class="dbp-hbtn dbp-hbtn--import" type="button" :class="{ 'is-loading': importing }" @click="triggerImport">
+            <q-icon name="mdi-arrow-up-circle-outline" size="15px" />
+            Escolher arquivo
           </button>
         </div>
 
@@ -201,13 +217,23 @@
         <q-slide-transition>
         <div v-show="eqListOpen" class="dbp-records">
           <transition-group name="rec" appear>
-            <div v-for="eq in filteredEquipes" :key="eq.id" class="dbp-record">
+            <div v-for="eq in filteredEquipes" :key="eq.prefixo" class="dbp-record">
               <div class="dbp-record__av dbp-record__av--bus" :data-g="eq.gerencia">
                 <q-icon name="mdi-bus" size="16px" />
               </div>
               <div class="dbp-record__main">
                 <span class="dbp-record__name">{{ eq.prefixo }}</span>
-                <span class="dbp-record__sub">Base {{ eq.base }}</span>
+                <span class="dbp-record__sub">
+                  Base {{ eq.base }}
+                  <template v-if="eq.coordenador">
+                    <span class="dbp-record__dot">·</span>
+                    {{ eq.coordenador }}
+                  </template>
+                  <template v-if="eq.gerente">
+                    <span class="dbp-record__dot">·</span>
+                    {{ eq.gerente }}
+                  </template>
+                </span>
               </div>
               <div class="dbp-record__chips">
                 <span class="dbp-chip" :data-g="eq.gerencia">{{ eq.gerencia }}</span>
@@ -225,7 +251,10 @@
 
           <div v-if="!filteredEquipes.length" class="dbp-empty">
             <q-icon name="mdi-bus-alert" size="40px" />
-            <p>Nenhuma equipe encontrada</p>
+            <p>{{ equipes.length ? "Nenhuma equipe neste filtro" : "Nenhuma equipe no banco" }}</p>
+            <button v-if="!equipes.length" class="dbp-hbtn dbp-hbtn--import" type="button" @click="triggerImport">
+              Importar planilha
+            </button>
           </div>
         </div>
         </q-slide-transition>
@@ -383,7 +412,7 @@
           <q-input v-model="empForm.nome" label="Nome curto *" dense outlined />
           <q-input v-model="empForm.nome_completo" label="Nome completo *" dense outlined />
           <div class="row q-gutter-sm">
-            <q-select v-model="empForm.gerencia" :options="['GOMAN','GSTC','GERE','SESMT']" label="Gerência *" dense outlined class="col" />
+            <q-select v-model="empForm.gerencia" :options="['GOMAN','GSTC','GERE','ADM','LOGISTICA','OFICINA','SESMT','SPOT']" label="Gerência *" dense outlined class="col" />
             <q-input v-model="empForm.base" label="Base *" dense outlined class="col" />
           </div>
           <div class="row q-gutter-sm items-center">
@@ -416,7 +445,9 @@
         <div class="dbp-dlg__body">
           <q-input v-model="eqForm.base" label="Base *" dense outlined />
           <q-input v-model="eqForm.prefixo" label="Prefixo *" dense outlined />
-          <q-select v-model="eqForm.gerencia" :options="['GOMAN','GSTC','GERE']" label="Gerência *" dense outlined />
+          <q-select v-model="eqForm.gerencia" :options="['GOMAN','GSTC','GERE','ADM','LOGISTICA','OFICINA','SPOT']" label="Gerência *" dense outlined />
+          <q-input v-model="eqForm.coordenador" label="Coordenador" dense outlined />
+          <q-input v-model="eqForm.gerente" label="Gerente" dense outlined />
           <p v-if="eqError" class="text-negative text-caption q-mb-none">{{ eqError }}</p>
         </div>
         <div class="dbp-dlg__foot">
@@ -687,6 +718,8 @@ interface Equipe {
   base: string;
   prefixo: string;
   gerencia: string;
+  coordenador?: string;
+  gerente?: string;
 }
 
 const equipes          = ref<Equipe[]>([]);
@@ -708,7 +741,7 @@ const filteredEquipes = computed(() => {
 
 function openEqDialog(eq?: Equipe) {
   eqError.value  = "";
-  eqForm.value   = eq ? { ...eq } : { base: "BCB", gerencia: "GOMAN" };
+  eqForm.value   = eq ? { ...eq } : { base: "BCB", gerencia: "GOMAN", coordenador: "", gerente: "" };
   eqDialog.value = true;
 }
 
@@ -721,7 +754,13 @@ async function saveEquipe() {
   saving.value = true;
   eqError.value = "";
 
-  const payload = { base: f.base, prefixo: f.prefixo, gerencia: f.gerencia };
+  const payload = {
+    base: f.base,
+    prefixo: f.prefixo,
+    gerencia: f.gerencia,
+    coordenador: f.coordenador ?? "",
+    gerente: f.gerente ?? "",
+  };
 
   const { error } = f.id
     ? await supabase.from("pwa_equipes").update(payload).eq("id", f.id)
@@ -793,11 +832,14 @@ async function fetchEmployees() {
 }
 
 async function fetchEquipes() {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("pwa_equipes")
-    .select("*")
-    .order("base")
+    .select("id,prefixo,base,gerencia,coordenador,gerente")
     .order("prefixo");
+  if (error) {
+    $q.notify({ type: "negative", message: "Não foi possível carregar equipes: " + error.message });
+    return;
+  }
   if (data) equipes.value = data as Equipe[];
 }
 
@@ -831,14 +873,29 @@ function exportExcel() {
   XLSX.utils.book_append_sheet(wb, wsEmp, "Funcionarios");
 
   const eqData = equipes.value.map((eq) => ({
-    ID:       eq.id,
-    Base:     eq.base,
-    Prefixo:  eq.prefixo,
-    Gerencia: eq.gerencia,
+    Prefixo: eq.prefixo,
+    Base: eq.base,
+    Gerência: eq.gerencia,
+    Coordenador: eq.coordenador ?? "",
+    Gerente: eq.gerente ?? "",
   }));
   const wsEq = XLSX.utils.json_to_sheet(eqData);
-  wsEq["!cols"] = [38, 8, 14, 8].map((w) => ({ wch: w }));
+  wsEq["!cols"] = [16, 8, 12, 16, 14].map((w) => ({ wch: w }));
   XLSX.utils.book_append_sheet(wb, wsEq, "Equipes");
+
+  const obsData = employees.value.map((e) => ({
+    Chapa: e.matricula,
+    Observador: e.nome,
+    Função: e.funcao,
+    Base: e.base,
+    Coordenador: "",
+    Gerente: "",
+    Processo: "",
+    Gerência: e.gerencia,
+  }));
+  const wsObs = XLSX.utils.json_to_sheet(obsData);
+  wsObs["!cols"] = [10, 22, 18, 8, 14, 12, 14, 12].map((w) => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, wsObs, "observadores");
 
   XLSX.writeFile(wb, "banco_pwa.xlsx");
   $q.notify({ type: "positive", message: "Arquivo exportado com sucesso." });
@@ -846,6 +903,57 @@ function exportExcel() {
 
 function triggerImport() {
   importInput.value?.click();
+}
+
+function cell(row: Record<string, unknown>, ...keys: string[]): string {
+  for (const k of keys) {
+    const v = row[k];
+    if (v != null && String(v).trim()) return String(v).trim();
+  }
+  return "";
+}
+
+function mapBaseCidade(raw: string): string {
+  const n = String(raw || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .trim();
+  const map: Record<string, string> = {
+    BACABAL: "BCB",
+    "PRESIDENTE DUTRA": "PDT",
+    "SANTA INES": "STI",
+    PEDREIRAS: "PDS",
+    "ITAPECURU MIRIM": "ITM",
+    "ITAPECURU-MIRIM": "ITM",
+    "ITAPECURU": "ITM",
+    "BARRA DO CORDA": "BDC",
+    BCB: "BCB",
+    PDT: "PDT",
+    STI: "STI",
+    PDS: "PDS",
+    ITM: "ITM",
+    BDC: "BDC",
+  };
+  return map[n] || String(raw).trim().toUpperCase();
+}
+
+function titleFuncao(s: string): string {
+  const t = s.trim();
+  if (!t) return "";
+  return t.toLowerCase().replace(/(^|[\s./-])(\S)/g, (_, a: string, b: string) => a + b.toUpperCase());
+}
+
+async function upsertBatches<T extends Record<string, unknown>>(
+  table: "pwa_equipes" | "employees",
+  rows: T[],
+  onConflict: string
+) {
+  for (let i = 0; i < rows.length; i += 50) {
+    const batch = rows.slice(i, i + 50);
+    const { error } = await supabase.from(table).upsert(batch, { onConflict });
+    if (error) throw new Error(`Erro ao gravar ${table}: ${error.message}`);
+  }
 }
 
 async function onImportFile(event: Event) {
@@ -860,64 +968,94 @@ async function onImportFile(event: Event) {
     const buffer = await file.arrayBuffer();
     const wb     = XLSX.read(buffer, { type: "array" });
 
-    let empUpdated = 0, eqUpdated = 0;
+    const wsEq = wb.Sheets["Equipes"];
+    const eqRows = wsEq ? XLSX.utils.sheet_to_json<Record<string, unknown>>(wsEq) : [];
+    const eqPayload = eqRows.map((r) => ({
+      prefixo: cell(r, "Prefixo", "prefixo"),
+      base: mapBaseCidade(cell(r, "Base", "base")),
+      gerencia: cell(r, "Gerência", "Gerencia", "gerencia"),
+      coordenador: cell(r, "Coordenador"),
+      gerente: cell(r, "Gerente"),
+    })).filter((r) => r.prefixo && r.base && r.gerencia);
 
-    const wsEmp = wb.Sheets["Funcionarios"];
-    if (wsEmp) {
-      const rows = XLSX.utils.sheet_to_json<Record<string, string>>(wsEmp);
-      const REQUIRED = ["Matricula", "Nome", "Nome_Completo", "Gerencia", "Base", "Funcao"];
-      const missing  = REQUIRED.filter((k) => !rows[0]?.[k]);
-      if (missing.length) throw new Error(`Colunas ausentes na aba Funcionarios: ${missing.join(", ")}`);
+    const wsObs =
+      wb.Sheets["observadores"] ||
+      wb.Sheets["Observadores"] ||
+      wb.Sheets["Funcionarios"];
+    const obsRows = wsObs ? XLSX.utils.sheet_to_json<Record<string, unknown>>(wsObs) : [];
+    const isObsSheet = !!(wb.Sheets["observadores"] || wb.Sheets["Observadores"]);
+    const empPayload = obsRows.map((r) => {
+      const matricula = cell(r, "Chapa", "Matricula", "matricula");
+      const nome = cell(r, "Observador", "Nome", "nome");
+      const nomeCompleto = cell(r, "Nome_Completo", "Nome Completo") ||
+        employees.value.find((e) => e.matricula === matricula)?.nome_completo ||
+        nome;
+      return {
+        matricula,
+        nome,
+        nome_completo: nomeCompleto,
+        gerencia: cell(r, "Gerência", "Gerencia", "gerencia"),
+        base: mapBaseCidade(cell(r, "Base", "base")),
+        funcao: isObsSheet
+          ? titleFuncao(cell(r, "Função", "Funcao", "funcao"))
+          : cell(r, "Funcao", "Função", "funcao"),
+        ativo: cell(r, "Ativo", "ativo").toUpperCase() !== "NÃO",
+      };
+    }).filter((r) => r.matricula && r.nome && r.gerencia && r.base);
 
-      const payload = rows.map((r) => ({
-        matricula:     String(r["Matricula"]).trim(),
-        nome:          String(r["Nome"]).trim(),
-        nome_completo: String(r["Nome_Completo"]).trim(),
-        gerencia:      String(r["Gerencia"]).trim(),
-        base:          String(r["Base"]).trim(),
-        funcao:        String(r["Funcao"]).trim(),
-        ativo:         String(r["Ativo"] ?? "SIM").trim().toUpperCase() !== "NÃO",
-      })).filter((r) => r.matricula);
-
-      for (let i = 0; i < payload.length; i += 50) {
-        const batch = payload.slice(i, i + 50);
-        const { error } = await supabase.from("employees").upsert(batch, { onConflict: "matricula" });
-        if (error) throw new Error("Erro ao importar funcionários: " + error.message);
-      }
-      empUpdated = payload.length;
+    if (!eqPayload.length && !empPayload.length) {
+      throw new Error("Não achei as abas Equipes, observadores ou Funcionarios com colunas válidas.");
     }
 
-    const wsEq = wb.Sheets["Equipes"];
-    if (wsEq) {
-      const rows = XLSX.utils.sheet_to_json<Record<string, string>>(wsEq);
-      if (rows.length) {
-        const REQUIRED = ["Base", "Prefixo", "Gerencia"];
-        const missing  = REQUIRED.filter((k) => !rows[0]?.[k]);
-        if (missing.length) throw new Error(`Colunas ausentes na aba Equipes: ${missing.join(", ")}`);
+    let purge = false;
+    const confirmed = await new Promise<boolean>((resolve) => {
+      $q.dialog({
+        title: "Atualizar o banco",
+        message:
+          `Arquivo: ${file.name}\n\n` +
+          (eqPayload.length ? `• ${eqPayload.length} equipes\n` : "") +
+          (empPayload.length ? `• ${empPayload.length} observadores / funcionários\n` : "") +
+          "\nQuem já existir (mesmo prefixo ou matrícula) será atualizado.",
+        options: eqPayload.length
+          ? {
+              type: "checkbox",
+              model: [] as string[],
+              items: [{ label: "Apagar equipes que não estão nesta planilha", value: "purge" }],
+            }
+          : undefined,
+        cancel: { label: "Cancelar", flat: true },
+        persistent: true,
+        ok: { label: "Atualizar", color: "primary" },
+      })
+        .onOk((data?: string[]) => {
+          purge = Array.isArray(data) && data.includes("purge");
+          resolve(true);
+        })
+        .onCancel(() => resolve(false));
+    });
 
-        const payload = rows.map((r) => {
-          const obj: Record<string, string> = {
-            base:     String(r["Base"]).trim(),
-            prefixo:  String(r["Prefixo"]).trim(),
-            gerencia: String(r["Gerencia"]).trim(),
-          };
-          if (r["ID"]) obj["id"] = String(r["ID"]).trim();
-          return obj;
-        }).filter((r) => r["base"] && r["prefixo"]);
+    if (!confirmed) return;
 
-        for (let i = 0; i < payload.length; i += 50) {
-          const batch = payload.slice(i, i + 50);
-          const { error } = await supabase.from("pwa_equipes").upsert(batch, { onConflict: "prefixo" });
-          if (error) throw new Error("Erro ao importar equipes: " + error.message);
+    if (eqPayload.length) {
+      await upsertBatches("pwa_equipes", eqPayload, "prefixo");
+      if (purge) {
+        const keep = new Set(eqPayload.map((r) => r.prefixo));
+        const stale = equipes.value.filter((e) => !keep.has(e.prefixo));
+        for (const eq of stale) {
+          const { error } = await supabase.from("pwa_equipes").delete().eq("prefixo", eq.prefixo);
+          if (error) throw new Error("Erro ao remover equipe antiga: " + error.message);
         }
-        eqUpdated = payload.length;
       }
+    }
+
+    if (empPayload.length) {
+      await upsertBatches("employees", empPayload, "matricula");
     }
 
     await fetchAll();
     $q.notify({
       type: "positive",
-      message: `Importação concluída: ${empUpdated} funcionários · ${eqUpdated} equipes`,
+      message: `Atualizado: ${empPayload.length} observadores · ${eqPayload.length} equipes`,
       timeout: 5000,
     });
   } catch (e: unknown) {
@@ -1134,6 +1272,32 @@ async function onImportFile(event: Event) {
   margin-bottom: 14px;
 }
 
+.dbp-sync {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--dbp-border);
+  border-radius: var(--dbp-radius);
+  background: var(--dbp-surface);
+  color: var(--dbp-txt);
+
+  > .q-icon { color: #3DDC97; flex-shrink: 0; }
+}
+
+.dbp-sync__txt {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  strong { font-size: 13px; font-weight: 700; }
+  span { font-size: 12px; color: var(--dbp-muted); line-height: 1.4; }
+  em { font-style: normal; color: var(--dbp-txt); font-weight: 600; }
+}
+
 .dbp-search-shell {
   flex: 1;
   min-width: 200px;
@@ -1203,6 +1367,10 @@ async function onImportFile(event: Event) {
   &.--active.--gstc  { color: var(--c-gstc);  border-color: rgba(59,130,246,.35);  background: rgba(59,130,246,.08);  }
   &.--active.--gere  { color: var(--c-gere);  border-color: rgba(16,185,129,.35);  background: rgba(16,185,129,.08);  }
   &.--active.--sesmt { color: var(--c-sesmt); border-color: rgba(167,139,250,.35); background: rgba(167,139,250,.08); }
+  &.--active.--adm { color: #fb7185; border-color: rgba(251,113,133,.35); background: rgba(251,113,133,.08); }
+  &.--active.--logistica { color: #22d3ee; border-color: rgba(34,211,238,.35); background: rgba(34,211,238,.08); }
+  &.--active.--oficina { color: #a3a3a3; border-color: rgba(163,163,163,.35); background: rgba(163,163,163,.08); }
+  &.--active.--spot { color: #e879f9; border-color: rgba(232,121,249,.35); background: rgba(232,121,249,.08); }
 }
 
 .dbp-add-btn {
@@ -1488,6 +1656,7 @@ async function onImportFile(event: Event) {
   color: var(--dbp-muted);
   i { opacity: .4; }
   p { font-size: 13px; margin: 0; }
+  .dbp-hbtn { margin-top: 6px; }
 }
 
 // ── Record entrance animation ─────────────────────────────────────────────────
@@ -1514,6 +1683,10 @@ async function onImportFile(event: Event) {
   &[data-g="GSTC"]  { background: var(--c-gstc);  }
   &[data-g="GERE"]  { background: var(--c-gere);  }
   &[data-g="SESMT"] { background: var(--c-sesmt); }
+  &[data-g="ADM"] { background: #fb7185; }
+  &[data-g="LOGISTICA"] { background: #22d3ee; }
+  &[data-g="OFICINA"] { background: #a3a3a3; }
+  &[data-g="SPOT"] { background: #e879f9; }
 }
 
 .dbp-dlg__head {

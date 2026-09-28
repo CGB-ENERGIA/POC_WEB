@@ -52,12 +52,19 @@
               v-model="equipe"
               :options="equipesFiltered"
               outlined dense
-              label="Equipe / Prefixo"
+              :disable="!base"
+              :label="base ? 'Equipe / Prefixo' : 'Selecione a base'"
               use-input input-debounce="0"
               hide-selected fill-input
               :rules="[required]"
               @filter="filterEquipes"
-            />
+            >
+              <template #no-option>
+                <q-item>
+                  <q-item-section class="text-grey-6">Nenhuma equipe desta gerência nesta base</q-item-section>
+                </q-item>
+              </template>
+            </q-select>
             <!-- Campo alojamento: prefixo ALOJ com sugestões da base -->
             <q-select
               v-else
@@ -458,7 +465,7 @@ import { LocalStorage, useQuasar } from "quasar";
 import { useSessionStore } from "@/stores/session";
 import { useObservacoesStore, isChecklist } from "@/stores/observacoes";
 import { basesOperacionais } from "@/data/checklist";
-import { equipesPorBase } from "@/data/equipes";
+import { equipesPorBase, gerenciaDaAuditagem } from "@/data/equipes";
 import { alojamentosPorBase } from "@/data/alojamentos";
 import { sugerirMembrosEquipe, parseMembroSugestao, rotuloMembro } from "@/utils/membros-equipe";
 import type { CategoriaGoman, PerguntaGoman, Gravidade, ItemVerificado } from "@/data/goman-checklist";
@@ -514,7 +521,9 @@ const SLOTS_ADM = [
   { icon: "mdi-image-search-outline", label: "Evidência da observação" },
 ];
 
-const equipesOptions = computed(() => equipesPorBase(base.value));
+const equipesOptions = computed(() =>
+  equipesPorBase(base.value, gerenciaDaAuditagem(props.auditagem))
+);
 const equipesFiltered = ref<string[]>([]);
 
 watch(equipesOptions, (opts) => { equipesFiltered.value = opts; }, { immediate: true });

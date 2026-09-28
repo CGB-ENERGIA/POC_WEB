@@ -65,14 +65,21 @@
               :options="equipesFiltered"
               outlined
               dense
-              label="Equipe / Prefixo"
+              :disable="!base"
+              :label="base ? 'Equipe GOMAN' : 'Selecione a base'"
               use-input
               input-debounce="0"
               hide-selected
               fill-input
               :rules="[required]"
               @filter="filterEquipes"
-            />
+            >
+              <template #no-option>
+                <q-item>
+                  <q-item-section class="text-grey-6">Nenhuma equipe GOMAN nesta base</q-item-section>
+                </q-item>
+              </template>
+            </q-select>
           </div>
         </div>
 
@@ -565,7 +572,9 @@ const rascunhoId = ref<string | undefined>(editId ?? continuarId);
 const base = ref("");
 const equipe = ref("");
 
-const equipesOptions = computed(() => equipesPorBase(base.value, "GOMAN"));
+const equipesOptions = computed(() =>
+  equipesPorBase(base.value, "GOMAN")
+);
 const equipesFiltered = ref<string[]>([]);
 
 watch(equipesOptions, (opts) => { equipesFiltered.value = opts; }, { immediate: true });
