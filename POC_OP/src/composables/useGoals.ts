@@ -7,6 +7,7 @@ const OVERRIDES_KEY    = "cgb_metas_overrides_v1";
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface MonthGoal {
   normais_semanal: number;
+  lideranca_semanal: number;
   seguranca_semanal: number;
 }
 
@@ -25,10 +26,9 @@ type GoalStore     = Record<string, MonthGoal>;          // "YYYY-MM"
 type OverrideStore = Record<string, IndividualOverride>; // "YYYY-MM-matricula"
 
 // ─── Defaults ────────────────────────────────────────────────────────────────
-const DEFAULTS: MonthGoal = { normais_semanal: 2, seguranca_semanal: 8 };
+const DEFAULTS: MonthGoal = { normais_semanal: 2, lideranca_semanal: 4, seguranca_semanal: 8 };
 
-/** Liderança operacional (supervisor, coordenador, fiscal…) — banda fixa do POC. */
-export const META_LIDERANCA_SEMANAL = 4;
+export const META_LIDERANCA_SEMANAL = DEFAULTS.lideranca_semanal;
 
 export type MetaRole = "encarregado" | "lideranca" | "tecnico";
 
@@ -95,7 +95,7 @@ const overrides = ref<OverrideStore>(loadOverrides());
 async function syncFromSupabase(): Promise<void> {
   try {
     const [metasRes, ovRes] = await Promise.all([
-      supabase.from("metas").select("ano, mes, normais_semanal, seguranca_semanal"),
+      supabase.from("metas").select("ano, mes, normais_semanal, lideranca_semanal, seguranca_semanal"),
       supabase.from("individual_goal_overrides").select("*"),
     ]);
 
@@ -104,6 +104,7 @@ async function syncFromSupabase(): Promise<void> {
       for (const row of metasRes.data) {
         merged[monthKey(row.ano, row.mes)] = {
           normais_semanal:   Number(row.normais_semanal)   || DEFAULTS.normais_semanal,
+          lideranca_semanal: Number(row.lideranca_semanal) || DEFAULTS.lideranca_semanal,
           seguranca_semanal: Number(row.seguranca_semanal) || DEFAULTS.seguranca_semanal,
         };
       }
@@ -138,17 +139,38 @@ export function useGoals() {
     if (!entry) return { ...DEFAULTS };
     return {
       normais_semanal:   Number(entry.normais_semanal)   || DEFAULTS.normais_semanal,
+      lideranca_semanal: Number(entry.lideranca_semanal) || DEFAULTS.lideranca_semanal,
       seguranca_semanal: Number(entry.seguranca_semanal) || DEFAULTS.seguranca_semanal,
     };
   }
 
-  async function save(ano: number, mes: number, normaisSem: number, segurancaSem: number) {
+  async function save(
+    ano: number,
+    mes: number,
+    normaisSem: number,
+    liderancaSem: number,
+    segurancaSem: number,
+  ) {
     const key = monthKey(ano, mes);
-    store.value = { ...store.value, [key]: { normais_semanal: normaisSem, seguranca_semanal: segurancaSem } };
+    store.value = {
+      ...store.value,
+      [key]: {
+        normais_semanal: normaisSem,
+        lideranca_semanal: liderancaSem,
+        seguranca_semanal: segurancaSem,
+      },
+    };
     writeStore(store.value);
     await supabase.from("metas").upsert(
-      { ano, mes, normais_semanal: normaisSem, seguranca_semanal: segurancaSem, updated_at: new Date().toISOString() },
-      { onConflict: "ano,mes" }
+      {
+        ano,
+        mes,
+        normais_semanal: normaisSem,
+        lideranca_semanal: liderancaSem,
+        seguranca_semanal: segurancaSem,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "ano,mes" },
     );
   }
 
@@ -163,7 +185,7 @@ export function useGoals() {
     const role = metaRoleFrom(gerencia, funcao);
     const semanal =
       role === "tecnico" ? g.seguranca_semanal
-      : role === "lideranca" ? META_LIDERANCA_SEMANAL
+      : role === "lideranca" ? g.lideranca_semanal
       : g.normais_semanal;
     return { semanal, mensal: semanal * 4 };
   }

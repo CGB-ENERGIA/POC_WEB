@@ -388,11 +388,11 @@ const matricula = computed(() => session.matricula);
 
 const metaSemanal = computed(() => {
   const now = new Date();
-  return getGoal(session.employee?.gerencia, now.getFullYear(), now.getMonth() + 1).semanal;
+  return getGoal(session.employee?.gerencia, now.getFullYear(), now.getMonth() + 1, session.employee?.funcao).semanal;
 });
 const metaMensal = computed(() => {
   const now = new Date();
-  return getGoal(session.employee?.gerencia, now.getFullYear(), now.getMonth() + 1).mensal;
+  return getGoal(session.employee?.gerencia, now.getFullYear(), now.getMonth() + 1, session.employee?.funcao).mensal;
 });
 const metaAtual    = computed(() => periodo.value === "semana" ? metaSemanal.value : metaMensal.value);
 const periodoLabel = computed(() => periodo.value === "semana" ? "semana" : "mês");

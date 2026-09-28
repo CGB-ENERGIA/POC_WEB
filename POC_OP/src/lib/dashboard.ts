@@ -7,6 +7,8 @@ export interface Filters {
   base?: string;
   gerencia?: string;
   gerente?: string;
+  /** Aprovado + pendente (o PWA já conta o registro enviado). */
+  contarMeta?: boolean;
 }
 
 /** Intervalo ISO para um mês (início inclusive, fim exclusive). */
@@ -28,6 +30,125 @@ export function semanaDoMes(dia: number): 1 | 2 | 3 | 4 {
   if (dia <= 15) return 2;
   if (dia <= 22) return 3;
   return 4;
+}
+
+/** Dia do mês a partir do campo `data`, sem deslocar fuso. */
+export function diaDoMes(data: string): number {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(data);
+  if (m) return Number(m[3]);
+  const d = new Date(data);
+  return Number.isNaN(d.getTime()) ? 0 : d.getDate();
+}
+
+export function semanaDaData(data: string): 1 | 2 | 3 | 4 {
+  return semanaDoMes(diaDoMes(data));
+}
+
+export function normMatricula(m: string | undefined | null): string {
+  const t = (m ?? "").trim();
+  if (!t) return "";
+  return t.replace(/^0+/, "") || "0";
+}
+
+export function foldName(s: string | undefined | null): string {
+  return (s ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+export interface ObserverIndex {
+  byMat: Map<string, EmployeeRow>;
+  byName: Map<string, EmployeeRow[]>;
+}
+
+export function indexEmployees(employees: EmployeeRow[]): ObserverIndex {
+  const byMat = new Map<string, EmployeeRow>();
+  const byName = new Map<string, EmployeeRow[]>();
+  const addName = (raw: string, e: EmployeeRow) => {
+    const k = foldName(raw);
+    if (k.length < 2) return;
+    const arr = byName.get(k) ?? [];
+    if (!arr.some((x) => normMatricula(x.matricula) === normMatricula(e.matricula))) arr.push(e);
+    byName.set(k, arr);
+  };
+  for (const e of employees) {
+    const mat = normMatricula(e.matricula);
+    if (mat) byMat.set(mat, e);
+    addName(e.nome, e);
+    addName(e.nome_completo, e);
+  }
+  return { byMat, byName };
+}
+
+export function matchSubmissionToEmployee(
+  s: SubmissionRow,
+  idx: ObserverIndex,
+): EmployeeRow | undefined {
+  const mat = normMatricula(s.matricula);
+  if (mat) {
+    const hit = idx.byMat.get(mat);
+    if (hit) return hit;
+  }
+  const obs = foldName(s.observador);
+  if (!obs) return undefined;
+  const exact = idx.byName.get(obs);
+  if (exact?.length === 1) return exact[0];
+  if (exact && exact.length > 1 && mat) {
+    const byM = exact.find((e) => normMatricula(e.matricula) === mat);
+    if (byM) return byM;
+  }
+  if (obs.length >= 5) {
+    const hits: EmployeeRow[] = [];
+    for (const [name, emps] of idx.byName) {
+      if (!(name.startsWith(obs) || (obs.startsWith(name) && name.length >= 5))) continue;
+      for (const e of emps) {
+        if (!hits.some((h) => normMatricula(h.matricula) === normMatricula(e.matricula))) hits.push(e);
+      }
+    }
+    if (hits.length === 1) return hits[0];
+  }
+  return undefined;
+}
+
+/** Liga cada registro ao observador do roster (matrícula normalizada ou nome). */
+export function tallyObserverRecords(
+  roster: EmployeeRow[],
+  allEmployees: EmployeeRow[],
+  subs: SubmissionRow[],
+): { counts: Map<string, number>; extras: EmployeeRow[] } {
+  const idx = indexEmployees(allEmployees);
+  const counts = new Map<string, number>();
+  const unmatched: SubmissionRow[] = [];
+  for (const s of subs) {
+    const emp = matchSubmissionToEmployee(s, idx);
+    if (emp) {
+      const k = normMatricula(emp.matricula);
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    } else {
+      unmatched.push(s);
+    }
+  }
+  const rosterMats = new Set(roster.map((e) => normMatricula(e.matricula)));
+  const extras: EmployeeRow[] = [];
+  const seen = new Set<string>();
+  for (const s of unmatched) {
+    const k = normMatricula(s.matricula) || foldName(s.observador) || s.id;
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+    if (seen.has(k) || rosterMats.has(k)) continue;
+    seen.add(k);
+    extras.push({
+      matricula: s.matricula || k,
+      nome: (s.observador.split(/\s+/)[0] || s.observador).trim(),
+      nome_completo: s.observador,
+      gerencia: "",
+      base: s.base,
+      funcao: "",
+    });
+  }
+  return { counts, extras };
 }
 
 /** Intervalo ISO para a semana do mês, conforme cronograma padrão CGB. */
@@ -107,13 +228,16 @@ function applySubmissionFilters(
   return q;
 }
 
-/** Todas as submissions no período com filtros. Apenas checklists aprovados contam nas métricas/dashboards. */
+/** Submissions do período. `contarMeta` inclui pendentes (já registrados no PWA). */
 export async function fetchSubmissions(f: Filters, usarSemana = false): Promise<SubmissionRow[]> {
   let q = supabase
     .from("checklist_submissions")
     .select("id,matricula,observador,auditagem,data,base,equipe,membros,resumo")
-    .eq("status", "aprovado")
     .order("data", { ascending: true });
+
+  q = f.contarMeta
+    ? q.in("status", ["aprovado", "pendente"])
+    : q.eq("status", "aprovado");
 
   q = applySubmissionFilters(q, f, usarSemana);
 
@@ -236,6 +360,74 @@ export function countByObservador(subs: SubmissionRow[]): Record<string, number>
     acc[s.observador] = (acc[s.observador] ?? 0) + 1;
     return acc;
   }, {});
+}
+
+/** Conta submissions por matrícula. */
+export function countByMatricula(subs: SubmissionRow[]): Record<string, number> {
+  return subs.reduce<Record<string, number>>((acc, s) => {
+    if (!s.matricula) return acc;
+    acc[s.matricula] = (acc[s.matricula] ?? 0) + 1;
+    return acc;
+  }, {});
+}
+
+/** Roster de observadores para gráficos de meta (todos, inclusive quem fez 0). */
+export function filterObserverRoster(
+  employees: EmployeeRow[],
+  opts: { gerencia?: string; gerente?: string; funcao?: string } = {},
+): EmployeeRow[] {
+  let list = employees;
+  if (opts.gerencia && opts.gerencia !== "Todos") {
+    list = list.filter((e) => e.gerencia === opts.gerencia);
+  }
+  if (opts.funcao && opts.funcao !== "Todos") {
+    list = list.filter((e) => e.funcao === opts.funcao);
+  }
+  if (opts.gerente && opts.gerente !== "Todos") {
+    const g = foldName(opts.gerente);
+    list = list.filter((e) => {
+      const nome = foldName(e.nome);
+      const full = foldName(e.nome_completo);
+      return nome === g || full === g || full.startsWith(`${g} `) || nome.startsWith(`${g} `);
+    });
+  }
+  return list;
+}
+
+/** Inclui quem submeteu no período mas ainda não está na tabela de observadores. */
+export function mergeOrphanObservers(
+  roster: EmployeeRow[],
+  subs: SubmissionRow[],
+): EmployeeRow[] {
+  const seen = new Set(roster.map((e) => e.matricula));
+  const extra: EmployeeRow[] = [];
+  for (const s of subs) {
+    if (!s.matricula || seen.has(s.matricula)) continue;
+    seen.add(s.matricula);
+    extra.push({
+      matricula: s.matricula,
+      nome: (s.observador.split(/\s+/)[0] || s.observador).trim(),
+      nome_completo: s.observador,
+      gerencia: "",
+      base: s.base,
+      funcao: "",
+    });
+  }
+  return extra.length ? [...roster, ...extra] : roster;
+}
+
+export function uniqueChartLabels(names: string[]): string[] {
+  const used = new Set<string>();
+  return names.map((raw, i) => {
+    let label = (raw || `obs ${i + 1}`).trim();
+    if (used.has(label)) {
+      let k = 2;
+      while (used.has(`${label} ${k}`)) k++;
+      label = `${label} ${k}`;
+    }
+    used.add(label);
+    return label;
+  });
 }
 
 /** Conta submissions por base. */
@@ -506,8 +698,32 @@ export function filterByGerencia(
   gerencia: string
 ): SubmissionRow[] {
   if (!gerencia || gerencia === "Todos") return subs;
-  const byMatricula = new Set(
-    employees.filter((e) => e.gerencia === gerencia).map((e) => e.matricula)
+  const idx = indexEmployees(employees);
+  const mats = new Set(
+    employees.filter((e) => e.gerencia === gerencia).map((e) => normMatricula(e.matricula)),
   );
-  return subs.filter((s) => byMatricula.has(s.matricula));
+  return subs.filter((s) => {
+    if (mats.has(normMatricula(s.matricula))) return true;
+    const emp = matchSubmissionToEmployee(s, idx);
+    return emp?.gerencia === gerencia;
+  });
+}
+
+export function filterByGerente(
+  subs: SubmissionRow[],
+  employees: EmployeeRow[],
+  gerente: string,
+): SubmissionRow[] {
+  if (!gerente || gerente === "Todos") return subs;
+  const allowed = new Set(
+    filterObserverRoster(employees, { gerente }).map((e) => normMatricula(e.matricula)),
+  );
+  const idx = indexEmployees(employees);
+  const g = foldName(gerente);
+  return subs.filter((s) => {
+    const emp = matchSubmissionToEmployee(s, idx);
+    if (emp) return allowed.has(normMatricula(emp.matricula));
+    const obs = foldName(s.observador);
+    return obs === g || obs.startsWith(`${g} `);
+  });
 }

@@ -208,7 +208,7 @@
           <q-card flat bordered class="chart-card">
             <q-card-section class="q-pb-none">
               <div class="text-subtitle1 text-weight-bold">Observações Realizadas no Mês</div>
-              <div class="text-caption text-grey-6">Realizado e meta de cada observador · arraste para rolar</div>
+              <div class="text-caption text-grey-6">Todos os observadores · vela = realizado · traço = meta · arraste para ver a lista</div>
             </q-card-section>
             <q-card-section>
               <v-chart :option="chartObservador" autoresize style="height:260px" />
@@ -239,7 +239,7 @@
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
-import { BarChart, LineChart } from "echarts/charts";
+import { BarChart, LineChart, ScatterChart } from "echarts/charts";
 import {
   GridComponent,
   TooltipComponent,
@@ -250,11 +250,21 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia, semanaDoMes } from "@/lib/dashboard";
+import {
+  filterByGerencia,
+  filterByGerente,
+  semanaDaData,
+  filterObserverRoster,
+  uniqueChartLabels,
+  tallyObserverRecords,
+  normMatricula,
+  indexEmployees,
+  matchSubmissionToEmployee,
+} from "@/lib/dashboard";
 import { useGoals } from "@/composables/useGoals";
 
 use([
-  CanvasRenderer, BarChart, LineChart,
+  CanvasRenderer, BarChart, LineChart, ScatterChart,
   GridComponent, TooltipComponent, LegendComponent,
   MarkLineComponent, DataZoomComponent
 ]);
@@ -327,6 +337,7 @@ async function recarregar() {
     ano: filters.ano,
     mes: filters.mes,
     base: filters.base !== "Todos" ? filters.base : undefined,
+    contarMeta: true,
   });
 }
 
@@ -336,16 +347,12 @@ watch(() => [filters.ano, filters.mes, filters.base], recarregar);
 const filteredSubs = computed(() => {
   let s = filterByGerencia(submissions.value, employees.value, filters.gerencia);
   if (filters.semana) {
-    s = s.filter(sub => semanaDoMes(new Date(sub.data).getDate()) === filters.semana);
+    s = s.filter(sub => semanaDaData(sub.data) === filters.semana);
   }
-  if (filters.gerente !== "Todos") {
-    s = s.filter(sub => sub.observador === filters.gerente);
-  }
+  s = filterByGerente(s, employees.value, filters.gerente);
   if (filters.funcao !== "Todos") {
-    s = s.filter(sub => {
-      const emp = employees.value.find(e => e.matricula === sub.matricula);
-      return emp?.funcao === filters.funcao;
-    });
+    const idx = indexEmployees(employees.value);
+    s = s.filter(sub => matchSubmissionToEmployee(sub, idx)?.funcao === filters.funcao);
   }
   return s;
 });
@@ -362,22 +369,46 @@ const byBase = computed(() => {
 const bySemana = computed(() => {
   const m: Record<number, number> = {};
   for (const s of filteredSubs.value) {
-    const sem = semanaDoMes(new Date(s.data).getDate());
+    const sem = semanaDaData(s.data);
     m[sem] = (m[sem] ?? 0) + 1;
   }
   return m;
 });
 
-const byObservador = computed(() => {
-  const m: Record<string, number> = {};
-  for (const s of filteredSubs.value) m[s.observador] = (m[s.observador] ?? 0) + 1;
-  return m;
+const observerRoster = computed(() =>
+  filterObserverRoster(employees.value, {
+    gerencia: filters.gerencia,
+    gerente: filters.gerente,
+    funcao: filters.funcao,
+  }),
+);
+
+const observerRows = computed(() => {
+  const roster = observerRoster.value;
+  const { counts, extras } = tallyObserverRecords(roster, employees.value, filteredSubs.value);
+  const list = extras.length ? [...roster, ...extras] : roster;
+  const shorts = uniqueChartLabels(
+    list.map((e) => e.nome || e.nome_completo.split(/\s+/)[0] || e.matricula),
+  );
+  return list.map((emp, i) => {
+    const g = goalForColaborador(
+      emp.matricula, emp.gerencia, filters.ano, filters.mes, filters.semana || undefined, emp.funcao,
+    );
+    return {
+      nome: emp.nome_completo || emp.nome,
+      short: shorts[i]!,
+      realizado: counts.get(normMatricula(emp.matricula)) ?? 0,
+      meta: g.mensal,
+      funcao: emp.funcao || "—",
+    };
+  });
 });
 
 const byGerencia = computed(() => {
   const m: Record<string, number> = {};
+  const idx = indexEmployees(employees.value);
   for (const s of filteredSubs.value) {
-    const emp = employees.value.find(e => e.matricula === s.matricula);
+    const emp = matchSubmissionToEmployee(s, idx);
     const g = emp?.gerencia ?? s.auditagem;
     m[g] = (m[g] ?? 0) + 1;
   }
@@ -414,22 +445,14 @@ const mesLabel = computed(() => meses.find(m => m.value === filters.mes)?.label 
 // ─── Meta mensal (semanal × 4 semanas, por perfil de observador) ──────────────
 const { goalForColaborador } = useGoals();
 
-const numObservadores = computed(() => Object.keys(byObservador.value).length);
+const numObservadores = computed(() => observerRows.value.length);
 
 const metaMensal = computed(() =>
-  Object.keys(byObservador.value).reduce((total, obsName) => {
-    const sub = filteredSubs.value.find(s => s.observador === obsName);
-    const emp = employees.value.find(e => e.matricula === sub?.matricula);
-    return total + goalForColaborador(emp?.matricula, emp?.gerencia, filters.ano, filters.mes, undefined, emp?.funcao).mensal;
-  }, 0)
+  observerRows.value.reduce((total, r) => total + r.meta, 0)
 );
 
 const obsNoMeta = computed(() =>
-  Object.entries(byObservador.value).filter(([obsName, count]) => {
-    const sub = filteredSubs.value.find(s => s.observador === obsName);
-    const emp = employees.value.find(e => e.matricula === sub?.matricula);
-    return count >= goalForColaborador(emp?.matricula, emp?.gerencia, filters.ano, filters.mes, undefined, emp?.funcao).mensal;
-  }).length
+  observerRows.value.filter((r) => r.realizado >= r.meta).length
 );
 
 const atingimento = computed(() => {
@@ -457,11 +480,11 @@ const ttItem = {
 function cleanXAxis(data: string[], extra: Record<string, unknown> = {}) {
   return {
     type: "category" as const, data,
-    axisLine: { lineStyle: { color: "#e2e8f0" } },
+    axisLine: { lineStyle: { color: chartInk.split } },
     axisTick: { show: false },
     splitLine: { show: false },
     axisPointer: { show: false },
-    axisLabel: { color: chartInk.muted, fontSize: 11, ...extra }
+    axisLabel: { color: chartInk.axis, fontSize: 11, ...extra }
   };
 }
 
@@ -569,17 +592,17 @@ const chartGerencia = computed(() => {
 
 // ─── Chart: Obs por Observador (scrollável) ───────────────────────────────────
 const chartObservador = computed(() => {
-  const rows = Object.entries(byObservador.value)
-    .map(([nome, realizado]) => {
-      const sub = filteredSubs.value.find(s => s.observador === nome);
-      const emp = employees.value.find(e => e.matricula === sub?.matricula);
-      const meta = goalForColaborador(
-        emp?.matricula, emp?.gerencia, filters.ano, filters.mes, undefined, emp?.funcao,
-      ).mensal;
-      return { nome, short: nome.split(" ")[0], realizado, meta, funcao: emp?.funcao ?? "—" };
-    })
-    .sort((a, b) => b.realizado - a.realizado);
+  const rows = observerRows.value;
   const obsNames = rows.map(r => r.short);
+  const maxY = Math.max(4, ...rows.map(r => Math.max(r.realizado, r.meta)), 0) + 2;
+  const okColor = chartInk.ok;
+  const missColor = chartInk.miss;
+  const metaTick = chartInk.metaTick;
+  const visible = Math.min(15, Math.max(8, rows.length));
+  const labelHalo = {
+    textBorderColor: chartInk.halo,
+    textBorderWidth: 3,
+  };
   return {
     tooltip: {
       ...ttItem,
@@ -589,66 +612,98 @@ const chartObservador = computed(() => {
         if (!r) return "";
         const ok = r.realizado >= r.meta;
         return `<b>${r.nome}</b><br/>${r.funcao}<br/>`
-          + `Realizado no mês: <b style="color:${ok ? G.real : G.red}">${r.realizado}</b><br/>`
-          + `Meta: <b style="color:#0ea5e9">${r.meta}</b>`;
+          + `Realizado no mês: <b style="color:${ok ? okColor : missColor}">${r.realizado}</b><br/>`
+          + `Meta: <b style="color:${metaTick}">${r.meta}</b>`;
       },
     },
-    legend: { ...legend, bottom: 30 },
-    grid: { left: 12, right: 12, top: 12, bottom: 62 },
+    grid: { left: 12, right: 12, top: 36, bottom: 78 },
     dataZoom: [
       {
         type: "inside" as const,
-        startValue: 0, endValue: 14,
+        startValue: 0, endValue: visible - 1,
         zoomOnMouseWheel: false,
-        moveOnMouseWheel: true
+        moveOnMouseWheel: true,
       },
       {
         type: "slider" as const,
         bottom: 4,
-        height: 20,
-        startValue: 0, endValue: 14,
+        height: 16,
+        startValue: 0, endValue: visible - 1,
         brushSelect: false,
         showDetail: false,
         showDataShadow: false,
         borderRadius: 10,
-        borderColor: "#e2e8f0",
-        backgroundColor: "#f1f5f9",
-        fillerColor: "rgba(22,163,74,0.18)",
+        borderColor: chartInk.split,
+        backgroundColor: "rgba(148,163,184,.12)",
+        fillerColor: "rgba(251,113,133,0.28)",
         handleSize: "110%",
         handleStyle: {
           color: "#fff",
-          borderColor: G.real,
+          borderColor: chartInk.miss,
           borderWidth: 2,
-          shadowColor: "rgba(22,163,74,.4)",
-          shadowBlur: 6
+          shadowColor: "rgba(251,113,133,.4)",
+          shadowBlur: 6,
         },
         moveHandleSize: 6,
-      }
+      },
     ],
     xAxis: cleanXAxis(obsNames, { fontSize: 10, rotate: 30, interval: 0 }),
-    yAxis: { show: false },
+    yAxis: { show: false, min: 0, max: maxY },
     series: [
-      {
-        name: "Meta",
-        type: "bar" as const,
-        data: rows.map(r => r.meta),
-        barMaxWidth: 16,
-        itemStyle: {
-          color: "rgba(14,165,233,.22)",
-          borderColor: "#0ea5e9",
-          borderWidth: 1.5,
-          borderRadius: [4, 4, 0, 0],
-        },
-        label: { show: true, position: "top" as const, fontSize: 9, fontWeight: "bold" as const, color: "#0ea5e9" },
-      },
       {
         name: "Realizado",
         type: "bar" as const,
-        data: rows.map(r => r.realizado),
-        barMaxWidth: 16,
-        itemStyle: { color: G.real, borderRadius: [4, 4, 0, 0], shadowColor: "rgba(22,163,74,.15)", shadowBlur: 4 },
-        emphasis: { itemStyle: { color: G.light, shadowBlur: 10 } },
-        label: { show: true, position: "top" as const, fontSize: 9, fontWeight: "bold" as const, color: G.real, distance: 3 },
+        data: rows.map(r => ({
+          value: r.realizado,
+          itemStyle: {
+            color: r.realizado >= r.meta ? okColor : chartInk.missBar,
+            borderRadius: [6, 6, 0, 0],
+            shadowColor: r.realizado >= r.meta ? "rgba(74,222,128,.25)" : "rgba(244,63,94,.35)",
+            shadowBlur: 4,
+          },
+          label: { color: r.realizado >= r.meta ? okColor : missColor },
+        })),
+        barMaxWidth: 22,
+        emphasis: { itemStyle: { shadowBlur: 10 } },
+        label: {
+          show: true,
+          position: "top" as const,
+          fontSize: 11,
+          fontWeight: "bold" as const,
+          distance: 2,
+          formatter: (p: { value: number }) => String(p.value),
+          ...labelHalo,
+        },
+      },
+      {
+        name: "Meta",
+        type: "scatter" as const,
+        data: rows.map(r => [r.short, r.meta]),
+        symbol: "rect",
+        symbolSize: [20, 5],
+        itemStyle: {
+          color: metaTick,
+          borderColor: chartInk.halo,
+          borderWidth: 1,
+          shadowColor: "rgba(254,205,211,.45)",
+          shadowBlur: 6,
+        },
+        z: 10,
+        label: {
+          show: true,
+          position: "top" as const,
+          distance: 8,
+          fontSize: 11,
+          fontWeight: "bold" as const,
+          color: metaTick,
+          ...labelHalo,
+          formatter: (p: { value: [string, number]; dataIndex: number }) => {
+            const r = rows[p.dataIndex];
+            if (r && r.realizado === r.meta) return "";
+            return String(p.value[1]);
+          },
+        },
+        emphasis: { scale: false },
       },
     ],
   };

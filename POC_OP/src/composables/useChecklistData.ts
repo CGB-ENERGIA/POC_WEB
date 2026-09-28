@@ -32,7 +32,7 @@ export function useChecklistData() {
     try {
       const [subs, emps] = await Promise.all([
         fetchSubmissions(filters, usarSemana),
-        employees.value.length ? Promise.resolve(employees.value) : fetchEmployees(),
+        fetchEmployees(),
       ]);
       submissions.value = subs;
       employees.value = emps as EmployeeRow[];

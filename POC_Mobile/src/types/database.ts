@@ -313,6 +313,7 @@ export type Database = {
         Row: {
           ano: number
           mes: number
+          lideranca_semanal: number
           normais_semanal: number
           seguranca_semanal: number
           updated_at: string
@@ -320,6 +321,7 @@ export type Database = {
         Insert: {
           ano: number
           mes: number
+          lideranca_semanal?: number
           normais_semanal?: number
           seguranca_semanal?: number
           updated_at?: string
@@ -327,6 +329,7 @@ export type Database = {
         Update: {
           ano?: number
           mes?: number
+          lideranca_semanal?: number
           normais_semanal?: number
           seguranca_semanal?: number
           updated_at?: string

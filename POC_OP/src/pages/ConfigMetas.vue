@@ -51,7 +51,7 @@
             </div>
             <div>
               <div class="cm-meta-card__head-title">Encarregados</div>
-              <div class="cm-meta-card__head-sub">2 observações por semana</div>
+              <div class="cm-meta-card__head-sub">Padrão 2 observações por semana</div>
             </div>
           </div>
           <div class="cm-meta-card__body">
@@ -87,7 +87,7 @@
             </div>
             <div>
               <div class="cm-meta-card__head-title">Técnico de Segurança</div>
-              <div class="cm-meta-card__head-sub">8 observações por semana</div>
+              <div class="cm-meta-card__head-sub">Padrão 8 observações por semana</div>
             </div>
           </div>
           <div class="cm-meta-card__body">
@@ -116,8 +116,8 @@
         </div>
 
         <!-- Lideranças -->
-        <div class="cm-meta-card cm-meta-card--op">
-          <div class="cm-meta-card__head">
+        <div class="cm-meta-card cm-meta-card--lead">
+          <div class="cm-meta-card__head cm-meta-card__head--lead">
             <div class="cm-meta-card__head-icon">
               <q-icon name="mdi-account-tie" size="28px" />
             </div>
@@ -127,13 +127,26 @@
             </div>
           </div>
           <div class="cm-meta-card__body">
-            <div class="cm-derived" style="margin-top:0">
-              <q-icon name="mdi-calendar-week" size="15px" />
-              Meta semanal: <strong>4</strong>
+            <div class="cm-meta-row">
+              <div class="cm-meta-row__label">
+                <q-icon name="mdi-calendar-week" size="16px" />
+                Meta semanal
+              </div>
+              <div class="cm-meta-row__ctrl">
+                <button class="cm-stepper cm-stepper--lead" :disabled="liderancaInput <= 1" @click="decrement('lideranca')">−</button>
+                <div class="cm-counter">
+                  <input
+                    v-model.number="liderancaInput"
+                    type="number" min="1" max="99"
+                    class="cm-counter__input"
+                  />
+                </div>
+                <button class="cm-stepper cm-stepper--lead" :disabled="liderancaInput >= 99" @click="increment('lideranca')">+</button>
+              </div>
             </div>
             <div class="cm-derived">
               <q-icon name="mdi-calendar-month" size="15px" />
-              Meta mensal: <strong>16</strong>
+              Meta mensal: <strong>{{ liderancaInput * 4 }}</strong>
             </div>
           </div>
         </div>
@@ -295,7 +308,7 @@
           <div class="cm-info__title">Como as metas são usadas</div>
           <ul class="cm-info__list">
             <li>As metas são aplicadas automaticamente nas páginas de Acompanhamento Semanal e Mensal.</li>
-            <li>Observadores com gerência <strong>SESMT</strong> usam a meta de Segurança; os demais usam a meta Operacional.</li>
+            <li>Encarregados usam a meta operacional; supervisor/coordenador/fiscal usam a de lideranças; SESMT/técnico de segurança usam a de Segurança.</li>
             <li>Exceções individuais têm prioridade sobre a meta do perfil.</li>
             <li>Cada mês pode ter uma meta diferente — selecione o mês e salve.</li>
           </ul>
@@ -331,6 +344,7 @@ const selectedAno = ref(now.getFullYear());
 const selectedMes = ref(now.getMonth() + 1);
 
 const normaisInput   = ref(2);
+const liderancaInput = ref(4);
 const segurancaInput = ref(8);
 const saving = ref(false);
 
@@ -466,6 +480,7 @@ async function handleRemoveOverride(ov: IndividualOverride) {
 function loadInputsForPeriod(ano: number, mes: number) {
   const g = getMonthGoal(ano, mes);
   normaisInput.value   = g.normais_semanal;
+  liderancaInput.value = g.lideranca_semanal;
   segurancaInput.value = g.seguranca_semanal;
 }
 
@@ -474,24 +489,32 @@ watch([selectedAno, selectedMes], ([ano, mes]) => loadInputsForPeriod(ano, mes))
 
 function onChangeMes(mes: number) { selectedMes.value = mes; }
 
-function increment(tipo: "normais" | "seguranca") {
-  if (tipo === "normais"   && normaisInput.value < 99)   normaisInput.value++;
-  if (tipo === "seguranca" && segurancaInput.value < 99) segurancaInput.value++;
+function increment(tipo: "normais" | "lideranca" | "seguranca") {
+  if (tipo === "normais"    && normaisInput.value < 99)    normaisInput.value++;
+  if (tipo === "lideranca"  && liderancaInput.value < 99)  liderancaInput.value++;
+  if (tipo === "seguranca"  && segurancaInput.value < 99)  segurancaInput.value++;
 }
 
-function decrement(tipo: "normais" | "seguranca") {
-  if (tipo === "normais"   && normaisInput.value > 1)   normaisInput.value--;
-  if (tipo === "seguranca" && segurancaInput.value > 1) segurancaInput.value--;
+function decrement(tipo: "normais" | "lideranca" | "seguranca") {
+  if (tipo === "normais"    && normaisInput.value > 1)    normaisInput.value--;
+  if (tipo === "lideranca"  && liderancaInput.value > 1)  liderancaInput.value--;
+  if (tipo === "seguranca"  && segurancaInput.value > 1)  segurancaInput.value--;
 }
 
 async function handleSave() {
   saving.value = true;
   try {
-    await save(selectedAno.value, selectedMes.value, normaisInput.value, segurancaInput.value);
+    await save(
+      selectedAno.value,
+      selectedMes.value,
+      normaisInput.value,
+      liderancaInput.value,
+      segurancaInput.value,
+    );
     $q.notify({
       type: "positive",
       message: `Metas de ${mesAtualLabel.value}/${selectedAno.value} salvas!`,
-      caption: `Operacional: ${normaisInput.value}/sem · SESMT: ${segurancaInput.value}/sem`,
+      caption: `Encarregado: ${normaisInput.value}/sem · Liderança: ${liderancaInput.value}/sem · Segurança: ${segurancaInput.value}/sem`,
       icon: "mdi-check-circle",
       position: "top-right",
       timeout: 3000,
@@ -503,6 +526,7 @@ async function handleSave() {
 
 function handleReset() {
   normaisInput.value   = 2;
+  liderancaInput.value = 4;
   segurancaInput.value = 8;
   $q.notify({ type: "info", message: "Valores restaurados para o padrão", caption: "Clique em Salvar para confirmar", position: "top-right", timeout: 2500 });
 }
@@ -631,6 +655,11 @@ $border:  #e2e8f0;
       background: linear-gradient(135deg, #fff1f2, #ffe4e6);
       color: $brand;
     }
+
+    &--lead {
+      background: linear-gradient(135deg, #ecfeff, #cffafe);
+      color: #0f766e;
+    }
   }
 
   &__head-icon {
@@ -679,6 +708,7 @@ $border:  #e2e8f0;
   &:disabled { opacity: .35; cursor: not-allowed; }
 
   &--sesmt:hover:not(:disabled) { border-color: $brand; color: $brand; }
+  &--lead:hover:not(:disabled) { border-color: #0f766e; color: #0f766e; }
 }
 
 .cm-counter {
@@ -919,6 +949,7 @@ $border:  #e2e8f0;
 
   .cm-meta-card__head { background: linear-gradient(135deg, #052e16, #14532d) !important; color: #4ade80 !important; }
   .cm-meta-card__head--sesmt { background: linear-gradient(135deg, #3b0a0f, #5c1020) !important; color: #fca5a5 !important; }
+  .cm-meta-card__head--lead { background: linear-gradient(135deg, #042f2e, #115e59) !important; color: #5eead4 !important; }
   .cm-meta-card__head-icon { background: rgba(0, 0, 0, .30); }
 
   .cm-counter__input { background: #0f172a; color: #e2e8f0; border-color: #334155; }
