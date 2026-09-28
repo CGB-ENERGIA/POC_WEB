@@ -39,6 +39,42 @@
   padding-top: 8px;
 }
 
+// ── Chart quadrants (equal height in a row; light right shadow) ──────────────
+.chart-card,
+.dash-card,
+.cat-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+  box-shadow:
+    12px 2px 20px -6px rgba(15, 23, 42, 0.22),
+    6px 0 14px -4px rgba(122, 18, 37, 0.14) !important;
+}
+
+.chart-card > .q-card-section:last-child,
+.cat-card > .q-card-section:last-child {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-card:not(.chart-card--vertical) > .q-card-section.q-pb-none {
+  min-height: 58px;
+}
+
+body.body--dark {
+  .chart-card,
+  .dash-card,
+  .cat-card {
+    box-shadow:
+      14px 0 28px -4px rgba(0, 0, 0, 0.72),
+      10px 0 22px -2px rgba(248, 113, 145, 0.22),
+      6px 2px 16px rgba(226, 232, 240, 0.08) !important;
+  }
+}
+
 // ─── LIGHT MODE sidebar ────────────────────────────────────────────────────
 body:not(.body--dark) {
   .q-drawer {
@@ -342,6 +378,76 @@ body:not(.body--dark) {
 
 // ─── DARK MODE sidebar ─────────────────────────────────────────────────────
 body.body--dark {
+  .text-grey-4,
+  .text-grey-5,
+  .text-grey-6,
+  .text-grey-7,
+  .text-grey-8,
+  .text-caption {
+    color: #cbd5e1 !important;
+  }
+
+  .kpi-stat-label,
+  .kpi-stat-sub,
+  .kpi-gauge-sub,
+  .kpi-prog-label,
+  .kpi-prog-sub,
+  .kpi-card__label,
+  .dash-card__sub,
+  .section-header__sub,
+  .page-card__desc,
+  .legend-label,
+  .legend-title,
+  .table-count,
+  .td-mono,
+  .td-empty,
+  .td-num,
+  .nv-nome,
+  .analise-item__date,
+  .analise-item__obs,
+  .analise-item__enviado,
+  .analise-item__obs-resolucao,
+  .cm-empty,
+  .cm-info__list,
+  .sidebar-section-label {
+    color: #cbd5e1 !important;
+  }
+
+  .fgroup__label {
+    color: #cbd5e1 !important;
+  }
+
+  .pill {
+    color: #d1d5db !important;
+    &--active {
+      color: #fff !important;
+    }
+  }
+
+  .filter-bar .gerente-select {
+    .q-field__native {
+      color: #e2e8f0 !important;
+    }
+    .q-field__append .q-icon,
+    .q-field__prepend .q-icon {
+      color: #94a3b8 !important;
+    }
+  }
+
+  .q-table,
+  .q-item,
+  .q-field__native,
+  .q-field__input,
+  .q-field__prefix,
+  .q-field__suffix {
+    color: #e2e8f0;
+  }
+
+  .q-table th,
+  .q-table thead th {
+    color: #cbd5e1;
+  }
+
   .sidebar-brand {
     background:
       radial-gradient(circle at 20% 0%, rgba(196, 33, 58, 0.16), transparent 42%),

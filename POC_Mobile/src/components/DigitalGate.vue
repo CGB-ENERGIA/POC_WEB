@@ -71,7 +71,24 @@
     <div v-else-if="status === 'error'" class="dgw-center">
       <q-icon name="mdi-alert-circle-outline" size="46px" color="negative" />
       <p class="dgw-sub dgw-sub--err">{{ errorMsg }}</p>
-      <q-btn color="primary" unelevated no-caps label="Tentar novamente" @click="status = 'idle'" />
+      <q-btn
+        id="coach-alvo-bio-retry"
+        color="primary"
+        unelevated
+        no-caps
+        label="Tentar novamente"
+        @click="status = 'idle'"
+      />
+      <q-btn
+        id="coach-alvo-entrar-matricula"
+        class="full-width btn-primary-lg"
+        outline
+        no-caps
+        color="primary"
+        icon="mdi-badge-account-outline"
+        label="Entrar pela matrícula"
+        @click="emit('skip-enroll')"
+      />
       <q-btn flat no-caps color="grey-7" label="Cancelar" class="q-mt-xs" @click="emit('cancel')" />
     </div>
 
@@ -113,6 +130,8 @@ const emit = defineEmits<{
   cancel: [];
   "enroll-here": [];
   unsupported: [];
+  "skip-enroll": [];
+  "gate-status": [{ error: boolean }];
 }>();
 
 const supabase = getSupabase();
@@ -161,6 +180,10 @@ onMounted(async () => {
 
 watch(supported, (ok) => {
   if (!ok) emit("unsupported");
+});
+
+watch(status, (s) => {
+  emit("gate-status", { error: s === "error" });
 });
 
 // ── Execução ─────────────────────────────────────────────────────────────────

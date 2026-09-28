@@ -9,8 +9,10 @@ export interface Employee {
   meta: number
 }
 
-export const META_SEMANAL_TECNICO_SEGURANCA = 5
-export const META_SEMANAL_PADRAO = 2
+export const META_SEMANAL_ENCARREGADO = 2
+export const META_SEMANAL_LIDERANCA = 4
+export const META_SEMANAL_TECNICO_SEGURANCA = 8
+export const META_SEMANAL_PADRAO = META_SEMANAL_ENCARREGADO
 
 /** @deprecated Mantido para compatibilidade; use diasUteisNoMes() */
 export const SEMANAS_POR_MES = 4
@@ -65,7 +67,10 @@ export function diasUteisNoMes(ano: number, mes: number): number {
 export function isTecnicoSeguranca(
   employee: Pick<Employee, "gerencia" | "funcao">
 ): boolean {
-  const funcao = employee.funcao.toLowerCase()
+  const funcao = employee.funcao
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
   return (
     employee.gerencia === "SESMT" ||
     funcao.includes("hse") ||
@@ -74,12 +79,31 @@ export function isTecnicoSeguranca(
   )
 }
 
+export function isLiderancaOperacional(
+  employee: Pick<Employee, "gerencia" | "funcao">
+): boolean {
+  if (isTecnicoSeguranca(employee)) return false
+  const funcao = employee.funcao
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+  if (funcao.includes("encarregado")) return false
+  return (
+    funcao.includes("supervisor") ||
+    funcao.includes("coordenador") ||
+    funcao.includes("fiscal") ||
+    funcao.includes("gerente") ||
+    funcao.includes("lideranca") ||
+    /\blider\b/.test(funcao)
+  )
+}
+
 export function getMetaSemanal(
   employee: Pick<Employee, "gerencia" | "funcao">
 ): number {
-  return isTecnicoSeguranca(employee)
-    ? META_SEMANAL_TECNICO_SEGURANCA
-    : META_SEMANAL_PADRAO
+  if (isTecnicoSeguranca(employee)) return META_SEMANAL_TECNICO_SEGURANCA
+  if (isLiderancaOperacional(employee)) return META_SEMANAL_LIDERANCA
+  return META_SEMANAL_ENCARREGADO
 }
 
 export function getMetaMensal(
@@ -105,6 +129,7 @@ export const employees: Employee[] = [
   { matricula: "12570", nome: "Francisco F.", nomeCompleto: "Francisco Flavio Reis Gomes", gerencia: "GOMAN", base: "BCB", funcao: "Encarregado", meta: 2 },
   { matricula: "12576", nome: "Gleyson", nomeCompleto: "Gleyson de Sousa Silva", gerencia: "GSTC", base: "BCB", funcao: "Fiscal", meta: 2 },
   { matricula: "13947", nome: "Isaac", nomeCompleto: "Isaac da Cunha Alves Silva", gerencia: "GERE", base: "BCB", funcao: "Fiscal", meta: 2 },
+  { matricula: "12690", nome: "Italo B.", nomeCompleto: "Italo Bruno da Silva Fontes", gerencia: "GOMAN", base: "BCB", funcao: "Analista de Desempenho", meta: 2 },
   { matricula: "23972", nome: "J. Alef", nomeCompleto: "Joao Alef dos Santos Barbosa", gerencia: "GOMAN", base: "BCB", funcao: "Tec. De Planejamento De Produção", meta: 2 },
   { matricula: "12621", nome: "Jamerson", nomeCompleto: "Jamerson Ferreira de Miranda", gerencia: "GOMAN", base: "BCB", funcao: "Coordenador", meta: 2 },
   { matricula: "22025", nome: "Julio", nomeCompleto: "Julio Cesar de Souza Sangi", gerencia: "GERE", base: "BCB", funcao: "Coordenador", meta: 2 },
@@ -187,6 +212,7 @@ export const employees: Employee[] = [
   { matricula: "17463", nome: "Marcirio", nomeCompleto: "Marcirio Cesar Viana da Silva Neto", gerencia: "GOMAN", base: "PDT", funcao: "Encarregado", meta: 2 },
   { matricula: "12981", nome: "Marcus V.", nomeCompleto: "Marcus Vinicius Soares Lima", gerencia: "GOMAN", base: "PDT", funcao: "Encarregado", meta: 2 },
   { matricula: "12847", nome: "Paulo", nomeCompleto: "Paulo Silva Ferreira", gerencia: "GSTC", base: "PDT", funcao: "Fiscal", meta: 2 },
+  { matricula: "19571", nome: "Paulo P.", nomeCompleto: "Paulo Pantoja", gerencia: "GOMAN", base: "PDT", funcao: "Tec. De Planejamento De Produção", meta: 2 },
   { matricula: "24109", nome: "Rafael P.", nomeCompleto: "Rafael Pereira da Silva", gerencia: "GOMAN", base: "PDT", funcao: "Tec. De Planejamento De Produção", meta: 2 },
   { matricula: "19677", nome: "Rafaela", nomeCompleto: "Rafaela", gerencia: "GOMAN", base: "PDT", funcao: "Coordenador", meta: 2 },
   { matricula: "12719", nome: "Raimundo N.", nomeCompleto: "Raimundo Nonato Almeida do Nascimento", gerencia: "GOMAN", base: "PDT", funcao: "Supervisor", meta: 2 },
@@ -221,8 +247,22 @@ export const employees: Employee[] = [
 export const bases    = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"]
 export const gerencias = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "LOGISTICA", "OFICINA", "SESMT", "SPOT"]
 
+let liveEmployees: Employee[] | null = null
+
+export function setLiveEmployees(list: Employee[]) {
+  liveEmployees = list.length ? list : null
+}
+
+export function observerList(): Employee[] {
+  return liveEmployees ?? employees
+}
+
 export function findByMatricula(mat: string): Employee | undefined {
-  return employees.find(
-    e => e.matricula.toLowerCase() === mat.trim().toLowerCase()
-  )
+  const t = mat.trim()
+  const compact = t.replace(/^0+/, "") || t
+  return observerList().find((e) => {
+    const m = e.matricula.trim()
+    const mc = m.replace(/^0+/, "") || m
+    return m.toLowerCase() === t.toLowerCase() || mc === compact
+  })
 }

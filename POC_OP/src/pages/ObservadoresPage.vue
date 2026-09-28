@@ -237,7 +237,7 @@
             </div>
 
             <div class="col-6">
-              <q-card flat bordered class="chart-card q-mt-sm">
+              <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pa-xs">
                   <div class="chart-card-title">Equipes Visitadas</div>
                   <v-chart :option="chartEquipes" autoresize style="height:190px" />
@@ -246,7 +246,7 @@
             </div>
 
             <div class="col-6">
-              <q-card flat bordered class="chart-card q-mt-sm">
+              <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pa-xs">
                   <div class="chart-card-title">Inconformidades por Categoria</div>
                   <v-chart :option="chartIncCat" autoresize style="height:190px" />
@@ -269,6 +269,7 @@ import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, GaugeChart, PieChart } from "echarts/charts";
 import { GridComponent, TooltipComponent, LegendComponent } from "echarts/components";
 import VChart from "vue-echarts";
+import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 import { filterByGerencia } from "@/lib/dashboard";
 
@@ -410,23 +411,23 @@ const gaugeOpt = computed(() => ({
     type: "gauge" as const,
     startAngle: 210, endAngle: -30,
     min: 0, max: 100,
-    radius: "78%",
-    center: ["50%", "52%"],
+    radius: "100%",
+    center: ["50%", "50%"],
     pointer: { show: false },
     progress: {
-      show: true, width: 14, roundCap: false,
+      show: true, width: 12, roundCap: false,
       itemStyle: { color: G.green },
     },
-    axisLine: { lineStyle: { width: 14, color: [[1, "#dcfce7"]] } },
+    axisLine: { lineStyle: { width: 12, color: [[1, "#dcfce7"]] } },
     splitLine: { show: false }, axisTick: { show: false }, axisLabel: { show: false },
     title: { show: false },
     detail: {
       valueAnimation: true,
-      fontSize: 28,
+      fontSize: 26,
       fontWeight: "bold" as const,
       formatter: "{value}%",
       color: G.brand,
-      offsetCenter: [0, "72%"],
+      offsetCenter: [0, "8%"],
     },
     data: [{ value: pctObs100.value }],
   }],
@@ -439,7 +440,7 @@ const ttItem = {
   trigger: "item" as const,
   backgroundColor: "rgba(255,255,255,.97)",
   borderColor: "#e2e8f0", borderWidth: 1,
-  textStyle: { color: "#334155", fontSize: 11 },
+  textStyle: { color: chartInk.axis, fontSize: 11 },
   extraCssText: "box-shadow:0 4px 16px rgba(0,0,0,.1);border-radius:8px;padding:8px 12px;",
 };
 
@@ -516,12 +517,12 @@ const chartEquipes = computed(() => {
       formatter: (p: { name: string; value: number }) =>
         `<b>${p.name}</b><br/>Visitas: <b style="color:${G.green}">${p.value}</b>`,
     },
-    grid: { left: 6, right: 28, top: 4, bottom: 4, containLabel: true },
+    grid: { left: 6, right: 28, top: 4, bottom: 4 },
     xAxis: { type: "value" as const, show: false },
     yAxis: {
       type: "category" as const, inverse: true,
       axisLine: { show: false }, axisTick: { show: false },
-      axisLabel: { color: "#334155", fontSize: 9.5 },
+      axisLabel: { color: chartInk.axis, fontSize: 9.5 },
       data: top.map(([nome]) => nome.length > 14 ? nome.slice(0, 13) + "…" : nome),
     },
     series: [{
@@ -545,12 +546,12 @@ const chartIncCat = computed(() => {
       formatter: (p: { name: string; value: number }) =>
         `<b>${p.name}</b><br/>Inc: <b style="color:${G.brand}">${p.value}</b>`,
     },
-    grid: { left: 6, right: 28, top: 4, bottom: 4, containLabel: true },
+    grid: { left: 6, right: 28, top: 4, bottom: 4 },
     xAxis: { type: "value" as const, show: false },
     yAxis: {
       type: "category" as const, inverse: true,
       axisLine: { show: false }, axisTick: { show: false },
-      axisLabel: { color: "#334155", fontSize: 9.5 },
+      axisLabel: { color: chartInk.axis, fontSize: 9.5 },
       data: cats.map(c => c.categoria.length > 14 ? c.categoria.slice(0, 13) + "…" : c.categoria),
     },
     series: [{
@@ -675,9 +676,9 @@ $inactive-text:#475569;
 .kpi-gauge-wrap {
   flex: 1; display: flex; flex-direction: column; align-items: center; width: 100%;
 }
-.kpi-gauge-chart { width: 100%; height: 140px; }
+.kpi-gauge-chart { width: 100%; height: 148px; }
 .kpi-gauge-sub {
-  font-size: 11px; font-weight: 600; color: #64748b; margin-top: -4px;
+  font-size: 11px; font-weight: 600; color: #64748b; margin-top: 0;
 }
 
 // ── Table ─────────────────────────────────────────────────────────────────────

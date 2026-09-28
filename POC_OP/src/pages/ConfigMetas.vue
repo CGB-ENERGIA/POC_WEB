@@ -50,8 +50,8 @@
               <q-icon name="mdi-account-hard-hat" size="28px" />
             </div>
             <div>
-              <div class="cm-meta-card__head-title">Operacionais</div>
-              <div class="cm-meta-card__head-sub">Equipes e técnicos de campo</div>
+              <div class="cm-meta-card__head-title">Encarregados</div>
+              <div class="cm-meta-card__head-sub">2 observações por semana</div>
             </div>
           </div>
           <div class="cm-meta-card__body">
@@ -86,8 +86,8 @@
               <q-icon name="mdi-shield-account" size="28px" />
             </div>
             <div>
-              <div class="cm-meta-card__head-title">SESMT / Segurança</div>
-              <div class="cm-meta-card__head-sub">Pessoal de segurança do trabalho</div>
+              <div class="cm-meta-card__head-title">Técnico de Segurança</div>
+              <div class="cm-meta-card__head-sub">8 observações por semana</div>
             </div>
           </div>
           <div class="cm-meta-card__body">
@@ -111,6 +111,29 @@
             <div class="cm-derived">
               <q-icon name="mdi-calendar-month" size="15px" />
               Meta mensal: <strong>{{ segurancaInput * 4 }}</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lideranças -->
+        <div class="cm-meta-card cm-meta-card--op">
+          <div class="cm-meta-card__head">
+            <div class="cm-meta-card__head-icon">
+              <q-icon name="mdi-account-tie" size="28px" />
+            </div>
+            <div>
+              <div class="cm-meta-card__head-title">Lideranças operacionais</div>
+              <div class="cm-meta-card__head-sub">Supervisor, coordenador e fiscal</div>
+            </div>
+          </div>
+          <div class="cm-meta-card__body">
+            <div class="cm-derived" style="margin-top:0">
+              <q-icon name="mdi-calendar-week" size="15px" />
+              Meta semanal: <strong>4</strong>
+            </div>
+            <div class="cm-derived">
+              <q-icon name="mdi-calendar-month" size="15px" />
+              Meta mensal: <strong>16</strong>
             </div>
           </div>
         </div>
@@ -308,13 +331,14 @@ const selectedAno = ref(now.getFullYear());
 const selectedMes = ref(now.getMonth() + 1);
 
 const normaisInput   = ref(2);
-const segurancaInput = ref(5);
+const segurancaInput = ref(8);
 const saving = ref(false);
 
 interface EmpOption {
   matricula: string;
   nomeCompleto: string;
   gerencia: string;
+  funcao: string;
   label: string;
 }
 
@@ -343,7 +367,7 @@ const panelSaving   = ref(false);
 
 const panelDefaultMeta = computed(() =>
   selectedEmp.value
-    ? goalForGerencia(selectedEmp.value.gerencia, selectedAno.value, selectedMes.value).semanal
+    ? goalForGerencia(selectedEmp.value.gerencia, selectedAno.value, selectedMes.value, selectedEmp.value.funcao).semanal
     : 0
 );
 
@@ -353,7 +377,7 @@ const monthOverrides = computed(() => getOverridesForMonth(selectedAno.value, se
 async function loadEmployees() {
   const { data } = await supabase
     .from("employees")
-    .select("matricula, nome_completo, gerencia")
+    .select("matricula, nome_completo, gerencia, funcao")
     .eq("ativo", true)
     .order("nome_completo");
   if (data) {
@@ -361,6 +385,7 @@ async function loadEmployees() {
       matricula:    e.matricula,
       nomeCompleto: e.nome_completo,
       gerencia:     e.gerencia,
+      funcao:       e.funcao ?? "",
       label:        `${e.nome_completo} (${e.matricula})`,
     }));
     empOptions.value = [...allEmps.value];
@@ -382,7 +407,7 @@ function filterEmps(val: string, update: (fn: () => void) => void) {
 
 function openPanel(emp: EmpOption | null) {
   if (!emp) { panelVisible.value = false; weekRows.value = []; return; }
-  const defaultMeta = goalForGerencia(emp.gerencia, selectedAno.value, selectedMes.value).semanal;
+  const defaultMeta = goalForGerencia(emp.gerencia, selectedAno.value, selectedMes.value, emp.funcao).semanal;
   weekRows.value = semanaDefs.map(s => {
     const weekOv  = getOverride(emp.matricula, selectedAno.value, selectedMes.value, s.value);
     const monthOv = getOverride(emp.matricula, selectedAno.value, selectedMes.value, 0);
@@ -478,7 +503,7 @@ async function handleSave() {
 
 function handleReset() {
   normaisInput.value   = 2;
-  segurancaInput.value = 5;
+  segurancaInput.value = 8;
   $q.notify({ type: "info", message: "Valores restaurados para o padrão", caption: "Clique em Salvar para confirmar", position: "top-right", timeout: 2500 });
 }
 </script>
@@ -580,7 +605,7 @@ $border:  #e2e8f0;
 // ── Meta cards ─────────────────────────────────────────────────────────────────
 .cm-meta-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 16px;
   margin-bottom: 20px;
 

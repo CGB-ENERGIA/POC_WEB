@@ -1,400 +1,475 @@
 <template>
-  <q-dialog
-    v-model="aberto"
-    persistent
-    transition-show="fade"
-    transition-hide="fade"
-  >
-    <div class="pa-guide">
-      <div class="pa-guide__top">
-        <BrandLogo :size="36" show-text :title="BRAND.product" subtitle="" />
-        <button type="button" class="pa-guide__skip" @click="concluir">
-          Pular
-        </button>
-      </div>
+  <teleport to="body">
+    <div
+      v-if="aberto"
+      class="pa-coach"
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby="pa-coach-title"
+    >
+      <div
+        v-if="spot.w > 0"
+        class="pa-coach__spot"
+        :style="spotStyle"
+        aria-hidden="true"
+      />
+      <div class="pa-coach__block pa-coach__block--t" :style="blockTop" />
+      <div class="pa-coach__block pa-coach__block--l" :style="blockLeft" />
+      <div class="pa-coach__block pa-coach__block--r" :style="blockRight" />
+      <div class="pa-coach__block pa-coach__block--b" :style="blockBottom" />
 
-      <div class="pa-guide__dots" aria-label="Progresso do tutorial">
-        <span
-          v-for="(s, i) in passos"
-          :key="s.id"
-          class="pa-guide__dot"
-          :class="{ 'pa-guide__dot--on': i === passo, 'pa-guide__dot--done': i < passo }"
-        />
-      </div>
+      <div ref="cardEl" class="pa-coach__card" :style="cardStyle">
+        <div class="pa-coach__top">
+          <span class="pa-coach__step">{{ passoAtual }} de {{ totalPassos }}</span>
+          <button type="button" class="pa-coach__skip" @click="pular">
+            Pular
+          </button>
+        </div>
 
-      <div class="pa-guide__icon" aria-hidden="true">
-        <q-icon :name="atual.icon" size="32px" />
-      </div>
+        <div class="pa-coach__dots" aria-hidden="true">
+          <span
+            v-for="i in totalPassos"
+            :key="i"
+            class="pa-coach__dot"
+            :class="{
+              'pa-coach__dot--on': i === passoAtual,
+              'pa-coach__dot--done': i < passoAtual,
+            }"
+          />
+        </div>
 
-      <h2 class="pa-guide__title">{{ atual.title }}</h2>
-      <p class="pa-guide__lead">{{ atual.lead }}</p>
+        <div class="pa-coach__row">
+          <div class="pa-coach__icon" aria-hidden="true">
+            <q-icon :name="atual.icon" size="22px" />
+          </div>
+          <div>
+            <h2 id="pa-coach-title" class="pa-coach__title">{{ atual.title }}</h2>
+            <p class="pa-coach__lead">{{ atual.lead }}</p>
+          </div>
+        </div>
 
-      <ul v-if="atual.id !== 'instalar'" class="pa-guide__list">
-        <li v-for="item in atual.items" :key="item">
-          <q-icon name="mdi-check-circle" size="18px" />
-          <span>{{ item }}</span>
-        </li>
-      </ul>
-
-      <div v-else class="pa-install">
-        <ol v-if="ios" class="pwa-steps">
-          <li>
-            <span class="pwa-steps__n">1</span>
-            <span>Toque em <b>Compartilhar</b> na barra do Safari.</span>
-          </li>
-          <li>
-            <span class="pwa-steps__n">2</span>
-            <span>Escolha <b>Adicionar à Tela de Início</b>.</span>
-          </li>
-          <li>
-            <span class="pwa-steps__n">3</span>
-            <span>Confirme em <b>Adicionar</b>.</span>
-          </li>
-        </ol>
-        <ol v-else-if="!podeInstalarNativo" class="pwa-steps">
-          <li>
-            <span class="pwa-steps__n">1</span>
-            <span>Abra o menu do navegador.</span>
-          </li>
-          <li>
-            <span class="pwa-steps__n">2</span>
-            <span>Toque em <b>Instalar app</b>.</span>
-          </li>
-        </ol>
         <q-btn
-          v-if="podeInstalarNativo"
-          class="full-width btn-primary-lg q-mb-sm"
+          v-if="fase === 'falha'"
+          class="full-width q-mt-md btn-primary-lg"
           color="primary"
           unelevated
           no-caps
-          size="lg"
-          icon="mdi-download"
-          label="Instalar agora"
-          :loading="instalando"
-          @click="instalarNativo"
-        />
-      </div>
-
-      <div class="pa-guide__actions">
-        <q-btn
-          v-if="passo > 0"
-          flat
-          no-caps
-          color="grey-7"
-          label="Voltar"
-          class="col"
-          @click="passo -= 1"
-        />
-        <q-btn
-          class="col btn-primary-lg"
-          color="primary"
-          unelevated
-          no-caps
-          size="lg"
-          :label="ultimo ? 'Começar a registrar' : 'Próximo'"
-          :icon-right="ultimo ? 'mdi-badge-account-outline' : 'mdi-arrow-right'"
-          @click="avancar"
+          icon="mdi-badge-account-outline"
+          label="Entrar pela matrícula"
+          @click="entrarSemBiometria"
         />
       </div>
     </div>
-  </q-dialog>
+  </teleport>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import { useSessionStore } from "@/stores/session";
-import BrandLogo from "@/components/BrandLogo.vue";
-import { BRAND } from "@/constants/brand";
-import { concluirPrimeiroAcesso, primeiroAcessoPendente } from "@/utils/primeiro-acesso";
 import {
-  clearDeferredInstallPrompt,
-  deferredInstallPrompt,
-  dismissInstallPrompt,
-  isIosDevice,
-  shouldOfferPwaInstall,
-} from "@/utils/pwa-install";
+  concluirPrimeiroAcesso,
+  identCoach,
+  primeiroAcessoPendente,
+} from "@/utils/primeiro-acesso";
 
+type Fase = "matricula" | "lista" | "continuar" | "cadastro" | "falha";
+
+const route = useRoute();
 const session = useSessionStore();
 const aberto = ref(false);
-const passo = ref(0);
-const instalando = ref(false);
-const ios = computed(() => isIosDevice());
-const podeInstalarNativo = computed(() => !!deferredInstallPrompt.value && !ios.value);
+const cardEl = ref<HTMLElement | null>(null);
 
-const passosBase = [
-  {
-    id: "boas-vindas",
-    icon: "mdi-shield-check-outline",
-    title: "Bem-vindo ao POC",
-    lead: "Este é o app de observação de segurança da CGB. Não precisa criar conta nova.",
-    items: [
-      "Funciona no celular e no tablet, inclusive sem internet.",
-      "Cada checklist finalizado conta na sua meta da semana.",
-    ],
-  },
-  {
-    id: "matricula",
-    icon: "mdi-badge-account-outline",
-    title: "Entre com a matrícula",
-    lead: "O cadastro já existe no sistema. Você só confirma quem é.",
-    items: [
-      "Digite ou busque sua matrícula CGB.",
-      "Confira se o nome, a função e a base estão certos.",
-      "Toque em Continuar.",
-    ],
-  },
-  {
-    id: "aparelho",
-    icon: "mdi-fingerprint",
-    title: "Cadastre neste aparelho",
-    lead: "Na primeira vez, vale deixar Face ID ou digital para o próximo acesso ser mais rápido.",
-    items: [
-      "Se o aparelho tiver sensor, o POC pede para cadastrar digital ou face.",
-      "Tablets sem sensor entram só pela matrícula.",
-      "Isso fica neste aparelho — em outro, é só repetir.",
-    ],
-  },
-  {
-    id: "usar",
-    icon: "mdi-clipboard-check-outline",
-    title: "Depois de entrar",
-    lead: "O registro da observação segue estes passos no campo.",
-    items: [
-      "Escolha o checklist (GOMAN, GSTC, Administrativo…).",
-      "Responda todos os grupos: Conforme ou Não conforme.",
-      "Tire as fotos obrigatórias e toque em Finalizar.",
-    ],
-  },
-];
+const spot = reactive({ x: 0, y: 0, w: 0, h: 0 });
+const card = reactive({ top: 16, left: 12, width: 320, maxH: 280 });
 
-const passoInstalar = {
-  id: "instalar",
-  icon: "mdi-cellphone-arrow-down",
-  title: "Instalar no aparelho",
-  lead: "Coloque o POC na tela inicial para abrir como aplicativo e funcionar sem internet no campo.",
-  items: [] as string[],
-};
+const totalPassos = 4;
 
-const passos = computed(() =>
-  shouldOfferPwaInstall() ? [...passosBase, passoInstalar] : passosBase
-);
+const fase = computed<Fase>(() => {
+  if (identCoach.erroBio) return "falha";
+  if (identCoach.tela !== "ident") return "cadastro";
+  if (identCoach.temColaborador) return "continuar";
+  if (identCoach.digitando || identCoach.busca.length > 0 || identCoach.menuAberto) return "lista";
+  return "matricula";
+});
 
-const atual = computed(() => passos.value[passo.value] ?? passosBase[0]);
-const ultimo = computed(() => passo.value >= passos.value.length - 1);
+const passoAtual = computed(() => {
+  if (fase.value === "matricula") return 1;
+  if (fase.value === "lista") return 2;
+  if (fase.value === "continuar") return 3;
+  return 4;
+});
 
-onMounted(() => {
+const atual = computed(() => {
+  switch (fase.value) {
+    case "matricula":
+      return {
+        icon: "mdi-gesture-tap",
+        title: "Toque no campo e informe a matrícula",
+        lead: "Não precisa criar conta. Digite o número ou o nome até aparecer na lista.",
+      };
+    case "lista":
+      return {
+        icon: "mdi-account-search-outline",
+        title: "Escolha o seu nome na lista",
+        lead: "Toque na linha com a sua matrícula para preencher o campo.",
+      };
+    case "continuar":
+      return {
+        icon: "mdi-arrow-right-bold-circle-outline",
+        title: "Confira e toque em Continuar",
+        lead: "Se o nome, a função e a base estão certos, siga para cadastrar neste aparelho.",
+      };
+    case "falha":
+      return {
+        icon: "mdi-badge-account-outline",
+        title: "Entre pela matrícula",
+        lead: identCoach.temCamera
+          ? "A digital não foi. Toque em Entrar pela matrícula para seguir agora, ou cadastre o Face ID pela câmera. A digital pode ficar para depois."
+          : "A digital não foi. Toque em Entrar pela matrícula para completar o cadastro neste aparelho. Depois você tenta a digital de novo.",
+      };
+    default:
+      return {
+        icon: "mdi-fingerprint",
+        title: "Cadastre neste aparelho",
+        lead: "Siga a tela: digital, Face ID ou entrar só pela matrícula. Isso completa o cadastro neste celular.",
+      };
+  }
+});
+
+const alvoId = computed(() => {
+  if (fase.value === "falha") return "coach-alvo-entrar-matricula";
+  if (fase.value === "cadastro") return "coach-alvo-ident-card";
+  if (fase.value === "continuar") return "coach-alvo-continuar";
+  return "coach-alvo-matricula";
+});
+
+const pad = computed(() => (fase.value === "cadastro" ? 6 : 8));
+
+const spotStyle = computed(() => ({
+  left: `${spot.x}px`,
+  top: `${spot.y}px`,
+  width: `${spot.w}px`,
+  height: `${spot.h}px`,
+}));
+
+const blockTop = computed(() => ({
+  top: "0px",
+  left: "0px",
+  width: "100%",
+  height: `${Math.max(0, spot.y)}px`,
+}));
+const blockLeft = computed(() => ({
+  top: `${spot.y}px`,
+  left: "0px",
+  width: `${Math.max(0, spot.x)}px`,
+  height: `${spot.h}px`,
+}));
+const blockRight = computed(() => ({
+  top: `${spot.y}px`,
+  left: `${spot.x + spot.w}px`,
+  width: `calc(100% - ${spot.x + spot.w}px)`,
+  height: `${spot.h}px`,
+}));
+const blockBottom = computed(() => ({
+  top: `${spot.y + spot.h}px`,
+  left: "0px",
+  width: "100%",
+  height: `calc(100% - ${spot.y + spot.h}px)`,
+}));
+
+const cardStyle = computed(() => ({
+  left: `${card.left}px`,
+  top: `${card.top}px`,
+  width: `${card.width}px`,
+  maxHeight: `${card.maxH}px`,
+}));
+
+function viewport() {
+  const vv = window.visualViewport;
+  return {
+    x: vv?.offsetLeft ?? 0,
+    y: vv?.offsetTop ?? 0,
+    w: vv?.width ?? window.innerWidth,
+    h: vv?.height ?? window.innerHeight,
+  };
+}
+
+function medir() {
+  const vp = viewport();
+  const gap = 10;
+  const margin = 12;
+  const maxW = Math.min(380, vp.w - margin * 2);
+  card.width = Math.max(240, maxW);
+  card.maxH = Math.max(160, vp.h - margin * 2);
+  card.left = vp.x + (vp.w - card.width) / 2;
+
+  const el = document.getElementById(alvoId.value);
+  if (!el) {
+    spot.w = 0;
+    card.top = vp.y + margin;
+    encaixarNoViewport();
+    return;
+  }
+
+  const r = el.getBoundingClientRect();
+  const p = pad.value;
+  spot.x = Math.max(vp.x + 8, r.left - p);
+  spot.y = Math.max(vp.y + 8, r.top - p);
+  spot.w = Math.min(vp.x + vp.w - 16 - (spot.x - vp.x), r.width + p * 2);
+  spot.h = Math.min(vp.y + vp.h - 16 - (spot.y - vp.y), r.height + p * 2);
+
+  const cardH = Math.min(cardEl.value?.offsetHeight || (fase.value === "falha" ? 240 : 160), card.maxH);
+  const abaixo = spot.y + spot.h + gap;
+  const acima = spot.y - gap - cardH;
+  const minTop = vp.y + margin;
+  const maxTop = vp.y + vp.h - margin - cardH;
+
+  if (fase.value === "lista" || identCoach.menuAberto) {
+    card.top = minTop;
+  } else if (abaixo + cardH <= vp.y + vp.h - margin) {
+    card.top = abaixo;
+  } else if (acima >= minTop) {
+    card.top = acima;
+  } else {
+    card.top = maxTop;
+  }
+
+  if (spot.w > 0) {
+    card.left = Math.min(
+      Math.max(spot.x, vp.x + margin),
+      vp.x + vp.w - card.width - margin,
+    );
+  }
+  encaixarNoViewport();
+}
+
+function encaixarNoViewport() {
+  const vp = viewport();
+  const margin = 12;
+  const h = Math.min(cardEl.value?.offsetHeight || 160, card.maxH);
+  const minTop = vp.y + margin;
+  const maxTop = vp.y + vp.h - margin - h;
+  card.top = Math.min(Math.max(card.top, minTop), Math.max(minTop, maxTop));
+  card.left = Math.min(
+    Math.max(card.left, vp.x + margin),
+    vp.x + vp.w - card.width - margin,
+  );
+}
+
+function tentarAbrir() {
   if (!primeiroAcessoPendente.value) return;
   if (session.isAuthenticated) {
     concluirPrimeiroAcesso();
+    aberto.value = false;
     return;
   }
+  if (route?.name !== "identificacao") return;
   aberto.value = true;
-});
-
-async function instalarNativo() {
-  const evt = deferredInstallPrompt.value;
-  if (!evt) return;
-  instalando.value = true;
-  try {
-    await evt.prompt();
-    await evt.userChoice;
-    clearDeferredInstallPrompt();
-    dismissInstallPrompt();
-  } catch {
-    /* usuário cancelou o prompt nativo */
-  } finally {
-    instalando.value = false;
-  }
+  void nextTick(medir);
 }
 
-function avancar() {
-  if (ultimo.value) {
-    concluir();
-    return;
-  }
-  passo.value += 1;
-}
-
-function concluir() {
-  if (atual.value.id === "instalar") dismissInstallPrompt();
+function pular() {
   concluirPrimeiroAcesso();
   aberto.value = false;
 }
+
+function entrarSemBiometria() {
+  identCoach.pularBiometria?.();
+}
+
+watch(() => session.isAuthenticated, (ok) => {
+  if (!ok) return;
+  concluirPrimeiroAcesso();
+  aberto.value = false;
+});
+
+watch(() => route?.name, tentarAbrir);
+watch(fase, () => void nextTick(() => { medir(); void nextTick(medir); }));
+watch(identCoach, () => void nextTick(() => { medir(); void nextTick(medir); }), { deep: true });
+
+onMounted(() => {
+  tentarAbrir();
+  window.addEventListener("resize", medir);
+  window.addEventListener("scroll", medir, true);
+  window.visualViewport?.addEventListener("resize", medir);
+  window.visualViewport?.addEventListener("scroll", medir);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", medir);
+  window.removeEventListener("scroll", medir, true);
+  window.visualViewport?.removeEventListener("resize", medir);
+  window.visualViewport?.removeEventListener("scroll", medir);
+});
 </script>
 
 <style scoped>
-.pa-guide {
-  width: min(420px, 100%);
-  margin: 12px;
-  background: #fff;
-  border-radius: 24px;
-  padding: 18px 20px 20px;
-  box-shadow: 0 18px 48px rgba(61, 9, 18, 0.28);
-  color: #0f172a;
+.pa-coach {
+  pointer-events: none;
 }
 
-.pa-guide__top {
+.pa-coach__block {
+  position: fixed;
+  z-index: 4499;
+  pointer-events: auto;
+}
+
+.pa-coach__spot {
+  position: fixed;
+  z-index: 4500;
+  border-radius: 14px;
+  box-shadow: 0 0 0 9999px rgba(28, 8, 12, 0.58);
+  outline: 2px solid #c41e3a;
+  outline-offset: 0;
+  pointer-events: none;
+  animation: pa-spot-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pa-coach__card {
+  position: fixed;
+  z-index: 4501;
+  pointer-events: auto;
+  box-sizing: border-box;
+  background: #fffaf8;
+  color: #1c0a0e;
+  border-radius: 18px;
+  padding: 14px 16px 16px;
+  box-shadow: 0 12px 32px rgba(28, 8, 12, 0.28);
+  border: 1px solid rgba(196, 30, 58, 0.16);
+  max-width: calc(100vw - 24px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pa-coach__top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 
-.pa-guide__skip {
+.pa-coach__step {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #7a1225;
+}
+
+.pa-coach__skip {
   border: 0;
   background: transparent;
-  color: #64748b;
+  color: #6b3d46;
   font-size: 14px;
   font-weight: 600;
   min-height: 44px;
+  min-width: 44px;
   padding: 0 4px;
 }
 
-.pa-guide__dots {
+.pa-coach__dots {
   display: flex;
   gap: 6px;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 
-.pa-guide__dot {
-  height: 6px;
+.pa-coach__dot {
+  height: 5px;
   flex: 1;
   border-radius: 99px;
-  background: #e8dfe1;
+  background: #ead6da;
 }
 
-.pa-guide__dot--on {
+.pa-coach__dot--on {
   background: #7a1225;
 }
 
-.pa-guide__dot--done {
+.pa-coach__dot--done {
   background: #c4a4ab;
 }
 
-.pa-guide__icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #8b1b30, #5c0e1c);
-  color: #fff;
-  margin-bottom: 14px;
-}
-
-.pa-guide__title {
-  margin: 0 0 8px;
-  font-size: 1.35rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: #3d0912;
-  line-height: 1.2;
-}
-
-.pa-guide__lead {
-  margin: 0 0 14px;
-  font-size: 15px;
-  line-height: 1.45;
-  color: #4a3b40;
-}
-
-.pa-guide__list {
-  list-style: none;
-  margin: 0 0 18px;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.pa-guide__list li {
+.pa-coach__row {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  font-size: 14.5px;
-  line-height: 1.4;
-  color: #1e293b;
-}
-
-.pa-guide__list .q-icon {
-  color: #7a1225;
-  margin-top: 2px;
-  flex-shrink: 0;
-}
-
-.pwa-steps {
-  list-style: none;
-  margin: 4px 0 12px;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
   gap: 12px;
 }
 
-.pwa-steps li {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  font-size: 15px;
-  line-height: 1.4;
-  color: #1e293b;
-}
-
-.pwa-steps__n {
+.pa-coach__icon {
   flex-shrink: 0;
-  width: 26px;
-  height: 26px;
-  border-radius: 99px;
-  background: #f3e6e9;
-  color: #7a1225;
-  font-size: 12px;
-  font-weight: 800;
-  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 1px;
-}
-
-.pa-guide__actions {
-  display: flex;
-  gap: 8px;
-  align-items: stretch;
-}
-
-:global(body.body--dark) .pa-guide {
-  background: #1c1214;
-  color: #f8eef0;
-}
-
-:global(body.body--dark) .pa-guide__title {
+  background: #7a1225;
   color: #fff;
 }
 
-:global(body.body--dark) .pa-guide__lead,
-:global(body.body--dark) .pa-guide__list li {
+.pa-coach__title {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: #3d0912;
+}
+
+.pa-coach__lead {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.4;
+  color: #4a3036;
+}
+
+.pa-coach__row > div:last-child {
+  min-width: 0;
+  flex: 1;
+}
+
+@keyframes pa-spot-in {
+  from {
+    opacity: 0;
+    box-shadow: 0 0 0 0 rgba(28, 8, 12, 0);
+  }
+  to {
+    opacity: 1;
+    box-shadow: 0 0 0 9999px rgba(28, 8, 12, 0.58);
+  }
+}
+
+:global(body.body--dark) .pa-coach__card {
+  background: #1c1214;
+  color: #f8eef0;
+  border-color: rgba(225, 29, 72, 0.28);
+}
+
+:global(body.body--dark) .pa-coach__title {
+  color: #fff;
+}
+
+:global(body.body--dark) .pa-coach__lead,
+:global(body.body--dark) .pa-coach__skip {
   color: #e8d4d8;
 }
 
-:global(body.body--dark) .pa-guide__skip {
-  color: #c4b5b8;
+:global(body.body--dark) .pa-coach__step {
+  color: #fecdd3;
 }
 
-:global(body.body--dark) .pa-guide__dot {
+:global(body.body--dark) .pa-coach__dot {
   background: #3f2a2e;
 }
 
-:global(body.body--dark) .pa-guide__dot--on {
+:global(body.body--dark) .pa-coach__dot--on {
   background: #e11d48;
 }
 
-:global(body.body--dark) .pwa-steps li {
-  color: #e8d4d8;
-}
-
-:global(body.body--dark) .pwa-steps__n {
-  background: rgba(196, 33, 58, 0.22);
-  color: #fecdd3;
+:global(body.body--dark) .pa-coach__spot {
+  box-shadow: 0 0 0 9999px rgba(8, 4, 6, 0.72);
+  outline-color: #fb7185;
 }
 </style>

@@ -146,7 +146,7 @@
       <!-- Top row: APR · Regras de Ouro · Procedimento -->
       <div class="row q-col-gutter-md q-mb-md">
         <div v-for="cat in topCharts" :key="cat.id" class="col-12 col-md-4">
-          <q-card flat bordered class="cat-card">
+          <q-card flat bordered class="cat-card chart-card">
             <q-card-section class="q-pa-sm">
               <div class="cat-title">{{ cat.title }}</div>
               <v-chart :option="cat.option" autoresize style="height:230px" />
@@ -158,7 +158,7 @@
       <!-- Bottom row: 4 categories -->
       <div class="row q-col-gutter-md">
         <div v-for="cat in bottomCharts" :key="cat.id" class="col-12 col-md-3">
-          <q-card flat bordered class="cat-card">
+          <q-card flat bordered class="cat-card chart-card">
             <q-card-section class="q-pa-sm">
               <div class="cat-title">{{ cat.title }}</div>
               <v-chart :option="cat.option" autoresize style="height:230px" />
@@ -182,6 +182,7 @@ import {
   LegendComponent,
 } from "echarts/components";
 import VChart from "vue-echarts";
+import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData } from "@/composables/useChecklistData";
 import { filterByGerencia } from "@/lib/dashboard";
 
@@ -307,7 +308,7 @@ function makeCatChart(data: { conf: number[]; inc: number[] }) {
       backgroundColor: "rgba(255,255,255,.97)",
       borderColor: "#e2e8f0",
       borderWidth: 1,
-      textStyle: { color: "#334155", fontSize: 11 },
+      textStyle: { color: chartInk.axis, fontSize: 11 },
       extraCssText:
         "box-shadow:0 4px 16px rgba(0,0,0,.1);border-radius:8px;padding:8px 12px;",
       formatter: (params: { dataIndex: number }[]) => {
@@ -318,13 +319,13 @@ function makeCatChart(data: { conf: number[]; inc: number[] }) {
         );
       },
     },
-    grid: { left: 4, right: 4, top: 28, bottom: 4, containLabel: true },
+    grid: { left: 4, right: 4, top: 28, bottom: 4 },
     xAxis: {
       type: "category" as const,
       data: months,
       axisLine: { lineStyle: { color: "#e2e8f0" } },
       axisTick: { show: false },
-      axisLabel: { color: "#64748b", fontSize: 10 },
+      axisLabel: { color: chartInk.muted, fontSize: 10 },
     },
     yAxis: {
       type: "value" as const,
@@ -340,7 +341,7 @@ function makeCatChart(data: { conf: number[]; inc: number[] }) {
       label: {
         show: true,
         position: "top" as const,
-        color: "#334155",
+        color: chartInk.axis,
         fontSize: 11,
         fontWeight: "bold" as const,
         backgroundColor: "#f1f5f9",
@@ -385,24 +386,23 @@ const gaugeOpt = computed(() => ({
     type: "gauge" as const,
     startAngle: 210, endAngle: -30,
     min: 0, max: 100,
-    radius: "78%",
-    center: ["50%", "52%"],
+    radius: "100%",
+    center: ["50%", "50%"],
     pointer: { show: false },
     progress: {
-      show: true, width: 14, roundCap: false,
+      show: true, width: 12, roundCap: false,
       itemStyle: { color: G.green },
     },
-    axisLine: { lineStyle: { width: 14, color: [[1, "#dcfce7"]] } },
+    axisLine: { lineStyle: { width: 12, color: [[1, "#dcfce7"]] } },
     splitLine: { show: false }, axisTick: { show: false }, axisLabel: { show: false },
     title: { show: false },
     detail: {
       valueAnimation: true,
-      fontSize: 28,
+      fontSize: 26,
       fontWeight: "bold" as const,
       formatter: "{value}%",
       color: G.brand,
-      // text fica no gap (abertura do "U"), abaixo dos endpoints do arco
-      offsetCenter: [0, "72%"],
+      offsetCenter: [0, "8%"],
     },
     data: [{ value: pctGlobal.value }],
   }],
@@ -523,8 +523,8 @@ $inactive-text:#475569;
 .kpi-gauge-wrap {
   flex: 1; display: flex; flex-direction: column; align-items: center; width: 100%;
 }
-.kpi-gauge-chart { width: 100%; height: 140px; }
-.kpi-gauge-sub { font-size: 11px; font-weight: 600; color: #64748b; margin-top: -4px; letter-spacing: .01em; }
+.kpi-gauge-chart { width: 100%; height: 148px; }
+.kpi-gauge-sub { font-size: 11px; font-weight: 600; color: #64748b; margin-top: 0; letter-spacing: .01em; }
 
 // â"€â"€ Section title â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 .operacional-title {

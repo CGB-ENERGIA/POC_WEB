@@ -25,7 +25,44 @@ type GoalStore     = Record<string, MonthGoal>;          // "YYYY-MM"
 type OverrideStore = Record<string, IndividualOverride>; // "YYYY-MM-matricula"
 
 // ─── Defaults ────────────────────────────────────────────────────────────────
-const DEFAULTS: MonthGoal = { normais_semanal: 2, seguranca_semanal: 5 };
+const DEFAULTS: MonthGoal = { normais_semanal: 2, seguranca_semanal: 8 };
+
+/** Liderança operacional (supervisor, coordenador, fiscal…) — banda fixa do POC. */
+export const META_LIDERANCA_SEMANAL = 4;
+
+export type MetaRole = "encarregado" | "lideranca" | "tecnico";
+
+function foldRole(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+export function metaRoleFrom(gerencia?: string, funcao?: string): MetaRole {
+  const g = (gerencia ?? "").toUpperCase();
+  const f = foldRole(funcao ?? "");
+  if (
+    g === "SESMT" ||
+    f.includes("sesmt") ||
+    f.includes("hse") ||
+    f.includes("seguranca")
+  ) {
+    return "tecnico";
+  }
+  if (f.includes("encarregado")) return "encarregado";
+  if (
+    f.includes("supervisor") ||
+    f.includes("coordenador") ||
+    f.includes("fiscal") ||
+    f.includes("gerente") ||
+    f.includes("lideranca") ||
+    /\blider\b/.test(f)
+  ) {
+    return "lideranca";
+  }
+  return "encarregado";
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function monthKey(ano: number, mes: number): string {
@@ -116,13 +153,19 @@ export function useGoals() {
   }
 
   // Meta por perfil (sem override individual)
-  function goalForGerencia(gerencia: string | undefined, ano: number, mes: number): { semanal: number; mensal: number } {
+  function goalForGerencia(
+    gerencia: string | undefined,
+    ano: number,
+    mes: number,
+    funcao?: string,
+  ): { semanal: number; mensal: number } {
     const g = getMonthGoal(ano, mes);
-    const isSesmt = gerencia === "SESMT";
-    return {
-      semanal: isSesmt ? g.seguranca_semanal : g.normais_semanal,
-      mensal:  isSesmt ? g.seguranca_semanal * 4 : g.normais_semanal * 4,
-    };
+    const role = metaRoleFrom(gerencia, funcao);
+    const semanal =
+      role === "tecnico" ? g.seguranca_semanal
+      : role === "lideranca" ? META_LIDERANCA_SEMANAL
+      : g.normais_semanal;
+    return { semanal, mensal: semanal * 4 };
   }
 
   // Meta com override individual — use este nas páginas de acompanhamento
@@ -131,7 +174,8 @@ export function useGoals() {
     gerencia: string | undefined,
     ano: number,
     mes: number,
-    semana?: number
+    semana?: number,
+    funcao?: string,
   ): { semanal: number; mensal: number; isOverride: boolean } {
     if (matricula) {
       // Override de semana específica tem prioridade
@@ -147,7 +191,7 @@ export function useGoals() {
         return { semanal: monthOv.meta_semanal, mensal: monthOv.meta_semanal * 4, isOverride: true };
       }
     }
-    return { ...goalForGerencia(gerencia, ano, mes), isOverride: false };
+    return { ...goalForGerencia(gerencia, ano, mes, funcao), isOverride: false };
   }
 
   function hasGoalDefined(ano: number, mes: number): boolean {

@@ -174,24 +174,24 @@
       </div>
 
       <!-- CHARTS GRID (4 cols) -->
-      <div class="row q-col-gutter-md items-start">
+      <div class="row q-col-gutter-md items-stretch rel-grid">
 
         <!-- Col 1: Equipes Visitadas -->
-        <div class="col-12 col-md-3">
-          <q-card flat bordered>
+        <div class="col-12 col-md-3 rel-col">
+          <q-card flat bordered class="chart-card chart-card--vertical">
             <q-card-section class="q-pb-xs">
               <div class="text-subtitle1 text-weight-bold">Equipes Visitadas</div>
               <div class="text-h5 text-weight-bold" style="color:#16a34a">{{ visitadasSorted.length }}</div>
             </q-card-section>
-            <q-card-section class="q-pt-none">
-              <v-chart :option="chartVisitadas" autoresize style="height:440px" />
+            <q-card-section class="q-pt-none rel-fill">
+              <v-chart :option="chartVisitadas" autoresize class="rel-chart" />
             </q-card-section>
           </q-card>
         </div>
 
         <!-- Col 2: Equipes Não Visitadas -->
-        <div class="col-12 col-md-2">
-          <q-card flat bordered>
+        <div class="col-12 col-md-2 rel-col">
+          <q-card flat bordered class="chart-card chart-card--vertical">
             <q-card-section class="q-pb-xs">
               <div class="text-subtitle1 text-weight-bold">Equipes Não Visitadas</div>
               <div class="text-h5 text-weight-bold" style="color:#dc2626">{{ naoVisitadas.length }}</div>
@@ -206,35 +206,35 @@
         </div>
 
         <!-- Col 3: Ranking NC Equipes + NC por Categoria -->
-        <div class="col-12 col-md-3">
-          <q-card flat bordered class="q-mb-md">
+        <div class="col-12 col-md-3 rel-col rel-stack">
+          <q-card flat bordered class="chart-card">
             <q-card-section class="q-pb-xs">
               <div class="text-subtitle1 text-weight-bold">Ranking de Equipes com Não Conformidades</div>
             </q-card-section>
-            <q-card-section class="q-pt-none">
-              <v-chart :option="chartRankingNcEq" autoresize style="height:220px" />
+            <q-card-section class="q-pt-none rel-fill">
+              <v-chart :option="chartRankingNcEq" autoresize class="rel-chart" />
             </q-card-section>
           </q-card>
-          <q-card flat bordered>
+          <q-card flat bordered class="chart-card">
             <q-card-section class="q-pb-xs">
               <div class="text-subtitle1 text-weight-bold">Não Conformidades por Categoria</div>
             </q-card-section>
-            <q-card-section class="q-pt-none">
-              <v-chart :option="chartNcCat" autoresize style="height:196px" />
+            <q-card-section class="q-pt-none rel-fill">
+              <v-chart :option="chartNcCat" autoresize class="rel-chart" />
             </q-card-section>
           </q-card>
         </div>
 
         <!-- Col 4: Matriz ICIT por Equipe -->
-        <div class="col-12 col-md-4">
-          <q-card flat bordered>
+        <div class="col-12 col-md-4 rel-col">
+          <q-card flat bordered class="chart-card chart-card--vertical">
             <q-card-section class="q-pb-xs">
               <div class="text-subtitle1 text-weight-bold">Matriz ICIT por Equipe</div>
               <div class="text-caption text-grey-6">
                 % de checklists sem NC, por prefixo · mês anterior, atual e acumulado
               </div>
             </q-card-section>
-            <q-card-section class="q-pt-none">
+            <q-card-section class="q-pt-none rel-fill">
               <q-table
                 :rows="icitTableRows"
                 :columns="icitColumns"
@@ -244,7 +244,6 @@
                 :rows-per-page-options="[0]"
                 hide-pagination
                 class="icit-table"
-                style="height: 460px"
                 virtual-scroll
               >
                 <template #body-cell-icitAnterior="props">
@@ -290,6 +289,7 @@ import {
   DataZoomComponent,
 } from "echarts/components";
 import VChart from "vue-echarts";
+import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtPct } from "@/composables/useChecklistData";
 import { filterByGerencia, fetchIcitPorPrefixo, type IcitPrefixo } from "@/lib/dashboard";
 
@@ -527,7 +527,7 @@ const ttItem = {
   trigger: "item" as const,
   backgroundColor: "rgba(255,255,255,.97)",
   borderColor: "#e2e8f0", borderWidth: 1,
-  textStyle: { color: "#334155", fontSize: 12 },
+  textStyle: { color: chartInk.axis, fontSize: 12 },
   extraCssText: "box-shadow:0 8px 24px rgba(0,0,0,.12);border-radius:10px;padding:10px 14px;",
 };
 
@@ -537,25 +537,25 @@ const gaugeOpt = computed(() => ({
     type: "gauge" as const,
     startAngle: 210, endAngle: -30,
     min: 0, max: 100,
-    radius: "88%",
-    center: ["50%", "65%"],
+    radius: "100%",
+    center: ["50%", "50%"],
     pointer: { show: false },
     progress: {
-      show: true, width: 16, roundCap: true,
+      show: true, width: 12, roundCap: true,
       itemStyle: { color: "#16a34a" },
     },
     axisLine: {
-      lineStyle: { width: 16, color: [[1, "#dcfce7"]] },
+      lineStyle: { width: 12, color: [[1, "#dcfce7"]] },
     },
     splitLine: { show: false }, axisTick: { show: false }, axisLabel: { show: false },
     title: { show: false },
     detail: {
       valueAnimation: true,
-      fontSize: 30,
+      fontSize: 26,
       fontWeight: "bold" as const,
       formatter: "{value}%",
       color: G.brand,
-      offsetCenter: [0, "-8%"],
+      offsetCenter: [0, "8%"],
     },
     data: [{ value: Math.round(conformidadeIndex.value * 100) }],
   }],
@@ -573,12 +573,12 @@ const chartVisitadas = computed(() => {
       formatter: (p: { name: string; value: number }) =>
         `<b>${p.name}</b><br/>Visitas: <b style="color:${G.green}">${p.value}</b>`,
     },
-    grid: { left: 8, right: 36, top: 4, bottom: 4, containLabel: true },
+    grid: { left: 8, right: 36, top: 4, bottom: 4 },
     xAxis: { type: "value" as const, show: false, splitLine: { show: false } },
     yAxis: {
       type: "category" as const, data: cats, inverse: true,
       axisLine: { show: false }, axisTick: { show: false },
-      splitLine: { show: false }, axisLabel: { color: "#334155", fontSize: 10 },
+      splitLine: { show: false }, axisLabel: { color: chartInk.axis, fontSize: 10 },
     },
     dataZoom: [{
       type: "inside" as const, orient: "vertical" as const,
@@ -628,12 +628,12 @@ const chartRankingNcEq = computed(() => {
       formatter: (p: { name: string; value: number }) =>
         `<b>${p.name}</b><br/>NC: <b style="color:${G.brand}">${p.value}</b>`,
     },
-    grid: { left: 8, right: 28, top: 4, bottom: 4, containLabel: true },
+    grid: { left: 8, right: 28, top: 4, bottom: 4 },
     xAxis: { type: "value" as const, show: false, splitLine: { show: false } },
     yAxis: {
       type: "category" as const, data: data.map(e => e.name),
       axisLine: { show: false }, axisTick: { show: false },
-      splitLine: { show: false }, axisLabel: { color: "#334155", fontSize: 10 },
+      splitLine: { show: false }, axisLabel: { color: chartInk.axis, fontSize: 10 },
     },
     series: [{
       type: "bar" as const,
@@ -669,12 +669,12 @@ const chartNcCat = computed(() => {
       formatter: (p: { name: string; value: number }) =>
         `<b>${p.name}</b><br/>Ocorrências: <b style="color:${G.brand}">${p.value}</b>`,
     },
-    grid: { left: 8, right: 28, top: 4, bottom: 4, containLabel: true },
+    grid: { left: 8, right: 28, top: 4, bottom: 4 },
     xAxis: { type: "value" as const, show: false, splitLine: { show: false } },
     yAxis: {
       type: "category" as const, data: entries.map(e => e.cat),
       axisLine: { show: false }, axisTick: { show: false },
-      splitLine: { show: false }, axisLabel: { color: "#334155", fontSize: 10 },
+      splitLine: { show: false }, axisLabel: { color: chartInk.axis, fontSize: 10 },
     },
     series: [{
       type: "bar" as const,
@@ -833,12 +833,12 @@ $inactive-text:#475569;
   align-items: center;
   width: 100%;
 }
-.kpi-gauge-chart { width: 100%; height: 120px; }
+.kpi-gauge-chart { width: 100%; height: 148px; }
 .kpi-gauge-sub {
   font-size: 11px;
   font-weight: 600;
   color: #64748b;
-  margin-top: -4px;
+  margin-top: 0;
   letter-spacing: .01em;
 }
 
@@ -851,7 +851,11 @@ $inactive-text:#475569;
   border-bottom: 1px solid $border;
   &:last-child { border-bottom: none; }
 }
-.nv-list-wrap { max-height: 460px; overflow-y: auto; }
+.nv-list-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
 .nv-nome { font-size: 11px; font-weight: 600; color: #334155; }
 .nv-zero {
   font-size: 12px; font-weight: 700; color: #dc2626;
@@ -875,6 +879,9 @@ $inactive-text:#475569;
 .icit-badge--none { color: #94a3b8; background: #f1f5f9; }
 
 .icit-table {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
   overflow-x: hidden;
 
   :deep(table) { table-layout: fixed; width: 100%; }
@@ -887,7 +894,43 @@ $inactive-text:#475569;
   :deep(tbody td) { font-size: 12px; }
 }
 
-// â"€â"€ Dark mode â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+.rel-grid {
+  --rel-h: 400px;
+}
+.rel-col {
+  display: flex;
+  flex-direction: column;
+}
+.rel-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.rel-stack > .chart-card {
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+}
+.rel-fill {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.rel-chart {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 140px;
+}
+
+@media (min-width: 1024px) {
+  .rel-col {
+    height: var(--rel-h);
+    max-height: var(--rel-h);
+  }
+}
+
+// ── Dark mode ─────────────────────────────────────────────────────────────────
 .body--dark {
   .relatorio-page { background: #0f172a; }
   .filter-bar { background: #1e293b; border-bottom-color: #334155; }

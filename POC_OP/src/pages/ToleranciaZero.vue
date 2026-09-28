@@ -191,6 +191,7 @@ import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, TreemapChart } from "echarts/charts";
 import { TooltipComponent, GridComponent, DataZoomComponent } from "echarts/components";
 import VChart from "vue-echarts";
+import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 import { filterByGerencia, semanaDoMes } from "@/lib/dashboard";
 
@@ -342,7 +343,7 @@ const chartTreemap = computed(() => ({
   tooltip: {
     backgroundColor: "rgba(255,255,255,.97)",
     borderColor: "#e2e8f0", borderWidth: 1,
-    textStyle: { color: "#334155", fontSize: 12 },
+    textStyle: { color: chartInk.axis, fontSize: 12 },
     extraCssText: "box-shadow:0 8px 24px rgba(0,0,0,.12);border-radius:10px;padding:10px 14px;",
     formatter: (p: { name: string; value: number }) =>
       `<b>${p.name}</b><br/>Ocorrências: <b style="color:#8B1C2B">${p.value}</b>`,
@@ -420,14 +421,14 @@ const chartRankingEq = computed(() => ({
     axisPointer: { type: "shadow" as const },
     backgroundColor: "rgba(255,255,255,.97)",
     borderColor: "#e2e8f0", borderWidth: 1,
-    textStyle: { color: "#334155", fontSize: 12 },
+    textStyle: { color: chartInk.axis, fontSize: 12 },
     extraCssText: "box-shadow:0 8px 24px rgba(0,0,0,.12);border-radius:10px;padding:10px 14px;",
     formatter: (p: { name: string; value: number }[]) => {
       const d = p[0];
       return `<b>${d.name}</b><br/>NCs: <b style="color:#8B1C2B">${d.value}</b>`;
     },
   },
-  grid: { left: 8, right: 36, top: 4, bottom: 4, containLabel: true },
+  grid: { left: 8, right: 36, top: 4, bottom: 4 },
   xAxis: { type: "value" as const, show: false, splitLine: { show: false } },
   yAxis: {
     type: "category" as const,
@@ -435,7 +436,7 @@ const chartRankingEq = computed(() => ({
     inverse: false,
     axisLine: { show: false }, axisTick: { show: false },
     splitLine: { show: false },
-    axisLabel: { color: "#334155", fontSize: 10 },
+    axisLabel: { color: chartInk.axis, fontSize: 10 },
   },
   dataZoom: [{
     type: "inside" as const, orient: "vertical" as const,

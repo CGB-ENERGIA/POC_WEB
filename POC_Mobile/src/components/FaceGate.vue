@@ -79,6 +79,7 @@
       <q-icon name="mdi-alert-circle-outline" size="46px" color="negative" />
       <p class="fg-hint fg-hint--err">{{ errorMsg }}</p>
       <q-btn
+        id="coach-alvo-bio-retry"
         class="q-mt-sm"
         color="primary"
         unelevated
@@ -86,13 +87,23 @@
         label="Tentar novamente"
         @click="start"
       />
+      <q-btn
+        id="coach-alvo-entrar-matricula"
+        class="full-width btn-primary-lg q-mt-xs"
+        outline
+        no-caps
+        color="primary"
+        icon="mdi-badge-account-outline"
+        label="Entrar pela matrícula"
+        @click="emit('skip-enroll')"
+      />
       <q-btn flat no-caps color="grey-7" label="Cancelar" class="q-mt-xs" @click="cancel" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import * as faceapi from "@vladmandic/face-api";
 import { getSupabase } from "@/lib/supabase";
 
@@ -108,6 +119,8 @@ const emit = defineEmits<{
   matched: [matricula: string, nome: string];
   enrolled: [];
   cancel: [];
+  "skip-enroll": [];
+  "gate-status": [{ error: boolean }];
 }>();
 
 const MODEL_URL      = "models";
@@ -144,6 +157,10 @@ let poseBuffer: Float32Array[] = [];
 let poseDescriptors: number[][] = [];
 let poseSideSign = 0;
 let photoBase64 = "";
+
+watch(status, (s) => {
+  emit("gate-status", { error: s === "error" });
+});
 
 const statusText = computed(() => {
   if (submitting.value) return "Enviando solicitação...";

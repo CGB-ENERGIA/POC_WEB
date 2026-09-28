@@ -1,4 +1,4 @@
-import { employees } from "@/data/employees";
+import { observerList } from "@/data/employees";
 import { colaboradoresGeral } from "@/services/colaboradores";
 
 function fold(s: string): string {
@@ -29,7 +29,7 @@ export function sugerirMembrosEquipe(needle: string, limite = 12): string[] {
     if (out.length >= limite) return out;
   }
 
-  for (const e of employees) {
+  for (const e of observerList()) {
     if (
       fold(e.nomeCompleto).includes(q) ||
       fold(e.nome).includes(q) ||

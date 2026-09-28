@@ -3,8 +3,10 @@
     v-model="aberto"
     :position="ios ? 'standard' : 'bottom'"
     persistent
+    :no-esc-dismiss="!desktop"
     :transition-show="ios ? 'scale' : 'slide-up'"
     :transition-hide="ios ? 'scale' : 'slide-down'"
+    @hide="onDialogHide"
   >
     <div class="pwa-sheet" :class="{ 'pwa-sheet--ios': ios }">
       <div v-if="!ios" class="pwa-sheet__handle" aria-hidden="true" />
@@ -40,41 +42,38 @@
         </li>
         <li>
           <span class="pwa-steps__n">3</span>
-          <span>Toque em <b>Adicionar</b>. O ícone CGB aparece na tela inicial.</span>
-        </li>
-      </ol>
-
-      <ol v-else-if="modo === 'manual'" class="pwa-steps">
-        <li>
-          <span class="pwa-steps__n">1</span>
-          <span>Abra o menu <q-icon name="mdi-dots-vertical" size="16px" /> no canto do navegador.</span>
-        </li>
-        <li>
-          <span class="pwa-steps__n">2</span>
-          <span>Toque em <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>.</span>
+          <span>Toque em <b>Adicionar</b>. Depois abra o POC pelo ícone CGB na tela inicial.</span>
         </li>
       </ol>
 
       <q-btn
-        v-if="modo === 'nativo'"
+        v-if="!ios"
         class="full-width btn-primary-lg q-mt-md"
         color="primary"
         unelevated
         no-caps
         size="lg"
         icon="mdi-download"
-        label="Instalar no aparelho"
+        :label="instalando ? 'Aguardando confirmação…' : 'Instalar agora'"
         :loading="instalando"
         @click="instalarNativo"
       />
+
+      <p v-if="!ios && (modo === 'manual' || falhouPrompt)" class="pwa-sheet__fallback">
+        {{ desktop
+          ? "Neste computador o navegador muitas vezes não abre a janela de instalação."
+          : "Se a janela de instalação não abrir, use o menu do navegador." }}
+        Use o menu
+        <q-icon name="mdi-dots-vertical" size="16px" />
+        e toque em <b>Instalar app</b>, ou continue pelo navegador.
+      </p>
 
       <q-btn
         class="full-width q-mt-sm"
         flat
         no-caps
         color="grey-7"
-        label="Agora não"
-        :class="{ 'q-mt-md': modo !== 'nativo' }"
+        :label="desktop ? 'Continuar no navegador' : 'Continuar sem instalar'"
         :disable="instalando"
         @click="pular"
       />
@@ -88,33 +87,43 @@ import {
   clearDeferredInstallPrompt,
   deferredInstallPrompt,
   dismissInstallPrompt,
+  isDesktopDevice,
   isIosDevice,
   isIosSafari,
+  isStandaloneDisplay,
   shouldOfferPwaInstall,
 } from "@/utils/pwa-install";
 import { primeiroAcessoPendente } from "@/utils/primeiro-acesso";
 
 const aberto = ref(false);
 const instalando = ref(false);
-const mostrarManual = ref(false);
+const aguardandoEvento = ref(false);
+const falhouPrompt = ref(false);
 const ios = computed(() => isIosDevice());
+const desktop = computed(() => isDesktopDevice());
 let delayTimer: ReturnType<typeof setTimeout> | undefined;
+let waitEventTimer: ReturnType<typeof setTimeout> | undefined;
+let standaloneMql: MediaQueryList | undefined;
 
 const modo = computed<"nativo" | "ios" | "ios-outro" | "manual">(() => {
   if (ios.value) return isIosSafari() ? "ios" : "ios-outro";
-  if (deferredInstallPrompt.value && !mostrarManual.value) return "nativo";
+  if (deferredInstallPrompt.value) return "nativo";
   return "manual";
 });
 
 const titulo = computed(() =>
-  ios.value ? "Instalar o POC no iPhone" : "Instalar o POC no aparelho"
+  ios.value ? "Instale o POC no iPhone" : "Instale o POC neste aparelho"
 );
 
-const lead = computed(() =>
-  ios.value
-    ? "A Apple não deixa instalar com um toque. Siga os 3 passos abaixo para o POC aparecer na tela inicial e funcionar sem internet."
-    : "Abre pela tela inicial, como um aplicativo, e continua funcionando sem internet no campo."
-);
+const lead = computed(() => {
+  if (ios.value) {
+    return "No iPhone o Safari não deixa instalar com um toque. Siga os 3 passos, ou continue no navegador se preferir.";
+  }
+  if (desktop.value) {
+    return "No computador a instalação é opcional. Se a janela do Chrome não abrir, continue no navegador — o POC funciona igual.";
+  }
+  return "Toque em Instalar agora para o POC abrir como aplicativo e funcionar sem internet no campo. Se não abrir, continue no navegador.";
+});
 
 function tentarAbrir() {
   if (primeiroAcessoPendente.value) return;
@@ -123,14 +132,33 @@ function tentarAbrir() {
     return;
   }
   aberto.value = true;
+  if (!ios.value && !deferredInstallPrompt.value) {
+    aguardandoEvento.value = true;
+    clearTimeout(waitEventTimer);
+    waitEventTimer = setTimeout(() => {
+      aguardandoEvento.value = false;
+    }, 2500);
+  }
+}
+
+function fecharSeInstalado() {
+  if (!isStandaloneDisplay()) return;
+  dismissInstallPrompt();
+  aberto.value = false;
 }
 
 onMounted(() => {
   delayTimer = setTimeout(tentarAbrir, 400);
+  window.addEventListener("appinstalled", fecharSeInstalado);
+  standaloneMql = window.matchMedia("(display-mode: standalone)");
+  standaloneMql.addEventListener("change", fecharSeInstalado);
 });
 
 onUnmounted(() => {
   clearTimeout(delayTimer);
+  clearTimeout(waitEventTimer);
+  window.removeEventListener("appinstalled", fecharSeInstalado);
+  standaloneMql?.removeEventListener("change", fecharSeInstalado);
 });
 
 watch(primeiroAcessoPendente, (pendente) => {
@@ -138,13 +166,16 @@ watch(primeiroAcessoPendente, (pendente) => {
 });
 
 watch(deferredInstallPrompt, (evt) => {
-  if (evt && !primeiroAcessoPendente.value && shouldOfferPwaInstall()) aberto.value = true;
+  if (!evt) return;
+  aguardandoEvento.value = false;
+  if (!primeiroAcessoPendente.value && shouldOfferPwaInstall()) aberto.value = true;
 });
 
 async function instalarNativo() {
   const evt = deferredInstallPrompt.value;
   if (!evt) {
-    mostrarManual.value = true;
+    aguardandoEvento.value = false;
+    falhouPrompt.value = true;
     return;
   }
   instalando.value = true;
@@ -156,10 +187,10 @@ async function instalarNativo() {
       dismissInstallPrompt();
       aberto.value = false;
     } else {
-      mostrarManual.value = true;
+      falhouPrompt.value = true;
     }
   } catch {
-    mostrarManual.value = true;
+    falhouPrompt.value = true;
   } finally {
     instalando.value = false;
   }
@@ -169,18 +200,27 @@ function pular() {
   dismissInstallPrompt();
   aberto.value = false;
 }
+
+function onDialogHide() {
+  if (!aberto.value && shouldOfferPwaInstall() && desktop.value) {
+    dismissInstallPrompt();
+  }
+}
 </script>
 
 <style scoped>
 .pwa-sheet {
   width: 100%;
-  max-width: 480px;
+  max-width: min(480px, calc(100vw - 16px));
+  max-height: min(90dvh, calc(100dvh - 16px - env(safe-area-inset-bottom, 0px)));
+  overflow-y: auto;
   margin: 0 auto;
   background: #fff;
   border-radius: 22px 22px 0 0;
   padding: 10px 20px calc(16px + env(safe-area-inset-bottom, 0px));
   box-shadow: 0 -12px 36px rgba(61, 9, 18, 0.18);
   color: #0f172a;
+  box-sizing: border-box;
 }
 
 .pwa-sheet--ios {
@@ -225,6 +265,13 @@ function pular() {
   font-size: 14.5px;
   line-height: 1.45;
   color: #4a3b40;
+}
+
+.pwa-sheet__fallback {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #6b3d46;
 }
 
 .pwa-alert {
@@ -300,7 +347,8 @@ function pular() {
 }
 
 :global(body.body--dark) .pwa-sheet__lead,
-:global(body.body--dark) .pwa-steps li {
+:global(body.body--dark) .pwa-steps li,
+:global(body.body--dark) .pwa-sheet__fallback {
   color: #e8d4d8;
 }
 

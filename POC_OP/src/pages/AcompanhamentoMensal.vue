@@ -148,39 +148,39 @@
 
         <!-- Obs x Meta (Mês) -->
         <div class="col-12 col-md-3">
-          <q-card flat bordered>
+          <q-card flat bordered class="chart-card">
             <q-card-section class="q-pb-none">
               <div class="text-subtitle1 text-weight-bold">Observações x Meta</div>
               <div class="text-caption text-grey-6">Mês atual</div>
             </q-card-section>
             <q-card-section>
-              <v-chart :option="chartMetaMes" autoresize style="height:220px" />
+              <v-chart :option="chartMetaMes" autoresize style="height:260px" />
             </q-card-section>
           </q-card>
         </div>
 
         <!-- Obs por Semana -->
         <div class="col-12 col-md-3">
-          <q-card flat bordered>
+          <q-card flat bordered class="chart-card">
             <q-card-section class="q-pb-none">
               <div class="text-subtitle1 text-weight-bold">Obs. Realizadas por Semana</div>
               <div class="text-caption text-grey-6">4 semanas do mês</div>
             </q-card-section>
             <q-card-section>
-              <v-chart :option="chartMetaSemana" autoresize style="height:220px" />
+              <v-chart :option="chartMetaSemana" autoresize style="height:260px" />
             </q-card-section>
           </q-card>
         </div>
 
         <!-- Obs por Base -->
         <div class="col-12 col-md-6">
-          <q-card flat bordered>
+          <q-card flat bordered class="chart-card">
             <q-card-section class="q-pb-none">
               <div class="text-subtitle1 text-weight-bold">Nº de Observações por Base</div>
               <div class="text-caption text-grey-6">Realizado vs Meta</div>
             </q-card-section>
             <q-card-section>
-              <v-chart :option="chartBase" autoresize style="height:220px" />
+              <v-chart :option="chartBase" autoresize style="height:260px" />
             </q-card-section>
           </q-card>
         </div>
@@ -192,7 +192,7 @@
 
         <!-- Obs por Gerência -->
         <div class="col-12 col-md-3">
-          <q-card flat bordered>
+          <q-card flat bordered class="chart-card">
             <q-card-section class="q-pb-none">
               <div class="text-subtitle1 text-weight-bold">Nº de Obs. por Gerência</div>
               <div class="text-caption text-grey-6">Realizado vs Meta</div>
@@ -205,10 +205,10 @@
 
         <!-- Obs por Observador -->
         <div class="col-12 col-md-6">
-          <q-card flat bordered>
+          <q-card flat bordered class="chart-card">
             <q-card-section class="q-pb-none">
-              <div class="text-subtitle1 text-weight-bold">Nº de Obs. Realizadas por Observador</div>
-              <div class="text-caption text-grey-6">Realizado · arraste para rolar</div>
+              <div class="text-subtitle1 text-weight-bold">Observações Realizadas no Mês</div>
+              <div class="text-caption text-grey-6">Realizado e meta de cada observador · arraste para rolar</div>
             </q-card-section>
             <q-card-section>
               <v-chart :option="chartObservador" autoresize style="height:260px" />
@@ -218,7 +218,7 @@
 
         <!-- Ranking -->
         <div class="col-12 col-md-3">
-          <q-card flat bordered>
+          <q-card flat bordered class="chart-card">
             <q-card-section class="q-pb-none">
               <div class="text-subtitle1 text-weight-bold">Ranking de Observadores</div>
               <div class="text-caption text-grey-6">Top 11 do mês</div>
@@ -248,6 +248,7 @@ import {
   DataZoomComponent
 } from "echarts/components";
 import VChart from "vue-echarts";
+import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 import { filterByGerencia, semanaDoMes } from "@/lib/dashboard";
 import { useGoals } from "@/composables/useGoals";
@@ -411,8 +412,7 @@ const conformidadePorObservador = computed(() => {
 const mesLabel = computed(() => meses.find(m => m.value === filters.mes)?.label ?? "");
 
 // ─── Meta mensal (semanal × 4 semanas, por perfil de observador) ──────────────
-const { getMonthGoal, goalForColaborador } = useGoals();
-const normaisMensal = computed(() => getMonthGoal(filters.ano, filters.mes).normais_semanal * 4);
+const { goalForColaborador } = useGoals();
 
 const numObservadores = computed(() => Object.keys(byObservador.value).length);
 
@@ -420,7 +420,7 @@ const metaMensal = computed(() =>
   Object.keys(byObservador.value).reduce((total, obsName) => {
     const sub = filteredSubs.value.find(s => s.observador === obsName);
     const emp = employees.value.find(e => e.matricula === sub?.matricula);
-    return total + goalForColaborador(emp?.matricula, emp?.gerencia, filters.ano, filters.mes).mensal;
+    return total + goalForColaborador(emp?.matricula, emp?.gerencia, filters.ano, filters.mes, undefined, emp?.funcao).mensal;
   }, 0)
 );
 
@@ -428,7 +428,7 @@ const obsNoMeta = computed(() =>
   Object.entries(byObservador.value).filter(([obsName, count]) => {
     const sub = filteredSubs.value.find(s => s.observador === obsName);
     const emp = employees.value.find(e => e.matricula === sub?.matricula);
-    return count >= goalForColaborador(emp?.matricula, emp?.gerencia, filters.ano, filters.mes).mensal;
+    return count >= goalForColaborador(emp?.matricula, emp?.gerencia, filters.ano, filters.mes, undefined, emp?.funcao).mensal;
   }).length
 );
 
@@ -450,7 +450,7 @@ const ttItem = {
   trigger: "item" as const,
   backgroundColor: "rgba(255,255,255,0.97)",
   borderColor: "#e2e8f0", borderWidth: 1,
-  textStyle: { color: "#334155", fontSize: 12 },
+  textStyle: { color: chartInk.axis, fontSize: 12 },
   extraCssText: "box-shadow:0 8px 24px rgba(0,0,0,.12);border-radius:10px;padding:10px 14px;"
 };
 
@@ -461,14 +461,14 @@ function cleanXAxis(data: string[], extra: Record<string, unknown> = {}) {
     axisTick: { show: false },
     splitLine: { show: false },
     axisPointer: { show: false },
-    axisLabel: { color: "#64748b", fontSize: 11, ...extra }
+    axisLabel: { color: chartInk.muted, fontSize: 11, ...extra }
   };
 }
 
 const legend = {
   bottom: 4, left: "center",
   itemWidth: 10, itemHeight: 10, itemGap: 16,
-  textStyle: { color: "#64748b", fontSize: 11 }
+  textStyle: { color: chartInk.muted, fontSize: 11 }
 };
 
 function singleBar(labels: string[], data: number[]) {
@@ -497,7 +497,7 @@ const chartMetaMes = computed(() => ({
       `${p.seriesName}: <b style="color:${G.real}">${p.value}</b>`
   },
   legend,
-  grid: { left: 12, right: 12, top: 12, bottom: 36, containLabel: true },
+  grid: { left: 12, right: 12, top: 12, bottom: 36 },
   xAxis: cleanXAxis([mesLabel.value]),
   yAxis: { show: false },
   series: [{
@@ -519,7 +519,7 @@ const chartMetaSemana = computed(() => ({
       `<b>${p.name}</b><br/>Realizado: <b style="color:${G.real}">${p.value}</b>`
   },
   legend,
-  grid: { left: 12, right: 12, top: 12, bottom: 36, containLabel: true },
+  grid: { left: 12, right: 12, top: 12, bottom: 36 },
   xAxis: cleanXAxis(["1ª Sem", "2ª Sem", "3ª Sem", "4ª Sem"]),
   yAxis: { show: false },
   series: [{
@@ -543,7 +543,7 @@ const chartBase = computed(() => {
         `<b>${p.name}</b><br/>Realizado: <b style="color:${G.real}">${p.value}</b>`
     },
     legend,
-    grid: { left: 12, right: 12, top: 12, bottom: 36, containLabel: true },
+    grid: { left: 12, right: 12, top: 12, bottom: 36 },
     xAxis: cleanXAxis(entries.map(([n]) => n)),
     yAxis: { show: false },
     series: singleBar(entries.map(([n]) => n), entries.map(([, v]) => v))
@@ -560,7 +560,7 @@ const chartGerencia = computed(() => {
         `<b>${p.name}</b><br/>Realizado: <b style="color:${G.real}">${p.value}</b>`
     },
     legend,
-    grid: { left: 12, right: 12, top: 12, bottom: 52, containLabel: true },
+    grid: { left: 12, right: 12, top: 12, bottom: 52 },
     xAxis: cleanXAxis(entries.map(([n]) => n), { rotate: 20 }),
     yAxis: { show: false },
     series: singleBar(entries.map(([n]) => n), entries.map(([, v]) => v))
@@ -569,17 +569,32 @@ const chartGerencia = computed(() => {
 
 // ─── Chart: Obs por Observador (scrollável) ───────────────────────────────────
 const chartObservador = computed(() => {
-  const entries = Object.entries(byObservador.value).sort((a, b) => b[1] - a[1]);
-  const obsNames = entries.map(([n]) => n.split(" ")[0]);
-  const obsReal = entries.map(([, v]) => v);
+  const rows = Object.entries(byObservador.value)
+    .map(([nome, realizado]) => {
+      const sub = filteredSubs.value.find(s => s.observador === nome);
+      const emp = employees.value.find(e => e.matricula === sub?.matricula);
+      const meta = goalForColaborador(
+        emp?.matricula, emp?.gerencia, filters.ano, filters.mes, undefined, emp?.funcao,
+      ).mensal;
+      return { nome, short: nome.split(" ")[0], realizado, meta, funcao: emp?.funcao ?? "—" };
+    })
+    .sort((a, b) => b.realizado - a.realizado);
+  const obsNames = rows.map(r => r.short);
   return {
     tooltip: {
       ...ttItem,
-      formatter: (p: { name: string; value: number }) =>
-        `<b>${p.name}</b><br/>Realizado: <b style="color:${G.real}">${p.value}</b>`
+      trigger: "axis" as const,
+      formatter: (params: { dataIndex: number }[]) => {
+        const r = rows[params[0]?.dataIndex ?? 0];
+        if (!r) return "";
+        const ok = r.realizado >= r.meta;
+        return `<b>${r.nome}</b><br/>${r.funcao}<br/>`
+          + `Realizado no mês: <b style="color:${ok ? G.real : G.red}">${r.realizado}</b><br/>`
+          + `Meta: <b style="color:#0ea5e9">${r.meta}</b>`;
+      },
     },
     legend: { ...legend, bottom: 30 },
-    grid: { left: 12, right: 12, top: 12, bottom: 62, containLabel: true },
+    grid: { left: 12, right: 12, top: 12, bottom: 62 },
     dataZoom: [
       {
         type: "inside" as const,
@@ -612,21 +627,30 @@ const chartObservador = computed(() => {
     ],
     xAxis: cleanXAxis(obsNames, { fontSize: 10, rotate: 30, interval: 0 }),
     yAxis: { show: false },
-    series: [{
-      name: "Realizado",
-      type: "bar" as const,
-      data: obsReal,
-      barMaxWidth: 28,
-      itemStyle: { color: G.real, borderRadius: [4, 4, 0, 0], shadowColor: "rgba(22,163,74,.15)", shadowBlur: 4 },
-      emphasis: { itemStyle: { color: G.light, shadowBlur: 10 } },
-      label: { show: true, position: "top" as const, fontSize: 10, fontWeight: "bold" as const, color: G.real, distance: 3 },
-      markLine: {
-        silent: true, symbol: "none",
-        lineStyle: { color: "#0ea5e9", type: "dashed" as const, width: 2 },
-        label: { position: "insideEndTop" as const, fontSize: 11, fontWeight: "bold" as const, color: "#0ea5e9", formatter: `Meta: ${normaisMensal.value}` },
-        data: [{ yAxis: normaisMensal.value }]
-      }
-    }]
+    series: [
+      {
+        name: "Meta",
+        type: "bar" as const,
+        data: rows.map(r => r.meta),
+        barMaxWidth: 16,
+        itemStyle: {
+          color: "rgba(14,165,233,.22)",
+          borderColor: "#0ea5e9",
+          borderWidth: 1.5,
+          borderRadius: [4, 4, 0, 0],
+        },
+        label: { show: true, position: "top" as const, fontSize: 9, fontWeight: "bold" as const, color: "#0ea5e9" },
+      },
+      {
+        name: "Realizado",
+        type: "bar" as const,
+        data: rows.map(r => r.realizado),
+        barMaxWidth: 16,
+        itemStyle: { color: G.real, borderRadius: [4, 4, 0, 0], shadowColor: "rgba(22,163,74,.15)", shadowBlur: 4 },
+        emphasis: { itemStyle: { color: G.light, shadowBlur: 10 } },
+        label: { show: true, position: "top" as const, fontSize: 9, fontWeight: "bold" as const, color: G.real, distance: 3 },
+      },
+    ],
   };
 });
 
@@ -653,7 +677,7 @@ const chartRanking = computed(() => {
       type: "category" as const,
       data: [...names].reverse(),
       axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false },
-      axisLabel: { color: "#334155", fontSize: 11 }
+      axisLabel: { color: chartInk.axis, fontSize: 11 }
     },
     series: [{
       type: "bar" as const,
@@ -663,7 +687,7 @@ const chartRanking = computed(() => {
       })),
       barMaxWidth: 22,
       emphasis: { itemStyle: { shadowBlur: 8, shadowColor: "rgba(0,0,0,.15)" } },
-      label: { show: true, position: "right" as const, fontSize: 12, fontWeight: "bold" as const, color: "#334155" }
+      label: { show: true, position: "right" as const, fontSize: 12, fontWeight: "bold" as const, color: chartInk.axis }
     }]
   };
 });

@@ -40,13 +40,14 @@
         />
       </div>
 
-      <q-card flat class="mobile-card ip-card relative-position" style="z-index: 1">
+      <q-card id="coach-alvo-ident-card" flat class="mobile-card ip-card relative-position" style="z-index: 1">
 
         <!-- ══ 1. Matrícula ══ -->
         <template v-if="step === 'ident'">
           <div class="section-title q-mb-xs">Entrar no POC</div>
           <div class="section-subtitle q-mb-md">Informe sua matrícula para iniciar a auditagem</div>
 
+          <div id="coach-alvo-matricula">
           <div class="field-label">Matrícula do colaborador</div>
           <q-select
             v-model="matricula"
@@ -61,6 +62,8 @@
             error-message="Matrícula não encontrada"
             @filter="filterMatricula"
             @update:model-value="onMatriculaChange"
+            @popup-show="identCoach.menuAberto = true"
+            @popup-hide="identCoach.menuAberto = false"
             @blur="touched = true"
           >
             <template #prepend>
@@ -83,6 +86,7 @@
               </q-item>
             </template>
           </q-select>
+          </div>
 
           <transition name="fade">
             <div v-if="employee" class="employee-chip ip-employee-chip q-mb-md">
@@ -103,6 +107,7 @@
           </transition>
 
           <q-btn
+            id="coach-alvo-continuar"
             class="full-width btn-primary-lg"
             color="primary" size="lg" unelevated no-caps
             label="Continuar" icon-right="mdi-arrow-right"
@@ -157,6 +162,8 @@
             mode="scan"
             @matched="onFaceMatched"
             @cancel="voltarChoice"
+            @skip-enroll="entrarNoSistema()"
+            @gate-status="onGateStatus"
           />
           <q-btn
             v-if="hasDigital && canUseDigital"
@@ -189,6 +196,8 @@
             @cancel="voltarChoice"
             @enroll-here="enrollDigitalAqui"
             @unsupported="onDigitalUnsupported"
+            @skip-enroll="entrarNoSistema()"
+            @gate-status="onGateStatus"
           />
           <q-btn
             v-if="hasFace"
@@ -219,6 +228,8 @@
             :nome="employee?.nomeCompleto"
             @enrolled="onFaceEnrolled"
             @cancel="step = 'ident'"
+            @skip-enroll="entrarNoSistema()"
+            @gate-status="onGateStatus"
           />
         </template>
 
@@ -233,6 +244,18 @@
             @enrolled="onDigitalEnrolled"
             @cancel="step = enrollDigitalFrom"
             @unsupported="onDigitalUnsupported"
+            @skip-enroll="entrarNoSistema()"
+            @gate-status="onGateStatus"
+          />
+          <q-btn
+            v-if="canUseCamera"
+            class="full-width q-mt-sm"
+            outline
+            no-caps
+            color="primary"
+            icon="mdi-face-recognition"
+            label="Cadastrar Face ID pela câmera"
+            @click="step = 'enroll-face'"
           />
         </template>
 
@@ -297,8 +320,10 @@ import DigitalGate from "@/components/DigitalGate.vue";
 // FaceGate carrega face-api (~1.2 MB) — lazy para não pesar no carregamento inicial
 const FaceGate = defineAsyncComponent(() => import("@/components/FaceGate.vue"));
 import { BRAND } from "@/constants/brand";
-import { employees, findByMatricula, type Employee } from "@/data/employees";
+import { findByMatricula, observerList, type Employee } from "@/data/employees";
+import { refreshObservers } from "@/services/observers";
 import { hasFrontCamera, hasPlatformBiometrics } from "@/utils/device-auth";
+import { identCoach } from "@/utils/primeiro-acesso";
 
 const router   = useRouter();
 const session  = useSessionStore();
@@ -311,8 +336,21 @@ function onResize() { viewW.value = window.innerWidth; viewH.value = window.inne
 onMounted(() => {
   window.addEventListener("resize", onResize);
   void detectDeviceAuth();
+  void refreshObservers().then(() => {
+    filteredOptions.value = [...observerList()];
+  });
 });
-onUnmounted(() => window.removeEventListener("resize", onResize));
+onUnmounted(() => {
+  window.removeEventListener("resize", onResize);
+  identCoach.tela = "ident";
+  identCoach.temColaborador = false;
+  identCoach.digitando = false;
+  identCoach.busca = "";
+  identCoach.menuAberto = false;
+  identCoach.erroBio = false;
+  identCoach.temCamera = false;
+  identCoach.pularBiometria = null;
+});
 
 const isTablet  = computed(() => viewW.value >= 768);
 const isCompact = computed(() => viewH.value < 660 && !isTablet.value);
@@ -333,7 +371,7 @@ type Step =
 const step         = ref<Step>("ident");
 const matricula    = ref("");
 const employee     = ref<Employee | null>(null);
-const filteredOptions = ref<Employee[]>([...employees]);
+const filteredOptions = ref<Employee[]>([...observerList()]);
 const touched      = ref(false);
 const loading      = ref(false);
 const scanErro     = ref<string | null>(null);
@@ -359,10 +397,11 @@ function onMatriculaChange(value: string | null) { resolveEmployee(value); }
 
 function filterMatricula(val: string, update: (fn: () => void) => void) {
   const needle = val.trim().toLowerCase();
+  identCoach.busca = needle;
   update(() => {
     filteredOptions.value = !needle
-      ? [...employees]
-      : employees.filter((e) =>
+      ? [...observerList()]
+      : observerList().filter((e) =>
           e.matricula.toLowerCase().includes(needle) ||
           e.nomeCompleto.toLowerCase().includes(needle) ||
           e.nome.toLowerCase().includes(needle)
@@ -371,6 +410,25 @@ function filterMatricula(val: string, update: (fn: () => void) => void) {
 }
 
 watch(matricula, (val) => { if (typeof val === "string") resolveEmployee(val); });
+
+watch(
+  [step, employee, matricula, canUseCamera],
+  () => {
+    identCoach.tela = step.value;
+    identCoach.temColaborador = !!employee.value;
+    identCoach.digitando = String(matricula.value ?? "").trim().length > 0;
+    identCoach.temCamera = canUseCamera.value;
+    identCoach.pularBiometria = employee.value ? () => entrarNoSistema() : null;
+    if (step.value === "ident" || step.value.endsWith("-done")) {
+      identCoach.erroBio = false;
+    }
+  },
+  { immediate: true },
+);
+
+function onGateStatus(payload: { error: boolean }) {
+  identCoach.erroBio = payload.error;
+}
 
 async function detectDeviceAuth() {
   const [bio, cam] = await Promise.all([hasPlatformBiometrics(), hasFrontCamera()]);

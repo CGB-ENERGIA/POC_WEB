@@ -178,6 +178,7 @@
 </template>
 
 <script setup lang="ts">
+import { chartInk } from "@/lib/chart-ink";
 import { ref, computed, watch, onMounted } from "vue"
 import { use } from "echarts/core"
 import { CanvasRenderer } from "echarts/renderers"
@@ -376,7 +377,7 @@ const donutOption = computed(() => {
       orient: "vertical" as const,
       right: 4,
       top: "center",
-      textStyle: { fontSize: 11, color: "#6b7280" },
+      textStyle: { fontSize: 11, color: chartInk.muted },
       itemWidth: 10,
       itemHeight: 10,
       itemGap: 10,
@@ -406,7 +407,7 @@ const observBarOption = computed(() => {
   return {
     backgroundColor: "transparent",
     tooltip: { trigger: "axis", axisPointer: { type: "shadow" as const } },
-    grid: { top: 8, right: 56, bottom: 8, left: 80, containLabel: false },
+    grid: { top: 8, right: 56, bottom: 8, left: 80 },
     xAxis: {
       type: "value",
       max: 100,
@@ -418,7 +419,7 @@ const observBarOption = computed(() => {
     yAxis: {
       type: "category",
       data: top.map(o => o.nome.split(" ")[0]),
-      axisLabel: { color: "#6b7280", fontSize: 10 },
+      axisLabel: { color: chartInk.muted, fontSize: 10 },
       axisTick: { show: false },
       axisLine: { show: false },
     },
@@ -432,7 +433,7 @@ const observBarOption = computed(() => {
           position: "right" as const,
           formatter: (p: any) => `${p.value}%`,
           fontSize: 10,
-          color: "#6b7280",
+          color: chartInk.muted,
         },
         itemStyle: {
           color: (p: any) => {
@@ -455,7 +456,7 @@ const catBarOption = computed(() => {
   return {
     backgroundColor: "transparent",
     tooltip: { trigger: "axis", axisPointer: { type: "shadow" as const } },
-    grid: { top: 8, right: 48, bottom: 8, left: 128, containLabel: false },
+    grid: { top: 8, right: 48, bottom: 8, left: 128 },
     xAxis: {
       type: "value",
       axisLabel: { color: "#9ca3af", fontSize: 10 },
@@ -466,7 +467,7 @@ const catBarOption = computed(() => {
     yAxis: {
       type: "category",
       data: cats.map(c => c.categoria),
-      axisLabel: { color: "#6b7280", fontSize: 10 },
+      axisLabel: { color: chartInk.muted, fontSize: 10 },
       axisTick: { show: false },
       axisLine: { show: false },
     },
@@ -479,7 +480,7 @@ const catBarOption = computed(() => {
           show: true,
           position: "right" as const,
           fontSize: 10,
-          color: "#6b7280",
+          color: chartInk.muted,
         },
         itemStyle: {
           color: BRAND,
@@ -574,12 +575,18 @@ $red:    #dc2626;
 .dash-card {
   background: #fff;
   border-radius: 14px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  box-shadow:
+    10px 0 18px -8px rgba(15, 23, 42, 0.2),
+    4px 2px 10px -6px rgba(15, 23, 42, 0.08);
   padding: 18px 18px 12px;
   height: 100%;
   transition: box-shadow .2s;
 
-  &:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+  &:hover {
+    box-shadow:
+      12px 0 22px -8px rgba(15, 23, 42, 0.26),
+      4px 2px 12px -6px rgba(15, 23, 42, 0.1);
+  }
 
   &__header {
     display: flex;

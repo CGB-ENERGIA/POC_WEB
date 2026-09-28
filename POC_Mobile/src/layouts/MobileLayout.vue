@@ -58,7 +58,7 @@
           </q-btn>
 
           <q-btn
-            v-if="session.isAuthenticated && route.name !== 'identificacao'"
+            v-if="showLogout"
             flat
             round
             dense
@@ -114,9 +114,13 @@ const titles: Record<string, string> = {
   galeria:                   "Galeria de Fotos",
 };
 
-const title = computed(() => titles[String(route.name)] ?? "POC - CGB");
-const showBack = computed(
-  () => route.name !== "home" && route.name !== "identificacao"
+const title = computed(() => titles[String(route?.name ?? "")] ?? "POC - CGB");
+const showBack = computed(() => {
+  const name = route?.name;
+  return !!name && name !== "home" && name !== "identificacao";
+});
+const showLogout = computed(
+  () => session.isAuthenticated && route?.name !== "identificacao"
 );
 
 const observacoes = useObservacoesStore();

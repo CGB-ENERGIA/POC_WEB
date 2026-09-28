@@ -126,10 +126,12 @@ import EssentialLink, {
 } from "@/components/EssentialLink.vue";
 import { useAuth } from "@/composables/useAuth";
 import { getRole, type Role } from "@/lib/role";
+import { applyChartInk } from "@/lib/chart-ink";
 
 const ADMIN_EMAIL = "italo.fontes@cgbengenharia.com.br";
 
 const $q = useQuasar();
+watch(() => $q.dark.isActive, (dark) => applyChartInk(dark), { immediate: true });
 const router = useRouter();
 const { user, signOut } = useAuth();
 const isAdmin = computed(() => user.value?.email === ADMIN_EMAIL);

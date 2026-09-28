@@ -155,10 +155,10 @@
       <!-- Charts Row 1 -->
       <div class="row q-col-gutter-md q-mb-md">
         <div class="col-12 col-md-8">
-          <q-card flat bordered>
+          <q-card flat bordered class="chart-card">
             <q-card-section class="q-pb-none">
-              <div class="text-subtitle1 text-weight-bold">Observações por Observador</div>
-              <div class="text-caption text-grey-6">Semana atual</div>
+              <div class="text-subtitle1 text-weight-bold">Observações Realizadas na Semana</div>
+              <div class="text-caption text-grey-6">Realizado e meta de cada observador</div>
             </q-card-section>
             <q-card-section>
               <v-chart :option="barObservadores" autoresize style="height: 260px" />
@@ -166,7 +166,7 @@
           </q-card>
         </div>
         <div class="col-12 col-md-4">
-          <q-card flat bordered style="height: 100%">
+          <q-card flat bordered class="chart-card">
             <q-card-section class="q-pb-none">
               <div class="text-subtitle1 text-weight-bold">Evolução Semanal</div>
               <div class="text-caption text-grey-6">Últimas 4 semanas</div>
@@ -181,32 +181,32 @@
       <!-- Charts Row 2 -->
       <div class="row q-col-gutter-md">
         <div class="col-12 col-md-4">
-          <q-card flat bordered>
+          <q-card flat bordered class="chart-card">
             <q-card-section class="q-pb-none">
               <div class="text-subtitle1 text-weight-bold">Observações por Base</div>
             </q-card-section>
             <q-card-section>
-              <v-chart :option="barBase" autoresize style="height: 240px" />
+              <v-chart :option="barBase" autoresize style="height: 260px" />
             </q-card-section>
           </q-card>
         </div>
         <div class="col-12 col-md-4">
-          <q-card flat bordered>
+          <q-card flat bordered class="chart-card">
             <q-card-section class="q-pb-none">
               <div class="text-subtitle1 text-weight-bold">Observações por Processo</div>
             </q-card-section>
             <q-card-section>
-              <v-chart :option="barProcesso" autoresize style="height: 240px" />
+              <v-chart :option="barProcesso" autoresize style="height: 260px" />
             </q-card-section>
           </q-card>
         </div>
         <div class="col-12 col-md-4">
-          <q-card flat bordered>
+          <q-card flat bordered class="chart-card">
             <q-card-section class="q-pb-none">
               <div class="text-subtitle1 text-weight-bold">Distribuição por Semana</div>
             </q-card-section>
             <q-card-section>
-              <v-chart :option="donutWeekly" autoresize style="height: 240px" />
+              <v-chart :option="donutWeekly" autoresize style="height: 260px" />
             </q-card-section>
           </q-card>
         </div>
@@ -230,11 +230,11 @@ import {
   GraphicComponent
 } from "echarts/components";
 import VChart from "vue-echarts";
+import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 import { filterByGerencia, semanaDoMes } from "@/lib/dashboard";
 import { useGoals } from "@/composables/useGoals";
-const { getMonthGoal, goalForColaborador } = useGoals();
-const normaisSemanal = computed(() => getMonthGoal(filters.ano, filters.mes).normais_semanal);
+const { goalForColaborador } = useGoals();
 
 use([
   CanvasRenderer, BarChart, LineChart, PieChart,
@@ -383,7 +383,7 @@ const metaTotal = computed(() =>
   Object.keys(byObservador.value).reduce((total, obsName) => {
     const sub = filteredSubs.value.find(s => s.observador === obsName);
     const emp = employees.value.find(e => e.matricula === sub?.matricula);
-    return total + goalForColaborador(emp?.matricula, emp?.gerencia, filters.ano, filters.mes, filters.semana).semanal;
+    return total + goalForColaborador(emp?.matricula, emp?.gerencia, filters.ano, filters.mes, filters.semana, emp?.funcao).semanal;
   }, 0)
 );
 
@@ -391,7 +391,7 @@ const obsNoMeta = computed(() =>
   Object.entries(byObservador.value).filter(([obsName, count]) => {
     const sub = filteredSubs.value.find(s => s.observador === obsName);
     const emp = employees.value.find(e => e.matricula === sub?.matricula);
-    return count >= goalForColaborador(emp?.matricula, emp?.gerencia, filters.ano, filters.mes, filters.semana).semanal;
+    return count >= goalForColaborador(emp?.matricula, emp?.gerencia, filters.ano, filters.mes, filters.semana, emp?.funcao).semanal;
   }).length
 );
 
@@ -430,7 +430,7 @@ const ttAxis = {
   backgroundColor: "rgba(255,255,255,0.97)",
   borderColor: "#e2e8f0",
   borderWidth: 1,
-  textStyle: { color: "#334155", fontSize: 12 },
+  textStyle: { color: chartInk.axis, fontSize: 12 },
   extraCssText: "box-shadow:0 8px 24px rgba(0,0,0,.12);border-radius:10px;padding:10px 14px;"
 };
 
@@ -439,7 +439,7 @@ const ttItem = {
   backgroundColor: "rgba(255,255,255,0.97)",
   borderColor: "#e2e8f0",
   borderWidth: 1,
-  textStyle: { color: "#334155", fontSize: 12 },
+  textStyle: { color: chartInk.axis, fontSize: 12 },
   extraCssText: "box-shadow:0 8px 24px rgba(0,0,0,.12);border-radius:10px;padding:10px 14px;"
 };
 
@@ -459,62 +459,100 @@ function cleanXAxis(data: string[], extra: Record<string, unknown> = {}) {
     axisTick: { show: false },
     splitLine: { show: false },
     axisPointer: { show: false },
-    axisLabel: { color: "#64748b", fontSize: 11, ...extra }
+    axisLabel: { color: chartInk.muted, fontSize: 11, ...extra }
   };
 }
 
-// ─── Observações por Observador ───────────────────────────────────────────────
+// ─── Observações Realizadas na Semana ─────────────────────────────────────────
 const barObservadores = computed(() => {
-  const entries = Object.entries(byObservador.value).sort((a, b) => b[1] - a[1]);
+  const rows = Object.entries(byObservador.value)
+    .map(([nome, realizado]) => {
+      const sub = filteredSubs.value.find(s => s.observador === nome);
+      const emp = employees.value.find(e => e.matricula === sub?.matricula);
+      const meta = goalForColaborador(
+        emp?.matricula, emp?.gerencia, filters.ano, filters.mes, filters.semana, emp?.funcao,
+      ).semanal;
+      return {
+        nome,
+        short: nome.split(" ")[0],
+        realizado,
+        meta,
+        funcao: emp?.funcao ?? "—",
+      };
+    })
+    .sort((a, b) => b.realizado - a.realizado);
+
+  const names = rows.map(r => r.short);
+  const maxY = Math.max(8, ...rows.map(r => Math.max(r.realizado, r.meta))) + 1;
+
   return {
-    tooltip: {
-      ...ttItem,
-      formatter: (p: { name: string; value: number }) =>
-        `<b>${p.name}</b><br/>Observações: <b style="color:${C.p}">${p.value}</b>`
+    legend: {
+      top: 0,
+      itemWidth: 10,
+      itemHeight: 10,
+      textStyle: { fontSize: 11, color: chartInk.muted },
     },
-    grid: { left: 12, right: 12, top: 44, bottom: 44, containLabel: true },
-    xAxis: cleanXAxis(entries.map(([nome]) => nome.split(" ")[0]), { fontSize: 10, interval: 0, rotate: 22 }),
-    yAxis: silentYAxis,
-    series: [{
-      type: "bar" as const,
-      data: entries.map(([, v]) => v),
-      barMaxWidth: 30,
-      itemStyle: {
-        color: grad(C.m, C.l2),
-        borderRadius: [8, 8, 0, 0],
-        shadowColor: "rgba(139,28,43,.25)",
-        shadowBlur: 8,
-        shadowOffsetY: 4
+    tooltip: {
+      ...ttAxis,
+      formatter: (params: { seriesName: string; name: string; value: number; dataIndex: number }[]) => {
+        const i = params[0]?.dataIndex ?? 0;
+        const r = rows[i];
+        if (!r) return "";
+        const ok = r.realizado >= r.meta;
+        return `<b>${r.nome}</b><br/>`
+          + `${r.funcao}<br/>`
+          + `Realizado na semana: <b style="color:${ok ? "#16a34a" : C.p}">${r.realizado}</b><br/>`
+          + `Meta: <b style="color:#0ea5e9">${r.meta}</b>`;
       },
-      emphasis: {
+    },
+    grid: { left: 12, right: 12, top: 36, bottom: 48 },
+    xAxis: cleanXAxis(names, { fontSize: 10, interval: 0, rotate: 22 }),
+    yAxis: { ...silentYAxis, min: 0, max: maxY },
+    series: [
+      {
+        name: "Meta",
+        type: "bar" as const,
+        data: rows.map(r => r.meta),
+        barMaxWidth: 18,
         itemStyle: {
-          color: grad(C.p, C.m),
-          shadowBlur: 16,
-          shadowColor: "rgba(139,28,43,.45)"
-        }
-      },
-      label: {
-        show: true,
-        position: "top" as const,
-        fontSize: 11,
-        fontWeight: "bold" as const,
-        color: C.p,
-        distance: 6
-      },
-      markLine: {
-        silent: true,
-        symbol: "none",
-        lineStyle: { color: "#0ea5e9", type: "dashed" as const, width: 2 },
+          color: "rgba(14,165,233,.22)",
+          borderColor: "#0ea5e9",
+          borderWidth: 1.5,
+          borderRadius: [6, 6, 0, 0],
+        },
         label: {
-          position: "insideEndTop" as const,
-          fontSize: 11,
+          show: true,
+          position: "top" as const,
+          fontSize: 10,
           fontWeight: "bold" as const,
           color: "#0ea5e9",
-          formatter: `Meta: ${normaisSemanal.value}`
+          formatter: (p: { value: number }) => String(p.value),
         },
-        data: [{ yAxis: normaisSemanal.value }]
-      }
-    }]
+      },
+      {
+        name: "Realizado",
+        type: "bar" as const,
+        data: rows.map(r => ({
+          value: r.realizado,
+          itemStyle: {
+            color: r.realizado >= r.meta ? grad("#22c55e", "#16a34a") : grad(C.m, C.l2),
+            borderRadius: [6, 6, 0, 0],
+            shadowColor: r.realizado >= r.meta ? "rgba(22,163,74,.25)" : "rgba(139,28,43,.25)",
+            shadowBlur: 8,
+            shadowOffsetY: 4,
+          },
+        })),
+        barMaxWidth: 18,
+        label: {
+          show: true,
+          position: "top" as const,
+          fontSize: 10,
+          fontWeight: "bold" as const,
+          color: C.p,
+          formatter: (p: { value: number }) => String(p.value),
+        },
+      },
+    ],
   };
 });
 
@@ -528,7 +566,7 @@ const lineWeekly = computed(() => {
       formatter: (p: { name: string; value: number }[]) =>
         `<b>${p[0]?.name}</b><br/>Observações: <b style="color:${C.p}">${p[0]?.value}</b>`
     },
-    grid: { left: 12, right: 20, top: 44, bottom: 32, containLabel: true },
+    grid: { left: 12, right: 20, top: 44, bottom: 32 },
     xAxis: { ...cleanXAxis(["1ª Semana","2ª Semana","3ª Semana","4ª Semana"]), axisLine: { show: false } },
     yAxis: { ...silentYAxis, min: 0 },
     series: [{
@@ -570,7 +608,7 @@ const barBase = computed(() => {
       formatter: (p: { name: string; value: number }) =>
         `Base: <b>${p.name}</b><br/>Observações: <b style="color:${C.p}">${p.value}</b>`
     },
-    grid: { left: 12, right: 12, top: 44, bottom: 40, containLabel: true },
+    grid: { left: 12, right: 12, top: 44, bottom: 40 },
     xAxis: cleanXAxis(entries.map(([nome]) => nome)),
     yAxis: { show: false },
     series: [{
@@ -610,7 +648,7 @@ const barProcesso = computed(() => {
       formatter: (p: { name: string; value: number }) =>
         `Tipo: <b>${p.name}</b><br/>Observações: <b style="color:${C.p}">${p.value}</b>`
     },
-    grid: { left: 12, right: 12, top: 52, bottom: 40, containLabel: true },
+    grid: { left: 12, right: 12, top: 52, bottom: 40 },
     xAxis: cleanXAxis(labels),
     yAxis: silentYAxis,
     series: [{
@@ -649,7 +687,7 @@ const donutWeekly = computed(() => {
     legend: {
       bottom: 4, left: "center",
       itemWidth: 10, itemHeight: 10, itemGap: 14,
-      textStyle: { color: "#64748b", fontSize: 11 }
+      textStyle: { color: chartInk.muted, fontSize: 11 }
     },
     title: {
       text: String(donutTotal),
@@ -658,7 +696,7 @@ const donutWeekly = computed(() => {
       top: "33%",
       textAlign: "center",
       textStyle: { fontSize: 28, fontWeight: "bold" as const, color: C.p, lineHeight: 32 },
-      subtextStyle: { fontSize: 11, color: "#94a3b8", lineHeight: 20 }
+      subtextStyle: { fontSize: 11, color: chartInk.faint, lineHeight: 20 }
     },
     series: [{
       type: "pie" as const,

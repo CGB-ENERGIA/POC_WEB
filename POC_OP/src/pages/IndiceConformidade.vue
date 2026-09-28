@@ -187,7 +187,7 @@
 
         <!-- RIGHT: Ranking (full height) -->
         <div class="col-12 col-md-4">
-          <q-card flat bordered class="chart-card ranking-card">
+          <q-card flat bordered class="chart-card ranking-card chart-card--vertical">
             <q-card-section class="q-pb-none">
               <div class="text-subtitle1 text-weight-bold">Ranking Geral de Não Conformidades</div>
               <div class="text-caption text-grey-6">Itens mais recorrentes</div>
@@ -217,6 +217,7 @@ import {
   DataZoomComponent
 } from "echarts/components";
 import VChart from "vue-echarts";
+import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN, fmtPct } from "@/composables/useChecklistData";
 import { filterByGerencia, fetchNaoConformesPorMes, semanaDoMes } from "@/lib/dashboard";
 
@@ -335,7 +336,7 @@ const ttItem = {
   trigger: "item" as const,
   backgroundColor: "rgba(255,255,255,0.97)",
   borderColor: "#e2e8f0", borderWidth: 1,
-  textStyle: { color: "#334155", fontSize: 12 },
+  textStyle: { color: chartInk.axis, fontSize: 12 },
   extraCssText: "box-shadow:0 8px 24px rgba(0,0,0,.12);border-radius:10px;padding:10px 14px;"
 };
 
@@ -352,7 +353,7 @@ function hBar(
       formatter: (p: { name: string; value: number }) =>
         `<b>${p.name}</b>: <b style="color:${color}">${p.value}${suffix}</b>`
     },
-    grid: { left: 8, right: 52, top: 8, bottom: 8, containLabel: true },
+    grid: { left: 8, right: 52, top: 8, bottom: 8 },
     xAxis: {
       type: "value" as const,
       max: maxVal,
@@ -365,7 +366,7 @@ function hBar(
       axisLine: { show: false },
       axisTick: { show: false },
       splitLine: { show: false },
-      axisLabel: { color: "#334155", fontSize: 11 }
+      axisLabel: { color: chartInk.axis, fontSize: 11 }
     },
     series: [{
       type: "bar" as const,
@@ -425,13 +426,13 @@ const chartTendenciaMensal = computed(() => {
         return `<b>${p.name}</b>: <b style="color:${P.inconf}">${p.value}</b> desvios`;
       }
     },
-    grid: { left: 8, right: 16, top: 24, bottom: 8, containLabel: true },
+    grid: { left: 8, right: 16, top: 24, bottom: 8 },
     xAxis: {
       type: "category" as const,
       data: mesLabels,
       axisLine: { lineStyle: { color: "#e2e8f0" } },
       axisTick: { show: false },
-      axisLabel: { color: "#64748b", fontSize: 11 }
+      axisLabel: { color: chartInk.muted, fontSize: 11 }
     },
     yAxis: {
       type: "value" as const,
@@ -451,7 +452,7 @@ const chartTendenciaMensal = computed(() => {
         position: "top" as const,
         fontSize: 11,
         fontWeight: "bold" as const,
-        color: "#334155"
+        color: chartInk.axis
       },
       areaStyle: {
         color: {
@@ -498,7 +499,7 @@ const chartEquipe = computed(() => {
       zoomOnMouseWheel: false,
       moveOnMouseWheel: true
     }],
-    grid: { left: 8, right: 52, top: 8, bottom: 8, containLabel: true }
+    grid: { left: 8, right: 52, top: 8, bottom: 8 }
   };
 });
 
@@ -523,7 +524,7 @@ const chartRanking = computed(() => ({
     formatter: (p: { name: string; value: number }) =>
       `<b>${p.name}</b><br/>Ocorrências: <b style="color:${P.inconf}">${p.value}</b>`
   },
-  grid: { left: 8, right: 36, top: 8, bottom: 8, containLabel: true },
+  grid: { left: 8, right: 36, top: 8, bottom: 8 },
   xAxis: {
     type: "value" as const,
     show: false,
@@ -535,7 +536,7 @@ const chartRanking = computed(() => ({
     axisLine: { show: false },
     axisTick: { show: false },
     splitLine: { show: false },
-    axisLabel: { color: "#334155", fontSize: 11 }
+    axisLabel: { color: chartInk.axis, fontSize: 11 }
   },
   series: [{
     type: "bar" as const,

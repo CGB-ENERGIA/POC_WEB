@@ -49,6 +49,14 @@ export function dismissInstallPrompt(): void {
   deferredInstallPrompt.value = null;
 }
 
+export function isDesktopDevice(): boolean {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return true;
+  if (isIosDevice()) return false;
+  const ua = navigator.userAgent || "";
+  if (/Android.+Mobile|webOS|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(ua)) return false;
+  return !/Mobi/i.test(ua);
+}
+
 export function shouldOfferPwaInstall(): boolean {
   if (isStandaloneDisplay()) return false;
   if (wasInstallDismissed()) return false;

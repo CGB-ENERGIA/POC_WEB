@@ -167,7 +167,7 @@
           <!-- Row 1: Donut · Mês · Gerência -->
           <div class="row q-col-gutter-md q-mb-md">
             <div class="col-12 col-md-4">
-              <q-card flat bordered>
+              <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
                   <div class="text-subtitle1 text-weight-bold">Índice Geral de conformidade</div>
                 </q-card-section>
@@ -177,7 +177,7 @@
               </q-card>
             </div>
             <div class="col-12 col-md-4">
-              <q-card flat bordered>
+              <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
                   <div class="text-subtitle1 text-weight-bold">Índice de conformidade por Mês</div>
                   <div class="text-caption text-grey-6">% acumulada</div>
@@ -188,7 +188,7 @@
               </q-card>
             </div>
             <div class="col-12 col-md-4">
-              <q-card flat bordered>
+              <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
                   <div class="text-subtitle1 text-weight-bold">Índice de conformidade por Gerência</div>
                 </q-card-section>
@@ -202,23 +202,23 @@
           <!-- Row 2: Base · Não conformidades por Categoria -->
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-4">
-              <q-card flat bordered>
+              <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
                   <div class="text-subtitle1 text-weight-bold">Índice de conformidade por Base</div>
                 </q-card-section>
                 <q-card-section>
-                  <v-chart :option="chartBase" autoresize style="height:240px" />
+                  <v-chart :option="chartBase" autoresize style="height:260px" />
                 </q-card-section>
               </q-card>
             </div>
             <div class="col-12 col-md-8">
-              <q-card flat bordered>
+              <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
                   <div class="text-subtitle1 text-weight-bold">Não conformidades por Categoria</div>
                   <div class="text-caption text-grey-6">Ocorrências no Período</div>
                 </q-card-section>
                 <q-card-section>
-                  <v-chart :option="chartCategoria" autoresize style="height:240px" />
+                  <v-chart :option="chartCategoria" autoresize style="height:260px" />
                 </q-card-section>
               </q-card>
             </div>
@@ -228,7 +228,7 @@
 
         <!-- RIGHT: Equipe (full height) -->
         <div class="col-12 col-md-3 equipe-col">
-          <q-card flat bordered class="equipe-card">
+          <q-card flat bordered class="equipe-card chart-card chart-card--vertical">
             <q-card-section class="q-pb-none">
               <div class="text-subtitle1 text-weight-bold">Índice de conformidade por Equipe</div>
               <div class="text-caption text-grey-6">Role para ver mais</div>
@@ -258,6 +258,7 @@ import {
   DataZoomComponent
 } from "echarts/components";
 import VChart from "vue-echarts";
+import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtPct, fmtN } from "@/composables/useChecklistData";
 import { filterByGerencia, semanaDoMes } from "@/lib/dashboard";
 
@@ -376,7 +377,7 @@ const ttItem = {
   trigger: "item" as const,
   backgroundColor: "rgba(255,255,255,0.97)",
   borderColor: "#e2e8f0", borderWidth: 1,
-  textStyle: { color: "#334155", fontSize: 12 },
+  textStyle: { color: chartInk.axis, fontSize: 12 },
   extraCssText: "box-shadow:0 8px 24px rgba(0,0,0,.12);border-radius:10px;padding:10px 14px;"
 };
 
@@ -393,12 +394,12 @@ function hBar(
       formatter: (p: { name: string; value: number }) =>
         `<b>${p.name}</b>: <b style="color:${color}">${p.value}${suffix}</b>`
     },
-    grid: { left: 8, right: 52, top: 8, bottom: 8, containLabel: true },
+    grid: { left: 8, right: 52, top: 8, bottom: 8 },
     xAxis: { type: "value" as const, max: maxVal, show: false, splitLine: { show: false } },
     yAxis: {
       type: "category" as const, data: categories,
       axisLine: { show: false }, axisTick: { show: false },
-      splitLine: { show: false }, axisLabel: { color: "#334155", fontSize: 11 }
+      splitLine: { show: false }, axisLabel: { color: chartInk.axis, fontSize: 11 }
     },
     series: [{
       type: "bar" as const,
@@ -425,14 +426,14 @@ const chartDonut = computed(() => ({
   },
   legend: {
     bottom: 4, left: "center", itemWidth: 10, itemHeight: 10, itemGap: 16,
-    textStyle: { color: "#64748b", fontSize: 11 }
+    textStyle: { color: chartInk.muted, fontSize: 11 }
   },
   title: {
     text: fmtPct(checklistIndex.value),
     subtext: "checklists perfeitos",
     left: "50%", top: "34%", textAlign: "center",
     textStyle: { fontSize: 26, fontWeight: "bold" as const, color: P.conf },
-    subtextStyle: { fontSize: 11, color: "#94a3b8" }
+    subtextStyle: { fontSize: 11, color: chartInk.faint }
   },
   series: [{
     type: "pie" as const,
@@ -443,8 +444,8 @@ const chartDonut = computed(() => ({
       formatter: (p: { name: string; value: number; percent: number }) =>
         `{nm|${p.name}}\n{vl|${p.value} (${p.percent.toFixed(0)}%)}`,
       rich: {
-        nm: { fontSize: 10, color: "#64748b" },
-        vl: { fontSize: 11, fontWeight: "bold", color: "#334155" }
+        nm: { fontSize: 10, color: chartInk.muted },
+        vl: { fontSize: 11, fontWeight: "bold", color: chartInk.axis }
       }
     },
     labelLine: { length: 10, length2: 8 },
@@ -524,12 +525,12 @@ const chartCategoria = computed(() => {
       formatter: (p: { name: string; value: number }) =>
         `<b>${p.name}</b><br/>Ocorrências: <b style="color:${P.inconf}">${p.value}</b>`
     },
-    grid: { left: 8, right: 36, top: 8, bottom: 8, containLabel: true },
+    grid: { left: 8, right: 36, top: 8, bottom: 8 },
     xAxis: { type: "value" as const, show: false, splitLine: { show: false } },
     yAxis: {
       type: "category" as const, data: cats,
       axisLine: { show: false }, axisTick: { show: false },
-      splitLine: { show: false }, axisLabel: { color: "#334155", fontSize: 11 }
+      splitLine: { show: false }, axisLabel: { color: chartInk.axis, fontSize: 11 }
     },
     series: [{
       type: "bar" as const,
@@ -585,13 +586,13 @@ const chartEquipe = computed(() => {
     formatter: (p: { name: string; value: number }) =>
       `<b>${p.name}</b>: <b style="color:${p.value === 100 ? P.conf : P.inconfLt}">${p.value}%</b>`
   },
-  grid: { left: 8, right: 52, top: 4, bottom: 4, containLabel: true },
+  grid: { left: 8, right: 52, top: 4, bottom: 4 },
   xAxis: { type: "value" as const, max: 100, show: false, splitLine: { show: false } },
   yAxis: {
     type: "category" as const,
     data: cats,
     axisLine: { show: false }, axisTick: { show: false },
-    splitLine: { show: false }, axisLabel: { color: "#334155", fontSize: 10 }
+    splitLine: { show: false }, axisLabel: { color: chartInk.axis, fontSize: 10 }
   },
   dataZoom: [{
     type: "inside" as const,
