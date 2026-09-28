@@ -92,6 +92,7 @@ import {
   isIosSafari,
   shouldOfferPwaInstall,
 } from "@/utils/pwa-install";
+import { primeiroAcessoPendente } from "@/utils/primeiro-acesso";
 
 const aberto = ref(false);
 const instalando = ref(false);
@@ -116,6 +117,7 @@ const lead = computed(() =>
 );
 
 function tentarAbrir() {
+  if (primeiroAcessoPendente.value) return;
   if (!shouldOfferPwaInstall()) {
     aberto.value = false;
     return;
@@ -131,8 +133,12 @@ onUnmounted(() => {
   clearTimeout(delayTimer);
 });
 
+watch(primeiroAcessoPendente, (pendente) => {
+  if (!pendente) delayTimer = setTimeout(tentarAbrir, 500);
+});
+
 watch(deferredInstallPrompt, (evt) => {
-  if (evt && shouldOfferPwaInstall()) aberto.value = true;
+  if (evt && !primeiroAcessoPendente.value && shouldOfferPwaInstall()) aberto.value = true;
 });
 
 async function instalarNativo() {

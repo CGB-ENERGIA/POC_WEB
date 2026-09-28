@@ -78,6 +78,7 @@
         </transition>
       </router-view>
     </q-page-container>
+    <PrimeiroAcessoGuide />
     <PwaInstallPrompt />
   </q-layout>
 </template>
@@ -90,6 +91,7 @@ import { useSessionStore } from "@/stores/session";
 import { useObservacoesStore } from "@/stores/observacoes";
 import BrandLogo from "@/components/BrandLogo.vue";
 import PwaInstallPrompt from "@/components/PwaInstallPrompt.vue";
+import PrimeiroAcessoGuide from "@/components/PrimeiroAcessoGuide.vue";
 import { applyThemeColor } from "@/utils/theme";
 import { THEME_STORAGE_KEY } from "@/constants/theme";
 
