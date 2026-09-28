@@ -14,6 +14,10 @@ export const chartInk = reactive({
   missHi: "#e11d48",
   missBar: "#9f1239",
   metaTick: "#9f1239",
+  tipBg: "#ffffff",
+  tipBorder: "#e2e8f0",
+  tipText: "#0f172a",
+  tipMuted: "#64748b",
 });
 
 export function applyChartInk(dark: boolean) {
@@ -30,6 +34,10 @@ export function applyChartInk(dark: boolean) {
     chartInk.missHi = "#fda4af";
     chartInk.missBar = "#f43f5e";
     chartInk.metaTick = "#fecdd3";
+    chartInk.tipBg = "#0b1220";
+    chartInk.tipBorder = "#334155";
+    chartInk.tipText = "#f8fafc";
+    chartInk.tipMuted = "#94a3b8";
     return;
   }
   chartInk.axis = "#334155";
@@ -44,6 +52,10 @@ export function applyChartInk(dark: boolean) {
   chartInk.missHi = "#e11d48";
   chartInk.missBar = "#9f1239";
   chartInk.metaTick = "#9f1239";
+  chartInk.tipBg = "#ffffff";
+  chartInk.tipBorder = "#e2e8f0";
+  chartInk.tipText = "#0f172a";
+  chartInk.tipMuted = "#64748b";
 }
 
 if (typeof localStorage !== "undefined") {

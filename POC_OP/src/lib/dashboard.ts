@@ -374,7 +374,7 @@ export function countByMatricula(subs: SubmissionRow[]): Record<string, number> 
 /** Roster de observadores para gráficos de meta (todos, inclusive quem fez 0). */
 export function filterObserverRoster(
   employees: EmployeeRow[],
-  opts: { gerencia?: string; gerente?: string; funcao?: string } = {},
+  opts: { gerencia?: string; gerente?: string; funcao?: string; base?: string } = {},
 ): EmployeeRow[] {
   let list = employees;
   if (opts.gerencia && opts.gerencia !== "Todos") {
@@ -382,6 +382,9 @@ export function filterObserverRoster(
   }
   if (opts.funcao && opts.funcao !== "Todos") {
     list = list.filter((e) => e.funcao === opts.funcao);
+  }
+  if (opts.base && opts.base !== "Todos") {
+    list = list.filter((e) => e.base === opts.base);
   }
   if (opts.gerente && opts.gerente !== "Todos") {
     const g = foldName(opts.gerente);

@@ -103,8 +103,8 @@
 
           <!-- Alojamento toggle -->
           <button
-            :class="['pill pill--alojamento', { 'pill--active': filters.alojamento }]"
-            @click="filters.alojamento = !filters.alojamento"
+            :class="['pill pill--alojamento', { 'pill--active': viz.processo === 'ALOJAMENTO' }]"
+            @click="toggleProcesso('ALOJAMENTO')"
           >Alojamento</button>
 
         </div>
@@ -120,7 +120,9 @@
           <span class="filter-chip">{{ semanaLabel }}</span>
           <span v-if="filters.gerente && filters.gerente !== 'Todos'" class="filter-chip">{{ filters.gerente }}</span>
           <span v-if="filters.gerencia !== 'Todos'" class="filter-chip">{{ filters.gerencia }}</span>
-          <span v-if="filters.alojamento" class="filter-chip">Alojamento</span>
+          <span v-if="viz.observadorNome" class="filter-chip filter-chip--hit" @click="viz.matricula = null; viz.observadorNome = null">{{ viz.observadorNome }}</span>
+          <span v-if="viz.base" class="filter-chip filter-chip--hit" @click="viz.base = null">{{ viz.base }}</span>
+          <span v-if="viz.processo" class="filter-chip filter-chip--hit" @click="toggleProcesso(viz.processo)">{{ labelProcesso(viz.processo) }}</span>
           <button class="filter-clear" @click="resetFilters">
             <q-icon name="mdi-close-circle" size="14px" />
             Limpar
@@ -158,10 +160,10 @@
           <q-card flat bordered class="chart-card">
             <q-card-section class="q-pb-none">
               <div class="text-subtitle1 text-weight-bold">Observações Realizadas na Semana</div>
-              <div class="text-caption text-grey-6">Todos os observadores · vela = realizado · traço = meta · arraste para ver a lista</div>
+              <div class="text-caption text-grey-6">Clique numa vela, base, processo ou semana para filtrar a página · clique de novo para limpar</div>
             </q-card-section>
             <q-card-section>
-              <v-chart :option="barObservadores" autoresize style="height: 300px" />
+              <v-chart class="chart-hit" :option="barObservadores" autoresize style="height: 300px" @click="onObsClick" />
             </q-card-section>
           </q-card>
         </div>
@@ -172,7 +174,7 @@
               <div class="text-caption text-grey-6">Últimas 4 semanas</div>
             </q-card-section>
             <q-card-section>
-              <v-chart :option="lineWeekly" autoresize style="height: 260px" />
+              <v-chart class="chart-hit" :option="lineWeekly" autoresize style="height: 260px" @click="onWeekClick" />
             </q-card-section>
           </q-card>
         </div>
@@ -186,7 +188,7 @@
               <div class="text-subtitle1 text-weight-bold">Observações por Base</div>
             </q-card-section>
             <q-card-section>
-              <v-chart :option="barBase" autoresize style="height: 260px" />
+              <v-chart class="chart-hit" :option="barBase" autoresize style="height: 260px" @click="onBaseClick" />
             </q-card-section>
           </q-card>
         </div>
@@ -196,7 +198,7 @@
               <div class="text-subtitle1 text-weight-bold">Observações por Processo</div>
             </q-card-section>
             <q-card-section>
-              <v-chart :option="barProcesso" autoresize style="height: 260px" />
+              <v-chart class="chart-hit" :option="barProcesso" autoresize style="height: 260px" @click="onProcessoClick" />
             </q-card-section>
           </q-card>
         </div>
@@ -206,7 +208,7 @@
               <div class="text-subtitle1 text-weight-bold">Distribuição por Semana</div>
             </q-card-section>
             <q-card-section>
-              <v-chart :option="donutWeekly" autoresize style="height: 260px" />
+              <v-chart class="chart-hit" :option="donutWeekly" autoresize style="height: 260px" @click="onWeekClick" />
             </q-card-section>
           </q-card>
         </div>
@@ -242,6 +244,8 @@ import {
   uniqueChartLabels,
   tallyObserverRecords,
   normMatricula,
+  indexEmployees,
+  matchSubmissionToEmployee,
 } from "@/lib/dashboard";
 import { useGoals } from "@/composables/useGoals";
 const { goalForColaborador } = useGoals();
@@ -286,8 +290,40 @@ const filters = reactive({
   mes: now.getMonth() + 1,
   gerente: "Todos",
   gerencia: "Todos",
-  alojamento: false
+  alojamento: false,
 });
+
+const viz = reactive({
+  matricula: null as string | null,
+  observadorNome: null as string | null,
+  base: null as string | null,
+  processo: null as string | null,
+});
+
+const PROCESSO_LABEL: Record<string, string> = {
+  GOMAN: "GOMAN",
+  GSTC: "GSTC",
+  ADMINISTRATIVO: "Administrativo",
+  ALOJAMENTO: "Alojamento",
+  LOGISTICA: "Logística",
+  OFICINA: "Oficina",
+};
+
+function labelProcesso(code: string) {
+  return PROCESSO_LABEL[code] ?? code;
+}
+
+function auditagemKey(s: { auditagem?: string }) {
+  return (s.auditagem ?? "Outro").toUpperCase();
+}
+
+function resetViz() {
+  viz.matricula = null;
+  viz.observadorNome = null;
+  viz.base = null;
+  viz.processo = null;
+  filters.alojamento = false;
+}
 
 function resetFilters() {
   filters.semana = semanaDoMes(now.getDate());
@@ -296,12 +332,63 @@ function resetFilters() {
   filters.gerente = "Todos";
   filters.gerencia = "Todos";
   filters.alojamento = false;
+  resetViz();
+}
+
+function toggleProcesso(code: string) {
+  viz.processo = viz.processo === code ? null : code;
+  filters.alojamento = viz.processo === "ALOJAMENTO";
+}
+
+type EcClick = {
+  componentType?: string;
+  dataIndex?: number;
+  name?: string;
+};
+
+function onObsClick(p: EcClick) {
+  if (p.componentType !== "series") return;
+  const row = observerRows.value[p.dataIndex ?? -1];
+  if (!row) return;
+  const mat = row.matricula;
+  if (viz.matricula === mat) {
+    viz.matricula = null;
+    viz.observadorNome = null;
+    return;
+  }
+  viz.matricula = mat;
+  viz.observadorNome = row.short;
+}
+
+function onBaseClick(p: EcClick) {
+  if (p.componentType !== "series" || !p.name) return;
+  viz.base = viz.base === p.name ? null : p.name;
+}
+
+function onProcessoClick(p: EcClick) {
+  if (p.componentType !== "series") return;
+  const code = processoKeys.value[p.dataIndex ?? -1];
+  if (!code) return;
+  toggleProcesso(code);
+}
+
+function onWeekClick(p: EcClick) {
+  if (p.componentType && p.componentType !== "series") return;
+  let n = 0;
+  const fromName = p.name?.match(/(\d)/);
+  if (fromName) n = Number(fromName[1]);
+  else if (typeof p.dataIndex === "number") n = p.dataIndex + 1;
+  if (n >= 1 && n <= 4) filters.semana = n;
 }
 
 const semanaLabel = computed(() => semanas.find(s => s.value === filters.semana)?.label ?? "");
 const mesLabel = computed(() => meses.find(m => m.value === filters.mes)?.label ?? "");
 const hasActiveFilters = computed(() =>
-  filters.gerente !== "Todos" || filters.gerencia !== "Todos" || filters.alojamento
+  filters.gerente !== "Todos"
+  || filters.gerencia !== "Todos"
+  || !!viz.matricula
+  || !!viz.base
+  || !!viz.processo
 );
 
 // ─── Dados do banco ───────────────────────────────────────────────────────────
@@ -325,22 +412,45 @@ onMounted(recarregar);
 watch(() => [filters.ano, filters.mes], recarregar);
 
 // Todos os subs do mês após filtros de gerência/gerente (sem filtro de semana)
-const allMonthSubs = computed(() => {
-  let s = filterByGerencia(submissions.value, employees.value, filters.gerencia);
-  s = filterByGerente(s, employees.value, filters.gerente);
-  return s;
-});
-
-const filteredSubs = computed(() =>
-  allMonthSubs.value.filter(sub => semanaDaData(sub.data) === filters.semana)
+const barraGerencia = computed(() =>
+  filterByGerente(
+    filterByGerencia(submissions.value, employees.value, filters.gerencia),
+    employees.value,
+    filters.gerente,
+  ),
 );
+
+function applySlice(
+  source: typeof submissions.value,
+  omit: { week?: boolean; base?: boolean; processo?: boolean; mat?: boolean } = {},
+) {
+  let s = source;
+  if (!omit.week) s = s.filter((sub) => semanaDaData(sub.data) === filters.semana);
+  if (!omit.base && viz.base) s = s.filter((sub) => sub.base === viz.base);
+  if (!omit.processo && viz.processo) s = s.filter((sub) => auditagemKey(sub) === viz.processo);
+  if (!omit.mat && viz.matricula) {
+    const idx = indexEmployees(employees.value);
+    const want = viz.matricula;
+    s = s.filter((sub) => {
+      const emp = matchSubmissionToEmployee(sub, idx);
+      return normMatricula(emp?.matricula ?? sub.matricula) === want;
+    });
+  }
+  return s;
+}
+
+const allMonthSubs = computed(() => applySlice(barraGerencia.value, { week: true }));
+const filteredSubs = computed(() => applySlice(barraGerencia.value));
+const subsWeekNoObs = computed(() => applySlice(barraGerencia.value, { mat: true }));
+const subsWeekNoBase = computed(() => applySlice(barraGerencia.value, { base: true }));
+const subsWeekNoProc = computed(() => applySlice(barraGerencia.value, { processo: true }));
 
 const totalSubmissions = computed(() => filteredSubs.value.length);
 const basesCovertas = computed(() => new Set(filteredSubs.value.map(s => s.base)).size);
 
 const byBase = computed(() => {
   const m: Record<string, number> = {};
-  for (const s of filteredSubs.value) m[s.base] = (m[s.base] ?? 0) + 1;
+  for (const s of subsWeekNoBase.value) m[s.base] = (m[s.base] ?? 0) + 1;
   return m;
 });
 
@@ -361,8 +471,28 @@ const observerRoster = computed(() =>
 );
 
 const observerRows = computed(() => {
-  const roster = observerRoster.value;
-  const { counts, extras } = tallyObserverRecords(roster, employees.value, filteredSubs.value);
+  let roster = observerRoster.value;
+  const idx = indexEmployees(employees.value);
+  const slice = subsWeekNoObs.value;
+  if (viz.base) {
+    const fromSlice = new Set<string>();
+    for (const s of slice) {
+      const emp = matchSubmissionToEmployee(s, idx);
+      fromSlice.add(normMatricula(emp?.matricula ?? s.matricula));
+    }
+    roster = roster.filter(
+      (e) => e.base === viz.base || fromSlice.has(normMatricula(e.matricula)),
+    );
+  }
+  if (viz.processo) {
+    const fromSlice = new Set<string>();
+    for (const s of slice) {
+      const emp = matchSubmissionToEmployee(s, idx);
+      fromSlice.add(normMatricula(emp?.matricula ?? s.matricula));
+    }
+    roster = roster.filter((e) => fromSlice.has(normMatricula(e.matricula)));
+  }
+  const { counts, extras } = tallyObserverRecords(roster, employees.value, slice);
   const list = extras.length ? [...roster, ...extras] : roster;
   const shorts = uniqueChartLabels(
     list.map((e) => e.nome || e.nome_completo.split(/\s+/)[0] || e.matricula),
@@ -373,6 +503,7 @@ const observerRows = computed(() => {
     );
     const key = normMatricula(emp.matricula);
     return {
+      matricula: key,
       nome: emp.nome_completo || emp.nome,
       short: shorts[i]!,
       realizado: counts.get(key) ?? 0,
@@ -407,14 +538,22 @@ const conformidadePorObservador = computed(() => {
 
 // ─── Meta ────────────────────────────────────────────────────────────────────
 
-const numObservadores = computed(() => observerRows.value.length);
+const metaTotal = computed(() => {
+  const rows = viz.matricula
+    ? observerRows.value.filter((x) => x.matricula === viz.matricula)
+    : observerRows.value;
+  return rows.reduce((total, r) => total + r.meta, 0);
+});
 
-const metaTotal = computed(() =>
-  observerRows.value.reduce((total, r) => total + r.meta, 0)
-);
+const obsNoMeta = computed(() => {
+  const rows = viz.matricula
+    ? observerRows.value.filter((x) => x.matricula === viz.matricula)
+    : observerRows.value;
+  return rows.filter((r) => r.realizado >= r.meta).length;
+});
 
-const obsNoMeta = computed(() =>
-  observerRows.value.filter((r) => r.realizado >= r.meta).length
+const numObservadores = computed(() =>
+  viz.matricula ? (observerRows.value.some((x) => x.matricula === viz.matricula) ? 1 : 0) : observerRows.value.length,
 );
 
 const atingimento = computed(() => {
@@ -447,23 +586,57 @@ function grad(top: string, bot: string) {
     colorStops: [{ offset: 0, color: top }, { offset: 1, color: bot }] };
 }
 
-const ttAxis = {
-  trigger: "axis" as const,
-  backgroundColor: "rgba(255,255,255,0.97)",
-  borderColor: "#e2e8f0",
-  borderWidth: 1,
-  textStyle: { color: chartInk.axis, fontSize: 12 },
-  extraCssText: "box-shadow:0 8px 24px rgba(0,0,0,.12);border-radius:10px;padding:10px 14px;"
+function tooltipSkin(trigger: "axis" | "item") {
+  return {
+    trigger,
+    backgroundColor: chartInk.tipBg,
+    borderColor: chartInk.tipBorder,
+    borderWidth: 1,
+    padding: [12, 14] as [number, number],
+    textStyle: { color: chartInk.tipText, fontSize: 12, fontWeight: 500 as const },
+    extraCssText: "border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.45);",
+  };
+}
+
+function tipHtml(title: string, rows: { label: string; value: string; color?: string }[], foot?: string) {
+  const t = chartInk.tipText;
+  const m = chartInk.tipMuted;
+  const body = rows
+    .map((r) =>
+      `<div style="display:flex;justify-content:space-between;gap:20px;align-items:baseline;margin-top:6px">`
+      + `<span style="color:${m};font-size:11px;font-weight:600;letter-spacing:.02em">${r.label}</span>`
+      + `<span style="color:${r.color ?? t};font-size:13px;font-weight:800">${r.value}</span>`
+      + `</div>`,
+    )
+    .join("");
+  const hint = foot
+    ? `<div style="color:${m};font-size:10px;margin-top:8px;opacity:.9">${foot}</div>`
+    : "";
+  return `<div style="min-width:168px;color:${t};font-family:inherit">`
+    + `<div style="font-weight:800;font-size:14px;line-height:1.25;color:${t}">${title}</div>`
+    + body
+    + hint
+    + `</div>`;
+}
+
+const BASE_NOME: Record<string, string> = {
+  BCB: "Bacabal",
+  BDC: "Barra do Corda",
+  ITM: "Imperatriz",
+  PDS: "Pedreiras",
+  PDT: "Presidente Dutra",
+  STI: "Santa Inês",
 };
 
-const ttItem = {
-  trigger: "item" as const,
-  backgroundColor: "rgba(255,255,255,0.97)",
-  borderColor: "#e2e8f0",
-  borderWidth: 1,
-  textStyle: { color: chartInk.axis, fontSize: 12 },
-  extraCssText: "box-shadow:0 8px 24px rgba(0,0,0,.12);border-radius:10px;padding:10px 14px;"
-};
+function nomeBase(code: string) {
+  return BASE_NOME[code] ? `${BASE_NOME[code]} (${code})` : code;
+}
+
+function numVal(v: unknown): number {
+  if (typeof v === "number") return v;
+  if (v && typeof v === "object" && "value" in (v as object)) return Number((v as { value: number }).value) || 0;
+  return Number(v) || 0;
+}
 
 const silentYAxis = {
   type: "value" as const,
@@ -501,16 +674,19 @@ const barObservadores = computed(() => {
 
   return {
     tooltip: {
-      ...ttAxis,
+      ...tooltipSkin("axis"),
       formatter: (params: { seriesName: string; dataIndex: number }[]) => {
         const i = params[0]?.dataIndex ?? 0;
         const r = rows[i];
         if (!r) return "";
         const ok = r.realizado >= r.meta;
-        return `<b>${r.nome}</b><br/>`
-          + `${r.funcao}<br/>`
-          + `Realizado na semana: <b style="color:${ok ? okColor : missColor}">${r.realizado}</b><br/>`
-          + `Meta: <b style="color:${metaTick}">${r.meta}</b>`;
+        const falta = Math.max(0, r.meta - r.realizado);
+        return tipHtml(r.nome, [
+          { label: "Função", value: r.funcao },
+          { label: "Realizado", value: String(r.realizado), color: ok ? okColor : missColor },
+          { label: "Meta da semana", value: String(r.meta), color: metaTick },
+          { label: "Situação", value: ok ? "Meta atingida" : `Faltam ${falta}`, color: ok ? okColor : missColor },
+        ], "Clique para filtrar este observador");
       },
     },
     grid: { left: 8, right: 8, top: 40, bottom: 78 },
@@ -555,6 +731,7 @@ const barObservadores = computed(() => {
               ? grad(chartInk.okHi, okColor)
               : grad(chartInk.missHi, chartInk.missBar),
             borderRadius: [6, 6, 0, 0],
+            opacity: !viz.matricula || r.matricula === viz.matricula ? 1 : 0.22,
             shadowColor: r.realizado >= r.meta ? "rgba(74,222,128,.28)" : "rgba(244,63,94,.35)",
             shadowBlur: 6,
             shadowOffsetY: 3,
@@ -562,6 +739,7 @@ const barObservadores = computed(() => {
           label: { color: r.realizado >= r.meta ? okColor : missColor },
         })),
         barMaxWidth: 22,
+        cursor: "pointer",
         label: {
           show: true,
           position: "top" as const,
@@ -575,9 +753,13 @@ const barObservadores = computed(() => {
       {
         name: "Meta",
         type: "scatter" as const,
-        data: rows.map(r => [r.short, r.meta]),
+        data: rows.map(r => ({
+          value: [r.short, r.meta],
+          itemStyle: { opacity: !viz.matricula || r.matricula === viz.matricula ? 1 : 0.22 },
+        })),
         symbol: "rect",
         symbolSize: [20, 5],
+        cursor: "pointer",
         itemStyle: {
           color: metaTick,
           borderColor: chartInk.halo,
@@ -612,19 +794,30 @@ const lineWeekly = computed(() => {
   const weekAvg = Math.round(weekData.reduce((a, b) => a + b, 0) / Math.max(weekData.filter(Boolean).length, 1));
   return {
     tooltip: {
-      ...ttAxis,
-      formatter: (p: { name: string; value: number }[]) =>
-        `<b>${p[0]?.name}</b><br/>Observações: <b style="color:${C.p}">${p[0]?.value}</b>`
+      ...tooltipSkin("axis"),
+      formatter: (p: { name: string; value: unknown }[]) => {
+        const v = numVal(p[0]?.value);
+        const total = weekData.reduce((a, b) => a + b, 0);
+        const pct = total ? Math.round((v / total) * 1000) / 10 : 0;
+        return tipHtml(p[0]?.name ?? "Semana", [
+          { label: "Observações", value: String(v), color: chartInk.miss },
+          { label: "Do mês", value: `${pct}%`.replace(".", ",") },
+        ], "Clique para abrir esta semana");
+      },
     },
     grid: { left: 12, right: 20, top: 44, bottom: 32 },
     xAxis: { ...cleanXAxis(["1ª Semana","2ª Semana","3ª Semana","4ª Semana"]), axisLine: { show: false } },
     yAxis: { ...silentYAxis, min: 0 },
     series: [{
       type: "line" as const,
-      data: weekData,
+      data: weekData.map((v, i) => ({
+        value: v,
+        itemStyle: { opacity: filters.semana === i + 1 ? 1 : 0.35 },
+      })),
       smooth: 0.3,
       symbol: "circle",
-      symbolSize: 12,
+      symbolSize: 14,
+      cursor: "pointer",
       lineStyle: { color: C.p, width: 3, shadowColor: "rgba(139,28,43,.35)", shadowBlur: 10 },
       itemStyle: { color: C.p, borderColor: "#fff", borderWidth: 3, shadowColor: "rgba(139,28,43,.45)", shadowBlur: 10 },
       areaStyle: { color: grad(C.p + "50", C.p + "06") },
@@ -654,17 +847,28 @@ const barBase = computed(() => {
   const entries = Object.entries(byBase.value).sort((a, b) => b[1] - a[1]);
   return {
     tooltip: {
-      ...ttItem,
-      formatter: (p: { name: string; value: number }) =>
-        `Base: <b>${p.name}</b><br/>Observações: <b style="color:${C.p}">${p.value}</b>`
+      ...tooltipSkin("item"),
+      formatter: (p: { name: string; value: unknown }) => {
+        const v = numVal(p.value);
+        const total = entries.reduce((a, [, n]) => a + n, 0);
+        const pct = total ? Math.round((v / total) * 1000) / 10 : 0;
+        return tipHtml(nomeBase(p.name), [
+          { label: "Observações", value: String(v), color: chartInk.miss },
+          { label: "Desta semana", value: `${String(pct).replace(".", ",")}%` },
+        ], "Clique para ver só esta base");
+      },
     },
     grid: { left: 12, right: 12, top: 44, bottom: 40 },
     xAxis: cleanXAxis(entries.map(([nome]) => nome)),
     yAxis: { show: false },
     series: [{
       type: "bar" as const,
-      data: entries.map(([, v]) => v),
+      data: entries.map(([nome, v]) => ({
+        value: v,
+        itemStyle: { opacity: !viz.base || viz.base === nome ? 1 : 0.22 },
+      })),
       barMaxWidth: 56,
+      cursor: "pointer",
       itemStyle: {
         borderRadius: [10, 10, 0, 0],
         color: (params: { dataIndex: number }) => grad(...baseColorPalette[params.dataIndex % 5]),
@@ -681,34 +885,50 @@ const barBase = computed(() => {
 // ─── Observações por Processo (auditagem type) ────────────────────────────────
 const byProcesso = computed(() => {
   const m: Record<string, number> = {};
-  for (const s of filteredSubs.value) {
-    const tipo = (s.auditagem ?? "Outro").toUpperCase();
+  for (const s of subsWeekNoProc.value) {
+    const tipo = auditagemKey(s);
     m[tipo] = (m[tipo] ?? 0) + 1;
   }
   return m;
 });
 
+const processoKeys = computed(() =>
+  Object.entries(byProcesso.value).sort((a, b) => b[1] - a[1]).map(([k]) => k),
+);
+
 const barProcesso = computed(() => {
-  const processoColors: [string, string][] = [[C.p, C.l1], [C.l1, C.l3]];
-  const labels = ["GOMAN", "GSTC"];
-  const data = labels.map(l => byProcesso.value[l] ?? 0);
+  const keys = processoKeys.value;
+  const processoColors: [string, string][] = [[C.p, C.l1], [C.l1, C.l3], [C.d2, C.m], [C.m, C.l2]];
+  const labels = keys.map(labelProcesso);
+  const data = keys.map(l => byProcesso.value[l] ?? 0);
   return {
     tooltip: {
-      ...ttItem,
-      formatter: (p: { name: string; value: number }) =>
-        `Tipo: <b>${p.name}</b><br/>Observações: <b style="color:${C.p}">${p.value}</b>`
+      ...tooltipSkin("item"),
+      formatter: (p: { name: string; value: unknown; dataIndex: number }) => {
+        const v = numVal(p.value);
+        const total = data.reduce((a, b) => a + b, 0);
+        const pct = total ? Math.round((v / total) * 1000) / 10 : 0;
+        return tipHtml(p.name, [
+          { label: "Observações", value: String(v), color: chartInk.miss },
+          { label: "Desta semana", value: `${String(pct).replace(".", ",")}%` },
+        ], "Clique para ver só este processo");
+      },
     },
     grid: { left: 12, right: 12, top: 52, bottom: 40 },
     xAxis: cleanXAxis(labels),
     yAxis: silentYAxis,
     series: [{
       type: "bar" as const,
-      data,
+      data: keys.map((code, i) => ({
+        value: data[i],
+        itemStyle: { opacity: !viz.processo || viz.processo === code ? 1 : 0.22 },
+      })),
       barMaxWidth: 80,
       barMinHeight: 4,
+      cursor: "pointer",
       itemStyle: {
         borderRadius: [10, 10, 0, 0],
-        color: (params: { dataIndex: number }) => grad(...processoColors[params.dataIndex]),
+        color: (params: { dataIndex: number }) => grad(...processoColors[params.dataIndex % processoColors.length]!),
         shadowColor: "rgba(139,28,43,.25)",
         shadowBlur: 10,
         shadowOffsetY: 4
@@ -725,14 +945,22 @@ const donutWeekly = computed(() => {
   const donutData = [1, 2, 3, 4].map((s, i) => ({
     value: bySemana.value[s] ?? 0,
     name: `${s}ª Semana`,
-    itemStyle: { color: semColors[i] }
+    itemStyle: {
+      color: semColors[i],
+      opacity: filters.semana === s ? 1 : 0.35,
+    },
   }));
   const donutTotal = donutData.reduce((sum, d) => sum + d.value, 0);
   return {
     tooltip: {
-      ...ttItem,
-      formatter: (p: { name: string; value: number; percent: number }) =>
-        `<b>${p.name}</b><br/>${p.value} obs &nbsp;·&nbsp; <b>${p.percent.toFixed(1)}%</b>`
+      ...tooltipSkin("item"),
+      formatter: (p: { name: string; value: unknown; percent: number }) => {
+        const v = numVal(p.value);
+        return tipHtml(p.name, [
+          { label: "Observações", value: String(v), color: chartInk.miss },
+          { label: "Do mês", value: `${(p.percent ?? 0).toFixed(1).replace(".", ",")}%` },
+        ], "Clique para abrir esta semana");
+      },
     },
     legend: {
       bottom: 4, left: "center",
@@ -753,6 +981,7 @@ const donutWeekly = computed(() => {
       radius: ["50%", "74%"],
       center: ["50%", "44%"],
       avoidLabelOverlap: false,
+      cursor: "pointer",
       label: { show: false },
       itemStyle: { borderRadius: 8, borderColor: "#fff", borderWidth: 3 },
       emphasis: {
@@ -781,6 +1010,10 @@ $label-color: #94a3b8;
 .acomp-page {
   background: #f8fafc;
   min-height: 100vh;
+}
+
+.chart-hit {
+  cursor: pointer;
 }
 
 // ── Filter bar wrapper ────────────────────────────────────────────────────────
@@ -975,6 +1208,9 @@ $label-color: #94a3b8;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 600;
+
+  &--hit { cursor: pointer; }
+  &--hit:hover { filter: brightness(0.92); }
 }
 
 .filter-clear {
