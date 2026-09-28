@@ -286,7 +286,6 @@
         label="Finalizar"
         icon="mdi-content-save"
         :loading="saving"
-        :loading="saving"
         :disable="saving"
       />
       <div v-if="textoPendencia" class="text-caption text-center q-mt-sm q-mb-xs cl-pendencia">
