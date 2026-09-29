@@ -42,9 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { useId } from "vue";
-
-const raw = useId().replace(/\W/g, "");
+const raw = `k${Math.random().toString(36).slice(2, 8)}`;
 const ids = {
   outer: `fl-o-${raw}`,
   mid: `fl-m-${raw}`,
