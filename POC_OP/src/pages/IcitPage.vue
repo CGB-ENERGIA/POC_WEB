@@ -118,6 +118,26 @@
         </div>
       </div>
       </div>
+      <transition name="fade">
+        <div v-if="hasActiveFilters" class="filter-summary">
+          <span class="filter-summary__label">Filtros ativos:</span>
+          <span class="filter-chip">{{ filters.ano }}</span>
+          <span class="filter-chip">{{ mesLabel }}</span>
+          <span v-if="filters.semana" class="filter-chip filter-chip--hit" @click="filters.semana = 0">{{ semanaLabel }}</span>
+          <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ nomeBase(filters.base) }}</span>
+          <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
+          <span v-if="filters.gerente !== 'Todos'" class="filter-chip">{{ filters.gerente }}</span>
+          <span v-if="filters.tipoPoc !== 'Operacional'" class="filter-chip filter-chip--hit" @click="filters.tipoPoc = 'Operacional'">{{ filters.tipoPoc }}</span>
+          <span v-if="filters.seguranca !== 'Segurança'" class="filter-chip filter-chip--hit" @click="filters.seguranca = 'Segurança'">{{ filters.seguranca }}</span>
+          <span v-if="viz.equipe" class="filter-chip filter-chip--hit" @click="viz.equipe = null">{{ viz.equipe }}</span>
+          <span v-if="viz.categoria" class="filter-chip filter-chip--hit" @click="viz.categoria = null">{{ viz.categoria }}</span>
+          <span v-if="viz.lado" class="filter-chip filter-chip--hit" @click="viz.lado = null">{{ viz.lado === 'semNc' ? 'Checklists perfeitos' : 'Com inconformidade' }}</span>
+          <button class="filter-clear" @click="resetSlice">
+            <q-icon name="mdi-close-circle" size="14px" />
+            Limpar
+          </button>
+        </div>
+      </transition>
     </div>
 
     <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -170,9 +190,10 @@
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
                   <div class="text-subtitle1 text-weight-bold">Índice Geral de conformidade</div>
+                  <div class="text-caption text-grey-6">Clique na fatia para filtrar</div>
                 </q-card-section>
                 <q-card-section>
-                  <v-chart :option="chartDonut" autoresize style="height:260px" />
+                  <v-chart class="chart-hit" :option="chartDonut" autoresize style="height:260px" @click="onDonutClick" />
                 </q-card-section>
               </q-card>
             </div>
@@ -180,10 +201,10 @@
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
                   <div class="text-subtitle1 text-weight-bold">Índice de conformidade por Mês</div>
-                  <div class="text-caption text-grey-6">% acumulada</div>
+                  <div class="text-caption text-grey-6">ICIT no ano · clique no mês para abrir</div>
                 </q-card-section>
                 <q-card-section>
-                  <v-chart :option="chartMes" autoresize style="height:260px" />
+                  <v-chart class="chart-hit" :option="chartMes" autoresize style="height:260px" @click="onMesClick" />
                 </q-card-section>
               </q-card>
             </div>
@@ -191,9 +212,10 @@
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
                   <div class="text-subtitle1 text-weight-bold">Índice de conformidade por Gerência</div>
+                  <div class="text-caption text-grey-6">Clique para filtrar a gerência</div>
                 </q-card-section>
                 <q-card-section>
-                  <v-chart :option="chartGerencia" autoresize style="height:260px" />
+                  <v-chart class="chart-hit" :option="chartGerencia" autoresize style="height:260px" @click="onGerenciaClick" />
                 </q-card-section>
               </q-card>
             </div>
@@ -205,9 +227,10 @@
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
                   <div class="text-subtitle1 text-weight-bold">Índice de conformidade por Base</div>
+                  <div class="text-caption text-grey-6">Clique para ver só esta base</div>
                 </q-card-section>
                 <q-card-section>
-                  <v-chart :option="chartBase" autoresize style="height:260px" />
+                  <v-chart class="chart-hit" :option="chartBase" autoresize style="height:260px" @click="onBaseClick" />
                 </q-card-section>
               </q-card>
             </div>
@@ -215,10 +238,10 @@
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
                   <div class="text-subtitle1 text-weight-bold">Não conformidades por Categoria</div>
-                  <div class="text-caption text-grey-6">Ocorrências no Período</div>
+                  <div class="text-caption text-grey-6">Clique na categoria para filtrar</div>
                 </q-card-section>
                 <q-card-section>
-                  <v-chart :option="chartCategoria" autoresize style="height:260px" />
+                  <v-chart class="chart-hit" :option="chartCategoria" autoresize style="height:260px" @click="onCategoriaClick" />
                 </q-card-section>
               </q-card>
             </div>
@@ -231,10 +254,10 @@
           <q-card flat bordered class="equipe-card chart-card chart-card--vertical">
             <q-card-section class="q-pb-none">
               <div class="text-subtitle1 text-weight-bold">Índice de conformidade por Equipe</div>
-              <div class="text-caption text-grey-6">Role para ver mais</div>
+              <div class="text-caption text-grey-6">Clique na equipe · role para ver mais</div>
             </q-card-section>
             <q-card-section>
-              <v-chart :option="chartEquipe" autoresize style="height:564px" />
+              <v-chart class="chart-hit" :option="chartEquipe" autoresize style="height:564px" @click="onEquipeClick" />
             </q-card-section>
           </q-card>
         </div>
@@ -260,7 +283,18 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtPct, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia, semanaDoMes } from "@/lib/dashboard";
+import {
+  filterByGerencia,
+  filterByGerente,
+  semanaDaData,
+  indexEmployees,
+  matchSubmissionToEmployee,
+  fetchSubmissions,
+  fetchResponses,
+  type ResponseRow,
+  type SubmissionRow,
+} from "@/lib/dashboard";
+import { metaRoleFrom } from "@/composables/useGoals";
 
 use([
   CanvasRenderer, BarChart, PieChart,
@@ -269,8 +303,8 @@ use([
 ]);
 
 const {
-  loading, error,
-  byCategoria, byBase, byGerencia, byMes, submissions, responses, employees,
+  loading,
+  submissions, responses, employees,
   load,
 } = useChecklistData();
 
@@ -323,28 +357,198 @@ const filters = reactive({
   gerente:   "Todos",
 });
 
-async function recarregar() {
-  await load({ ano: filters.ano, mes: filters.mes, base: filters.base === "Todos" ? undefined : filters.base }, true);
+async function recarregarMes() {
+  await load({
+    ano: filters.ano,
+    mes: filters.mes,
+    contarMeta: true,
+  });
 }
-onMounted(recarregar);
-watch(() => [filters.ano, filters.mes, filters.base], recarregar);
 
-const filteredSubs = computed(() => {
-  let s = filterByGerencia(submissions.value, employees.value, filters.gerencia);
-  if (filters.semana) {
-    s = s.filter(sub => semanaDoMes(new Date(sub.data).getDate()) === filters.semana);
+const yearSubs = ref<SubmissionRow[]>([]);
+const yearResps = ref<ResponseRow[]>([]);
+
+async function recarregarAno() {
+  const subs = await fetchSubmissions({ ano: filters.ano, contarMeta: true });
+  yearSubs.value = subs;
+  yearResps.value = await fetchResponses(subs.map((s) => s.id));
+}
+
+async function recarregar() {
+  await Promise.all([recarregarMes(), recarregarAno()]);
+}
+
+onMounted(recarregar);
+watch(() => [filters.ano, filters.mes], recarregarMes);
+watch(() => filters.ano, recarregarAno);
+
+const viz = reactive({
+  equipe: null as string | null,
+  categoria: null as string | null,
+  lado: null as "semNc" | "comNc" | null,
+});
+
+const BASE_NOME: Record<string, string> = {
+  BCB: "Bacabal",
+  BDC: "Barra do Corda",
+  ITM: "Imperatriz",
+  PDS: "Pedreiras",
+  PDT: "Presidente Dutra",
+  STI: "Santa Inês",
+};
+
+const TIPO_AUDITAGEM: Record<string, string[]> = {
+  Administrativo: ["ADMINISTRATIVO", "LOGISTICA", "OFICINA", "ADM"],
+  Operacional: ["GOMAN", "GSTC"],
+};
+
+function nomeBase(code: string) {
+  return BASE_NOME[code] ? `${BASE_NOME[code]} (${code})` : code;
+}
+
+function matchTipoPoc(auditagem: string | undefined) {
+  if (filters.tipoPoc === "Todos") return true;
+  const allowed = TIPO_AUDITAGEM[filters.tipoPoc];
+  if (!allowed) return true;
+  return allowed.includes((auditagem ?? "").toUpperCase());
+}
+
+function isSegurancaSub(sub: SubmissionRow, idx: ReturnType<typeof indexEmployees>) {
+  const emp = matchSubmissionToEmployee(sub, idx);
+  return metaRoleFrom(emp?.gerencia ?? sub.auditagem, emp?.funcao) === "tecnico";
+}
+
+function resetSlice() {
+  filters.semana = 0;
+  filters.gerencia = "Todos";
+  filters.base = "Todos";
+  filters.tipoPoc = "Operacional";
+  filters.seguranca = "Segurança";
+  filters.gerente = "Todos";
+  viz.equipe = null;
+  viz.categoria = null;
+  viz.lado = null;
+}
+
+type EcClick = {
+  componentType?: string;
+  dataIndex?: number;
+  name?: string;
+};
+
+function onMesClick(p: EcClick) {
+  if (p.componentType && p.componentType !== "series") return;
+  let mes = 0;
+  if (typeof p.dataIndex === "number") mes = p.dataIndex + 1;
+  const fromName = meses.find((m) => m.label === p.name);
+  if (fromName) mes = fromName.value;
+  if (mes < 1 || mes > 12) return;
+  filters.mes = mes;
+}
+
+function onBaseClick(p: EcClick) {
+  if (p.componentType !== "series" || !p.name) return;
+  filters.base = filters.base === p.name ? "Todos" : p.name;
+}
+
+function onGerenciaClick(p: EcClick) {
+  if (p.componentType !== "series" || !p.name) return;
+  filters.gerencia = filters.gerencia === p.name ? "Todos" : p.name;
+}
+
+function onEquipeClick(p: EcClick) {
+  if (p.componentType !== "series") return;
+  const row = equipeRows.value[p.dataIndex ?? -1];
+  if (!row) return;
+  viz.equipe = viz.equipe === row.equipe ? null : row.equipe;
+}
+
+function onCategoriaClick(p: EcClick) {
+  if (p.componentType !== "series") return;
+  const row = categoriaRows.value[p.dataIndex ?? -1];
+  if (!row) return;
+  viz.categoria = viz.categoria === row.cat ? null : row.cat;
+}
+
+function onDonutClick(p: EcClick) {
+  if (p.componentType && p.componentType !== "series") return;
+  const name = (p.name ?? "").toLowerCase();
+  const next = name.startsWith("inconf") ? "comNc" : name.startsWith("conf") ? "semNc" : null;
+  if (!next) return;
+  viz.lado = viz.lado === next ? null : next;
+}
+
+const mesLabel = computed(() => meses.find((m) => m.value === filters.mes)?.label ?? "");
+const semanaLabel = computed(() => semanas.find((s) => s.value === filters.semana)?.label ?? "");
+const hasActiveFilters = computed(() =>
+  filters.semana !== 0
+  || filters.base !== "Todos"
+  || filters.gerencia !== "Todos"
+  || filters.gerente !== "Todos"
+  || filters.tipoPoc !== "Operacional"
+  || filters.seguranca !== "Segurança"
+  || !!viz.equipe
+  || !!viz.categoria
+  || !!viz.lado,
+);
+
+function applySlice(
+  source: SubmissionRow[],
+  omit: { week?: boolean; base?: boolean; gerencia?: boolean; tipo?: boolean; seguranca?: boolean; equipe?: boolean; lado?: boolean } = {},
+) {
+  const idx = indexEmployees(employees.value);
+  let s = filterByGerente(source, employees.value, filters.gerente);
+  if (!omit.gerencia) s = filterByGerencia(s, employees.value, filters.gerencia);
+  if (!omit.week && filters.semana) {
+    s = s.filter((sub) => semanaDaData(sub.data) === filters.semana);
   }
-  if (filters.gerente !== "Todos") {
-    s = s.filter(sub => sub.observador === filters.gerente);
+  if (!omit.base && filters.base !== "Todos") {
+    s = s.filter((sub) => sub.base === filters.base);
+  }
+  if (!omit.tipo && filters.tipoPoc !== "Todos") {
+    s = s.filter((sub) => matchTipoPoc(sub.auditagem));
+  }
+  if (!omit.seguranca && filters.seguranca === "Segurança") {
+    s = s.filter((sub) => isSegurancaSub(sub, idx));
+  }
+  if (!omit.equipe && viz.equipe) {
+    s = s.filter((sub) => (sub.equipe ?? "Sem equipe") === viz.equipe);
   }
   return s;
-});
+}
 
-// â"€â"€â"€ KPIs â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-const filteredResps = computed(() => {
-  const ids = new Set(filteredSubs.value.map(s => s.id));
-  return responses.value.filter(r => ids.has(r.submission_id));
-});
+function ncIdSet(resps: ResponseRow[]) {
+  const ids = new Set<string>();
+  for (const r of resps) {
+    if (r.resposta === "nao_conforme") ids.add(r.submission_id);
+  }
+  return ids;
+}
+
+function respsOf(subs: SubmissionRow[], allResps: ResponseRow[], omitCat = false) {
+  const ids = new Set(subs.map((s) => s.id));
+  let r = allResps.filter((resp) => ids.has(resp.submission_id));
+  if (!omitCat && viz.categoria) r = r.filter((resp) => (resp.categoria ?? "Sem categoria") === viz.categoria);
+  return r;
+}
+
+function applyLado(subs: SubmissionRow[], resps: ResponseRow[]) {
+  if (!viz.lado) return subs;
+  const ncIds = ncIdSet(resps);
+  return viz.lado === "comNc"
+    ? subs.filter((s) => ncIds.has(s.id))
+    : subs.filter((s) => !ncIds.has(s.id));
+}
+
+const slicedSubs = computed(() => applySlice(submissions.value));
+const slicedResps = computed(() => respsOf(slicedSubs.value, responses.value));
+const filteredSubs = computed(() => applyLado(slicedSubs.value, slicedResps.value));
+const filteredResps = computed(() => respsOf(filteredSubs.value, responses.value));
+
+const subsNoBase = computed(() => applyLado(applySlice(submissions.value, { base: true }), respsOf(applySlice(submissions.value, { base: true }), responses.value)));
+const subsNoGerencia = computed(() => applyLado(applySlice(submissions.value, { gerencia: true }), respsOf(applySlice(submissions.value, { gerencia: true }), responses.value)));
+const subsNoEquipe = computed(() => applyLado(applySlice(submissions.value, { equipe: true }), respsOf(applySlice(submissions.value, { equipe: true }), responses.value)));
+const subsNoLado = computed(() => slicedSubs.value);
 
 const totalConformes    = computed(() => filteredResps.value.filter(r => r.resposta === "conforme").length);
 const totalNaoConformes = computed(() => filteredResps.value.filter(r => r.resposta === "nao_conforme").length);
@@ -352,274 +556,353 @@ const conformidadeIndex = computed(() => {
   const t = filteredResps.value.length;
   return t ? totalConformes.value / t : 0;
 });
-const basesCovertas = computed(() => new Set(filteredSubs.value.map(s => s.base)).size);
+const equipesAuditadas = computed(() => new Set(filteredSubs.value.map(s => s.equipe).filter(Boolean)).size);
 
-// Checklists sem nenhuma NC × checklists com pelo menos 1 NC
-const subsComNc = computed(() => {
-  const ncIds = new Set(filteredResps.value.filter(r => r.resposta === "nao_conforme").map(r => r.submission_id));
-  return filteredSubs.value.filter(s => ncIds.has(s.id)).length;
-});
-const subsSemNc = computed(() => filteredSubs.value.length - subsComNc.value);
+const donutNcIds = computed(() => ncIdSet(respsOf(subsNoLado.value, responses.value)));
+const subsComNc = computed(() => subsNoLado.value.filter(s => donutNcIds.value.has(s.id)).length);
+const subsSemNc = computed(() => subsNoLado.value.length - subsComNc.value);
 const checklistIndex = computed(() => {
   const t = filteredSubs.value.length;
-  return t ? subsSemNc.value / t : 0;
+  const ncIds = ncIdSet(filteredResps.value);
+  const sem = filteredSubs.value.filter((s) => !ncIds.has(s.id)).length;
+  return t ? sem / t : 0;
 });
 
+const kpiNcIds = computed(() => ncIdSet(filteredResps.value));
+const kpiSemNc = computed(() => filteredSubs.value.filter((s) => !kpiNcIds.value.has(s.id)).length);
+const kpiComNc = computed(() => filteredSubs.value.filter((s) => kpiNcIds.value.has(s.id)).length);
+
 const kpis = computed(() => [
-  { label: "Conformidade",     value: fmtN(subsSemNc.value),           icon: "mdi-check-circle",  color: "positive", hex: "#16a34a" },
-  { label: "Inconformidade",   value: fmtN(subsComNc.value),           icon: "mdi-alert-circle",  color: "negative", hex: "#dc2626" },
+  { label: "Conformidade",     value: fmtN(kpiSemNc.value),            icon: "mdi-check-circle",  color: "positive", hex: "#16a34a" },
+  { label: "Inconformidade",   value: fmtN(kpiComNc.value),            icon: "mdi-alert-circle",  color: "negative", hex: "#dc2626" },
   { label: "Índice Geral",     value: fmtPct(checklistIndex.value),    icon: "mdi-gauge",         color: "teal",     hex: "#0d9488" },
-  { label: "Equipes Auditadas",value: fmtN(basesCovertas.value),       icon: "mdi-account-group", color: "primary",  hex: "#0284c7" },
+  { label: "Equipes Auditadas",value: fmtN(equipesAuditadas.value),    icon: "mdi-account-group", color: "primary",  hex: "#0284c7" },
 ]);
 
 // â"€â"€â"€ Helpers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-const ttItem = {
-  trigger: "item" as const,
-  backgroundColor: "rgba(255,255,255,0.97)",
-  borderColor: "#e2e8f0", borderWidth: 1,
-  textStyle: { color: chartInk.axis, fontSize: 12 },
-  extraCssText: "box-shadow:0 8px 24px rgba(0,0,0,.12);border-radius:10px;padding:10px 14px;"
-};
+function tooltipSkin(trigger: "axis" | "item") {
+  return {
+    trigger,
+    backgroundColor: chartInk.tipBg,
+    borderColor: chartInk.tipBorder,
+    borderWidth: 1,
+    padding: [12, 14] as [number, number],
+    textStyle: { color: chartInk.tipText, fontSize: 12, fontWeight: 500 as const },
+    extraCssText: "border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.45);",
+  };
+}
+
+function tipHtml(title: string, rows: { label: string; value: string; color?: string }[], foot?: string) {
+  const t = chartInk.tipText;
+  const m = chartInk.tipMuted;
+  const body = rows
+    .map((r) =>
+      `<div style="display:flex;justify-content:space-between;gap:20px;align-items:baseline;margin-top:6px">`
+      + `<span style="color:${m};font-size:11px;font-weight:600;letter-spacing:.02em">${r.label}</span>`
+      + `<span style="color:${r.color ?? t};font-size:13px;font-weight:800">${r.value}</span>`
+      + `</div>`,
+    )
+    .join("");
+  const hint = foot
+    ? `<div style="color:${m};font-size:10px;margin-top:8px;opacity:.9">${foot}</div>`
+    : "";
+  return `<div style="min-width:168px;color:${t};font-family:inherit">`
+    + `<div style="font-weight:800;font-size:14px;line-height:1.25;color:${t}">${title}</div>`
+    + body
+    + hint
+    + `</div>`;
+}
+
+function mesDaData(data: string) {
+  const m = /^(\d{4})-(\d{2})/.exec(data);
+  return m ? Number(m[2]) : 0;
+}
+
+function icitPct(subs: SubmissionRow[], resps: ResponseRow[]) {
+  if (!subs.length) return 0;
+  const nc = ncIdSet(resps);
+  const sem = subs.filter((s) => !nc.has(s.id)).length;
+  return Math.round((sem / subs.length) * 100);
+}
+
+function answerPct(subs: SubmissionRow[], resps: ResponseRow[]) {
+  const ids = new Set(subs.map((s) => s.id));
+  let conf = 0;
+  let total = 0;
+  for (const r of resps) {
+    if (!ids.has(r.submission_id)) continue;
+    total++;
+    if (r.resposta === "conforme") conf++;
+  }
+  return total ? Math.round((conf / total) * 100) : 0;
+}
 
 function hBar(
-  categories: string[],
-  values: number[],
+  rows: { name: string; value: number }[],
+  selected: string | null,
   color = P.conf,
   suffix = "%",
-  maxVal = 100
+  maxVal = 100,
+  foot = "Clique para filtrar as outras visões",
 ) {
   return {
     tooltip: {
-      ...ttItem,
+      ...tooltipSkin("item"),
       formatter: (p: { name: string; value: number }) =>
-        `<b>${p.name}</b>: <b style="color:${color}">${p.value}${suffix}</b>`
+        tipHtml(p.name, [
+          { label: suffix === "%" ? "ICIT" : "Ocorrências", value: `${p.value}${suffix}`, color },
+        ], foot),
     },
-    grid: { left: 8, right: 52, top: 8, bottom: 8 },
+    grid: { left: 12, right: 44, top: 8, bottom: 8, containLabel: true },
     xAxis: { type: "value" as const, max: maxVal, show: false, splitLine: { show: false } },
     yAxis: {
-      type: "category" as const, data: categories,
+      type: "category" as const, data: rows.map((r) => r.name),
       axisLine: { show: false }, axisTick: { show: false },
-      splitLine: { show: false }, axisLabel: { color: chartInk.axis, fontSize: 11 }
+      splitLine: { show: false }, axisLabel: { color: chartInk.axis, fontSize: 11 },
     },
     series: [{
       type: "bar" as const,
-      data: values,
+      cursor: "pointer",
+      data: rows.map((r) => ({
+        value: r.value,
+        itemStyle: {
+          color,
+          opacity: !selected || selected === r.name ? 1 : 0.22,
+          borderRadius: [0, 6, 6, 0],
+          shadowColor: "rgba(0,0,0,.06)",
+          shadowBlur: 4,
+        },
+      })),
       barMaxWidth: 28,
-      itemStyle: { color, borderRadius: [0, 6, 6, 0], shadowColor: "rgba(0,0,0,.06)", shadowBlur: 4 },
       emphasis: { itemStyle: { opacity: 0.85 } },
       label: {
         show: true, position: "right" as const,
         fontSize: 11, fontWeight: "bold" as const,
         color,
-        formatter: (p: { value: number }) => `${p.value}${suffix}`
-      }
-    }]
+        formatter: (p: { value: number }) => `${p.value}${suffix}`,
+      },
+    }],
   };
 }
 
-// â"€â"€â"€ Chart: Donut â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const chartDonut = computed(() => ({
   tooltip: {
-    ...ttItem,
+    ...tooltipSkin("item"),
     formatter: (p: { name: string; value: number; percent: number }) =>
-      `<b>${p.name}</b><br/>${p.value} · <b>${p.percent.toFixed(0)}%</b>`
+      tipHtml(p.name, [
+        { label: "Checklists", value: String(p.value), color: p.name.toLowerCase().startsWith("inconf") ? P.inconf : P.conf },
+        { label: "Fatia", value: `${p.percent.toFixed(0)}%` },
+      ], "Clique para ver só este grupo"),
   },
   legend: {
     bottom: 4, left: "center", itemWidth: 10, itemHeight: 10, itemGap: 16,
-    textStyle: { color: chartInk.muted, fontSize: 11 }
+    textStyle: { color: chartInk.muted, fontSize: 11 },
   },
   title: {
     text: fmtPct(checklistIndex.value),
     subtext: "checklists perfeitos",
     left: "50%", top: "34%", textAlign: "center",
     textStyle: { fontSize: 26, fontWeight: "bold" as const, color: P.conf },
-    subtextStyle: { fontSize: 11, color: chartInk.faint }
+    subtextStyle: { fontSize: 11, color: chartInk.faint },
   },
   series: [{
     type: "pie" as const,
     radius: ["52%", "74%"], center: ["50%", "46%"],
     avoidLabelOverlap: false,
+    cursor: "pointer",
     label: {
       show: true,
       formatter: (p: { name: string; value: number; percent: number }) =>
         `{nm|${p.name}}\n{vl|${p.value} (${p.percent.toFixed(0)}%)}`,
       rich: {
         nm: { fontSize: 10, color: chartInk.muted },
-        vl: { fontSize: 11, fontWeight: "bold", color: chartInk.axis }
-      }
+        vl: { fontSize: 11, fontWeight: "bold", color: chartInk.axis },
+      },
     },
     labelLine: { length: 10, length2: 8 },
-    itemStyle: { borderRadius: 8, borderColor: "#fff", borderWidth: 3 },
+    itemStyle: { borderRadius: 8, borderColor: chartInk.halo, borderWidth: 3 },
     emphasis: { scale: true, scaleSize: 5, itemStyle: { shadowBlur: 16, shadowColor: "rgba(0,0,0,.15)" } },
     data: [
-      { value: subsSemNc.value, name: "conformidade",   itemStyle: { color: P.conf   } },
-      { value: subsComNc.value, name: "Inconformidade", itemStyle: { color: P.inconf } }
-    ]
-  }]
+      {
+        value: subsSemNc.value,
+        name: "conformidade",
+        itemStyle: { color: P.conf, opacity: !viz.lado || viz.lado === "semNc" ? 1 : 0.22 },
+      },
+      {
+        value: subsComNc.value,
+        name: "Inconformidade",
+        itemStyle: { color: P.inconf, opacity: !viz.lado || viz.lado === "comNc" ? 1 : 0.22 },
+      },
+    ],
+  }],
 }));
 
-// â"€â"€â"€ Chart: Por Mês â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+const yearSliced = computed(() => applyLado(applySlice(yearSubs.value), respsOf(applySlice(yearSubs.value), yearResps.value)));
+
 const chartMes = computed(() => {
-  const mesLabels = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
-  const entries = Object.entries(byMes.value).sort((a, b) => Number(a[0]) - Number(b[0]));
+  const mesLabels = meses.map((m) => m.label);
+  const groups: SubmissionRow[][] = Array.from({ length: 12 }, () => []);
+  for (const s of yearSliced.value) {
+    const m = mesDaData(s.data);
+    if (m >= 1 && m <= 12) groups[m - 1]!.push(s);
+  }
+  const rows = mesLabels.map((name, i) => ({
+    name,
+    value: icitPct(groups[i]!, respsOf(groups[i]!, yearResps.value)),
+  }));
   return hBar(
-    entries.map(([m]) => mesLabels[Number(m) - 1] ?? m),
-    entries.map(([, v]) => v)
+    rows,
+    mesLabels[filters.mes - 1] ?? null,
+    P.conf,
+    "%",
+    100,
+    "Clique para abrir o recorte daquele mês",
   );
 });
 
-// â"€â"€â"€ Chart: Por Gerência â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const chartGerencia = computed(() => {
-  const map: Record<string, { conf: number; total: number }> = {};
-  const subMap = new Map(filteredSubs.value.map(s => {
-    const emp = employees.value.find(e => e.matricula === s.matricula);
-    return [s.id, emp?.gerencia ?? s.auditagem];
-  }));
-  for (const r of filteredResps.value) {
-    const g = subMap.get(r.submission_id) ?? "Outro";
-    if (!map[g]) map[g] = { conf: 0, total: 0 };
-    map[g].total++;
-    if (r.resposta === "conforme") map[g].conf++;
+  const idx = indexEmployees(employees.value);
+  const map: Record<string, SubmissionRow[]> = {};
+  for (const s of subsNoGerencia.value) {
+    const emp = matchSubmissionToEmployee(s, idx);
+    const g = emp?.gerencia ?? s.auditagem ?? "Outro";
+    (map[g] ??= []).push(s);
   }
-  const entries = Object.entries(map)
-    .map(([k, d]) => ({ k, pct: d.total > 0 ? Math.round((d.conf / d.total) * 100) : 0 }))
-    .sort((a, b) => a.pct - b.pct);
-  return hBar(entries.map(e => e.k), entries.map(e => e.pct), P.conf, "%", 100);
+  const resps = respsOf(subsNoGerencia.value, responses.value);
+  const rows = Object.entries(map)
+    .map(([name, list]) => ({ name, value: answerPct(list, resps) }))
+    .sort((a, b) => a.value - b.value);
+  return hBar(rows, filters.gerencia !== "Todos" ? filters.gerencia : null, P.conf, "%", 100, "Clique para filtrar a gerência");
 });
 
-// â"€â"€â"€ Chart: Por Base â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const chartBase = computed(() => {
-  const map: Record<string, { conf: number; total: number }> = {};
-  const subMap = new Map(filteredSubs.value.map(s => [s.id, s.base]));
-  for (const r of filteredResps.value) {
-    const b = subMap.get(r.submission_id) ?? "Outro";
-    if (!map[b]) map[b] = { conf: 0, total: 0 };
-    map[b].total++;
-    if (r.resposta === "conforme") map[b].conf++;
+  const map: Record<string, SubmissionRow[]> = {};
+  for (const s of subsNoBase.value) {
+    (map[s.base] ??= []).push(s);
   }
-  const entries = Object.entries(map)
-    .map(([k, d]) => ({ k, pct: d.total > 0 ? Math.round((d.conf / d.total) * 100) : 0 }))
-    .sort((a, b) => a.pct - b.pct);
-  return hBar(entries.map(e => e.k), entries.map(e => e.pct), P.conf, "%", 100);
+  const resps = respsOf(subsNoBase.value, responses.value);
+  const rows = Object.entries(map)
+    .map(([name, list]) => ({ name, value: answerPct(list, resps) }))
+    .sort((a, b) => a.value - b.value);
+  return hBar(rows, filters.base !== "Todos" ? filters.base : null, P.conf, "%", 100, "Clique para ver só esta base");
 });
 
-// â"€â"€â"€ Chart: Não conformidades por Categoria â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-const chartCategoria = computed(() => {
+const categoriaRows = computed(() => {
   const ncMap: Record<string, number> = {};
-  for (const r of filteredResps.value) {
-    if (r.resposta === "nao_conforme") {
-      const cat = r.categoria ?? "Sem categoria";
-      ncMap[cat] = (ncMap[cat] ?? 0) + 1;
-    }
+  for (const r of respsOf(filteredSubs.value, responses.value, true)) {
+    if (r.resposta !== "nao_conforme") continue;
+    const cat = r.categoria ?? "Sem categoria";
+    ncMap[cat] = (ncMap[cat] ?? 0) + 1;
   }
-  const catEntries = Object.entries(ncMap)
+  return Object.entries(ncMap)
     .map(([cat, nc]) => ({ cat, nc }))
-    .filter(e => e.nc > 0)
+    .filter((e) => e.nc > 0)
     .sort((a, b) => a.nc - b.nc);
-  const cats = catEntries.map(e => e.cat);
-  const vals = catEntries.map(e => e.nc);
-  const maxV = Math.max(...vals, 1);
+});
+
+const chartCategoria = computed(() => {
+  const rows = categoriaRows.value;
+  const maxV = Math.max(...rows.map((e) => e.nc), 1);
   return {
     tooltip: {
-      ...ttItem,
-      formatter: (p: { name: string; value: number }) =>
-        `<b>${p.name}</b><br/>Ocorrências: <b style="color:${P.inconf}">${p.value}</b>`
+      ...tooltipSkin("item"),
+      formatter: (p: { dataIndex: number; value: number }) => {
+        const o = rows[p.dataIndex];
+        if (!o) return "";
+        return tipHtml(o.cat, [
+          { label: "Não conformes", value: String(p.value), color: P.inconf },
+        ], "Clique para filtrar esta categoria");
+      },
     },
-    grid: { left: 8, right: 36, top: 8, bottom: 8 },
+    grid: { left: 12, right: 36, top: 8, bottom: 8, containLabel: true },
     xAxis: { type: "value" as const, show: false, splitLine: { show: false } },
     yAxis: {
-      type: "category" as const, data: cats,
+      type: "category" as const, data: rows.map((e) => e.cat),
       axisLine: { show: false }, axisTick: { show: false },
-      splitLine: { show: false }, axisLabel: { color: chartInk.axis, fontSize: 11 }
+      splitLine: { show: false }, axisLabel: { color: chartInk.axis, fontSize: 11 },
     },
     series: [{
       type: "bar" as const,
-      data: vals.map((v) => ({
-        value: v,
+      cursor: "pointer",
+      data: rows.map((e) => ({
+        value: e.nc,
         itemStyle: {
-          color: v === 0 ? "#cbd5e1"
-               : v <= 2  ? P.inconfLt
-               : `rgba(139,28,43,${0.6 + (v / maxV) * 0.4})`,
-          borderRadius: [0, 6, 6, 0]
-        }
+          color: e.nc <= 2 ? P.inconfLt : `rgba(139,28,43,${0.6 + (e.nc / maxV) * 0.4})`,
+          opacity: !viz.categoria || viz.categoria === e.cat ? 1 : 0.22,
+          borderRadius: [0, 6, 6, 0],
+        },
       })),
       barMaxWidth: 28,
       emphasis: { itemStyle: { opacity: 0.8 } },
       label: {
         show: true, position: "right" as const,
         fontSize: 12, fontWeight: "bold" as const,
-        formatter: (p: { value: number }) => `${p.value}`
-      }
-    }]
+        formatter: (p: { value: number }) => `${p.value}`,
+      },
+    }],
   };
 });
 
-// â"€â"€â"€ Chart: Por Equipe (scrollable vertical) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-const equipePct = computed(() => {
-  const map: Record<string, { conf: number; total: number }> = {};
-  const respBySubId: Record<string, { conf: number; total: number }> = {};
-  for (const r of filteredResps.value) {
-    if (!respBySubId[r.submission_id]) respBySubId[r.submission_id] = { conf: 0, total: 0 };
-    respBySubId[r.submission_id].total++;
-    if (r.resposta === "conforme") respBySubId[r.submission_id].conf++;
+const equipeRows = computed(() => {
+  const map: Record<string, SubmissionRow[]> = {};
+  for (const s of subsNoEquipe.value) {
+    const eq = s.equipe ?? "Sem equipe";
+    (map[eq] ??= []).push(s);
   }
-  for (const sub of filteredSubs.value) {
-    const eq = sub.equipe ?? "Sem equipe";
-    if (!map[eq]) map[eq] = { conf: 0, total: 0 };
-    const r = respBySubId[sub.id];
-    if (r) { map[eq].conf += r.conf; map[eq].total += r.total; }
-  }
+  const resps = respsOf(subsNoEquipe.value, responses.value);
   return Object.entries(map)
-    .map(([name, d]) => ({ name, pct: d.total > 0 ? Math.round((d.conf / d.total) * 100) : 0 }))
-    .sort((a, b) => a.pct - b.pct);
+    .map(([equipe, list]) => ({ equipe, value: answerPct(list, resps) }))
+    .sort((a, b) => a.value - b.value);
 });
 
 const chartEquipe = computed(() => {
-  const data = equipePct.value.length
-    ? equipePct.value
-    : [{ name: "Sem dados", pct: 0 }];
-  const cats = data.map(e => e.name);
-  const vals = data.map(e => e.pct);
+  const data = equipeRows.value.length ? equipeRows.value : [{ equipe: "Sem dados", value: 0 }];
   return {
-  tooltip: {
-    ...ttItem,
-    formatter: (p: { name: string; value: number }) =>
-      `<b>${p.name}</b>: <b style="color:${p.value === 100 ? P.conf : P.inconfLt}">${p.value}%</b>`
-  },
-  grid: { left: 8, right: 52, top: 4, bottom: 4 },
-  xAxis: { type: "value" as const, max: 100, show: false, splitLine: { show: false } },
-  yAxis: {
-    type: "category" as const,
-    data: cats,
-    axisLine: { show: false }, axisTick: { show: false },
-    splitLine: { show: false }, axisLabel: { color: chartInk.axis, fontSize: 10 }
-  },
-  dataZoom: [{
-    type: "inside" as const,
-    orient: "vertical" as const,
-    startValue: 0, endValue: 15,
-    zoomOnMouseWheel: false,
-    moveOnMouseWheel: true
-  }],
-  series: [{
-    type: "bar" as const,
-    data: vals.map((v) => ({
-      value: v,
-      itemStyle: {
-        color: v === 100 ? P.conf : v >= 90 ? "#84cc16" : P.inconfLt,
-        borderRadius: [0, 4, 4, 0]
-      }
-    })),
-    barMaxWidth: 18,
-    emphasis: { itemStyle: { opacity: 0.8 } },
-    label: {
-      show: true, position: "right" as const,
-      fontSize: 10, fontWeight: "bold" as const,
-      formatter: (p: { value: number }) => `${p.value}%`
-    }
-  }]
+    tooltip: {
+      ...tooltipSkin("item"),
+      formatter: (p: { name: string; value: number }) =>
+        tipHtml(p.name, [
+          { label: "Conformidade", value: `${p.value}%`, color: p.value === 100 ? P.conf : P.inconfLt },
+        ], "Clique para filtrar esta equipe"),
+    },
+    grid: { left: 12, right: 52, top: 4, bottom: 4, containLabel: true },
+    xAxis: { type: "value" as const, max: 100, show: false, splitLine: { show: false } },
+    yAxis: {
+      type: "category" as const,
+      data: data.map((e) => e.equipe),
+      axisLine: { show: false }, axisTick: { show: false },
+      splitLine: { show: false }, axisLabel: { color: chartInk.axis, fontSize: 10 },
+    },
+    dataZoom: [{
+      type: "inside" as const,
+      orient: "vertical" as const,
+      startValue: Math.max(0, data.length - 16),
+      endValue: Math.max(0, data.length - 1),
+      zoomOnMouseWheel: false,
+      moveOnMouseWheel: true,
+    }],
+    series: [{
+      type: "bar" as const,
+      cursor: "pointer",
+      data: data.map((e) => ({
+        value: e.value,
+        itemStyle: {
+          color: e.value === 100 ? P.conf : e.value >= 90 ? "#84cc16" : P.inconfLt,
+          opacity: !viz.equipe || viz.equipe === e.equipe ? 1 : 0.22,
+          borderRadius: [0, 4, 4, 0],
+        },
+      })),
+      barMaxWidth: 18,
+      emphasis: { itemStyle: { opacity: 0.8 } },
+      label: {
+        show: true, position: "right" as const,
+        fontSize: 10, fontWeight: "bold" as const,
+        formatter: (p: { value: number }) => `${p.value}%`,
+      },
+    }],
   };
 });
+
 </script>
 
 <style scoped lang="scss">
@@ -692,6 +975,56 @@ $label-color:  #94a3b8;
   flex-shrink: 0; align-self: flex-end; margin: 0 4px;
 }
 
+.filter-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 6px;
+  flex-wrap: wrap;
+}
+
+.filter-summary__label {
+  font-size: 11px;
+  color: $label-color;
+  font-weight: 600;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  background: rgba($brand, .1);
+  color: $brand;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+
+  &--hit { cursor: pointer; }
+  &--hit:hover { filter: brightness(0.92); }
+}
+
+.filter-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  padding: 0 10px;
+  background: none;
+  border: 1px solid $border;
+  border-radius: 999px;
+  font-size: 11px;
+  color: $label-color;
+  cursor: pointer;
+
+  &:hover {
+    color: $brand;
+    border-color: $brand;
+  }
+}
+
+.chart-hit { cursor: pointer; }
+
 .kpi-card {
   border-radius: 12px;
   transition: box-shadow .2s;
@@ -717,7 +1050,12 @@ $label-color:  #94a3b8;
     &--active { background: $brand; color: #fff; border-color: $brand; }
   }
   .filter-divider { background: #334155; }
+  .filter-chip { background: rgba($brand, .2); }
+  .filter-clear { border-color: #334155; color: #64748b; }
   .fgroup__label  { color: #64748b; }
 }
+
+.fade-enter-active, .fade-leave-active { transition: opacity .2s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>
 

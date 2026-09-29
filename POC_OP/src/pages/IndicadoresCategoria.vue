@@ -81,6 +81,23 @@
 
       </div>
       </div>
+      <transition name="chip-bar">
+        <div v-if="hasActiveFilters" class="filter-summary">
+          <span class="filter-summary__label">Filtros ativos:</span>
+          <span class="filter-chip">{{ filters.ano }}</span>
+          <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ filters.base }}</span>
+          <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
+          <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ filters.gerente }}</span>
+          <span v-if="filters.prefixo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.prefixo = 'Todos'">{{ filters.prefixo }}</span>
+          <span v-if="filters.tipo !== 'Operacional'" class="filter-chip filter-chip--hit" @click="filters.tipo = 'Operacional'">{{ filters.tipo }}</span>
+          <span v-if="viz.mes" class="filter-chip filter-chip--hit" @click="viz.mes = null">{{ months[viz.mes - 1] }}</span>
+          <span v-if="viz.catKey" class="filter-chip filter-chip--hit" @click="viz.catKey = null">{{ catLabel(viz.catKey) }}</span>
+          <button class="filter-clear" @click="resetSlice">
+            <q-icon name="mdi-close-circle" size="14px" />
+            Limpar
+          </button>
+        </div>
+      </transition>
     </div>
 
     <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -98,7 +115,7 @@
               <div class="kpi-stat-icon-wrap" style="background:rgba(22,163,74,.1)">
                 <q-icon name="mdi-check-circle" size="24px" style="color:#16a34a" />
               </div>
-              <div class="kpi-stat-value" style="color:#16a34a">
+              <div :key="totalConf" class="kpi-stat-value kpi-pop" style="color:#16a34a">
                 {{ totalConf.toLocaleString('pt-BR') }}
               </div>
               <div class="kpi-stat-label">Total conformidade</div>
@@ -114,7 +131,7 @@
               <div class="kpi-stat-icon-wrap" style="background:rgba(139,28,43,.1)">
                 <q-icon name="mdi-close-circle" size="24px" style="color:#8B1C2B" />
               </div>
-              <div class="kpi-stat-value" style="color:#8B1C2B">
+              <div :key="totalInc" class="kpi-stat-value kpi-pop" style="color:#8B1C2B">
                 {{ totalInc.toLocaleString('pt-BR') }}
               </div>
               <div class="kpi-stat-label">Total Inconformidade</div>
@@ -146,10 +163,11 @@
       <!-- Top row: APR · Regras de Ouro · Procedimento -->
       <div class="row q-col-gutter-md q-mb-md">
         <div v-for="cat in topCharts" :key="cat.id" class="col-12 col-md-4">
-          <q-card flat bordered class="cat-card chart-card">
+          <q-card flat bordered class="cat-card chart-card" :class="{ 'cat-card--on': viz.catKey === cat.id }">
             <q-card-section class="q-pa-sm">
-              <div class="cat-title">{{ cat.title }}</div>
-              <v-chart :option="cat.option" autoresize style="height:230px" />
+              <div class="cat-title cat-title--hit" @click="toggleCat(cat.id)">{{ cat.title }}</div>
+              <div class="cat-caption">Título filtra a categoria · barra filtra o mês</div>
+              <v-chart class="chart-hit" :option="cat.option" :update-options="{ notMerge: false }" autoresize style="height:230px" @click="onMesClick" />
             </q-card-section>
           </q-card>
         </div>
@@ -158,10 +176,11 @@
       <!-- Bottom row: 4 categories -->
       <div class="row q-col-gutter-md">
         <div v-for="cat in bottomCharts" :key="cat.id" class="col-12 col-md-3">
-          <q-card flat bordered class="cat-card chart-card">
+          <q-card flat bordered class="cat-card chart-card" :class="{ 'cat-card--on': viz.catKey === cat.id }">
             <q-card-section class="q-pa-sm">
-              <div class="cat-title">{{ cat.title }}</div>
-              <v-chart :option="cat.option" autoresize style="height:230px" />
+              <div class="cat-title cat-title--hit" @click="toggleCat(cat.id)">{{ cat.title }}</div>
+              <div class="cat-caption">Título filtra a categoria · barra filtra o mês</div>
+              <v-chart class="chart-hit" :option="cat.option" :update-options="{ notMerge: false }" autoresize style="height:230px" @click="onMesClick" />
             </q-card-section>
           </q-card>
         </div>
@@ -184,7 +203,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente } from "@/lib/dashboard";
 
 use([CanvasRenderer, BarChart, GaugeChart, GridComponent, TooltipComponent, LegendComponent]);
 
@@ -192,6 +211,19 @@ const { loading, error, submissions, responses, employees, load } = useChecklist
 
 // â"€â"€â"€ Colors â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const G = { green: "#16a34a", brand: "#8B1C2B" };
+const reduceMotion = typeof window !== "undefined"
+  && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const chartMotion = reduceMotion
+  ? { animation: false as const }
+  : {
+      animation: true as const,
+      animationDuration: 520,
+      animationDurationUpdate: 240,
+      animationEasing: "cubicOut" as const,
+      animationEasingUpdate: "cubicOut" as const,
+      animationDelay: (i: number) => Math.min(i * 22, 180),
+      animationDelayUpdate: 0,
+    };
 
 // â"€â"€â"€ Filters â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const showFilters = ref(false);
@@ -207,7 +239,7 @@ const tiposOpts     = ["Operacional","Administrativo","Alojamento"];
 // Mapeia o "Tipo de POC" para os valores reais de auditagem gravados no checklist
 const TIPO_AUDITAGEM: Record<string, string[]> = {
   Operacional: ["GOMAN", "GSTC"],
-  Administrativo: ["ADMINISTRATIVO", "LOGISTICA", "OFICINA"],
+  Administrativo: ["ADMINISTRATIVO", "LOGISTICA", "OFICINA", "ADM"],
   Alojamento: ["ALOJAMENTO"],
 };
 
@@ -241,28 +273,92 @@ async function recarregar() {
 onMounted(recarregar);
 watch(() => [filters.ano, filters.base], recarregar);
 
-const filteredSubs = computed(() => {
-  let s = filterByGerencia(submissions.value, employees.value, filters.gerencia);
-  const auditagens = TIPO_AUDITAGEM[filters.tipo];
-  if (auditagens) s = s.filter(sub => auditagens.includes(sub.auditagem));
-  if (filters.gerente !== "Todos") {
-    s = s.filter(sub => sub.observador === filters.gerente);
-  }
-  if (filters.prefixo !== "Todos") {
-    s = s.filter(sub => sub.equipe === filters.prefixo);
-  }
-  return s;
+const viz = reactive({
+  mes: null as number | null,
+  catKey: null as string | null,
 });
 
-const filteredResps = computed(() => {
-  const ids = new Set(filteredSubs.value.map(s => s.id));
-  return responses.value.filter(r => ids.has(r.submission_id));
-});
+type EcClick = { componentType?: string; dataIndex?: number; name?: string };
+
+function catLabel(key: string) {
+  return CAT_DEFS.find((d) => d.key === key)?.label ?? key;
+}
+
+function toggleCat(key: string) {
+  viz.catKey = viz.catKey === key ? null : key;
+}
+
+function onMesClick(p: EcClick) {
+  if (p.componentType && p.componentType !== "series") return;
+  const mes = (p.dataIndex ?? -1) + 1;
+  if (mes < 1 || mes > 12) return;
+  viz.mes = viz.mes === mes ? null : mes;
+}
+
+function resetSlice() {
+  filters.gerencia = "Todos";
+  filters.gerente = "Todos";
+  filters.prefixo = "Todos";
+  filters.tipo = "Operacional";
+  viz.mes = null;
+  viz.catKey = null;
+}
+
+const hasActiveFilters = computed(() =>
+  filters.base !== "Todos"
+  || filters.gerencia !== "Todos"
+  || filters.gerente !== "Todos"
+  || filters.prefixo !== "Todos"
+  || filters.tipo !== "Operacional"
+  || viz.mes != null
+  || !!viz.catKey,
+);
+
+function matchTipoPoc(auditagem: string | undefined) {
+  const allowed = TIPO_AUDITAGEM[filters.tipo];
+  if (!allowed) return true;
+  return allowed.includes((auditagem ?? "").toUpperCase());
+}
+
+function applySlice(
+  source: typeof submissions.value,
+  omit: { gerencia?: boolean; prefixo?: boolean; tipo?: boolean; mes?: boolean } = {},
+) {
+  let s = filterByGerente(source, employees.value, filters.gerente);
+  if (!omit.gerencia) s = filterByGerencia(s, employees.value, filters.gerencia);
+  if (!omit.tipo) s = s.filter((sub) => matchTipoPoc(sub.auditagem));
+  if (!omit.prefixo && filters.prefixo !== "Todos") {
+    s = s.filter((sub) => sub.equipe === filters.prefixo);
+  }
+  if (!omit.mes && viz.mes) {
+    s = s.filter((sub) => {
+      const d = new Date(sub.data ?? sub.created_at ?? "");
+      return !isNaN(d.getTime()) && d.getMonth() + 1 === viz.mes;
+    });
+  }
+  return s;
+}
+
+function catMatch(categoria: string | undefined, key: string) {
+  const def = CAT_DEFS.find((d) => d.key === key);
+  if (!def) return false;
+  return !!(categoria?.includes(def.match) || categoria === def.match);
+}
+
+function respsOf(subs: typeof submissions.value, omitCat = false) {
+  const ids = new Set(subs.map((s) => s.id));
+  let r = responses.value.filter((resp) => ids.has(resp.submission_id));
+  if (!omitCat && viz.catKey) r = r.filter((resp) => catMatch(resp.categoria, viz.catKey!));
+  return r;
+}
+
+const chartSubs = computed(() => applySlice(submissions.value, { mes: true }));
+const chartResps = computed(() => respsOf(chartSubs.value, true));
+const filteredSubs = computed(() => applySlice(submissions.value));
+const filteredResps = computed(() => respsOf(filteredSubs.value));
 
 // â"€â"€â"€ Chart data â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const months = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
-
-// Category key mapping
 const CAT_DEFS = [
   { key: "apr",      label: "APR",                     match: "APR" },
   { key: "regraOuro",label: "Regras de Ouro",           match: "Regras de Ouro" },
@@ -275,7 +371,7 @@ const CAT_DEFS = [
 
 const subMonthMap = computed(() => {
   const m: Record<string, number> = {};
-  for (const s of filteredSubs.value) {
+  for (const s of chartSubs.value) {
     const d = new Date(s.data ?? s.created_at ?? "");
     if (!isNaN(d.getTime())) m[s.id] = d.getMonth() + 1;
   }
@@ -288,7 +384,7 @@ const rawData = computed(() => {
     result[def.key] = { conf: Array(12).fill(0), inc: Array(12).fill(0) };
   }
 
-  for (const r of filteredResps.value) {
+  for (const r of chartResps.value) {
     const mes = subMonthMap.value[r.submission_id];
     if (!mes) continue;
     const def = CAT_DEFS.find(d => r.categoria?.includes(d.match) || d.match === r.categoria);
@@ -300,30 +396,55 @@ const rawData = computed(() => {
   return result;
 });
 
-// â"€â"€â"€ Chart factory â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-function makeCatChart(data: { conf: number[]; inc: number[] }) {
+function tooltipSkin() {
+  const bg = chartInk.tipBg;
+  const fg = chartInk.tipText;
+  const bd = chartInk.tipBorder;
   return {
+    trigger: "axis" as const,
+    appendTo: () => document.body,
+    confine: true,
+    enterable: false,
+    transitionDuration: 0,
+    backgroundColor: bg,
+    borderColor: bd,
+    borderWidth: 1,
+    padding: [12, 14] as [number, number],
+    textStyle: { color: fg, fontSize: 12, fontWeight: 500 as const },
+    extraCssText:
+      `background:${bg} !important;color:${fg} !important;border:1px solid ${bd};`
+      + "border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.55);opacity:1;",
+  };
+}
+
+function makeCatChart(data: { conf: number[]; inc: number[] }, catKey: string) {
+  const selMes = viz.mes;
+  const dimCard = !!viz.catKey && viz.catKey !== catKey;
+  return {
+    ...chartMotion,
     tooltip: {
-      trigger: "axis" as const,
-      backgroundColor: "rgba(255,255,255,.97)",
-      borderColor: "#e2e8f0",
-      borderWidth: 1,
-      textStyle: { color: chartInk.axis, fontSize: 11 },
-      extraCssText:
-        "box-shadow:0 4px 16px rgba(0,0,0,.1);border-radius:8px;padding:8px 12px;",
+      ...tooltipSkin(),
       formatter: (params: { dataIndex: number }[]) => {
         const i = params[0]?.dataIndex ?? 0;
+        const t = chartInk.tipText;
+        const m = chartInk.tipMuted;
         return (
-          `<b>${months[i]}</b><br/>` +
-          `<span style="color:${G.brand}">Inconformidade: ${data.inc[i]}</span>`
+          `<div style="min-width:140px;color:${t}">`
+          + `<div style="font-weight:800;font-size:14px;color:${t}">${months[i]}</div>`
+          + `<div style="display:flex;justify-content:space-between;gap:16px;margin-top:6px">`
+          + `<span style="color:${m};font-size:11px;font-weight:600">Inconformidade</span>`
+          + `<span style="color:${G.brand};font-size:13px;font-weight:800">${data.inc[i]}</span>`
+          + `</div>`
+          + `<div style="color:${m};font-size:10px;margin-top:8px">Clique para filtrar este mês</div>`
+          + `</div>`
         );
       },
     },
-    grid: { left: 4, right: 4, top: 28, bottom: 4 },
+    grid: { left: 8, right: 8, top: 28, bottom: 8, containLabel: true },
     xAxis: {
       type: "category" as const,
       data: months,
-      axisLine: { lineStyle: { color: "#e2e8f0" } },
+      axisLine: { lineStyle: { color: chartInk.split } },
       axisTick: { show: false },
       axisLabel: { color: chartInk.muted, fontSize: 10 },
     },
@@ -333,10 +454,16 @@ function makeCatChart(data: { conf: number[]; inc: number[] }) {
       splitLine: { show: false },
     },
     series: [{
+      id: `inc-${catKey}`,
       name: "Inconformidade",
       type: "bar" as const,
+      cursor: "pointer",
       barMaxWidth: 42,
       barMinHeight: 2,
+      emphasis: {
+        focus: "self" as const,
+        itemStyle: { shadowBlur: 10, shadowColor: "rgba(139,28,43,.35)" },
+      },
       itemStyle: { color: G.brand, borderRadius: [4, 4, 0, 0] },
       label: {
         show: true,
@@ -344,28 +471,34 @@ function makeCatChart(data: { conf: number[]; inc: number[] }) {
         color: chartInk.axis,
         fontSize: 11,
         fontWeight: "bold" as const,
-        backgroundColor: "#f1f5f9",
+        backgroundColor: chartInk.halo,
         padding: [2, 6],
         borderRadius: 4,
         formatter: (p: { value: number }) => `${p.value}`,
       },
-      data: data.inc,
+      data: data.inc.map((v, i) => ({
+        value: v,
+        itemStyle: {
+          color: G.brand,
+          opacity: dimCard ? 0.22 : (!selMes || selMes === i + 1 ? 1 : 0.22),
+        },
+      })),
     }],
   };
 }
 
 // â"€â"€â"€ Chart lists â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const topCharts = computed(() => [
-  { id: "apr",    title: "APR",           option: makeCatChart(rawData.value.apr) },
-  { id: "regra",  title: "REGRAS DE OURO",option: makeCatChart(rawData.value.regraOuro) },
-  { id: "proc",   title: "PROCEDIMENTO",  option: makeCatChart(rawData.value.procedim) },
+  { id: "apr",       title: "APR",           option: makeCatChart(rawData.value.apr, "apr") },
+  { id: "regraOuro", title: "REGRAS DE OURO",option: makeCatChart(rawData.value.regraOuro, "regraOuro") },
+  { id: "procedim",  title: "PROCEDIMENTO",  option: makeCatChart(rawData.value.procedim, "procedim") },
 ]);
 
 const bottomCharts = computed(() => [
-  { id: "padrinho", title: "PADRINHO DE SEGURANÇA",   option: makeCatChart(rawData.value.padrinho) },
-  { id: "altura",   title: "TRABALHO EM ALTURA",      option: makeCatChart(rawData.value.alturas) },
-  { id: "veiculos", title: "VEÍCULOS E EQUIPAMENTOS", option: makeCatChart(rawData.value.veiculos) },
-  { id: "epi",      title: "EPI, EPC E FERRAMENTA",   option: makeCatChart(rawData.value.epi) },
+  { id: "padrinho", title: "PADRINHO DE SEGURANÇA",   option: makeCatChart(rawData.value.padrinho, "padrinho") },
+  { id: "alturas",  title: "TRABALHO EM ALTURA",      option: makeCatChart(rawData.value.alturas, "alturas") },
+  { id: "veiculos", title: "VEÍCULOS E EQUIPAMENTOS", option: makeCatChart(rawData.value.veiculos, "veiculos") },
+  { id: "epi",      title: "EPI, EPC E FERRAMENTA",   option: makeCatChart(rawData.value.epi, "epi") },
 ]);
 
 // â"€â"€â"€ KPI totals â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
@@ -382,6 +515,7 @@ const pctGlobal = computed(() => Math.round(conformidadeIndex.value * 100));
 
 // â"€â"€â"€ Gauge â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const gaugeOpt = computed(() => ({
+  ...chartMotion,
   series: [{
     type: "gauge" as const,
     startAngle: 210, endAngle: -30,
@@ -397,7 +531,7 @@ const gaugeOpt = computed(() => ({
     splitLine: { show: false }, axisTick: { show: false }, axisLabel: { show: false },
     title: { show: false },
     detail: {
-      valueAnimation: true,
+      valueAnimation: !reduceMotion,
       fontSize: 26,
       fontWeight: "bold" as const,
       formatter: "{value}%",
@@ -485,6 +619,47 @@ $inactive-text:#475569;
   flex-shrink: 0; align-self: flex-end; margin: 0 4px;
 }
 
+.filter-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 6px;
+  flex-wrap: wrap;
+}
+.filter-summary__label {
+  font-size: 11px;
+  color: $label-color;
+  font-weight: 600;
+}
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  background: rgba($brand, .1);
+  color: $brand;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  &--hit { cursor: pointer; }
+  &--hit:hover { filter: brightness(0.92); }
+}
+.filter-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  padding: 0 10px;
+  background: none;
+  border: 1px solid $border;
+  border-radius: 999px;
+  font-size: 11px;
+  color: $label-color;
+  cursor: pointer;
+  &:hover { color: $brand; border-color: $brand; }
+}
+.chart-hit { cursor: pointer; }
+
 // â"€â"€ KPI cards â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 .kpi-card {
   border-radius: 12px; height: 100%;
@@ -506,6 +681,7 @@ $inactive-text:#475569;
   width: 44px; height: 44px; border-radius: 12px; margin-bottom: 8px;
 }
 .kpi-stat-value { font-size: 32px; font-weight: 800; line-height: 1.1; letter-spacing: -.5px; }
+.kpi-pop { animation: kpi-pop .38s cubic-bezier(0.16, 1, 0.3, 1); }
 .kpi-stat-label {
   font-size: 11px; font-weight: 700; text-transform: uppercase;
   letter-spacing: .6px; color: #64748b; margin-top: 4px;
@@ -544,13 +720,25 @@ $inactive-text:#475569;
 // â"€â"€ Category chart cards â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 .cat-card {
   border-radius: 12px;
-  transition: box-shadow .2s;
+  transition: box-shadow .22s cubic-bezier(0.16, 1, 0.3, 1), border-color .22s ease, transform .22s cubic-bezier(0.16, 1, 0.3, 1), opacity .22s ease;
   &:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); }
+}
+.indicadores-page:has(.cat-card--on) .cat-card:not(.cat-card--on) {
+  opacity: .62;
 }
 .cat-title {
   font-size: 12px; font-weight: 800; color: $brand;
   text-transform: uppercase; letter-spacing: .8px;
   text-align: center; padding: 6px 0 2px;
+  &--hit { cursor: pointer; }
+  &--hit:hover { text-decoration: underline; }
+}
+.cat-caption {
+  font-size: 10px; color: $label-color; text-align: center; margin-bottom: 4px;
+}
+.cat-card--on {
+  border-color: $brand !important;
+  box-shadow: 0 10px 28px rgba($brand, .22);
 }
 
 // â"€â"€ Dark mode â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
@@ -572,6 +760,22 @@ $inactive-text:#475569;
   .kpi-stat-sub { color: #64748b; }
   .cat-card { background: #1e293b; }
   .operacional-title { color: #fca5a5; }
+  .filter-chip { background: rgba($brand, .2); }
+  .filter-clear { border-color: #334155; color: #64748b; }
+  .cat-caption { color: #64748b; }
+}
+.chip-bar-enter-active { transition: opacity .22s cubic-bezier(0.16, 1, 0.3, 1), transform .22s cubic-bezier(0.16, 1, 0.3, 1); }
+.chip-bar-leave-active { transition: opacity .16s ease, transform .16s ease; }
+.chip-bar-enter-from { opacity: 0; transform: translateY(-6px); }
+.chip-bar-leave-to { opacity: 0; transform: translateY(-4px); }
+@keyframes kpi-pop {
+  from { opacity: .35; transform: translateY(7px); filter: blur(5px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kpi-pop { animation: none; }
+  .chip-bar-enter-from, .chip-bar-leave-to { transform: none; }
+  .cat-card { transition: none; }
 }
 </style>
 

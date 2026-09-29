@@ -103,6 +103,24 @@
         </div>
       </div>
       </div>
+      <transition name="fade">
+        <div v-if="hasActiveFilters" class="filter-summary">
+          <span class="filter-summary__label">Filtros ativos:</span>
+          <span class="filter-chip">{{ filters.ano }}</span>
+          <span class="filter-chip">{{ mesLabel }}</span>
+          <span v-if="filters.semana" class="filter-chip filter-chip--hit" @click="filters.semana = 0">{{ semanaLabel }}</span>
+          <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ nomeBase(filters.base) }}</span>
+          <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
+          <span v-if="filters.gerente !== 'Todos'" class="filter-chip">{{ filters.gerente }}</span>
+          <span v-if="filters.tipoPoc !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.tipoPoc = 'Todos'">{{ filters.tipoPoc }}</span>
+          <span v-if="viz.equipe" class="filter-chip filter-chip--hit" @click="viz.equipe = null">{{ viz.equipe }}</span>
+          <span v-if="viz.perguntaCurta" class="filter-chip filter-chip--hit" @click="clearPergunta">{{ viz.perguntaCurta }}</span>
+          <button class="filter-clear" @click="resetSlice">
+            <q-icon name="mdi-close-circle" size="14px" />
+            Limpar
+          </button>
+        </div>
+      </transition>
     </div>
 
     <!-- ══════════════════════════════════════════════════════
@@ -139,10 +157,10 @@
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
                   <div class="text-subtitle1 text-weight-bold">Comportamento de Desvio Mensal</div>
-                  <div class="text-caption text-grey-6">Não conformidades registradas por mês</div>
+                  <div class="text-caption text-grey-6">Clique no mês para abrir aquele recorte</div>
                 </q-card-section>
                 <q-card-section>
-                  <v-chart :option="chartTendenciaMensal" autoresize style="height:260px" />
+                  <v-chart class="chart-hit" :option="chartTendenciaMensal" autoresize style="height:260px" @click="onMesClick" />
                 </q-card-section>
               </q-card>
             </div>
@@ -150,9 +168,10 @@
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
                   <div class="text-subtitle1 text-weight-bold">Qnt Inconformidade por Base</div>
+                  <div class="text-caption text-grey-6">Clique na base para filtrar o restante</div>
                 </q-card-section>
                 <q-card-section>
-                  <v-chart :option="chartBase" autoresize style="height:260px" />
+                  <v-chart class="chart-hit" :option="chartBase" autoresize style="height:260px" @click="onBaseClick" />
                 </q-card-section>
               </q-card>
             </div>
@@ -164,9 +183,10 @@
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
                   <div class="text-subtitle1 text-weight-bold">Qnt de Inconformidade por Gerência</div>
+                  <div class="text-caption text-grey-6">Clique na gerência para filtrar</div>
                 </q-card-section>
                 <q-card-section>
-                  <v-chart :option="chartGerencia" autoresize style="height:260px" />
+                  <v-chart class="chart-hit" :option="chartGerencia" autoresize style="height:260px" @click="onGerenciaClick" />
                 </q-card-section>
               </q-card>
             </div>
@@ -174,10 +194,10 @@
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
                   <div class="text-subtitle1 text-weight-bold">Qnt de Inconformidade por Equipe</div>
-                  <div class="text-caption text-grey-6">Role para ver mais</div>
+                  <div class="text-caption text-grey-6">Clique na equipe · role para ver mais</div>
                 </q-card-section>
                 <q-card-section>
-                  <v-chart :option="chartEquipe" autoresize style="height:260px" />
+                  <v-chart class="chart-hit" :option="chartEquipe" autoresize style="height:260px" @click="onEquipeClick" />
                 </q-card-section>
               </q-card>
             </div>
@@ -190,10 +210,10 @@
           <q-card flat bordered class="chart-card ranking-card chart-card--vertical">
             <q-card-section class="q-pb-none">
               <div class="text-subtitle1 text-weight-bold">Ranking Geral de Não Conformidades</div>
-              <div class="text-caption text-grey-6">Itens mais recorrentes</div>
+              <div class="text-caption text-grey-6">Clique no item para ver só ele</div>
             </q-card-section>
             <q-card-section>
-              <v-chart :option="chartRanking" autoresize style="height:536px" />
+              <v-chart class="chart-hit" :option="chartRanking" autoresize style="height:536px" @click="onRankingClick" />
             </q-card-section>
           </q-card>
         </div>
@@ -219,7 +239,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN, fmtPct } from "@/composables/useChecklistData";
-import { filterByGerencia, fetchNaoConformesPorMes, semanaDoMes } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, fetchNaoConformesPorMes, semanaDaData, indexEmployees, matchSubmissionToEmployee } from "@/lib/dashboard";
 
 use([
   CanvasRenderer, BarChart, LineChart,
@@ -287,33 +307,167 @@ const {
 
 const ncPorMes = ref<Record<number, number>>({});
 
-async function recarregar() {
+const viz = reactive({
+  equipe: null as string | null,
+  pergunta: null as string | null,
+  perguntaCurta: null as string | null,
+});
+
+const BASE_NOME: Record<string, string> = {
+  BCB: "Bacabal",
+  BDC: "Barra do Corda",
+  ITM: "Imperatriz",
+  PDS: "Pedreiras",
+  PDT: "Presidente Dutra",
+  STI: "Santa Inês",
+};
+
+const TIPO_AUDITAGEM: Record<string, string[]> = {
+  Administrativo: ["ADMINISTRATIVO", "LOGISTICA", "OFICINA", "ADM"],
+  Operacional: ["GOMAN", "GSTC"],
+};
+
+function nomeBase(code: string) {
+  return BASE_NOME[code] ? `${BASE_NOME[code]} (${code})` : code;
+}
+
+function matchTipoPoc(auditagem: string | undefined) {
+  if (filters.tipoPoc === "Todos") return true;
+  const allowed = TIPO_AUDITAGEM[filters.tipoPoc];
+  if (!allowed) return true;
+  return allowed.includes((auditagem ?? "").toUpperCase());
+}
+
+function clearPergunta() {
+  viz.pergunta = null;
+  viz.perguntaCurta = null;
+}
+
+function resetSlice() {
+  filters.semana = 0;
+  filters.gerencia = "Todos";
+  filters.base = "Todos";
+  filters.tipoPoc = "Todos";
+  filters.gerente = "Todos";
+  viz.equipe = null;
+  clearPergunta();
+}
+
+type EcClick = {
+  componentType?: string;
+  dataIndex?: number;
+  name?: string;
+};
+
+function onMesClick(p: EcClick) {
+  if (p.componentType && p.componentType !== "series") return;
+  let mes = 0;
+  if (typeof p.dataIndex === "number") mes = p.dataIndex + 1;
+  const fromName = meses.find((m) => m.label === p.name);
+  if (fromName) mes = fromName.value;
+  if (mes < 1 || mes > 12) return;
+  filters.mes = mes;
+}
+
+function onBaseClick(p: EcClick) {
+  if (p.componentType !== "series" || !p.name) return;
+  filters.base = filters.base === p.name ? "Todos" : p.name;
+}
+
+function onGerenciaClick(p: EcClick) {
+  if (p.componentType !== "series" || !p.name) return;
+  filters.gerencia = filters.gerencia === p.name ? "Todos" : p.name;
+}
+
+function onEquipeClick(p: EcClick) {
+  if (p.componentType !== "series") return;
+  const row = equipeRows.value[p.dataIndex ?? -1];
+  if (!row) return;
+  viz.equipe = viz.equipe === row.equipe ? null : row.equipe;
+}
+
+function onRankingClick(p: EcClick) {
+  if (p.componentType !== "series") return;
+  const row = rankingRows.value[p.dataIndex ?? -1];
+  if (!row) return;
+  if (viz.pergunta === row.pergunta) {
+    clearPergunta();
+    return;
+  }
+  viz.pergunta = row.pergunta;
+  viz.perguntaCurta = row.short;
+}
+
+const mesLabel = computed(() => meses.find((m) => m.value === filters.mes)?.label ?? "");
+const semanaLabel = computed(() => semanas.find((s) => s.value === filters.semana)?.label ?? "");
+const hasActiveFilters = computed(() =>
+  filters.semana !== 0
+  || filters.base !== "Todos"
+  || filters.gerencia !== "Todos"
+  || filters.gerente !== "Todos"
+  || filters.tipoPoc !== "Todos"
+  || !!viz.equipe
+  || !!viz.pergunta,
+);
+
+async function recarregarMes() {
   await load({
     ano: filters.ano,
     mes: filters.mes,
-    base: filters.base !== "Todos" ? filters.base : undefined,
-  }, true);
-  ncPorMes.value = await fetchNaoConformesPorMes(filters.ano, filters.base);
+    contarMeta: true,
+  });
+}
+
+async function recarregarAno() {
+  ncPorMes.value = await fetchNaoConformesPorMes(
+    filters.ano,
+    filters.base !== "Todos" ? filters.base : undefined,
+  );
+}
+
+async function recarregar() {
+  await Promise.all([recarregarMes(), recarregarAno()]);
 }
 
 onMounted(recarregar);
-watch(() => [filters.ano, filters.mes, filters.base], recarregar);
+watch(() => [filters.ano, filters.mes], recarregarMes);
+watch(() => [filters.ano, filters.base], recarregarAno);
 
-const filteredSubs = computed(() => {
-  let s = filterByGerencia(submissions.value, employees.value, filters.gerencia);
-  if (filters.semana) {
-    s = s.filter(sub => semanaDoMes(new Date(sub.data).getDate()) === filters.semana);
+function applySlice(
+  source: typeof submissions.value,
+  omit: { week?: boolean; base?: boolean; gerencia?: boolean; tipo?: boolean; equipe?: boolean } = {},
+) {
+  let s = filterByGerente(source, employees.value, filters.gerente);
+  if (!omit.gerencia) s = filterByGerencia(s, employees.value, filters.gerencia);
+  if (!omit.week && filters.semana) {
+    s = s.filter((sub) => semanaDaData(sub.data) === filters.semana);
   }
-  if (filters.gerente !== "Todos") {
-    s = s.filter(sub => sub.observador === filters.gerente);
+  if (!omit.base && filters.base !== "Todos") {
+    s = s.filter((sub) => sub.base === filters.base);
+  }
+  if (!omit.tipo && filters.tipoPoc !== "Todos") {
+    s = s.filter((sub) => matchTipoPoc(sub.auditagem));
+  }
+  if (!omit.equipe && viz.equipe) {
+    s = s.filter((sub) => sub.equipe === viz.equipe);
   }
   return s;
-});
+}
 
-const filteredResps = computed(() => {
-  const ids = new Set(filteredSubs.value.map(s => s.id));
-  return responses.value.filter(r => ids.has(r.submission_id));
-});
+const filteredSubs = computed(() => applySlice(submissions.value));
+const subsNoBase = computed(() => applySlice(submissions.value, { base: true }));
+const subsNoGerencia = computed(() => applySlice(submissions.value, { gerencia: true }));
+const subsNoEquipe = computed(() => applySlice(submissions.value, { equipe: true }));
+
+function respsOf(subs: typeof submissions.value, omitPergunta = false) {
+  const ids = new Set(subs.map((s) => s.id));
+  let r = responses.value.filter((resp) => ids.has(resp.submission_id));
+  if (!omitPergunta && viz.pergunta) r = r.filter((resp) => resp.pergunta === viz.pergunta);
+  return r;
+}
+
+const filteredResps = computed(() => respsOf(filteredSubs.value));
+const respsNoPergunta = computed(() => respsOf(filteredSubs.value, true));
 
 const totalConformes    = computed(() => filteredResps.value.filter(r => r.resposta === "conforme").length);
 const totalNaoConformes = computed(() => filteredResps.value.filter(r => r.resposta === "nao_conforme").length);
@@ -332,51 +486,93 @@ const kpis = computed(() => [
 ]);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const ttItem = {
-  trigger: "item" as const,
-  backgroundColor: "rgba(255,255,255,0.97)",
-  borderColor: "#e2e8f0", borderWidth: 1,
-  textStyle: { color: chartInk.axis, fontSize: 12 },
-  extraCssText: "box-shadow:0 8px 24px rgba(0,0,0,.12);border-radius:10px;padding:10px 14px;"
-};
+function tooltipSkin(trigger: "axis" | "item") {
+  return {
+    trigger,
+    backgroundColor: chartInk.tipBg,
+    borderColor: chartInk.tipBorder,
+    borderWidth: 1,
+    padding: [12, 14] as [number, number],
+    textStyle: { color: chartInk.tipText, fontSize: 12, fontWeight: 500 as const },
+    extraCssText: "border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.45);",
+  };
+}
+
+function tipHtml(title: string, rows: { label: string; value: string; color?: string }[], foot?: string) {
+  const t = chartInk.tipText;
+  const m = chartInk.tipMuted;
+  const body = rows
+    .map((r) =>
+      `<div style="display:flex;justify-content:space-between;gap:20px;align-items:baseline;margin-top:6px">`
+      + `<span style="color:${m};font-size:11px;font-weight:600;letter-spacing:.02em">${r.label}</span>`
+      + `<span style="color:${r.color ?? t};font-size:13px;font-weight:800">${r.value}</span>`
+      + `</div>`,
+    )
+    .join("");
+  const hint = foot
+    ? `<div style="color:${m};font-size:10px;margin-top:8px;opacity:.9">${foot}</div>`
+    : "";
+  return `<div style="min-width:168px;color:${t};font-family:inherit">`
+    + `<div style="font-weight:800;font-size:14px;line-height:1.25;color:${t}">${title}</div>`
+    + body
+    + hint
+    + `</div>`;
+}
+
+function ncCount(subs: typeof submissions.value, resps: typeof responses.value) {
+  const ids = new Set(subs.map((s) => s.id));
+  let n = 0;
+  for (const r of resps) {
+    if (ids.has(r.submission_id) && r.resposta === "nao_conforme") n++;
+  }
+  return n;
+}
 
 function hBar(
-  categories: string[],
-  values: number[],
-  color = P.conf,
-  suffix = "%",
-  maxVal = 100
+  rows: { name: string; value: number }[],
+  selected: string | null,
+  color = P.inconf,
+  foot = "Clique para filtrar as outras visões",
 ) {
+  const names = rows.map((r) => r.name);
+  const maxVal = Math.max(...rows.map((r) => r.value), 1);
   return {
     tooltip: {
-      ...ttItem,
+      ...tooltipSkin("item"),
       formatter: (p: { name: string; value: number }) =>
-        `<b>${p.name}</b>: <b style="color:${color}">${p.value}${suffix}</b>`
+        tipHtml(p.name, [
+          { label: "Não conformes", value: String(p.value), color },
+        ], foot),
     },
-    grid: { left: 8, right: 52, top: 8, bottom: 8 },
+    grid: { left: 12, right: 44, top: 8, bottom: 8, containLabel: true },
     xAxis: {
       type: "value" as const,
       max: maxVal,
       show: false,
-      splitLine: { show: false }
+      splitLine: { show: false },
     },
     yAxis: {
       type: "category" as const,
-      data: categories,
+      data: names,
       axisLine: { show: false },
       axisTick: { show: false },
       splitLine: { show: false },
-      axisLabel: { color: chartInk.axis, fontSize: 11 }
+      axisLabel: { color: chartInk.axis, fontSize: 11 },
     },
     series: [{
       type: "bar" as const,
-      data: values,
+      cursor: "pointer",
+      data: rows.map((r) => ({
+        value: r.value,
+        itemStyle: {
+          color,
+          opacity: !selected || selected === r.name ? 1 : 0.22,
+          borderRadius: [0, 6, 6, 0],
+          shadowColor: "rgba(0,0,0,.08)",
+          shadowBlur: !selected || selected === r.name ? 4 : 0,
+        },
+      })),
       barMaxWidth: 26,
-      itemStyle: {
-        color,
-        borderRadius: [0, 6, 6, 0],
-        shadowColor: "rgba(0,0,0,.08)", shadowBlur: 4
-      },
       emphasis: { itemStyle: { opacity: 0.85 } },
       label: {
         show: true,
@@ -384,182 +580,223 @@ function hBar(
         fontSize: 11,
         fontWeight: "bold" as const,
         color,
-        formatter: (p: { value: number }) => `${p.value}${suffix}`
-      }
-    }]
+        formatter: (p: { value: number }) => String(p.value),
+      },
+    }],
   };
 }
 
-// ─── nc (não conformidades) por base / gerência / equipe ────────────────────
 const ncPorBase = computed(() => {
   const map: Record<string, number> = {};
-  for (const s of filteredSubs.value) {
-    const rs = filteredResps.value.filter(r => r.submission_id === s.id && r.resposta === "nao_conforme");
-    if (!rs.length) continue;
-    map[s.base] = (map[s.base] ?? 0) + rs.length;
+  const resps = respsOf(subsNoBase.value);
+  for (const s of subsNoBase.value) {
+    const n = ncCount([s], resps);
+    if (!n) continue;
+    map[s.base] = (map[s.base] ?? 0) + n;
   }
   return map;
 });
 
 const ncPorGerenciaLocal = computed(() => {
   const map: Record<string, number> = {};
-  for (const s of filteredSubs.value) {
-    const rs = filteredResps.value.filter(r => r.submission_id === s.id && r.resposta === "nao_conforme");
-    if (!rs.length) continue;
-    const emp = employees.value.find(e => e.matricula === s.matricula);
+  const idx = indexEmployees(employees.value);
+  const resps = respsOf(subsNoGerencia.value);
+  for (const s of subsNoGerencia.value) {
+    const n = ncCount([s], resps);
+    if (!n) continue;
+    const emp = matchSubmissionToEmployee(s, idx);
     const g = emp?.gerencia ?? s.auditagem;
-    map[g] = (map[g] ?? 0) + rs.length;
+    map[g] = (map[g] ?? 0) + n;
   }
   return map;
 });
 
-// ─── Chart: Comportamento de Desvio Mensal (linha, nc por mês no ano) ────────
+const equipeRows = computed(() => {
+  const map: Record<string, number> = {};
+  const resps = respsOf(subsNoEquipe.value);
+  for (const s of subsNoEquipe.value) {
+    if (!s.equipe) continue;
+    const n = ncCount([s], resps);
+    if (!n) continue;
+    map[s.equipe] = (map[s.equipe] ?? 0) + n;
+  }
+  return Object.entries(map)
+    .sort((a, b) => a[1] - b[1])
+    .map(([equipe, value]) => ({
+      equipe,
+      name: equipe.length > 16 ? `${equipe.slice(0, 15)}…` : equipe,
+      value,
+    }));
+});
+
+const rankingRows = computed(() => {
+  const map: Record<string, number> = {};
+  for (const r of respsNoPergunta.value) {
+    if (r.resposta !== "nao_conforme") continue;
+    map[r.pergunta] = (map[r.pergunta] ?? 0) + 1;
+  }
+  return Object.entries(map)
+    .sort((a, b) => a[1] - b[1])
+    .slice(-17)
+    .map(([pergunta, value]) => ({
+      pergunta,
+      short: pergunta.length > 28 ? `${pergunta.slice(0, 27)}.` : pergunta,
+      value,
+    }));
+});
+
 const chartTendenciaMensal = computed(() => {
-  const mesLabels = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+  const mesLabels = meses.map((m) => m.label);
   const vals = mesLabels.map((_, i) => ncPorMes.value[i + 1] ?? 0);
   return {
     tooltip: {
-      ...ttItem,
-      trigger: "axis" as const,
+      ...tooltipSkin("axis"),
       formatter: (params: { name: string; value: number }[]) => {
         const p = params[0];
-        return `<b>${p.name}</b>: <b style="color:${P.inconf}">${p.value}</b> desvios`;
-      }
+        return tipHtml(`${p.name} · ${filters.ano}`, [
+          { label: "Desvios no mês", value: String(p.value), color: P.inconf },
+        ], "Clique para abrir o recorte daquele mês");
+      },
     },
-    grid: { left: 8, right: 16, top: 24, bottom: 8 },
+    grid: { left: 8, right: 16, top: 32, bottom: 8 },
     xAxis: {
       type: "category" as const,
       data: mesLabels,
-      axisLine: { lineStyle: { color: "#e2e8f0" } },
+      axisLine: { lineStyle: { color: chartInk.split } },
       axisTick: { show: false },
-      axisLabel: { color: chartInk.muted, fontSize: 11 }
+      axisLabel: { color: chartInk.muted, fontSize: 11 },
     },
     yAxis: {
       type: "value" as const,
       show: false,
-      splitLine: { show: false }
+      splitLine: { show: false },
     },
     series: [{
       type: "line" as const,
-      data: vals,
+      cursor: "pointer",
+      data: vals.map((v, i) => ({
+        value: v,
+        itemStyle: { opacity: filters.mes === i + 1 ? 1 : 0.28 },
+      })),
       smooth: false,
       symbol: "circle",
       symbolSize: 7,
       lineStyle: { color: P.inconf, width: 3 },
-      itemStyle: { color: P.inconf, borderColor: "#fff", borderWidth: 2 },
+      itemStyle: { color: P.inconf, borderColor: chartInk.halo, borderWidth: 2 },
       label: {
         show: true,
         position: "top" as const,
         fontSize: 11,
         fontWeight: "bold" as const,
-        color: chartInk.axis
+        color: chartInk.axis,
+        formatter: (p: { value: number; dataIndex: number }) =>
+          filters.mes === p.dataIndex + 1 || p.value ? String(p.value) : "",
       },
       areaStyle: {
         color: {
           type: "linear" as const, x: 0, y: 0, x2: 0, y2: 1,
           colorStops: [
             { offset: 0, color: "rgba(139,28,43,.22)" },
-            { offset: 1, color: "rgba(139,28,43,0)" }
-          ]
-        }
-      }
-    }]
+            { offset: 1, color: "rgba(139,28,43,0)" },
+          ],
+        },
+      },
+    }],
   };
 });
 
-// ─── Chart: Qnt Inconformidade por Base ──────────────────────────────────────
 const chartBase = computed(() => {
-  const entries = Object.entries(ncPorBase.value).sort((a, b) => b[1] - a[1]);
-  return hBar(entries.map(e => e[0]), entries.map(e => e[1]), P.inconf, "", Math.max(...entries.map(e => e[1]), 1));
+  const entries = Object.entries(ncPorBase.value).sort((a, b) => a[1] - b[1]);
+  return hBar(
+    entries.map(([name, value]) => ({ name, value })),
+    filters.base !== "Todos" ? filters.base : null,
+    P.inconf,
+    "Clique para ver só esta base",
+  );
 });
 
-// ─── Chart: Qnt de Inconformidade por Gerência ───────────────────────────────
 const chartGerencia = computed(() => {
-  const entries = Object.entries(ncPorGerenciaLocal.value).sort((a, b) => b[1] - a[1]);
-  return hBar(entries.map(e => e[0]), entries.map(e => e[1]), P.inconf, "", Math.max(...entries.map(e => e[1]), 1));
+  const entries = Object.entries(ncPorGerenciaLocal.value).sort((a, b) => a[1] - b[1]);
+  return hBar(
+    entries.map(([name, value]) => ({ name, value })),
+    filters.gerencia !== "Todos" ? filters.gerencia : null,
+    P.inconf,
+    "Clique para filtrar a gerência",
+  );
 });
 
-// ─── Chart: Qnt de Inconformidade por Equipe (scrollable) ────────────────────
 const chartEquipe = computed(() => {
-  const equipeNc: Record<string, number> = {};
-  for (const s of filteredSubs.value) {
-    const rs = filteredResps.value.filter(r => r.submission_id === s.id && r.resposta === "nao_conforme");
-    if (!rs.length || !s.equipe) continue;
-    equipeNc[s.equipe] = (equipeNc[s.equipe] ?? 0) + rs.length;
-  }
-  const entries = Object.entries(equipeNc).sort((a, b) => b[1] - a[1]);
-  const names = entries.map(e => e[0].length > 16 ? e[0].slice(0, 15) + "…" : e[0]);
-  const vals = entries.map(e => e[1]);
+  const rows = equipeRows.value;
+  const selected = viz.equipe
+    ? (rows.find((r) => r.equipe === viz.equipe)?.name ?? viz.equipe)
+    : null;
   return {
-    ...hBar([...names].reverse(), [...vals].reverse(), P.inconf, "", Math.max(...vals, 1)),
+    ...hBar(
+      rows.map((r) => ({ name: r.name, value: r.value })),
+      selected,
+      P.inconf,
+      "Clique para filtrar esta equipe",
+    ),
     dataZoom: [{
       type: "inside" as const,
       orient: "vertical" as const,
-      startValue: 0, endValue: 9,
+      startValue: Math.max(0, rows.length - 10),
+      endValue: Math.max(0, rows.length - 1),
       zoomOnMouseWheel: false,
-      moveOnMouseWheel: true
+      moveOnMouseWheel: true,
     }],
-    grid: { left: 8, right: 52, top: 8, bottom: 8 }
   };
 });
 
-// ─── Chart: Ranking de Não Conformidades ─────────────────────────────────────
-const rankingNC = computed(() => {
-  const map: Record<string, number> = {};
-  for (const r of filteredResps.value) {
-    if (r.resposta === "nao_conforme") {
-      const key = r.pergunta.length > 28 ? r.pergunta.slice(0, 27) + "." : r.pergunta;
-      map[key] = (map[key] ?? 0) + 1;
-    }
-  }
-  return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 17);
+const chartRanking = computed(() => {
+  const rows = rankingRows.value;
+  const n = rows.length;
+  return {
+    tooltip: {
+      ...tooltipSkin("item"),
+      formatter: (p: { dataIndex: number; value: number }) => {
+        const o = rows[p.dataIndex];
+        if (!o) return "";
+        return tipHtml(o.pergunta, [
+          { label: "Ocorrências", value: String(p.value), color: P.inconf },
+        ], "Clique para ver só este item");
+      },
+    },
+    grid: { left: 12, right: 36, top: 8, bottom: 8, containLabel: true },
+    xAxis: { type: "value" as const, show: false, splitLine: { show: false } },
+    yAxis: {
+      type: "category" as const,
+      data: rows.map((r) => r.short),
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: { show: false },
+      axisLabel: { color: chartInk.axis, fontSize: 11 },
+    },
+    series: [{
+      type: "bar" as const,
+      cursor: "pointer",
+      data: rows.map((r, i) => ({
+        value: r.value,
+        itemStyle: {
+          color: i === n - 1 ? P.inconf
+            : i >= n - 3 ? P.inconfLt
+            : `rgba(139,28,43,${0.55 + (i / Math.max(n, 1)) * 0.45})`,
+          opacity: !viz.pergunta || viz.pergunta === r.pergunta ? 1 : 0.22,
+          borderRadius: [0, 6, 6, 0],
+        },
+      })),
+      barMaxWidth: 24,
+      emphasis: { itemStyle: { opacity: 0.8 } },
+      label: {
+        show: true,
+        position: "right" as const,
+        fontSize: 12,
+        fontWeight: "bold" as const,
+        color: P.inconf,
+      },
+    }],
+  };
 });
-
-const rankingNames = computed(() => rankingNC.value.map(([n]) => n));
-const rankingVals  = computed(() => rankingNC.value.map(([, v]) => v));
-
-const chartRanking = computed(() => ({
-  tooltip: {
-    ...ttItem,
-    formatter: (p: { name: string; value: number }) =>
-      `<b>${p.name}</b><br/>Ocorrências: <b style="color:${P.inconf}">${p.value}</b>`
-  },
-  grid: { left: 8, right: 36, top: 8, bottom: 8 },
-  xAxis: {
-    type: "value" as const,
-    show: false,
-    splitLine: { show: false }
-  },
-  yAxis: {
-    type: "category" as const,
-    data: [...rankingNames.value].reverse(),
-    axisLine: { show: false },
-    axisTick: { show: false },
-    splitLine: { show: false },
-    axisLabel: { color: chartInk.axis, fontSize: 11 }
-  },
-  series: [{
-    type: "bar" as const,
-    data: [...rankingVals.value].reverse().map((v, i) => ({
-      value: v,
-      itemStyle: {
-        color: i === rankingVals.value.length - 1 ? P.inconf
-             : i >= rankingVals.value.length - 3 ? P.inconfLt
-             : `rgba(139,28,43,${0.55 + (i / rankingVals.value.length) * 0.45})`,
-        borderRadius: [0, 6, 6, 0]
-      }
-    })),
-    barMaxWidth: 24,
-    emphasis: { itemStyle: { opacity: 0.8 } },
-    label: {
-      show: true,
-      position: "right" as const,
-      fontSize: 12,
-      fontWeight: "bold" as const,
-      color: P.inconf
-    }
-  }]
-}));
 </script>
 
 <style scoped lang="scss">
@@ -647,6 +884,57 @@ $label-color:  #94a3b8;
   flex-shrink: 0; align-self: flex-end; margin: 0 4px;
 }
 
+.filter-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 6px;
+  flex-wrap: wrap;
+}
+
+.filter-summary__label {
+  font-size: 11px;
+  color: $label-color;
+  font-weight: 600;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  background: rgba($brand, .1);
+  color: $brand;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+
+  &--hit { cursor: pointer; }
+  &--hit:hover { filter: brightness(0.92); }
+}
+
+.filter-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  padding: 0 10px;
+  background: none;
+  border: 1px solid $border;
+  border-radius: 999px;
+  font-size: 11px;
+  color: $label-color;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+
+  &:hover {
+    color: $brand;
+    border-color: $brand;
+  }
+}
+
+.chart-hit { cursor: pointer; }
+
 // ── KPI card ──────────────────────────────────────────────────────────────────
 .kpi-card {
   border-radius: 12px;
@@ -666,6 +954,11 @@ $label-color:  #94a3b8;
     &--active { background: $brand; color: #fff; border-color: $brand; }
   }
   .filter-divider { background: #334155; }
+  .filter-chip { background: rgba($brand, .2); }
+  .filter-clear { border-color: #334155; color: #64748b; }
   .fgroup__label   { color: #64748b; }
 }
+
+.fade-enter-active, .fade-leave-active { transition: opacity .2s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

@@ -108,6 +108,25 @@
 
       </div>
       </div>
+      <transition name="fade">
+        <div v-if="hasActiveFilters" class="filter-summary">
+          <span class="filter-summary__label">Filtros ativos:</span>
+          <span class="filter-chip">{{ filters.ano }}</span>
+          <span class="filter-chip">{{ filters.mes }}</span>
+          <span v-if="filters.semana !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.semana = 'Todos'">{{ filters.semana }}</span>
+          <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ filters.base }}</span>
+          <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
+          <span v-if="filters.gerenteFinal !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerenteFinal = 'Todos'">{{ filters.gerenteFinal }}</span>
+          <span v-if="filters.observador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.observador = 'Todos'">{{ filters.observador }}</span>
+          <span v-if="filters.categoria !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.categoria = 'Todos'">{{ filters.categoria }}</span>
+          <span v-if="filters.prefixo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.prefixo = 'Todos'">{{ filters.prefixo }}</span>
+          <span v-if="viz.pergunta" class="filter-chip filter-chip--hit" @click="viz.pergunta = null">{{ perguntaChip }}</span>
+          <button class="filter-clear" @click="resetSlice">
+            <q-icon name="mdi-close-circle" size="14px" />
+            Limpar
+          </button>
+        </div>
+      </transition>
     </div>
 
     <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -121,9 +140,10 @@
           <q-card flat bordered class="chart-card full-height">
             <q-card-section class="q-pb-xs">
               <div class="chart-title">Risco de Alto Potencial por Categoria</div>
+              <div class="chart-caption">Clique na categoria para filtrar as outras visões</div>
             </q-card-section>
             <q-card-section class="q-pt-none" style="padding-bottom:0">
-              <v-chart v-if="treemapData.length" :option="chartTreemap" autoresize style="height:460px" />
+              <v-chart v-if="treemapData.length" class="chart-hit" :option="chartTreemap" autoresize style="height:460px" @click="onCategoriaClick" />
               <div v-else class="empty-chart" style="height:460px">
                 <q-icon name="mdi-check-circle-outline" size="48px" color="positive" />
                 <div class="empty-chart__title">Sem Não Conformidades</div>
@@ -138,6 +158,7 @@
           <q-card flat bordered class="chart-card full-height">
             <q-card-section class="q-pb-xs">
               <div class="chart-title">Ranking do Risco de Alto Potencial</div>
+              <div class="chart-caption">Clique na linha para filtrar pelo item</div>
             </q-card-section>
             <q-card-section class="q-pa-none">
               <div class="rank-wrap">
@@ -149,7 +170,11 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="(r, i) in rankingNc" :key="i" :class="['rank-row', i % 2 === 0 && 'rank-row--alt']">
+                    <tr
+                      v-for="(r, i) in rankingNc" :key="i"
+                      :class="['rank-row', i % 2 === 0 && 'rank-row--alt', viz.pergunta === r.q && 'rank-row--on']"
+                      @click="togglePergunta(r.q)"
+                    >
                       <td class="rd-q">{{ r.q }}</td>
                       <td class="rd-v">{{ r.v }}</td>
                     </tr>
@@ -171,9 +196,10 @@
           <q-card flat bordered class="chart-card full-height">
             <q-card-section class="q-pb-xs">
               <div class="chart-title">Ranking de Equipes com Não conformidades</div>
+              <div class="chart-caption">Clique na equipe para filtrar as outras visões</div>
             </q-card-section>
             <q-card-section class="q-pt-none" style="padding-bottom:0">
-              <v-chart :option="chartRankingEq" autoresize style="height:460px" />
+              <v-chart class="chart-hit" :option="chartRankingEq" autoresize style="height:460px" @click="onEquipeClick" />
             </q-card-section>
           </q-card>
         </div>
@@ -193,7 +219,7 @@ import { TooltipComponent, GridComponent, DataZoomComponent } from "echarts/comp
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia, semanaDoMes } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDoMes } from "@/lib/dashboard";
 
 use([CanvasRenderer, BarChart, TreemapChart, TooltipComponent, GridComponent, DataZoomComponent]);
 
@@ -213,7 +239,6 @@ const bases        = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const mesesOpts    = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26","jul/26","ago/26","set/26","out/26","nov/26","dez/26"];
 const semanasOpts  = ["Todos","1ª Semana","2ª Semana","3ª Semana","4ª Semana"];
 const gerenciasOpts = ["Todos","GERE","GOMAN","GSTC","SPOT"];
-const observadorOpts = ["Todos"];
 
 const allPrefixes: string[] = [
   "MA-BCB-E001M","MA-BCB-E002M","MA-PDT-P002M","MA-BDC-E002M",
@@ -298,36 +323,147 @@ async function recarregar() {
 onMounted(recarregar);
 watch(() => [filters.ano, filters.mes, filters.base], recarregar);
 
-const filteredSubs = computed(() => {
-  let s = filterByGerencia(submissions.value, employees.value, filters.gerencia);
-  if (filters.semana !== "Todos") {
+const viz = reactive({ pergunta: null as string | null });
+
+type EcClick = { componentType?: string; dataIndex?: number; name?: string };
+
+function togglePergunta(q: string) {
+  viz.pergunta = viz.pergunta === q ? null : q;
+}
+
+function onCategoriaClick(p: EcClick) {
+  if (p.componentType && p.componentType !== "series") return;
+  if (!p.name) return;
+  filters.categoria = filters.categoria === p.name ? "Todos" : p.name;
+}
+
+function onEquipeClick(p: EcClick) {
+  if (p.componentType && p.componentType !== "series") return;
+  if (!p.name?.trim()) return;
+  filters.prefixo = filters.prefixo === p.name ? "Todos" : p.name;
+}
+
+function resetSlice() {
+  filters.categoria = "Todos";
+  filters.gerenteFinal = "Todos";
+  filters.observador = "Todos";
+  filters.semana = "Todos";
+  filters.gerencia = "Todos";
+  filters.prefixo = "Todos";
+  viz.pergunta = null;
+}
+
+const hasActiveFilters = computed(() =>
+  filters.semana !== "Todos"
+  || filters.base !== "Todos"
+  || filters.gerencia !== "Todos"
+  || filters.gerenteFinal !== "Todos"
+  || filters.observador !== "Todos"
+  || filters.categoria !== "Todos"
+  || filters.prefixo !== "Todos"
+  || !!viz.pergunta,
+);
+
+const perguntaChip = computed(() => {
+  const q = viz.pergunta ?? "";
+  return q.length > 42 ? `${q.slice(0, 40)}…` : q;
+});
+
+function isTz(r: { resposta: string; gravidade?: string | null; peso: number }) {
+  return r.resposta === "nao_conforme" && (
+    r.gravidade === "tolerancia_zero"
+    || r.gravidade === "Tolerância Zero"
+    || r.peso >= 5
+  );
+}
+
+function applySlice(
+  source: typeof submissions.value,
+  omit: { gerencia?: boolean; prefixo?: boolean; observador?: boolean; week?: boolean } = {},
+) {
+  let s = filterByGerente(source, employees.value, filters.gerenteFinal);
+  if (!omit.gerencia) s = filterByGerencia(s, employees.value, filters.gerencia);
+  if (!omit.week && filters.semana !== "Todos") {
     const semNum = Number(filters.semana.replace(/\D/g, "")) || 0;
     if (semNum) s = s.filter(sub => semanaDoMes(new Date(sub.data).getDate()) === semNum);
   }
-  if (filters.observador !== "Todos") {
+  if (!omit.observador && filters.observador !== "Todos") {
     s = s.filter(sub => sub.observador === filters.observador);
   }
-  if (filters.prefixo !== "Todos") {
+  if (!omit.prefixo && filters.prefixo !== "Todos") {
     s = s.filter(sub => sub.equipe === filters.prefixo);
   }
   return s;
-});
+}
 
-const filteredResps = computed(() => {
-  const ids = new Set(filteredSubs.value.map(s => s.id));
-  let r = responses.value.filter(resp =>
-    ids.has(resp.submission_id) && resp.resposta === "nao_conforme" && resp.peso >= 5
-  );
-  if (filters.categoria !== "Todos") {
+function tzResps(
+  subs: typeof submissions.value,
+  omit: { cat?: boolean; pergunta?: boolean } = {},
+) {
+  const ids = new Set(subs.map(s => s.id));
+  let r = responses.value.filter(resp => ids.has(resp.submission_id) && isTz(resp));
+  if (!omit.cat && filters.categoria !== "Todos") {
     r = r.filter(resp => resp.categoria === filters.categoria);
   }
+  if (!omit.pergunta && viz.pergunta) {
+    r = r.filter(resp => (resp.pergunta ?? "Sem descrição") === viz.pergunta);
+  }
   return r;
+}
+
+const observadorOpts = computed(() => {
+  const names = [...new Set(submissions.value.map(s => s.observador).filter(Boolean))].sort();
+  return ["Todos", ...names];
 });
+
+const filteredSubs = computed(() => applySlice(submissions.value));
+const filteredResps = computed(() => tzResps(filteredSubs.value));
+const respsNoCat = computed(() => tzResps(filteredSubs.value, { cat: true }));
+const respsNoPergunta = computed(() => tzResps(filteredSubs.value, { pergunta: true }));
+const subsNoPrefixo = computed(() => applySlice(submissions.value, { prefixo: true }));
+const respsNoPrefixo = computed(() => tzResps(subsNoPrefixo.value));
+
+function tooltipSkin(trigger: "item" | "axis" = "item") {
+  const bg = chartInk.tipBg;
+  const fg = chartInk.tipText;
+  const bd = chartInk.tipBorder;
+  return {
+    trigger,
+    appendTo: () => document.body,
+    confine: true,
+    enterable: false,
+    transitionDuration: 0,
+    backgroundColor: bg,
+    borderColor: bd,
+    borderWidth: 1,
+    padding: [12, 14] as [number, number],
+    textStyle: { color: fg, fontSize: 12, fontWeight: 500 as const },
+    extraCssText:
+      `background:${bg} !important;color:${fg} !important;border:1px solid ${bd};`
+      + "border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.55);"
+      + "max-width:min(280px, calc(100vw - 16px));white-space:normal;opacity:1;",
+  };
+}
+
+function tipHtml(title: string, rows: { label: string; value: string }[], foot?: string) {
+  const t = chartInk.tipText;
+  const m = chartInk.tipMuted;
+  const body = rows
+    .map((r) =>
+      `<div style="display:flex;justify-content:space-between;gap:20px;align-items:baseline;margin-top:6px">`
+      + `<span style="color:${m};font-size:11px;font-weight:600">${r.label}</span>`
+      + `<span style="color:#8B1C2B;font-size:13px;font-weight:800">${r.value}</span>`
+      + `</div>`,
+    )
+    .join("");
+  const hint = foot ? `<div style="color:${m};font-size:10px;margin-top:8px">${foot}</div>` : "";
+  return `<div style="min-width:168px;max-width:260px;color:${t}"><div style="font-weight:800;font-size:14px;line-height:1.3;color:${t};white-space:normal">${title}</div>${body}${hint}</div>`;
+}
 
 // â"€â"€â"€ Treemap â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const treemapData = computed(() => {
   const map: Record<string, number> = {};
-  for (const r of filteredResps.value) {
+  for (const r of respsNoCat.value) {
     const cat = r.categoria ?? "Sem categoria";
     map[cat] = (map[cat] ?? 0) + 1;
   }
@@ -339,66 +475,67 @@ const treemapData = computed(() => {
 
 const tmPalette = ["#6b1321","#8B1C2B","#a32636","#c43d52","#e8889a","#f9c5cb"];
 
-const chartTreemap = computed(() => ({
-  tooltip: {
-    backgroundColor: "rgba(255,255,255,.97)",
-    borderColor: "#e2e8f0", borderWidth: 1,
-    textStyle: { color: chartInk.axis, fontSize: 12 },
-    extraCssText: "box-shadow:0 8px 24px rgba(0,0,0,.12);border-radius:10px;padding:10px 14px;",
-    formatter: (p: { name: string; value: number }) =>
-      `<b>${p.name}</b><br/>Ocorrências: <b style="color:#8B1C2B">${p.value}</b>`,
-  },
-  series: [{
-    type: "treemap" as const,
-    roam: false,
-    nodeClick: false as const,
-    breadcrumb: { show: false },
-    label: {
-      show: true,
-      position: "insideTopLeft" as const,
-      padding: [10, 10],
-      formatter: (p: { name: string; value: number }) => `${p.name}\n\n${p.value}`,
-      fontSize: 13,
-      fontWeight: "bold" as const,
-      color: "#fff",
-      textBorderColor: "rgba(0,0,0,.2)",
-      textBorderWidth: 1,
+const chartTreemap = computed(() => {
+  const selected = filters.categoria !== "Todos" ? filters.categoria : null;
+  return {
+    tooltip: {
+      ...tooltipSkin("item"),
+      formatter: (p: { name: string; value: number }) =>
+        tipHtml(p.name, [
+          { label: "Ocorrências", value: String(p.value) },
+        ], "Clique para filtrar esta categoria"),
     },
-    data: treemapData.value.map((d, i) => ({
-      name: d.name,
-      value: d.value,
-      itemStyle: { color: tmPalette[i] ?? "#f9c5cb" },
-    })),
-    itemStyle: { borderWidth: 2, borderColor: "#fff" },
-  }],
-}));
+    series: [{
+      type: "treemap" as const,
+      roam: false,
+      nodeClick: false as const,
+      breadcrumb: { show: false },
+      label: {
+        show: true,
+        position: "insideTopLeft" as const,
+        padding: [10, 10],
+        formatter: (p: { name: string; value: number }) => `${p.name}\n\n${p.value}`,
+        fontSize: 13,
+        fontWeight: "bold" as const,
+        color: "#fff",
+        textBorderColor: "rgba(0,0,0,.2)",
+        textBorderWidth: 1,
+      },
+      data: treemapData.value.map((d, i) => ({
+        name: d.name,
+        value: d.value,
+        itemStyle: {
+          color: tmPalette[i] ?? "#f9c5cb",
+          opacity: !selected || selected === d.name ? 1 : 0.28,
+        },
+      })),
+      itemStyle: { borderWidth: 2, borderColor: "#fff" },
+    }],
+  };
+});
 
 // â"€â"€â"€ Ranking NC table â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const rankingNc = computed(() => {
   const counts: Record<string, number> = {};
-  for (const r of filteredResps.value) {
-    if (r.resposta === "nao_conforme") {
-      const key = r.pergunta ?? "Sem descrição";
-      counts[key] = (counts[key] ?? 0) + 1;
-    }
+  for (const r of respsNoPergunta.value) {
+    const key = r.pergunta ?? "Sem descrição";
+    counts[key] = (counts[key] ?? 0) + 1;
   }
   return Object.entries(counts)
     .map(([q, v]) => ({ q, v }))
     .sort((a, b) => b.v - a.v);
 });
 
-const totalNc = computed(() => filteredResps.value.filter(r => r.resposta === "nao_conforme").length);
+const totalNc = computed(() => filteredResps.value.length);
 
 // â"€â"€â"€ Ranking equipes bar chart â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const rankEquipes = computed(() => {
   const ncPerSub: Record<string, number> = {};
-  for (const r of filteredResps.value) {
-    if (r.resposta === "nao_conforme") {
-      ncPerSub[r.submission_id] = (ncPerSub[r.submission_id] ?? 0) + 1;
-    }
+  for (const r of respsNoPrefixo.value) {
+    ncPerSub[r.submission_id] = (ncPerSub[r.submission_id] ?? 0) + 1;
   }
   const counts: Record<string, number> = {};
-  for (const sub of filteredSubs.value) {
+  for (const sub of subsNoPrefixo.value) {
     const nc = ncPerSub[sub.id] ?? 0;
     if (nc === 0) continue;
     if (sub.equipe) counts[sub.equipe] = (counts[sub.equipe] ?? 0) + nc;
@@ -415,48 +552,70 @@ function barColor(v: number): string {
   return "#c43d52";
 }
 
-const chartRankingEq = computed(() => ({
-  tooltip: {
-    trigger: "axis" as const,
-    axisPointer: { type: "shadow" as const },
-    backgroundColor: "rgba(255,255,255,.97)",
-    borderColor: "#e2e8f0", borderWidth: 1,
-    textStyle: { color: chartInk.axis, fontSize: 12 },
-    extraCssText: "box-shadow:0 8px 24px rgba(0,0,0,.12);border-radius:10px;padding:10px 14px;",
-    formatter: (p: { name: string; value: number }[]) => {
-      const d = p[0];
-      return `<b>${d.name}</b><br/>NCs: <b style="color:#8B1C2B">${d.value}</b>`;
+const chartRankingEq = computed(() => {
+  const data = rankEquipes.value;
+  const selected = filters.prefixo !== "Todos" ? filters.prefixo : null;
+  const vis = Math.min(12, Math.max(data.length, 1));
+  const start = Math.max(0, data.length - vis);
+  const end = Math.max(0, data.length - 1);
+  return {
+    tooltip: {
+      ...tooltipSkin("item"),
+      formatter: (p: { name: string; value: number }) =>
+        tipHtml(p.name, [
+          { label: "Não conformes", value: String(p.value) },
+        ], "Clique para filtrar esta equipe"),
     },
-  },
-  grid: { left: 8, right: 36, top: 4, bottom: 4 },
-  xAxis: { type: "value" as const, show: false, splitLine: { show: false } },
-  yAxis: {
-    type: "category" as const,
-    data: rankEquipes.value.map(r => r.name),
-    inverse: false,
-    axisLine: { show: false }, axisTick: { show: false },
-    splitLine: { show: false },
-    axisLabel: { color: chartInk.axis, fontSize: 10 },
-  },
-  dataZoom: [{
-    type: "inside" as const, orient: "vertical" as const,
-    startValue: 6, endValue: rankEquipes.value.length - 1,
-    zoomOnMouseWheel: false, moveOnMouseWheel: true,
-  }],
-  series: [{
-    type: "bar" as const,
-    data: rankEquipes.value.map(r => ({
-      value: r.v,
-      itemStyle: { color: barColor(r.v), borderRadius: [0, 6, 6, 0] },
-    })),
-    barMaxWidth: 20,
-    emphasis: { itemStyle: { opacity: .8 } },
-    label: {
-      show: true, position: "right" as const,
-      fontSize: 11, fontWeight: "bold" as const, color: "#8B1C2B",
+    grid: { left: 8, right: 40, top: 8, bottom: 16, containLabel: true },
+    xAxis: { type: "value" as const, show: false, splitLine: { show: false }, max: Math.max(...data.map(e => e.v), 1) * 1.32 },
+    yAxis: {
+      type: "category" as const,
+      data: data.map(r => r.name),
+      axisLine: { show: false }, axisTick: { show: false },
+      splitLine: { show: false },
+      axisLabel: { color: chartInk.axis, fontSize: 10 },
     },
-  }],
-}));
+    dataZoom: [
+      {
+        type: "inside" as const, orient: "vertical" as const,
+        startValue: start, endValue: end,
+        zoomOnMouseWheel: false, moveOnMouseWheel: true,
+      },
+      {
+        type: "slider" as const,
+        show: data.length > vis,
+        orient: "vertical" as const,
+        width: 8, right: 6, top: "12%", bottom: "12%",
+        startValue: start, endValue: end,
+        brushSelect: false, showDetail: false, showDataShadow: false, zoomLock: true,
+        borderRadius: 8, borderColor: "transparent",
+        backgroundColor: "rgba(148,163,184,.18)",
+        fillerColor: "rgba(139,28,43,.45)",
+        handleSize: "70%",
+        handleStyle: { color: "#fff", borderColor: "#8B1C2B", borderWidth: 1 },
+        moveHandleSize: 0,
+      },
+    ],
+    series: [{
+      type: "bar" as const,
+      cursor: "pointer",
+      data: data.map(r => ({
+        value: r.v,
+        itemStyle: {
+          color: barColor(r.v),
+          opacity: !selected || selected === r.name ? 1 : 0.22,
+          borderRadius: [0, 6, 6, 0],
+        },
+      })),
+      barMaxWidth: 20,
+      emphasis: { itemStyle: { opacity: .8 } },
+      label: {
+        show: true, position: "right" as const,
+        fontSize: 11, fontWeight: "bold" as const, color: "#8B1C2B",
+      },
+    }],
+  };
+});
 </script>
 
 <style scoped lang="scss">
@@ -536,6 +695,50 @@ $inactive-text:#475569;
   flex-shrink: 0; align-self: flex-end; margin: 0 4px;
 }
 
+.filter-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 6px;
+  flex-wrap: wrap;
+}
+.filter-summary__label {
+  font-size: 11px;
+  color: $label-color;
+  font-weight: 600;
+}
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  background: rgba($brand, .1);
+  color: $brand;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  &--hit { cursor: pointer; }
+  &--hit:hover { filter: brightness(0.92); }
+}
+.filter-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  padding: 0 10px;
+  background: none;
+  border: 1px solid $border;
+  border-radius: 999px;
+  font-size: 11px;
+  color: $label-color;
+  cursor: pointer;
+  &:hover { color: $brand; border-color: $brand; }
+}
+
 // â"€â"€ Cards â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 .chart-card {
   border-radius: 12px;
@@ -545,6 +748,10 @@ $inactive-text:#475569;
 .chart-title {
   font-size: 14px; font-weight: 700; color: #1e293b;
 }
+.chart-caption {
+  font-size: 11px; color: $label-color; margin-top: 2px;
+}
+.chart-hit { cursor: pointer; }
 .empty-chart {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 8px;
@@ -587,7 +794,9 @@ $inactive-text:#475569;
     vertical-align: middle;
     line-height: 1.4;
   }
+  .rank-row { cursor: pointer; }
   .rank-row--alt td { background: #f8fafc; }
+  .rank-row--on td { background: rgba($brand, .12); }
   td.rd-v { text-align: center; font-weight: 700; color: $brand; white-space: nowrap; }
 
   tfoot .rank-total td {
@@ -616,8 +825,14 @@ $inactive-text:#475569;
     :deep(.q-field__native) { color: #94a3b8; }
   }
   .chart-title { color: #e2e8f0; }
+  .chart-caption { color: #64748b; }
+  .filter-chip { background: rgba($brand, .2); }
+  .filter-clear { border-color: #334155; color: #64748b; }
   .rank-row td { color: #cbd5e1; border-bottom-color: #1e293b; }
   .rank-row--alt td { background: #0f172a; }
+  .rank-row--on td { background: rgba($brand, .28); }
 }
+.fade-enter-active, .fade-leave-active { transition: opacity .2s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>
 

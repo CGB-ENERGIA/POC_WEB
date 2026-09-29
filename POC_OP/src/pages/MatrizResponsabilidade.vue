@@ -1,5 +1,6 @@
 <template>
   <q-page class="matriz-page">
+    <q-linear-progress v-if="loading" indeterminate color="negative" style="position:sticky;top:0;z-index:200" />
 
     <!-- ═══════════════════════════ FILTER BAR ═══════════════════════════ -->
     <div class="filter-bar">
@@ -15,8 +16,17 @@
       <div class="filter-collapsible" :class="{ 'is-hidden': !showFilters }">
       <div class="filter-bar__inner">
 
-        <!-- Row 1: Mês · Ano · Gerência -->
+        <!-- Row 1: Semana · Mês · Ano · Gerência -->
         <div class="filter-row">
+          <div class="fgroup">
+            <span class="fgroup__label">Semana</span>
+            <div class="pill-group">
+              <button v-for="s in semanasOpts" :key="s.v"
+                :class="['pill', filters.semana === s.v && 'pill--active']"
+                @click="filters.semana = s.v">{{ s.l }}</button>
+            </div>
+          </div>
+          <div class="filter-divider" />
           <div class="fgroup">
             <span class="fgroup__label">Mês</span>
             <div class="pill-group">
@@ -68,6 +78,26 @@
 
       </div>
       </div>
+      <transition name="chip-bar">
+        <div v-if="hasActiveFilters" class="filter-summary">
+          <span class="filter-summary__label">Filtros ativos:</span>
+          <span class="filter-chip">{{ filters.ano }}</span>
+          <span class="filter-chip">{{ filters.mes }}</span>
+          <span v-if="filters.semana !== 0" class="filter-chip filter-chip--hit" @click="filters.semana = 0">{{ semanaLabel }}</span>
+          <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
+          <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ filters.gerente }}</span>
+          <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ filters.base }}</span>
+          <span v-if="viz.base && viz.base !== filters.base" class="filter-chip filter-chip--hit" @click="viz.base = null">{{ viz.base }}</span>
+          <span v-if="viz.observador" class="filter-chip filter-chip--hit" @click="viz.observador = null">{{ viz.observador }}</span>
+          <span v-if="viz.equipe" class="filter-chip filter-chip--hit" @click="viz.equipe = null">{{ viz.equipe }}</span>
+          <span v-if="viz.cat" class="filter-chip filter-chip--hit" @click="viz.cat = null">{{ viz.cat }}</span>
+          <span v-if="viz.status" class="filter-chip filter-chip--hit" @click="viz.status = null">{{ statusChip }}</span>
+          <button class="filter-clear" @click="resetSlice">
+            <q-icon name="mdi-close-circle" size="14px" />
+            Limpar
+          </button>
+        </div>
+      </transition>
     </div>
 
     <!-- ═══════════════════════════ CONTENT ═══════════════════════════ -->
@@ -163,19 +193,23 @@
                       />
                     </td>
                     <td class="col-data td-mono">{{ sub.data }}</td>
-                    <td class="col-base">
-                      <span class="base-badge">{{ sub.base }}</span>
+                    <td class="col-base" @click.stop="toggleBase(sub.base)">
+                      <span class="base-badge" :class="{ 'hit--on': selectedBase === sub.base }">{{ sub.base }}</span>
                     </td>
-                    <td class="col-obs">{{ sub.observador }}</td>
-                    <td class="col-equipe td-mono">{{ sub.equipe }}</td>
+                    <td class="col-obs" @click.stop="toggleObs(sub.observador)">
+                      <span :class="{ 'hit-text--on': viz.observador === sub.observador }">{{ sub.observador }}</span>
+                    </td>
+                    <td class="col-equipe td-mono" @click.stop="toggleEquipe(sub.equipe)">
+                      <span :class="{ 'hit-text--on': viz.equipe === sub.equipe }">{{ sub.equipe }}</span>
+                    </td>
                     <td class="col-nc">
                       <span class="nc-count-badge">{{ sub.totalNc }}</span>
                     </td>
-                    <td class="col-status">
-                      <span v-if="sub.naoResolvidos > 0" class="res-badge res-nao">
+                    <td class="col-status" @click.stop="toggleStatus(sub.naoResolvidos > 0 ? 'pendente' : 'resolvido')">
+                      <span v-if="sub.naoResolvidos > 0" class="res-badge res-nao" :class="{ 'hit--on': viz.status === 'pendente' }">
                         {{ sub.naoResolvidos }} pendente{{ sub.naoResolvidos !== 1 ? 's' : '' }}
                       </span>
-                      <span v-else class="res-badge res-sim">Resolvido</span>
+                      <span v-else class="res-badge res-sim" :class="{ 'hit--on': viz.status === 'resolvido' }">Resolvido</span>
                     </td>
                   </tr>
 
@@ -191,13 +225,18 @@
                             'nc-item--resolved':  nc.resolucao?.status === 'aprovado',
                             'nc-item--analise':   nc.resolucao?.status === 'pendente',
                             'nc-item--reprovado': nc.resolucao?.status === 'reprovado',
+                            'nc-item--dim': viz.cat && viz.cat !== nc.categoria,
                           }"
                           @click.stop="abrirDetalhe(sub, nc)"
                         >
                           <span class="nc-item__num">{{ i + 1 }}</span>
-                          <span class="cat-badge" :class="catClass(nc.categoria)">{{ nc.categoria }}</span>
+                          <span class="cat-badge" :class="[catClass(nc.categoria), { 'hit--on': viz.cat === nc.categoria }]" @click.stop="toggleCat(nc.categoria)">{{ nc.categoria }}</span>
                           <div class="nc-item__text">
                             <div class="nc-item__pergunta">{{ nc.pergunta }}</div>
+                            <div v-if="nc.responsavel" class="nc-item__resp">
+                              <q-icon name="mdi-account-hard-hat" size="12px" />
+                              {{ nc.responsavel }}
+                            </div>
                             <div v-if="nc.observacao && nc.observacao !== nc.pergunta" class="nc-item__obs">
                               <q-icon name="mdi-comment-text-outline" size="12px" />
                               {{ nc.observacao }}
@@ -473,7 +512,7 @@
 <script setup lang="ts">
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { fetchResolucoes, inserirResolucao, reabrirResolucao, type ResolucaoRow } from "@/lib/dashboard";
+import { fetchResolucoes, inserirResolucao, reabrirResolucao, filterByGerencia, filterByGerente, semanaDaData, type ResolucaoRow } from "@/lib/dashboard";
 import { useAuth } from "@/composables/useAuth";
 
 // ─── R2 upload ────────────────────────────────────────────────────────────────
@@ -498,6 +537,13 @@ async function uploadToR2(key: string, base64: string): Promise<string> {
 const showFilters = ref(false);
 const search = ref("");
 
+const semanasOpts = [
+  { v: 0, l: "Todos" },
+  { v: 1, l: "1ª Semana" },
+  { v: 2, l: "2ª Semana" },
+  { v: 3, l: "3ª Semana" },
+  { v: 4, l: "4ª Semana" },
+];
 const mesesOpts     = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
 const anosOpts      = ["2024","2025","2026"];
 const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","LOGÍSTICA","OFICINA","SESMT","SPOT"];
@@ -510,10 +556,74 @@ const MONTH_MAP: Record<string, number> = {
 };
 
 const filters = reactive({
+  semana: 0,
   mes: mesesOpts[new Date().getMonth()],
   ano: String(new Date().getFullYear()),
   gerencia: "Todos", base: "Todos", gerente: "Todos",
 });
+
+const viz = reactive({
+  base: null as string | null,
+  observador: null as string | null,
+  equipe: null as string | null,
+  cat: null as string | null,
+  status: null as "pendente" | "resolvido" | null,
+});
+
+const selectedBase = computed(() =>
+  viz.base ?? (filters.base !== "Todos" ? filters.base : null),
+);
+const semanaLabel = computed(() => semanasOpts.find((s) => s.v === filters.semana)?.l ?? "");
+const statusChip = computed(() => viz.status === "pendente" ? "Pendentes" : "Resolvidos");
+
+function toggleBase(base: string) {
+  viz.base = viz.base === base ? null : base;
+}
+function toggleObs(nome: string) {
+  viz.observador = viz.observador === nome ? null : nome;
+}
+function toggleEquipe(eq: string) {
+  viz.equipe = viz.equipe === eq ? null : eq;
+}
+function toggleCat(cat: string) {
+  viz.cat = viz.cat === cat ? null : cat;
+}
+function toggleStatus(st: "pendente" | "resolvido") {
+  viz.status = viz.status === st ? null : st;
+}
+function resetSlice() {
+  filters.semana = 0;
+  filters.gerencia = "Todos";
+  filters.gerente = "Todos";
+  filters.base = "Todos";
+  viz.base = null;
+  viz.observador = null;
+  viz.equipe = null;
+  viz.cat = null;
+  viz.status = null;
+}
+const hasActiveFilters = computed(() =>
+  filters.semana !== 0
+  || filters.gerencia !== "Todos"
+  || filters.gerente !== "Todos"
+  || filters.base !== "Todos"
+  || !!viz.base
+  || !!viz.observador
+  || !!viz.equipe
+  || !!viz.cat
+  || !!viz.status,
+);
+
+function fmtData(data: string) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/.exec(data);
+  if (m) {
+    const d = `${m[3]}/${m[2]}/${m[1]}`;
+    return m[4] ? `${d} ${m[4]}:${m[5]}` : d;
+  }
+  const dt = new Date(data);
+  if (Number.isNaN(dt.getTime())) return data;
+  return `${dt.toLocaleDateString("pt-BR")} ${dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+}
 
 // ─── Dados reais ──────────────────────────────────────────────────────────────
 const { loading, load, submissions, responses, employees } = useChecklistData();
@@ -522,12 +632,13 @@ const resolucoes = ref<ResolucaoRow[]>([]);
 async function recarregar() {
   const mes = MONTH_MAP[filters.mes];
   const ano = Number(filters.ano);
-  await load({ ano, mes, base: filters.base !== "Todos" ? filters.base : undefined });
+  await load({ ano, mes });
   resolucoes.value = await fetchResolucoes(submissions.value.map((s) => s.id));
 }
 
 onMounted(recarregar);
-watch(filters, recarregar, { deep: true });
+watch(() => [filters.ano, filters.mes], recarregar);
+watch(() => filters.base, () => { viz.base = null; });
 
 // ─── Photo URL helper ─────────────────────────────────────────────────────────
 function fotoUrl(key: string | null): string | null {
@@ -556,6 +667,7 @@ type NcRow = {
   inconformidade: string;
   observacao: string | null;
   fotoUrl: string | null;
+  responsavel: string | null;
   resolucao: Resolucao | null;
 };
 
@@ -563,6 +675,7 @@ type SubRow = {
   submissionId: string;
   matricula: string;
   data: string;
+  dataIso: string;
   base: string;
   gerencia: string;
   observador: string;
@@ -579,17 +692,23 @@ const allData = computed<SubRow[]>(() => {
     resolucaoMap.set(`${r.submission_id}:${r.pergunta_id}`, r);
   }
 
+  const sliced = (() => {
+    let s = filterByGerente(submissions.value, employees.value, filters.gerente);
+    s = filterByGerencia(s, employees.value, filters.gerencia);
+    if (filters.semana) s = s.filter((sub) => semanaDaData(sub.data) === filters.semana);
+    return s;
+  })();
+
   const empMap = new Map(employees.value.map((e) => [e.matricula, e]));
 
   const subMap = new Map<string, SubRow>();
-  for (const sub of submissions.value) {
-    const dt = new Date(sub.data);
-    const fmt = `${dt.toLocaleDateString("pt-BR")} ${dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  for (const sub of sliced) {
     const emp = empMap.get(sub.matricula);
     subMap.set(sub.id, {
       submissionId: sub.id,
       matricula: sub.matricula,
-      data: fmt,
+      data: fmtData(sub.data),
+      dataIso: sub.data,
       base: sub.base,
       gerencia: emp?.gerencia ?? sub.auditagem ?? "",
       observador: sub.observador,
@@ -626,6 +745,9 @@ const allData = computed<SubRow[]>(() => {
       inconformidade: r.observacao ?? r.pergunta,
       observacao: r.observacao,
       fotoUrl: fotoUrl(r.foto_r2_key),
+      responsavel: r.atribuido_nome
+        ? (r.atribuido_tipo === "equipe" ? `Equipe · ${r.atribuido_nome}` : r.atribuido_nome)
+        : null,
       resolucao,
     });
     sub.totalNc++;
@@ -634,7 +756,7 @@ const allData = computed<SubRow[]>(() => {
 
   return Array.from(subMap.values())
     .filter((s) => s.totalNc > 0)
-    .sort((a, b) => b.data.localeCompare(a.data));
+    .sort((a, b) => b.dataIso.localeCompare(a.dataIso));
 });
 
 // ─── Expand / collapse ────────────────────────────────────────────────────────
@@ -645,21 +767,21 @@ function isExpanded(id: string) { return !!expanded[id]; }
 // ─── Filtrado ─────────────────────────────────────────────────────────────────
 const filteredData = computed<SubRow[]>(() => {
   let data = allData.value;
-
-  if (filters.gerencia !== "Todos") {
-    data = data.filter((s) => s.gerencia === filters.gerencia);
-  }
-  if (filters.gerente !== "Todos") {
-    data = data.filter((s) => s.observador === filters.gerente);
-  }
+  const base = selectedBase.value;
+  if (base) data = data.filter((s) => s.base === base);
+  if (viz.observador) data = data.filter((s) => s.observador === viz.observador);
+  if (viz.equipe) data = data.filter((s) => s.equipe === viz.equipe);
+  if (viz.status === "pendente") data = data.filter((s) => s.naoResolvidos > 0);
+  if (viz.status === "resolvido") data = data.filter((s) => s.naoResolvidos === 0);
+  if (viz.cat) data = data.filter((s) => s.ncs.some((nc) => nc.categoria === viz.cat));
 
   const q = search.value.toLowerCase();
   if (!q) return data;
   return data.filter((s) => {
-    const base = `${s.data} ${s.base} ${s.observador} ${s.equipe}`.toLowerCase();
-    if (base.includes(q)) return true;
+    const baseTxt = `${s.data} ${s.base} ${s.observador} ${s.equipe}`.toLowerCase();
+    if (baseTxt.includes(q)) return true;
     return s.ncs.some((nc) =>
-      `${nc.categoria} ${nc.inconformidade} ${nc.pergunta}`.toLowerCase().includes(q)
+      `${nc.categoria} ${nc.inconformidade} ${nc.pergunta} ${nc.responsavel ?? ""}`.toLowerCase().includes(q)
     );
   });
 });
@@ -667,7 +789,7 @@ const filteredData = computed<SubRow[]>(() => {
 // ─── Histórico de resoluções ──────────────────────────────────────────────────
 const historicoResolvidos = computed(() => {
   const items: { sub: SubRow; nc: NcRow }[] = [];
-  for (const sub of allData.value) {
+  for (const sub of filteredData.value) {
     for (const nc of sub.ncs) {
       if (nc.resolucao) items.push({ sub, nc });
     }
@@ -801,9 +923,6 @@ async function resolverNc() {
   }
 }
 
-void loading;
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 function ncStatusClass(resolucao: Resolucao | null): string {
   if (!resolucao) return "res-nao";
   if (resolucao.status === "aprovado") return "res-sim";
@@ -819,18 +938,17 @@ function ncStatusLabel(resolucao: Resolucao | null): string {
 }
 
 function catClass(cat: string): string {
-  const m: Record<string, string> = {
-    "Repúblicas":                       "cat-rep",
-    "Procedimentos":                    "cat-proc",
-    "EPI, EPC e Ferramentas":           "cat-epi",
-    "APR":                              "cat-apr",
-    "Regras de Ouro":                   "cat-regra",
-    "Trabalho em Altura":               "cat-altura",
-    "Veículos e Equipamentos":          "cat-veic",
-    "Padrinho de Segurança":            "cat-pad",
-    "Estruturas e Instalações Prediais":"cat-struct",
-  };
-  return m[cat] ?? "";
+  const c = cat.toLowerCase();
+  if (c.includes("repúb") || c.includes("repub")) return "cat-rep";
+  if (c.includes("procedimento")) return "cat-proc";
+  if (c.includes("epi")) return "cat-epi";
+  if (c.includes("apr")) return "cat-apr";
+  if (c.includes("regras de ouro") || c.includes("regra")) return "cat-regra";
+  if (c.includes("altura")) return "cat-altura";
+  if (c.includes("veíc") || c.includes("veic")) return "cat-veic";
+  if (c.includes("padrinho")) return "cat-pad";
+  if (c.includes("estrutur") || c.includes("instala")) return "cat-struct";
+  return "";
 }
 </script>
 
@@ -877,6 +995,26 @@ $header-bg:    #fce4e8;
   width: 1px; height: 36px; background: $border;
   flex-shrink: 0; align-self: flex-end; margin: 0 4px;
 }
+.filter-summary {
+  display: flex; align-items: center; gap: 6px; padding-top: 6px; flex-wrap: wrap;
+}
+.filter-summary__label { font-size: 11px; color: $label-color; font-weight: 600; }
+.filter-chip {
+  display: inline-flex; align-items: center; height: 22px; padding: 0 10px;
+  background: rgba($brand, .1); color: $brand; border-radius: 999px;
+  font-size: 11px; font-weight: 600; max-width: 240px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  &--hit { cursor: pointer; }
+  &--hit:hover { filter: brightness(0.92); }
+}
+.filter-clear {
+  display: inline-flex; align-items: center; gap: 3px; height: 22px; padding: 0 10px;
+  background: none; border: 1px solid $border; border-radius: 999px;
+  font-size: 11px; color: $label-color; cursor: pointer;
+  &:hover { color: $brand; border-color: $brand; }
+}
+.hit--on { outline: 2px solid $brand; outline-offset: 1px; }
+.hit-text--on { color: $brand !important; }
 
 // ── KPI cards ─────────────────────────────────────────────────────────────────
 .kpi-card {
@@ -1007,6 +1145,7 @@ $header-bg:    #fce4e8;
   &--resolved  { border-left-color: #16a34a; &:hover { background: #f0fdf4; } }
   &--analise   { border-left-color: #d97706; &:hover { background: #fefce8; } }
   &--reprovado { border-left-color: #dc2626; &:hover { background: #fef2f2; } }
+  &--dim { opacity: .35; }
 }
 .nc-item__num {
   font-size: 10px; font-weight: 700; color: #94a3b8;
@@ -1019,6 +1158,11 @@ $header-bg:    #fce4e8;
   line-height: 1.4;
   overflow: hidden; text-overflow: ellipsis;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.nc-item__resp {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; color: $brand; font-weight: 600;
+  margin-top: 3px;
 }
 .nc-item__obs {
   display: flex; align-items: flex-start; gap: 4px;
@@ -1213,7 +1357,7 @@ $header-bg:    #fce4e8;
   }
   .filter-divider { background: #334155; }
   .fgroup__label { color: #64748b; }
-  .matriz-card { background: #1e293b; }
+  .filter-chip { background: rgba($brand, .2); }
   .kpi-progress-card { background: #1e293b; }
   .kpi-prog-label { color: #94a3b8; }
   .kpi-prog-sub { color: #64748b; }

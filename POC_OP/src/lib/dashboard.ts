@@ -276,7 +276,10 @@ export async function fetchNaoConformesPorMes(ano: number, base?: string): Promi
   if (!subs?.length) return {};
 
   const mesPorSubmissao = new Map<string, number>();
-  for (const s of subs) mesPorSubmissao.set(s.id, new Date(s.data).getMonth() + 1);
+  for (const s of subs) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s.data);
+    mesPorSubmissao.set(s.id, m ? Number(m[2]) : new Date(s.data).getMonth() + 1);
+  }
 
   const ids = subs.map((s) => s.id);
   const CHUNK = 300;

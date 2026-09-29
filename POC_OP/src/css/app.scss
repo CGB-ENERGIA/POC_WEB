@@ -162,7 +162,7 @@ body:not(.body--dark) {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease !important;
+  transition: transform .2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow .2s ease !important;
 
   // Gradiente 3D — face iluminada no topo, sombra na base
   background: linear-gradient(160deg, #5a1120 0%, #3a0b14 100%) !important;
@@ -240,14 +240,30 @@ body:not(.body--dark) {
 
 // ── Collapsible ───────────────────────────────────────────────────────────────
 .filter-collapsible {
-  overflow: hidden;
-  max-height: 600px;
+  display: grid;
+  grid-template-rows: 1fr;
   opacity: 1;
-  transition: max-height .35s cubic-bezier(.4,0,.2,1), opacity .25s ease;
+  transition: grid-template-rows .32s cubic-bezier(0.16, 1, 0.3, 1), opacity .2s ease;
+
+  > * {
+    min-height: 0;
+    overflow: hidden;
+  }
 
   &.is-hidden {
-    max-height: 0;
+    grid-template-rows: 0fr;
     opacity: 0;
+    pointer-events: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filter-collapsible {
+    transition: opacity .15s ease;
+  }
+  .filter-fab {
+    transition: background .15s ease, color .15s ease !important;
+    &:hover { transform: none !important; }
   }
 }
 
@@ -491,4 +507,46 @@ body.body--dark {
       }
     }
   }
+}
+
+// ── KPI flame (mapa de calor) ─────────────────────────────────────────────────
+.kpi-flame {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  overflow: visible;
+  background: radial-gradient(circle at 50% 70%, rgba(234, 88, 12, 0.22), rgba(139, 28, 43, 0.08) 70%) !important;
+}
+
+.kpi-flame__glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 80%, rgba(251, 146, 60, 0.5), transparent 62%);
+  animation: kpi-flame-glow 0.9s ease-in-out infinite;
+}
+
+.kpi-flame__svg {
+  position: relative;
+  z-index: 1;
+  width: 26px;
+  height: 28px;
+  overflow: visible;
+  filter: drop-shadow(0 0 5px rgba(249, 115, 22, 0.9)) drop-shadow(0 3px 8px rgba(185, 28, 28, 0.55));
+}
+
+@keyframes kpi-flame-glow {
+  0%, 100% { opacity: 0.45; transform: scale(0.88); }
+  50%      { opacity: 1; transform: scale(1.12); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kpi-flame__glow { animation: none; }
+  .kpi-flame__svg g { filter: none !important; }
 }

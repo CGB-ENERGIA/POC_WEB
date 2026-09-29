@@ -99,6 +99,26 @@
 
       </div>
       </div>
+      <transition name="chip-bar">
+        <div v-if="hasActiveFilters" class="filter-summary">
+          <span class="filter-summary__label">Filtros ativos:</span>
+          <span class="filter-chip">{{ filters.ano }}</span>
+          <span v-if="filters.mes !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.mes = 'Todos'">{{ filters.mes }}</span>
+          <span v-if="filters.semana !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.semana = 'Todos'">{{ filters.semana }}</span>
+          <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ filters.base }}</span>
+          <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
+          <span v-if="filters.tipo !== 'Operacional'" class="filter-chip filter-chip--hit" @click="filters.tipo = 'Operacional'">{{ filters.tipo }}</span>
+          <span v-if="filters.funcao !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.funcao = 'Todos'">{{ filters.funcao }}</span>
+          <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ filters.gerente }}</span>
+          <span v-if="filters.observador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.observador = 'Todos'">{{ filters.observador }}</span>
+          <span v-if="viz.prefixo" class="filter-chip filter-chip--hit" @click="viz.prefixo = null">{{ viz.prefixo }}</span>
+          <span v-if="viz.categoria" class="filter-chip filter-chip--hit" @click="viz.categoria = null">{{ viz.categoria }}</span>
+          <button class="filter-clear" @click="resetSlice">
+            <q-icon name="mdi-close-circle" size="14px" />
+            Limpar
+          </button>
+        </div>
+      </transition>
     </div>
 
     <!-- ═══════════════════════════ CONTENT ═══════════════════════════ -->
@@ -166,6 +186,7 @@
           <q-card flat bordered class="obs-table-card">
             <q-card-section class="q-pa-sm q-pb-none">
               <div class="table-card-title">Comportamento dos Observadores</div>
+              <div class="chart-caption">Clique na linha para filtrar o observador</div>
             </q-card-section>
             <q-card-section class="q-pa-sm q-pt-xs">
               <div class="obs-table-wrap">
@@ -183,7 +204,11 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="row in tableDataSorted" :key="row.nome">
+                    <tr
+                      v-for="row in tableDataSorted" :key="row.nome"
+                      :class="{ 'obs-row--on': filters.observador === row.nome }"
+                      @click="toggleObservador(row.nome)"
+                    >
                       <td class="td-nome">{{ row.nome }}</td>
                       <td>{{ row.funcao }}</td>
                       <td>{{ row.base }}</td>
@@ -222,7 +247,8 @@
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pa-xs">
                   <div class="chart-card-title">Obs 100% por Função</div>
-                  <v-chart :option="chartFuncao" autoresize style="height:190px" />
+                  <div class="chart-caption">Clique para filtrar</div>
+                  <v-chart class="chart-hit" :option="chartFuncao" autoresize style="height:190px" @click="onFuncaoClick" />
                 </q-card-section>
               </q-card>
             </div>
@@ -231,7 +257,8 @@
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pa-xs">
                   <div class="chart-card-title">Obs 100% por Gerência</div>
-                  <v-chart :option="chartGerencia" autoresize style="height:190px" />
+                  <div class="chart-caption">Clique para filtrar</div>
+                  <v-chart class="chart-hit" :option="chartGerencia" autoresize style="height:190px" @click="onGerenciaClick" />
                 </q-card-section>
               </q-card>
             </div>
@@ -240,7 +267,8 @@
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pa-xs">
                   <div class="chart-card-title">Equipes Visitadas</div>
-                  <v-chart :option="chartEquipes" autoresize style="height:190px" />
+                  <div class="chart-caption">Clique para filtrar o prefixo</div>
+                  <v-chart class="chart-hit" :option="chartEquipes" autoresize style="height:190px" @click="onPrefixoClick" />
                 </q-card-section>
               </q-card>
             </div>
@@ -249,7 +277,8 @@
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pa-xs">
                   <div class="chart-card-title">Inconformidades por Categoria</div>
-                  <v-chart :option="chartIncCat" autoresize style="height:190px" />
+                  <div class="chart-caption">Clique para filtrar</div>
+                  <v-chart class="chart-hit" :option="chartIncCat" autoresize style="height:190px" @click="onCategoriaClick" />
                 </q-card-section>
               </q-card>
             </div>
@@ -271,7 +300,7 @@ import { GridComponent, TooltipComponent, LegendComponent } from "echarts/compon
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDoMes, indexEmployees, matchSubmissionToEmployee } from "@/lib/dashboard";
 
 use([CanvasRenderer, BarChart, GaugeChart, PieChart, GridComponent, TooltipComponent, LegendComponent]);
 
@@ -284,17 +313,14 @@ const anosOpts     = ["2024","2025","2026"];
 const basesOpts    = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT"];
 const tiposOpts     = ["Todos","Administrativo","Operacional"];
+const TIPO_AUDITAGEM: Record<string, string[]> = {
+  Administrativo: ["ADMINISTRATIVO", "LOGISTICA", "OFICINA", "ADM"],
+  Operacional: ["GOMAN", "GSTC"],
+};
 const mesesOpts     = ["Todos","jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
 const semanasOpts   = ["Todos","Semana 1","Semana 2","Semana 3","Semana 4"];
 const funcoesOpts   = ["Todos","ENCARREGADO","SUPERVISOR","SESMT","FISCAL","COORDENADOR","GERENTE"];
 const gerentesOpts  = ["Todos","Afonso","Jackson","Jamerson","Julio C.","Leandro","Marcos","Paulo","Rafaela"];
-const observadoresOpts = ref<string[]>(["Todos"]);
-function filterObservador(val: string, update: (fn: () => void) => void) {
-  update(() => {
-    const n = val.toLowerCase();
-    observadoresOpts.value = ["Todos", ...conformidadePorObservador.value.map(o => o.nome)].filter(o => o.toLowerCase().includes(n));
-  });
-}
 
 const filters = reactive({
   ano: "2026", base: "Todos", gerencia: "Todos", tipo: "Operacional",
@@ -314,11 +340,130 @@ const {
   submissions,
   responses,
   employees,
-  conformidadePorObservador,
-  pctPerfeitas,
-  byGerencia,
-  byCategoria,
 } = useChecklistData();
+
+const viz = reactive({
+  prefixo: null as string | null,
+  categoria: null as string | null,
+});
+
+type EcClick = { componentType?: string; dataIndex?: number; name?: string };
+
+function toggleObservador(nome: string) {
+  filters.observador = filters.observador === nome ? "Todos" : nome;
+}
+
+function onFuncaoClick(p: EcClick) {
+  if (p.componentType && p.componentType !== "series") return;
+  if (!p.name || p.name === "Sem dados") return;
+  filters.funcao = filters.funcao === p.name ? "Todos" : p.name;
+}
+
+function onGerenciaClick(p: EcClick) {
+  if (p.componentType && p.componentType !== "series") return;
+  if (!p.name || p.name === "Sem dados") return;
+  filters.gerencia = filters.gerencia === p.name ? "Todos" : p.name;
+}
+
+function onPrefixoClick(p: EcClick) {
+  if (p.componentType && p.componentType !== "series") return;
+  if (!p.name?.trim()) return;
+  viz.prefixo = viz.prefixo === p.name ? null : p.name;
+}
+
+function onCategoriaClick(p: EcClick) {
+  if (p.componentType && p.componentType !== "series") return;
+  if (!p.name?.trim()) return;
+  viz.categoria = viz.categoria === p.name ? null : p.name;
+}
+
+function resetSlice() {
+  filters.gerencia = "Todos";
+  filters.tipo = "Operacional";
+  filters.semana = "Todos";
+  filters.funcao = "Todos";
+  filters.gerente = "Todos";
+  filters.observador = "Todos";
+  viz.prefixo = null;
+  viz.categoria = null;
+}
+
+const hasActiveFilters = computed(() =>
+  filters.base !== "Todos"
+  || filters.gerencia !== "Todos"
+  || filters.tipo !== "Operacional"
+  || filters.mes !== "Todos"
+  || filters.semana !== "Todos"
+  || filters.funcao !== "Todos"
+  || filters.gerente !== "Todos"
+  || filters.observador !== "Todos"
+  || !!viz.prefixo
+  || !!viz.categoria,
+);
+
+function matchTipoPoc(auditagem: string | undefined) {
+  if (filters.tipo === "Todos") return true;
+  const allowed = TIPO_AUDITAGEM[filters.tipo];
+  if (!allowed) return true;
+  return allowed.includes((auditagem ?? "").toUpperCase());
+}
+
+function applySlice(
+  source: typeof submissions.value,
+  omit: { gerencia?: boolean; tipo?: boolean; funcao?: boolean; observador?: boolean; week?: boolean; prefixo?: boolean } = {},
+) {
+  const idx = indexEmployees(employees.value);
+  let s = filterByGerente(source, employees.value, filters.gerente);
+  if (!omit.gerencia) s = filterByGerencia(s, employees.value, filters.gerencia);
+  if (!omit.tipo) s = s.filter((sub) => matchTipoPoc(sub.auditagem));
+  if (!omit.week && filters.semana !== "Todos") {
+    const semNum = Number(filters.semana.replace(/\D/g, "")) || 0;
+    if (semNum) s = s.filter((sub) => semanaDoMes(new Date(sub.data).getDate()) === semNum);
+  }
+  if (!omit.funcao && filters.funcao !== "Todos") {
+    s = s.filter((sub) => matchSubmissionToEmployee(sub, idx)?.funcao === filters.funcao);
+  }
+  if (!omit.observador && filters.observador !== "Todos") {
+    s = s.filter((sub) => sub.observador === filters.observador);
+  }
+  if (!omit.prefixo && viz.prefixo) {
+    s = s.filter((sub) => (sub.equipe ?? "Sem equipe") === viz.prefixo);
+  }
+  return s;
+}
+
+function respsOf(subs: typeof submissions.value, omitCat = false) {
+  const ids = new Set(subs.map((s) => s.id));
+  let r = responses.value.filter((resp) => ids.has(resp.submission_id));
+  if (!omitCat && viz.categoria) {
+    r = r.filter((resp) => (resp.categoria ?? "Sem categoria") === viz.categoria);
+  }
+  return r;
+}
+
+const filteredSubs = computed(() => applySlice(submissions.value));
+const filteredResps = computed(() => respsOf(filteredSubs.value));
+const subsNoFuncao = computed(() => applySlice(submissions.value, { funcao: true }));
+const subsNoGerencia = computed(() => applySlice(submissions.value, { gerencia: true }));
+const subsNoPrefixo = computed(() => applySlice(submissions.value, { prefixo: true }));
+const respsNoCat = computed(() => respsOf(filteredSubs.value, true));
+
+const observadoresOpts = ref<string[]>(["Todos"]);
+watch(
+  () => submissions.value,
+  () => {
+    const names = [...new Set(submissions.value.map((s) => s.observador).filter(Boolean))].sort();
+    observadoresOpts.value = ["Todos", ...names];
+  },
+  { immediate: true, deep: true },
+);
+function filterObservador(val: string, update: (fn: () => void) => void) {
+  update(() => {
+    const n = val.toLowerCase();
+    const names = [...new Set(submissions.value.map((s) => s.observador).filter(Boolean))].sort();
+    observadoresOpts.value = ["Todos", ...names.filter((o) => o.toLowerCase().includes(n))];
+  });
+}
 
 async function recarregar() {
   const mes = MONTH_MAP[filters.mes] ?? undefined;
@@ -335,50 +480,42 @@ watch(() => [filters.ano, filters.mes, filters.base], recarregar);
 // ─── Table data ───────────────────────────────────────────────────────────────
 type ObsRow = { nome: string; funcao: string; base: string; obs: number; obs100: number; conf: number; inc: number };
 
-const rawRows = computed<ObsRow[]>(() =>
-  conformidadePorObservador.value.map(o => {
-    const emp = employees.value.find(e => e.matricula === o.matricula);
-    const obsSubs = submissions.value.filter(s => s.matricula === o.matricula);
-    const obs100 = obsSubs.filter(s =>
-      !responses.value.some(r => r.submission_id === s.id && r.resposta === "nao_conforme")
-    ).length;
-    return {
-      nome: o.nome,
-      funcao: emp?.funcao ?? "—",
-      base: emp?.base ?? "—",
-      obs: o.totalObs,
-      obs100,
-      conf: o.conformes,
-      inc: o.naoConformes,
-    };
-  })
-);
-
-const gerenciaSet = computed(() =>
-  filters.gerencia !== "Todos"
-    ? new Set(employees.value.filter(e => e.gerencia === filters.gerencia).map(e => e.matricula))
-    : null
-);
-
-const tableDataSorted = computed(() => {
-  let rows = [...rawRows.value];
-  if (gerenciaSet.value) {
-    rows = rows.filter(r => {
-      const emp = employees.value.find(e => e.nome === r.nome || e.nome_completo === r.nome);
-      return emp ? gerenciaSet.value!.has(emp.matricula) : false;
-    });
+const rawRows = computed<ObsRow[]>(() => {
+  const idx = indexEmployees(employees.value);
+  const tableSubs = applySlice(submissions.value, { observador: true });
+  const tableResps = respsOf(tableSubs);
+  const ncIds = new Set(
+    tableResps.filter((r) => r.resposta === "nao_conforme").map((r) => r.submission_id),
+  );
+  const byMat: Record<string, ObsRow> = {};
+  for (const s of tableSubs) {
+    const emp = matchSubmissionToEmployee(s, idx);
+    if (!byMat[s.matricula]) {
+      byMat[s.matricula] = {
+        nome: s.observador,
+        funcao: emp?.funcao ?? "—",
+        base: emp?.base ?? s.base ?? "—",
+        obs: 0,
+        obs100: 0,
+        conf: 0,
+        inc: 0,
+      };
+    }
+    byMat[s.matricula].obs++;
+    if (!ncIds.has(s.id)) byMat[s.matricula].obs100++;
   }
-  if (filters.funcao !== "Todos") {
-    rows = rows.filter(r => r.funcao === filters.funcao);
+  for (const r of tableResps) {
+    const sub = tableSubs.find((s) => s.id === r.submission_id);
+    if (!sub || !byMat[sub.matricula]) continue;
+    if (r.resposta === "conforme") byMat[sub.matricula].conf++;
+    else if (r.resposta === "nao_conforme") byMat[sub.matricula].inc++;
   }
-  if (filters.gerente !== "Todos") {
-    rows = rows.filter(r => r.nome === filters.gerente);
-  }
-  if (filters.observador !== "Todos") {
-    rows = rows.filter(r => r.nome === filters.observador);
-  }
-  return rows.sort((a, b) => rowPct(b) - rowPct(a));
+  return Object.values(byMat);
 });
+
+const tableDataSorted = computed(() =>
+  [...rawRows.value].sort((a, b) => rowPct(b) - rowPct(a)),
+);
 
 function rowPct(row: ObsRow): number {
   const t = row.conf + row.inc;
@@ -394,16 +531,19 @@ function pctColor(pct: number): string {
 }
 
 // ─── KPI totals ───────────────────────────────────────────────────────────────
-const totalObs    = computed(() => tableDataSorted.value.reduce((s, r) => s + r.obs, 0));
-const totalConf   = computed(() => tableDataSorted.value.reduce((s, r) => s + r.conf, 0));
-const totalInc    = computed(() => tableDataSorted.value.reduce((s, r) => s + r.inc, 0));
-const totalObs100 = computed(() => tableDataSorted.value.reduce((s, r) => s + r.obs100, 0));
+const ncSubIds = computed(() =>
+  new Set(filteredResps.value.filter((r) => r.resposta === "nao_conforme").map((r) => r.submission_id)),
+);
+const totalObs    = computed(() => filteredSubs.value.length);
+const totalConf   = computed(() => filteredResps.value.filter((r) => r.resposta === "conforme").length);
+const totalInc    = computed(() => filteredResps.value.filter((r) => r.resposta === "nao_conforme").length);
+const totalObs100 = computed(() => filteredSubs.value.filter((s) => !ncSubIds.value.has(s.id)).length);
 const obsDesvio   = computed(() => totalObs.value - totalObs100.value);
 const globalPct   = computed(() => {
   const t = totalConf.value + totalInc.value;
   return t === 0 ? 100 : (totalConf.value / t) * 100;
 });
-const pctObs100   = computed(() => Math.round((pctPerfeitas.value) * 100));
+const pctObs100   = computed(() => totalObs.value ? Math.round((totalObs100.value / totalObs.value) * 100) : 0);
 
 // ─── Gauge ────────────────────────────────────────────────────────────────────
 const gaugeOpt = computed(() => ({
@@ -436,129 +576,175 @@ const gaugeOpt = computed(() => ({
 // ─── Donut palette ────────────────────────────────────────────────────────────
 const donPalette = ["#6b1321","#8B1C2B","#c43d52","#e06070","#f3b8c0","#fde2e6"];
 
-const ttItem = {
-  trigger: "item" as const,
-  backgroundColor: "rgba(255,255,255,.97)",
-  borderColor: "#e2e8f0", borderWidth: 1,
-  textStyle: { color: chartInk.axis, fontSize: 11 },
-  extraCssText: "box-shadow:0 4px 16px rgba(0,0,0,.1);border-radius:8px;padding:8px 12px;",
-};
+function tooltipSkin(trigger: "item" | "axis" = "item") {
+  const bg = chartInk.tipBg;
+  const fg = chartInk.tipText;
+  const bd = chartInk.tipBorder;
+  return {
+    trigger,
+    appendTo: () => document.body,
+    confine: true,
+    enterable: false,
+    transitionDuration: 0,
+    backgroundColor: bg,
+    borderColor: bd,
+    borderWidth: 1,
+    padding: [10, 12] as [number, number],
+    textStyle: { color: fg, fontSize: 11, fontWeight: 500 as const },
+    extraCssText:
+      `background:${bg} !important;color:${fg} !important;border:1px solid ${bd};`
+      + "border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.55);opacity:1;",
+  };
+}
 
-// ─── Obs 100% por Função ──────────────────────────────────────────────────────
+function pieData(entries: { name: string; value: number }[], selected: string | null) {
+  return entries.map((e) => ({
+    ...e,
+    itemStyle: { opacity: !selected || selected === e.name ? 1 : 0.22 },
+  }));
+}
+
 const chartFuncao = computed(() => {
+  const idx = indexEmployees(employees.value);
+  const ncIds = new Set(
+    respsOf(subsNoFuncao.value).filter((r) => r.resposta === "nao_conforme").map((r) => r.submission_id),
+  );
   const byFuncao: Record<string, number> = {};
-  for (const r of rawRows.value) {
-    byFuncao[r.funcao] = (byFuncao[r.funcao] ?? 0) + r.obs100;
+  for (const s of subsNoFuncao.value) {
+    if (ncIds.has(s.id)) continue;
+    const fn = matchSubmissionToEmployee(s, idx)?.funcao ?? "—";
+    if (fn === "—") continue;
+    byFuncao[fn] = (byFuncao[fn] ?? 0) + 1;
   }
   const data = Object.entries(byFuncao)
-    .filter(([k]) => k !== "—")
     .sort((a, b) => b[1] - a[1])
     .map(([name, value]) => ({ name, value }));
+  const selected = filters.funcao !== "Todos" ? filters.funcao : null;
   return {
-    tooltip: { ...ttItem, formatter: "{b}: {c} ({d}%)" },
+    tooltip: { ...tooltipSkin(), formatter: "{b}: {c} ({d}%)" },
     legend: { show: false },
     color: donPalette,
     series: [{
       type: "pie" as const,
+      cursor: "pointer",
       radius: ["48%", "76%"],
       center: ["50%", "52%"],
       label: {
-        fontSize: 9.5, fontWeight: "bold" as const,
+        fontSize: 9.5, fontWeight: "bold" as const, color: chartInk.axis,
         formatter: (p: { name: string; value: number; percent: number }) =>
           `${p.name}\n${p.value} (${p.percent.toFixed(1)}%)`,
       },
       labelLine: { length: 6, length2: 6 },
-      data: data.length ? data : [{ name: "Sem dados", value: 1 }],
-      itemStyle: { borderRadius: 3, borderColor: "#fff", borderWidth: 1 },
+      data: pieData(data.length ? data : [{ name: "Sem dados", value: 1 }], selected),
+      itemStyle: { borderRadius: 3, borderColor: chartInk.halo, borderWidth: 1 },
     }],
   };
 });
 
-// ─── Obs 100% por Gerência ────────────────────────────────────────────────────
 const chartGerencia = computed(() => {
-  const data = Object.entries(byGerencia.value)
+  const idx = indexEmployees(employees.value);
+  const ncIds = new Set(
+    respsOf(subsNoGerencia.value).filter((r) => r.resposta === "nao_conforme").map((r) => r.submission_id),
+  );
+  const map: Record<string, number> = {};
+  for (const s of subsNoGerencia.value) {
+    if (ncIds.has(s.id)) continue;
+    const g = matchSubmissionToEmployee(s, idx)?.gerencia ?? s.auditagem ?? "—";
+    map[g] = (map[g] ?? 0) + 1;
+  }
+  const data = Object.entries(map)
     .sort((a, b) => b[1] - a[1])
     .map(([name, value]) => ({ name, value }));
+  const selected = filters.gerencia !== "Todos" ? filters.gerencia : null;
   return {
-    tooltip: { ...ttItem, formatter: "{b}: {c} ({d}%)" },
+    tooltip: { ...tooltipSkin(), formatter: "{b}: {c} ({d}%)" },
     legend: { show: false },
     color: donPalette,
     series: [{
       type: "pie" as const,
+      cursor: "pointer",
       radius: ["48%", "76%"],
       center: ["50%", "52%"],
       label: {
-        fontSize: 9.5, fontWeight: "bold" as const,
+        fontSize: 9.5, fontWeight: "bold" as const, color: chartInk.axis,
         formatter: (p: { name: string; value: number; percent: number }) =>
           `${p.name}\n${p.value} (${p.percent.toFixed(1)}%)`,
       },
       labelLine: { length: 6, length2: 6 },
-      data: data.length ? data : [{ name: "Sem dados", value: 1 }],
-      itemStyle: { borderRadius: 3, borderColor: "#fff", borderWidth: 1 },
+      data: pieData(data.length ? data : [{ name: "Sem dados", value: 1 }], selected),
+      itemStyle: { borderRadius: 3, borderColor: chartInk.halo, borderWidth: 1 },
     }],
   };
 });
 
-// ─── Equipes Visitadas ────────────────────────────────────────────────────────
 const chartEquipes = computed(() => {
-  const equipeCounts: Record<string, number> = {};
-  for (const s of submissions.value) {
-    for (const m of (s.membros ?? [])) {
-      const key = m.nome ?? m.matricula;
-      equipeCounts[key] = (equipeCounts[key] ?? 0) + 1;
-    }
+  const counts: Record<string, number> = {};
+  for (const s of subsNoPrefixo.value) {
+    const key = s.equipe || "Sem equipe";
+    counts[key] = (counts[key] ?? 0) + 1;
   }
-  const top = Object.entries(equipeCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 9);
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 9);
+  const selected = viz.prefixo;
   return {
     tooltip: {
-      ...ttItem,
+      ...tooltipSkin(),
       formatter: (p: { name: string; value: number }) =>
-        `<b>${p.name}</b><br/>Visitas: <b style="color:${G.green}">${p.value}</b>`,
+        `<b>${p.name}</b><br/>Visitas: <b style="color:${G.green}">${p.value}</b><div style="font-size:10px;margin-top:6px;opacity:.8">Clique para filtrar</div>`,
     },
-    grid: { left: 6, right: 28, top: 4, bottom: 4 },
-    xAxis: { type: "value" as const, show: false },
+    grid: { left: 6, right: 32, top: 6, bottom: 6, containLabel: true },
+    xAxis: { type: "value" as const, show: false, max: Math.max(...top.map(([, v]) => v), 1) * 1.3 },
     yAxis: {
       type: "category" as const, inverse: true,
       axisLine: { show: false }, axisTick: { show: false },
-      axisLabel: { color: chartInk.axis, fontSize: 9.5 },
-      data: top.map(([nome]) => nome.length > 14 ? nome.slice(0, 13) + "…" : nome),
+      axisLabel: { color: chartInk.axis, fontSize: 9.5, width: 88, overflow: "truncate" as const },
+      data: top.map(([nome]) => nome),
     },
     series: [{
       type: "bar" as const,
-      data: top.map(([, v]) => v),
+      cursor: "pointer",
+      data: top.map(([nome, v]) => ({
+        name: nome,
+        value: v,
+        itemStyle: { color: G.green, opacity: !selected || selected === nome ? 1 : 0.22, borderRadius: [0, 4, 4, 0] },
+      })),
       barMaxWidth: 16,
-      itemStyle: { color: G.green, borderRadius: [0, 4, 4, 0] },
       label: { show: true, position: "right" as const, fontSize: 10, fontWeight: "bold" as const, color: G.green },
     }],
   };
 });
 
-// ─── Inconformidades por Categoria ────────────────────────────────────────────
 const chartIncCat = computed(() => {
-  const cats = [...byCategoria.value]
-    .sort((a, b) => b.total - b.conformes - (a.total - a.conformes))
-    .slice(0, 6);
+  const map: Record<string, number> = {};
+  for (const r of respsNoCat.value) {
+    if (r.resposta !== "nao_conforme") continue;
+    const cat = r.categoria ?? "Sem categoria";
+    map[cat] = (map[cat] ?? 0) + 1;
+  }
+  const cats = Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const selected = viz.categoria;
   return {
     tooltip: {
-      ...ttItem,
+      ...tooltipSkin(),
       formatter: (p: { name: string; value: number }) =>
-        `<b>${p.name}</b><br/>Inc: <b style="color:${G.brand}">${p.value}</b>`,
+        `<b>${p.name}</b><br/>Inc: <b style="color:${G.brand}">${p.value}</b><div style="font-size:10px;margin-top:6px;opacity:.8">Clique para filtrar</div>`,
     },
-    grid: { left: 6, right: 28, top: 4, bottom: 4 },
-    xAxis: { type: "value" as const, show: false },
+    grid: { left: 6, right: 32, top: 6, bottom: 6, containLabel: true },
+    xAxis: { type: "value" as const, show: false, max: Math.max(...cats.map(([, v]) => v), 1) * 1.3 },
     yAxis: {
       type: "category" as const, inverse: true,
       axisLine: { show: false }, axisTick: { show: false },
-      axisLabel: { color: chartInk.axis, fontSize: 9.5 },
-      data: cats.map(c => c.categoria.length > 14 ? c.categoria.slice(0, 13) + "…" : c.categoria),
+      axisLabel: { color: chartInk.axis, fontSize: 9.5, width: 88, overflow: "truncate" as const },
+      data: cats.map(([c]) => c),
     },
     series: [{
       type: "bar" as const,
-      data: cats.map(c => c.total - c.conformes),
+      cursor: "pointer",
+      data: cats.map(([cat, v]) => ({
+        name: cat,
+        value: v,
+        itemStyle: { color: G.brand, opacity: !selected || selected === cat ? 1 : 0.22, borderRadius: [0, 4, 4, 0] },
+      })),
       barMaxWidth: 16,
-      itemStyle: { color: G.brand, borderRadius: [0, 4, 4, 0] },
       label: { show: true, position: "right" as const, fontSize: 10, fontWeight: "bold" as const, color: G.brand },
     }],
   };
@@ -638,6 +824,26 @@ $inactive-text:#475569;
   width: 1px; height: 36px; background: $border;
   flex-shrink: 0; align-self: flex-end; margin: 0 4px;
 }
+.filter-summary {
+  display: flex; align-items: center; gap: 6px; padding-top: 6px; flex-wrap: wrap;
+}
+.filter-summary__label { font-size: 11px; color: $label-color; font-weight: 600; }
+.filter-chip {
+  display: inline-flex; align-items: center; height: 22px; padding: 0 10px;
+  background: rgba($brand, .1); color: $brand; border-radius: 999px;
+  font-size: 11px; font-weight: 600; max-width: 240px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  &--hit { cursor: pointer; }
+  &--hit:hover { filter: brightness(0.92); }
+}
+.filter-clear {
+  display: inline-flex; align-items: center; gap: 3px; height: 22px; padding: 0 10px;
+  background: none; border: 1px solid $border; border-radius: 999px;
+  font-size: 11px; color: $label-color; cursor: pointer;
+  &:hover { color: $brand; border-color: $brand; }
+}
+.chart-hit { cursor: pointer; }
+.chart-caption { font-size: 10px; color: $label-color; text-align: center; margin: 0 0 2px; }
 
 // ── KPI cards ─────────────────────────────────────────────────────────────────
 .kpi-card {
@@ -703,8 +909,10 @@ $inactive-text:#475569;
   }
 
   tbody tr {
+    cursor: pointer;
     &:nth-child(even) { background: #f8fafc; }
     &:hover { background: rgba($brand,.04); }
+    &.obs-row--on td { background: rgba($brand,.12); }
   }
   td {
     padding: 5px 10px; border-bottom: 1px solid $border;
@@ -769,5 +977,13 @@ $inactive-text:#475569;
   }
   .chart-card { background: #1e293b; }
   .chart-card-title { color: #fca5a5; }
+  .filter-chip { background: rgba($brand, .2); }
+  .filter-clear { border-color: #334155; color: #64748b; }
+  .chart-caption { color: #64748b; }
+  .obs-table tbody tr.obs-row--on td { background: rgba($brand,.28); }
 }
+.chip-bar-enter-active { transition: opacity .22s cubic-bezier(0.16, 1, 0.3, 1), transform .22s cubic-bezier(0.16, 1, 0.3, 1); }
+.chip-bar-leave-active { transition: opacity .16s ease, transform .16s ease; }
+.chip-bar-enter-from { opacity: 0; transform: translateY(-6px); }
+.chip-bar-leave-to { opacity: 0; transform: translateY(-4px); }
 </style>

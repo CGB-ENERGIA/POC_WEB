@@ -30,9 +30,9 @@
           <div class="fgroup">
             <span class="fgroup__label">Mês</span>
             <div class="pill-group">
-              <button v-for="m in mesesOpts" :key="m"
-                :class="['pill', filters.mes === m && 'pill--active']"
-                @click="filters.mes = m">{{ m }}</button>
+              <button v-for="m in mesesOpts" :key="m.v"
+                :class="['pill', filters.mes === m.v && 'pill--active']"
+                @click="filters.mes = m.v">{{ m.l }}</button>
             </div>
           </div>
           <div class="filter-divider" />
@@ -90,6 +90,25 @@
 
       </div>
       </div>
+      <transition name="chip-bar">
+        <div v-if="hasActiveFilters" class="filter-summary">
+          <span class="filter-summary__label">Filtros ativos:</span>
+          <span class="filter-chip">{{ filters.ano }}</span>
+          <span v-if="filters.mes !== 0" class="filter-chip filter-chip--hit" @click="filters.mes = 0">{{ mesLabel }}</span>
+          <span v-if="filters.semana !== 0" class="filter-chip filter-chip--hit" @click="filters.semana = 0">{{ semanaLabel }}</span>
+          <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
+          <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ filters.gerente }}</span>
+          <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ filters.base }}</span>
+          <span v-if="filters.tipo !== 'Operacional'" class="filter-chip filter-chip--hit" @click="filters.tipo = 'Operacional'">{{ filters.tipo }}</span>
+          <span v-if="viz.base && viz.base !== filters.base" class="filter-chip filter-chip--hit" @click="viz.base = null">{{ viz.base }}</span>
+          <span v-if="viz.cat" class="filter-chip filter-chip--hit" @click="viz.cat = null">{{ viz.cat }}</span>
+          <span v-if="viz.mes && viz.mes !== filters.mes" class="filter-chip filter-chip--hit" @click="viz.mes = null">{{ months[viz.mes - 1] }}</span>
+          <button class="filter-clear" @click="resetSlice">
+            <q-icon name="mdi-close-circle" size="14px" />
+            Limpar
+          </button>
+        </div>
+      </transition>
     </div>
 
     <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• CONTENT â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
@@ -101,9 +120,7 @@
           <q-card flat bordered class="kpi-card kpi-stat-card">
             <div class="kpi-stat-accent" style="background:#8B1C2B" />
             <q-card-section class="q-pa-md kpi-stat-section">
-              <div class="kpi-stat-icon-wrap" style="background:rgba(139,28,43,.1)">
-                <q-icon name="mdi-fire" size="24px" style="color:#8B1C2B" />
-              </div>
+              <KpiFlame />
               <div class="kpi-stat-value" style="color:#8B1C2B">
                 {{ totalInc.toLocaleString('pt-BR') }}
               </div>
@@ -135,6 +152,7 @@
           <q-card flat bordered class="heat-card">
             <q-card-section class="q-pa-sm q-pb-none">
               <div class="heat-card-title">Categoria</div>
+              <div class="heat-card-sub">Clique na categoria, no mês ou na célula</div>
             </q-card-section>
             <q-card-section class="q-pa-sm q-pt-xs">
               <div class="heat-wrap">
@@ -142,26 +160,39 @@
                   <thead>
                     <tr>
                       <th class="th-label">CATEGORIA</th>
-                      <th v-for="m in months" :key="m">{{ m }}</th>
+                      <th
+                        v-for="(m, mi) in months" :key="m"
+                        class="th-mes"
+                        :class="{ 'th--on': selectedMes === mi + 1 }"
+                        @click="toggleMes(mi + 1)"
+                      >{{ m }}</th>
                       <th class="th-total">Total</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-if="!totalInc">
-                      <td :colspan="months.length + 2" class="td-empty">
-                        <q-icon name="mdi-check-circle-outline" size="24px" color="positive" />
-                        Sem inconformidades no período
-                      </td>
-                    </tr>
                     <tr v-for="row in catData" :key="row.label">
-                      <td class="td-label">{{ row.label }}</td>
-                      <td v-for="(v, i) in row.values" :key="i"
+                      <td
+                        class="td-label"
+                        :class="{ 'td-label--on': viz.cat === row.label }"
+                        @click="toggleCat(row.label)"
+                      >{{ row.label }}</td>
+                      <td
+                        v-for="(v, i) in row.values" :key="i"
                         class="td-cell"
-                        :style="{ background: heatColor(v), color: cellTextColor(v) }">
+                        :class="{
+                          'td-cell--dim': isCatDim(row.label, i + 1),
+                          'td-cell--on': viz.cat === row.label && selectedMes === i + 1,
+                        }"
+                        :style="{ background: heatColor(v), color: cellTextColor(v) }"
+                        @click="onCatCell(row.label, i + 1)"
+                      >
                         {{ v }}
                       </td>
-                      <td class="td-row-total"
-                        :style="{ background: heatColor(rowSum(row.values)), color: cellTextColor(rowSum(row.values)) }">
+                      <td
+                        class="td-row-total"
+                        :class="{ 'td-cell--dim': viz.cat && viz.cat !== row.label }"
+                        :style="{ background: heatColor(rowSum(row.values)), color: cellTextColor(rowSum(row.values)) }"
+                      >
                         {{ rowSum(row.values) }}
                       </td>
                     </tr>
@@ -170,7 +201,7 @@
                     <tr class="total-row">
                       <td class="td-label">Total</td>
                       <td v-for="(t, i) in colTotals" :key="i" class="td-cell td-total-cell">{{ t }}</td>
-                      <td class="td-row-total td-grand">{{ totalInc }}</td>
+                      <td class="td-row-total td-grand">{{ catGrand }}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -184,6 +215,7 @@
           <q-card flat bordered class="heat-card">
             <q-card-section class="q-pa-sm q-pb-none">
               <div class="heat-card-title">Base</div>
+              <div class="heat-card-sub">Clique na base, no mês ou na célula</div>
             </q-card-section>
             <q-card-section class="q-pa-sm q-pt-xs">
               <div class="heat-wrap">
@@ -194,26 +226,45 @@
                         <span>Base</span>
                         <q-icon name="mdi-triangle" size="9px" style="opacity:.5;margin-left:4px" />
                       </th>
-                      <th v-for="m in months" :key="m">{{ m }}</th>
+                      <th
+                        v-for="(m, mi) in months" :key="m"
+                        class="th-mes"
+                        :class="{ 'th--on': selectedMes === mi + 1 }"
+                        @click="toggleMes(mi + 1)"
+                      >{{ m }}</th>
                       <th class="th-total">Total</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-if="!totalInc">
+                    <tr v-if="!baseData.length">
                       <td :colspan="months.length + 2" class="td-empty">
                         <q-icon name="mdi-check-circle-outline" size="24px" color="positive" />
-                        Sem inconformidades no período
+                        Sem checklists no período
                       </td>
                     </tr>
                     <tr v-for="row in baseData" :key="row.label">
-                      <td class="td-label">{{ row.label }}</td>
-                      <td v-for="(v, i) in row.values" :key="i"
+                      <td
+                        class="td-label"
+                        :class="{ 'td-label--on': selectedBase === row.label }"
+                        @click="toggleBase(row.label)"
+                      >{{ row.label }}</td>
+                      <td
+                        v-for="(v, i) in row.values" :key="i"
                         class="td-cell"
-                        :style="{ background: heatColor(v), color: cellTextColor(v) }">
+                        :class="{
+                          'td-cell--dim': isBaseDim(row.label, i + 1),
+                          'td-cell--on': selectedBase === row.label && selectedMes === i + 1,
+                        }"
+                        :style="{ background: heatColor(v), color: cellTextColor(v) }"
+                        @click="onBaseCell(row.label, i + 1)"
+                      >
                         {{ v }}
                       </td>
-                      <td class="td-row-total"
-                        :style="{ background: heatColor(rowSum(row.values)), color: cellTextColor(rowSum(row.values)) }">
+                      <td
+                        class="td-row-total"
+                        :class="{ 'td-cell--dim': selectedBase && selectedBase !== row.label }"
+                        :style="{ background: heatColor(rowSum(row.values)), color: cellTextColor(rowSum(row.values)) }"
+                      >
                         {{ rowSum(row.values) }}
                       </td>
                     </tr>
@@ -239,147 +290,277 @@
 <script setup lang="ts">
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDaData } from "@/lib/dashboard";
+import KpiFlame from "@/components/KpiFlame.vue";
 
-const { loading, error, submissions, responses, employees, load } = useChecklistData();
+const { loading, submissions, responses, employees, load } = useChecklistData();
 
-// â"€â"€â"€ Filters â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const showFilters = ref(false);
-
 const now = new Date();
 
 const semanasOpts = [
-  { v: "todos", l: "Todos"     },
-  { v: "s1",   l: "1. Primeira" },
-  { v: "s2",   l: "2. Segunda"  },
-  { v: "s3",   l: "3. Terceira" },
-  { v: "s4",   l: "4. Quarta"   },
+  { v: 0, l: "Todos" },
+  { v: 1, l: "1ª Semana" },
+  { v: 2, l: "2ª Semana" },
+  { v: 3, l: "3ª Semana" },
+  { v: 4, l: "4ª Semana" },
 ];
-const mesesOpts     = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26","jul/26","ago/26","set/26","out/26","nov/26","dez/26"];
+const months = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+const mesesOpts = [{ v: 0, l: "Todos" }, ...months.map((l, i) => ({ v: i + 1, l }))];
 const anosOpts      = ["2024","2025","2026"];
 const gerenciasOpts = ["Todos","GERE","GOMAN","GSTC","SPOT"];
 const gerentesOpts  = ["Todos","Afonso","Jamerson","Julio C.","Marcos","Paulo","Rafaela","Ricardo"];
 const basesOpts     = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
-const tiposOpts     = ["Todos","Administrativo","Operacional"];
+const tiposOpts     = ["Operacional","Administrativo","Alojamento","Todos"];
+
+const TIPO_AUDITAGEM: Record<string, string[]> = {
+  Operacional: ["GOMAN", "GSTC"],
+  Administrativo: ["ADMINISTRATIVO", "LOGISTICA", "OFICINA", "ADM"],
+  Alojamento: ["ALOJAMENTO"],
+};
+
+const CAT_DEFS = [
+  { label: "APR", match: "APR" },
+  { label: "Epi, Epc e Ferramentas", match: "EPI" },
+  { label: "Padrinho de Segurança", match: "Padrinho" },
+  { label: "Procedimento", match: "Procedimento" },
+  { label: "Regras de Ouro", match: "Regras de Ouro" },
+  { label: "Trabalho em Altura", match: "Altura" },
+  { label: "Veículos e Equipamentos", match: "Veículo" },
+];
 
 const filters = reactive({
-  semana: "todos", mes: "todos", ano: String(now.getFullYear()),
+  semana: 0, mes: 0, ano: String(now.getFullYear()),
   gerencia: "Todos", gerente: "Todos", base: "Todos", tipo: "Operacional",
 });
 
-async function recarregar() {
-  // Load full year – heatmap shows all months
-  await load({
-    ano: Number(filters.ano),
-    base: filters.base === "Todos" ? undefined : filters.base,
-  });
-}
-onMounted(recarregar);
-watch(() => [filters.ano, filters.base], recarregar);
-
-const filteredSubs = computed(() => {
-  let s = filterByGerencia(submissions.value, employees.value, filters.gerencia);
-  if (filters.gerente !== "Todos") s = s.filter(sub => sub.observador === filters.gerente);
-  return s;
+const viz = reactive({
+  cat: null as string | null,
+  base: null as string | null,
+  mes: null as number | null,
 });
 
-// â"€â"€â"€ Data â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-const months = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+const selectedBase = computed(() =>
+  viz.base ?? (filters.base !== "Todos" ? filters.base : null),
+);
+const selectedMes = computed(() => viz.mes ?? (filters.mes || null));
+const semanaLabel = computed(() => semanasOpts.find((s) => s.v === filters.semana)?.l ?? "");
+const mesLabel = computed(() => mesesOpts.find((s) => s.v === filters.mes)?.l ?? "");
 
-// Build a map from submission_id â†’ month number (1-12)
-const subMonthMap = computed(() => {
+function toggleCat(cat: string) {
+  viz.cat = viz.cat === cat ? null : cat;
+}
+function toggleBase(base: string) {
+  viz.base = viz.base === base ? null : base;
+}
+function toggleMes(mes: number) {
+  viz.mes = viz.mes === mes ? null : mes;
+}
+function onCatCell(cat: string, mes: number) {
+  if (viz.cat === cat && viz.mes === mes) {
+    viz.cat = null;
+    viz.mes = null;
+    return;
+  }
+  viz.cat = cat;
+  viz.mes = mes;
+}
+function onBaseCell(base: string, mes: number) {
+  if (viz.base === base && viz.mes === mes) {
+    viz.base = null;
+    viz.mes = null;
+    return;
+  }
+  viz.base = base;
+  viz.mes = mes;
+}
+function resetSlice() {
+  filters.semana = 0;
+  filters.mes = 0;
+  filters.gerencia = "Todos";
+  filters.gerente = "Todos";
+  filters.base = "Todos";
+  filters.tipo = "Operacional";
+  viz.cat = null;
+  viz.base = null;
+  viz.mes = null;
+}
+const hasActiveFilters = computed(() =>
+  filters.semana !== 0
+  || filters.mes !== 0
+  || filters.gerencia !== "Todos"
+  || filters.gerente !== "Todos"
+  || filters.base !== "Todos"
+  || filters.tipo !== "Operacional"
+  || !!viz.cat
+  || !!viz.base
+  || !!viz.mes,
+);
+
+function isCatDim(cat: string, mes: number) {
+  if (viz.cat && cat !== viz.cat) return true;
+  const m = selectedMes.value;
+  if (m && mes !== m) return true;
+  return false;
+}
+function isBaseDim(base: string, mes: number) {
+  const b = selectedBase.value;
+  if (b && base !== b) return true;
+  const m = selectedMes.value;
+  if (m && mes !== m) return true;
+  return false;
+}
+
+async function recarregar() {
+  await load({ ano: Number(filters.ano) });
+}
+onMounted(recarregar);
+watch(() => filters.ano, recarregar);
+watch(() => filters.base, () => { viz.base = null; });
+watch(() => filters.mes, () => { viz.mes = null; });
+
+function matchTipoPoc(auditagem: string | undefined) {
+  if (filters.tipo === "Todos") return true;
+  const allowed = TIPO_AUDITAGEM[filters.tipo];
+  if (!allowed) return true;
+  return allowed.includes((auditagem ?? "").toUpperCase());
+}
+
+function mesDaData(data: string): number {
+  const m = /^(\d{4})-(\d{2})/.exec(data);
+  if (m) return Number(m[2]);
+  const d = new Date(data);
+  return Number.isNaN(d.getTime()) ? 0 : d.getMonth() + 1;
+}
+
+function catIndex(categoria: string | undefined) {
+  if (!categoria) return -1;
+  return CAT_DEFS.findIndex((c) => categoria.includes(c.match) || categoria === c.match);
+}
+
+function applySlice(omit: { base?: boolean; mes?: boolean } = {}) {
+  let s = filterByGerente(submissions.value, employees.value, filters.gerente);
+  s = filterByGerencia(s, employees.value, filters.gerencia);
+  s = s.filter((sub) => matchTipoPoc(sub.auditagem));
+  if (filters.semana) {
+    s = s.filter((sub) => semanaDaData(sub.data) === filters.semana);
+  }
+  const base = selectedBase.value;
+  if (!omit.base && base) s = s.filter((sub) => sub.base === base);
+  const mes = selectedMes.value;
+  if (!omit.mes && mes) s = s.filter((sub) => mesDaData(sub.data) === mes);
+  return s;
+}
+
+const filteredSubs = computed(() => applySlice());
+const catChartSubs = computed(() => applySlice({ mes: true }));
+const baseChartSubs = computed(() => applySlice({ base: true, mes: true }));
+
+const catMonthMap = computed(() => {
   const m: Record<string, number> = {};
-  for (const s of filteredSubs.value) {
-    const d = new Date(s.data ?? s.created_at ?? "");
-    if (!isNaN(d.getTime())) m[s.id] = d.getMonth() + 1;
+  for (const s of catChartSubs.value) {
+    const mes = mesDaData(s.data);
+    if (mes) m[s.id] = mes;
+  }
+  return m;
+});
+const baseMonthMap = computed(() => {
+  const m: Record<string, number> = {};
+  for (const s of baseChartSubs.value) {
+    const mes = mesDaData(s.data);
+    if (mes) m[s.id] = mes;
   }
   return m;
 });
 
-// Build NC by (category, month) matrix
 const catData = computed(() => {
-  const cats = [
-    "APR",
-    "Epi, Epc e Ferramentas",
-    "Padrinho de Segurança",
-    "Procedimento",
-    "Regras de Ouro",
-    "Trabalho em Altura",
-    "Veículos e Equipamentos",
-  ];
-  const rows = cats.map(label => ({ label, values: Array(12).fill(0) as number[] }));
+  const rows = CAT_DEFS.map((c) => ({ label: c.label, values: Array(12).fill(0) as number[] }));
   const rowMap: Record<string, number[]> = {};
-  rows.forEach(r => { rowMap[r.label] = r.values; });
-
+  rows.forEach((r) => { rowMap[r.label] = r.values; });
   for (const r of responses.value) {
     if (r.resposta !== "nao_conforme") continue;
-    const mes = subMonthMap.value[r.submission_id];
+    const mes = catMonthMap.value[r.submission_id];
     if (!mes) continue;
-    if (!r.categoria) continue;
-    const rc = r.categoria.toLowerCase();
-    const cat = cats.find(c => { const cc = c.toLowerCase(); return rc.includes(cc) || cc.includes(rc); });
-    if (!cat) continue;
-    rowMap[cat][mes - 1]++;
+    const ci = catIndex(r.categoria);
+    if (ci < 0) continue;
+    rowMap[rows[ci].label][mes - 1]++;
   }
   return rows;
 });
 
-// Build NC by (base, month) matrix
 const baseData = computed(() => {
-  const basesInData = [...new Set(filteredSubs.value.map(s => s.base).filter(Boolean))].sort();
-  const rows = basesInData.map(label => ({ label, values: Array(12).fill(0) as number[] }));
+  const basesInData = [...new Set(baseChartSubs.value.map((s) => s.base).filter(Boolean))].sort();
+  const rows = basesInData.map((label) => ({ label, values: Array(12).fill(0) as number[] }));
   const rowMap: Record<string, number[]> = {};
-  rows.forEach(r => { rowMap[r.label] = r.values; });
-
+  rows.forEach((r) => { rowMap[r.label] = r.values; });
   const subBase: Record<string, string> = {};
-  for (const s of filteredSubs.value) subBase[s.id] = s.base;
-
+  for (const s of baseChartSubs.value) subBase[s.id] = s.base;
+  const catCi = viz.cat ? CAT_DEFS.findIndex((c) => c.label === viz.cat) : -1;
   for (const r of responses.value) {
     if (r.resposta !== "nao_conforme") continue;
-    const mes = subMonthMap.value[r.submission_id];
+    const mes = baseMonthMap.value[r.submission_id];
     const base = subBase[r.submission_id];
     if (!mes || !base || !rowMap[base]) continue;
+    if (catCi >= 0 && catIndex(r.categoria) !== catCi) continue;
     rowMap[base][mes - 1]++;
   }
   return rows;
 });
 
-// â"€â"€â"€ Computed â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const colTotals = computed(() =>
-  months.map((_, mi) => catData.value.reduce((s, r) => s + r.values[mi], 0))
+  months.map((_, mi) => catData.value.reduce((s, r) => s + r.values[mi], 0)),
 );
-const totalInc = computed(() => colTotals.value.reduce((s, v) => s + v, 0));
-
+const catGrand = computed(() => colTotals.value.reduce((s, v) => s + v, 0));
 const baseColTotals = computed(() =>
-  months.map((_, mi) => baseData.value.reduce((s, r) => s + r.values[mi], 0))
+  months.map((_, mi) => baseData.value.reduce((s, r) => s + r.values[mi], 0)),
 );
 const baseTotalInc = computed(() => baseColTotals.value.reduce((s, v) => s + v, 0));
 function rowSum(values: number[]) { return values.reduce((s, v) => s + v, 0); }
 
-// â"€â"€â"€ Color scale â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+const totalInc = computed(() => {
+  const ids = new Set(filteredSubs.value.map((s) => s.id));
+  const catCi = viz.cat ? CAT_DEFS.findIndex((c) => c.label === viz.cat) : -1;
+  let n = 0;
+  for (const r of responses.value) {
+    if (r.resposta !== "nao_conforme") continue;
+    if (!ids.has(r.submission_id)) continue;
+    if (catCi >= 0 && catIndex(r.categoria) !== catCi) continue;
+    n++;
+  }
+  return n;
+});
+
+const heatMax = computed(() => {
+  let m = 1;
+  for (const row of catData.value) for (const v of row.values) if (v > m) m = v;
+  for (const row of baseData.value) for (const v of row.values) if (v > m) m = v;
+  return m;
+});
+
 function heatColor(v: number): string {
-  if (v === 0)  return "#000";
-  if (v <= 19)  return "#22c55e";
-  if (v <= 39)  return "#eab308";
-  if (v <= 59)  return "#f97316";
-  if (v <= 99)  return "#dc2626";
+  if (v === 0) return "#22c55e";
+  const t = v / heatMax.value;
+  if (t <= 0.2) return "#4ade80";
+  if (t <= 0.4) return "#86efac";
+  if (t <= 0.55) return "#eab308";
+  if (t <= 0.7) return "#f97316";
+  if (t <= 0.85) return "#ef4444";
   return "#7f1d1d";
 }
 
 function cellTextColor(v: number): string {
-  if (v === 0)  return "#4b5563";
-  if (v <= 39)  return "#1a2e05";
-  return "#fff";
+  if (v === 0) return "#166534";
+  return v / heatMax.value <= 0.4 ? "#166534" : "#fff";
 }
 
-const legendLevels = [
-  { color: "#000",    label: "0"     },
-  { color: "#22c55e", label: "1–19"  },
-  { color: "#eab308", label: "20–39" },
-  { color: "#f97316", label: "40–59" },
-  { color: "#dc2626", label: "60–99" },
-  { color: "#7f1d1d", label: "100+"  },
-];
+const legendLevels = computed(() => [
+  { color: "#22c55e", label: "0" },
+  { color: "#4ade80", label: "Baixo" },
+  { color: "#eab308", label: "Médio" },
+  { color: "#ef4444", label: "Alto" },
+  { color: "#7f1d1d", label: `${heatMax.value}` },
+]);
+
 </script>
 
 <style scoped lang="scss">
@@ -423,6 +604,24 @@ $inactive-text:#475569;
 .filter-divider {
   width: 1px; height: 36px; background: $border;
   flex-shrink: 0; align-self: flex-end; margin: 0 4px;
+}
+.filter-summary {
+  display: flex; align-items: center; gap: 6px; padding-top: 6px; flex-wrap: wrap;
+}
+.filter-summary__label { font-size: 11px; color: $label-color; font-weight: 600; }
+.filter-chip {
+  display: inline-flex; align-items: center; height: 22px; padding: 0 10px;
+  background: rgba($brand, .1); color: $brand; border-radius: 999px;
+  font-size: 11px; font-weight: 600; max-width: 240px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  &--hit { cursor: pointer; }
+  &--hit:hover { filter: brightness(0.92); }
+}
+.filter-clear {
+  display: inline-flex; align-items: center; gap: 3px; height: 22px; padding: 0 10px;
+  background: none; border: 1px solid $border; border-radius: 999px;
+  font-size: 11px; color: $label-color; cursor: pointer;
+  &:hover { color: $brand; border-color: $brand; }
 }
 
 // â"€â"€ KPI cards â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
@@ -471,6 +670,9 @@ $inactive-text:#475569;
   font-size: 22px; font-weight: 800; color: $brand;
   text-align: center; padding: 8px 0 4px;
 }
+.heat-card-sub {
+  font-size: 11px; color: #94a3b8; text-align: center; margin-top: -2px;
+}
 .heat-wrap { overflow-x: auto; }
 
 .heat-table {
@@ -485,6 +687,8 @@ $inactive-text:#475569;
     &:last-child { border-right: none; }
   }
   .th-label { text-align: left; min-width: 130px; font-size: 11px; }
+  .th-mes { cursor: pointer; }
+  .th--on { background: $brand !important; }
   .th-total { background: #1f2937; }
 
   tbody tr:hover td { filter: brightness(.9); }
@@ -502,6 +706,8 @@ $inactive-text:#475569;
     border-right: 1.5px solid #1f2937;
     border-bottom: 1.5px solid #1f2937;
     min-width: 130px;
+    cursor: pointer;
+    &.td-label--on { background: $brand; }
   }
 
   .td-cell {
@@ -510,7 +716,10 @@ $inactive-text:#475569;
     border-right: 1.5px solid rgba(255,255,255,.15);
     border-bottom: 1.5px solid rgba(255,255,255,.15);
     min-width: 42px;
-    transition: filter .15s;
+    cursor: pointer;
+    transition: filter .15s, opacity .15s;
+    &--dim { opacity: .28; }
+    &--on { outline: 2px solid #fff; outline-offset: -2px; }
   }
 
   .td-row-total {
@@ -555,7 +764,7 @@ $inactive-text:#475569;
   .kpi-legend-card { background: #1e293b; }
   .legend-title { color: #94a3b8; }
   .legend-label { color: #cbd5e1; }
-  .heat-card { background: #1e293b; }
+  .filter-chip { background: rgba($brand, .2); }
 }
 </style>
 
