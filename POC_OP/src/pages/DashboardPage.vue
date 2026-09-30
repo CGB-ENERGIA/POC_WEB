@@ -82,11 +82,11 @@
             <div class="dash-card__header">
               <div>
                 <div class="dash-card__title">Evolução de Observações</div>
-                <div class="dash-card__sub">Total mensal · 2026</div>
+                <div class="dash-card__sub">Total mensal · {{ filters.ano }}</div>
               </div>
-              <div class="dash-card__badge">2026</div>
+              <div class="dash-card__badge">{{ filters.ano }}</div>
             </div>
-            <v-chart :option="lineOption" autoresize style="height: 250px" />
+            <v-chart :option="lineOption" autoresize style="height: 280px" />
           </div>
         </div>
 
@@ -180,6 +180,7 @@
 <script setup lang="ts">
 import { chartInk } from "@/lib/chart-ink";
 import { ref, computed, watch, onMounted } from "vue"
+import { useQuasar } from "quasar"
 import { use } from "echarts/core"
 import { CanvasRenderer } from "echarts/renderers"
 import { BarChart, LineChart, PieChart } from "echarts/charts"
@@ -228,6 +229,8 @@ async function recarregar() {
 
 onMounted(recarregar)
 watch(filters, recarregar, { deep: true })
+
+const $q = useQuasar()
 
 // ── Cores ────────────────────────────────────────────────────────────────────
 const BRAND   = "#8B1C2B"
@@ -305,44 +308,75 @@ const kpis = computed(() => [
 const lineOption = computed(() => {
   const mesLabels = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
   const mesData = meses.map(m => byMes.value[m.value] ?? 0)
+
+  const isDark  = $q.dark.isActive
+  const bg       = isDark ? "#1e293b"                 : "#ffffff"
+  const border   = isDark ? "rgba(139,28,43,0.45)"    : "rgba(139,28,43,0.2)"
+  const textSub  = isDark ? "#94a3b8"                 : "#6b7280"
+  const splitLn  = isDark ? "rgba(255,255,255,0.06)"  : "#f1f5f9"
+  const axisLn   = isDark ? "rgba(255,255,255,0.1)"   : "#e5e7eb"
+  const lblColor = isDark ? "#64748b"                 : "#9ca3af"
+  const dotBdr   = isDark ? "#0f172a"                 : "#ffffff"
+
+  const validVals = mesData.filter(v => v > 0)
+  const avg = validVals.length ? validVals.reduce((a, b) => a + b, 0) / validVals.length : 0
+
   return {
     backgroundColor: "transparent",
     tooltip: {
       trigger: "axis",
-      formatter: (p: any[]) =>
-        `<b>${p[0]?.name}</b><br/>${p[0]?.value} observações`,
+      backgroundColor: "transparent",
+      borderColor: "transparent",
+      padding: 0,
+      extraCssText: "box-shadow:none",
+      formatter: (p: any[]) => {
+        const val   = p[0]?.value ?? 0
+        const delta = val - avg
+        const dsign  = delta >= 0 ? "+" : ""
+        const dcolor = delta >= 0 ? "#16a34a" : "#dc2626"
+        return (
+          `<div style="background:${bg};border:1px solid ${border};border-radius:12px;padding:12px 16px;min-width:148px;font-family:inherit;box-shadow:0 4px 20px rgba(0,0,0,0.15)">` +
+          `<div style="font-size:11px;color:${textSub};text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;font-weight:600">${p[0]?.name}</div>` +
+          `<div style="font-size:26px;font-weight:800;color:${BRAND};line-height:1;margin-bottom:2px">${val}</div>` +
+          `<div style="font-size:11px;color:${textSub};margin-bottom:8px">observações</div>` +
+          `<div style="padding-top:8px;border-top:1px solid ${border};font-size:11px;color:${textSub}">vs média: <span style="font-weight:700;color:${dcolor}">${dsign}${delta.toFixed(1)}</span></div>` +
+          `</div>`
+        )
+      },
     },
-    grid: { top: 24, right: 20, bottom: 28, left: 48 },
+    grid: { top: 28, right: 24, bottom: 28, left: 44 },
     xAxis: {
       type: "category",
       data: mesLabels,
-      axisLine: { lineStyle: { color: "#e5e7eb" } },
+      axisLine: { lineStyle: { color: axisLn } },
       axisTick: { show: false },
-      axisLabel: { color: "#9ca3af", fontSize: 11 },
+      axisLabel: { color: lblColor, fontSize: 11 },
     },
     yAxis: {
       type: "value",
-      axisLabel: { color: "#9ca3af", fontSize: 11 },
-      splitLine: { lineStyle: { color: "#f3f4f6", type: "dashed" as const } },
+      axisLabel: { color: lblColor, fontSize: 11 },
+      splitLine: { lineStyle: { color: splitLn, type: "dashed" as const } },
       axisLine: { show: false },
       axisTick: { show: false },
+      minInterval: 1,
     },
     series: [
       {
         type: "line",
         data: mesData,
-        smooth: true,
+        smooth: 0.4,
         symbol: "circle",
-        symbolSize: 8,
-        lineStyle: { color: BRAND, width: 2.5 },
-        itemStyle: { color: BRAND, borderColor: "#fff", borderWidth: 2 },
+        symbolSize: 9,
+        lineStyle: { color: BRAND, width: 3 },
+        itemStyle: { color: BRAND, borderColor: dotBdr, borderWidth: 2.5 },
         areaStyle: {
           color: {
             type: "linear" as const,
             x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
-              { offset: 0, color: "rgba(139,28,43,0.20)" },
-              { offset: 1, color: "rgba(139,28,43,0.01)" },
+              { offset: 0,   color: "rgba(139,28,43,0.25)" },
+              { offset: 0.6, color: "rgba(139,28,43,0.07)" },
+              { offset: 1,   color: "rgba(139,28,43,0.00)" },
             ],
           },
         },
@@ -350,11 +384,15 @@ const lineOption = computed(() => {
           silent: true,
           symbol: ["none", "none"],
           data: [{ type: "average" as const }],
-          lineStyle: { color: BRAND, type: "dashed" as const, width: 1 },
+          lineStyle: { color: BRAND, type: "dashed" as const, width: 1.5, opacity: 0.55 },
           label: {
-            formatter: "Média: {c}",
-            color: BRAND,
+            formatter: (params: any) => ` Média: ${Math.round(params.value)} `,
+            backgroundColor: BRAND,
+            color: "#fff",
             fontSize: 10,
+            fontWeight: "bold" as const,
+            borderRadius: 4,
+            padding: [3, 8],
             position: "insideEndTop" as const,
           },
         },
