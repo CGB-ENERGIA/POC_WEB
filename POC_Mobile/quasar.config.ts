@@ -2,7 +2,7 @@ import { defineConfig } from "#q-app";
 
 export default defineConfig(() => {
   return {
-    boot: ["pwa-install", "pinia", "offline-sync", "dark-mode", "auth", "lang", "network", "time-sync", "colaboradores"],
+    boot: ["app-loader", "pwa-install", "pinia", "offline-sync", "dark-mode", "auth", "lang", "network", "time-sync", "colaboradores"],
 
     css: ["app.scss"],
 
