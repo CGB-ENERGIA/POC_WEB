@@ -122,7 +122,6 @@
                 <div class="hp-item__label">
                   <q-icon name="mdi-wrench-outline" size="15px" class="q-mr-xs" />
                   Checklist GOMAN
-                  <span v-if="draftGoman" class="hp-draft-chip">em andamento</span>
                 </div>
                 <div class="hp-item__cap">{{ totalPerguntasGoman }} perguntas · Conforme / Não conforme</div>
               </div>
@@ -136,7 +135,6 @@
                 <div class="hp-item__label">
                   <q-icon name="mdi-crane" size="15px" class="q-mr-xs" />
                   Checklist GSTC/GERE
-                  <span v-if="draftGstc" class="hp-draft-chip">em andamento</span>
                 </div>
                 <div class="hp-item__cap">{{ totalPerguntasGstc }} perguntas · Conforme / Não conforme</div>
               </div>
@@ -173,7 +171,6 @@
                 <div class="hp-item__label">
                   <q-icon name="mdi-domain" size="15px" class="q-mr-xs" />
                   Administrativo
-                  <span v-if="draftAdministrativo" class="hp-draft-chip">em andamento</span>
                 </div>
                 <div class="hp-item__cap">EPI · Procedimento · Instalações prediais</div>
               </div>
@@ -187,7 +184,6 @@
                 <div class="hp-item__label">
                   <q-icon name="mdi-home-outline" size="15px" class="q-mr-xs" />
                   Alojamento
-                  <span v-if="draftAlojamento" class="hp-draft-chip">em andamento</span>
                 </div>
                 <div class="hp-item__cap">Repúblicas · Higiene · Estrutura</div>
               </div>
@@ -201,7 +197,6 @@
                 <div class="hp-item__label">
                   <q-icon name="mdi-truck-outline" size="15px" class="q-mr-xs" />
                   Logística
-                  <span v-if="draftLogistica" class="hp-draft-chip">em andamento</span>
                 </div>
                 <div class="hp-item__cap">APR · EPI · Veículos e equipamentos</div>
               </div>
@@ -215,7 +210,6 @@
                 <div class="hp-item__label">
                   <q-icon name="mdi-car-wrench" size="15px" class="q-mr-xs" />
                   Oficina
-                  <span v-if="draftOficina" class="hp-draft-chip">em andamento</span>
                 </div>
                 <div class="hp-item__cap">EPI · Procedimento · Segurança veicular</div>
               </div>
