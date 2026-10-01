@@ -23,6 +23,7 @@ export const useGaleriaStore = defineStore("galeria", () => {
   const sincronizando = ref(false);
   let   iniciado     = false;
   let   matriculaAtual: string | null = null;
+  let   retryingUploads = false;
 
   // ── Carregamento principal ──────────────────────────────
   async function carregar(matricula?: string) {
@@ -125,6 +126,29 @@ export const useGaleriaStore = defineStore("galeria", () => {
     return carregar(matricula);
   }
 
+  // ── Re-tentativa de uploads pendentes (tirados offline) ─
+  async function sincronizarUploadsPendentes(): Promise<void> {
+    if (retryingUploads) return;
+    retryingUploads = true;
+    try {
+      const todas = await dbListarFotos();
+      const pendentes = todas.filter(f => !f.cloudUrl && !!f.blob);
+      for (const f of pendentes) {
+        try {
+          const url = await cloudUploadFoto(f.id, f.matricula, f.blob!);
+          const atualizada = { ...f, cloudUrl: url };
+          await dbSalvarFoto(atualizada);
+          const idx = fotos.value.findIndex(x => x.id === f.id);
+          if (idx !== -1) fotos.value[idx] = atualizada;
+        } catch {
+          // Ainda offline ou erro pontual — tenta na próxima rodada
+        }
+      }
+    } finally {
+      retryingUploads = false;
+    }
+  }
+
   // ── Computeds ───────────────────────────────────────────
   const porData = computed(() => {
     const mapa = new Map<string, FotoEntry[]>();
@@ -142,6 +166,7 @@ export const useGaleriaStore = defineStore("galeria", () => {
   return {
     fotos, carregando, sincronizando,
     carregar, adicionarFoto, excluirFoto, sincronizarNuvem, forcarRecarregar,
+    sincronizarUploadsPendentes,
     porData, total, tamanhoTotalBytes,
   };
 });

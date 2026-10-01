@@ -1,6 +1,7 @@
 import { defineBoot } from "#q-app";
 
 import { useObservacoesStore } from "@/stores/observacoes";
+import { useGaleriaStore } from "@/stores/galeria";
 import { requestPersistentStorage } from "@/utils/offline-db";
 
 const INTERVALO_MS = 30_000;
@@ -15,8 +16,12 @@ export default defineBoot(async () => {
   const store = useObservacoesStore();
   await store.hydrate();
 
+  const galeria = useGaleriaStore();
+
   const disparar = (force: boolean) => {
-    if (navigator.onLine) void store.autoSync({ force });
+    if (!navigator.onLine) return;
+    void store.autoSync({ force });
+    void galeria.sincronizarUploadsPendentes();
   };
 
   // No iOS o evento "online" muitas vezes não chega com o PWA em segundo plano,
@@ -33,6 +38,7 @@ export default defineBoot(async () => {
 
   setInterval(() => {
     if (store.pendingCount > 0) disparar(false);
+    else void galeria.sincronizarUploadsPendentes();
   }, INTERVALO_MS);
 
   setTimeout(() => disparar(true), ESPERA_POS_ONLINE_MS);
