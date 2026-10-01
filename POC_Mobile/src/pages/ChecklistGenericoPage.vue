@@ -568,9 +568,7 @@ const fotosLocal = computed(() => [
 const evidenciasCompletas = computed(() => evidencias.value.every(Boolean));
 
 onMounted(() => {
-  const restoreId =
-    rascunhoId.value ??
-    observacoes.findEmAndamento(session.employee?.matricula ?? "", props.auditagem)?.id;
+  const restoreId = rascunhoId.value;
   if (restoreId) {
     rascunhoId.value = restoreId;
     const existing = observacoes.items.find(o => o.id === restoreId);
