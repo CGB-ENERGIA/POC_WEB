@@ -38,26 +38,134 @@
           />
         </div>
 
-        <div class="pa-coach__row">
-          <div class="pa-coach__icon" aria-hidden="true">
-            <q-icon :name="atual.icon" size="22px" />
+        <!-- ── Passo de instalação ───────────────────── -->
+        <template v-if="fase === 'instalacao'">
+          <div class="pa-coach__row">
+            <div class="pa-coach__icon" aria-hidden="true">
+              <q-icon name="mdi-download-circle-outline" size="22px" />
+            </div>
+            <div>
+              <h2 id="pa-coach-title" class="pa-coach__title">
+                Antes de qualquer coisa, vamos instalar o POC 4.0
+              </h2>
+            </div>
           </div>
-          <div>
-            <h2 id="pa-coach-title" class="pa-coach__title">{{ atual.title }}</h2>
-            <p class="pa-coach__lead">{{ atual.lead }}</p>
-          </div>
-        </div>
 
-        <q-btn
-          v-if="fase === 'falha'"
-          class="full-width q-mt-md btn-primary-lg"
-          color="primary"
-          unelevated
-          no-caps
-          icon="mdi-badge-account-outline"
-          label="Entrar pela matrícula"
-          @click="entrarSemBiometria"
-        />
+          <!-- Android: botão nativo disponível -->
+          <template v-if="temPromptNativo">
+            <p class="pa-coach__lead q-mt-sm">
+              Instale o app para acessar sem abrir o navegador, com câmera e galeria funcionando offline.
+            </p>
+            <q-btn
+              class="full-width q-mt-md"
+              color="primary"
+              unelevated no-caps
+              icon="mdi-download-outline"
+              label="Instalar agora"
+              @click="instalarAgora"
+            />
+            <button class="pa-install__later" @click="pularInstalacao">
+              Instalar depois
+            </button>
+          </template>
+
+          <!-- iOS Safari: passos de compartilhar -->
+          <template v-else-if="ehIosSafari">
+            <ol class="pa-install__list">
+              <li>
+                <q-icon name="mdi-export-variant" size="16px" class="pa-install__li-icon" />
+                Toque em <strong>Compartilhar</strong> na barra do Safari
+              </li>
+              <li>
+                <q-icon name="mdi-plus-box-outline" size="16px" class="pa-install__li-icon" />
+                Role e toque em <strong>Adicionar à Tela de Início</strong>
+              </li>
+              <li>
+                <q-icon name="mdi-check" size="16px" class="pa-install__li-icon" />
+                Toque em <strong>Adicionar</strong> no canto superior direito
+              </li>
+            </ol>
+            <q-btn
+              class="full-width q-mt-sm"
+              color="primary"
+              unelevated no-caps
+              icon="mdi-check-circle-outline"
+              label="Já instalei"
+              @click="pularInstalacao"
+            />
+            <button class="pa-install__later" @click="pularInstalacao">
+              Instalar depois
+            </button>
+          </template>
+
+          <!-- iOS outro browser: instrução para abrir no Safari -->
+          <template v-else-if="ehIos">
+            <p class="pa-coach__lead q-mt-sm">
+              Para instalar no iPhone ou iPad, abra este endereço no <strong>Safari</strong> — outros navegadores não permitem a instalação.
+            </p>
+            <q-btn
+              class="full-width q-mt-md"
+              color="primary"
+              unelevated no-caps
+              icon="mdi-safari"
+              label="Entendido"
+              @click="pularInstalacao"
+            />
+          </template>
+
+          <!-- Android / outros: passos manuais -->
+          <template v-else>
+            <ol class="pa-install__list">
+              <li>
+                <q-icon name="mdi-dots-vertical" size="16px" class="pa-install__li-icon" />
+                Toque nos <strong>3 pontos</strong> (⋮) do Chrome
+              </li>
+              <li>
+                <q-icon name="mdi-plus-box-outline" size="16px" class="pa-install__li-icon" />
+                Toque em <strong>Adicionar à Tela de Início</strong>
+              </li>
+              <li>
+                <q-icon name="mdi-check" size="16px" class="pa-install__li-icon" />
+                Confirme tocando em <strong>Instalar</strong>
+              </li>
+            </ol>
+            <q-btn
+              class="full-width q-mt-sm"
+              color="primary"
+              unelevated no-caps
+              icon="mdi-check-circle-outline"
+              label="Já instalei"
+              @click="pularInstalacao"
+            />
+            <button class="pa-install__later" @click="pularInstalacao">
+              Instalar depois
+            </button>
+          </template>
+        </template>
+
+        <!-- ── Passos normais ────────────────────────── -->
+        <template v-else>
+          <div class="pa-coach__row">
+            <div class="pa-coach__icon" aria-hidden="true">
+              <q-icon :name="atual.icon" size="22px" />
+            </div>
+            <div>
+              <h2 id="pa-coach-title" class="pa-coach__title">{{ atual.title }}</h2>
+              <p class="pa-coach__lead">{{ atual.lead }}</p>
+            </div>
+          </div>
+
+          <q-btn
+            v-if="fase === 'falha'"
+            class="full-width q-mt-md btn-primary-lg"
+            color="primary"
+            unelevated
+            no-caps
+            icon="mdi-badge-account-outline"
+            label="Entrar pela matrícula"
+            @click="entrarSemBiometria"
+          />
+        </template>
       </div>
     </div>
   </teleport>
@@ -72,8 +180,16 @@ import {
   identCoach,
   primeiroAcessoPendente,
 } from "@/utils/primeiro-acesso";
+import {
+  isIosDevice,
+  isIosSafari,
+  isStandaloneDisplay,
+  wasInstallDismissed,
+  dismissInstallPrompt,
+  deferredInstallPrompt,
+} from "@/utils/pwa-install";
 
-type Fase = "matricula" | "lista" | "continuar" | "cadastro" | "falha";
+type Fase = "instalacao" | "matricula" | "lista" | "continuar" | "cadastro" | "falha";
 
 const route = useRoute();
 const session = useSessionStore();
@@ -83,9 +199,18 @@ const cardEl = ref<HTMLElement | null>(null);
 const spot = reactive({ x: 0, y: 0, w: 0, h: 0 });
 const card = reactive({ top: 16, left: 12, width: 320, maxH: 280 });
 
-const totalPassos = 4;
+// Detectado no mount (não reativo após carregar)
+const deveGuiarInstalacao = ref(false);
+const instalacaoVista      = ref(false);
+
+const ehIos        = isIosDevice();
+const ehIosSafari  = isIosSafari();
+const temPromptNativo = computed(() => !!deferredInstallPrompt.value);
+
+const totalPassos = computed(() => deveGuiarInstalacao.value ? 5 : 4);
 
 const fase = computed<Fase>(() => {
+  if (deveGuiarInstalacao.value && !instalacaoVista.value) return "instalacao";
   if (identCoach.erroBio) return "falha";
   if (identCoach.tela !== "ident") return "cadastro";
   if (identCoach.temColaborador) return "continuar";
@@ -93,11 +218,14 @@ const fase = computed<Fase>(() => {
   return "matricula";
 });
 
+const offset = computed(() => deveGuiarInstalacao.value ? 1 : 0);
+
 const passoAtual = computed(() => {
-  if (fase.value === "matricula") return 1;
-  if (fase.value === "lista") return 2;
-  if (fase.value === "continuar") return 3;
-  return 4;
+  if (fase.value === "instalacao") return 1;
+  if (fase.value === "matricula") return 1 + offset.value;
+  if (fase.value === "lista")     return 2 + offset.value;
+  if (fase.value === "continuar") return 3 + offset.value;
+  return 4 + offset.value;
 });
 
 const atual = computed(() => {
@@ -138,6 +266,7 @@ const atual = computed(() => {
 });
 
 const alvoId = computed(() => {
+  if (fase.value === "instalacao") return "";
   if (fase.value === "falha") return "coach-alvo-entrar-matricula";
   if (fase.value === "cadastro") return "coach-alvo-ident-card";
   if (fase.value === "continuar") return "coach-alvo-continuar";
@@ -274,6 +403,22 @@ function pular() {
   aberto.value = false;
 }
 
+function pularInstalacao() {
+  dismissInstallPrompt();
+  instalacaoVista.value = true;
+  void nextTick(() => { medir(); void nextTick(medir); });
+}
+
+async function instalarAgora() {
+  const prompt = deferredInstallPrompt.value;
+  if (!prompt) { pularInstalacao(); return; }
+  await prompt.prompt();
+  const { outcome } = await prompt.userChoice;
+  if (outcome === "accepted") {
+    pularInstalacao();
+  }
+}
+
 function entrarSemBiometria() {
   identCoach.pularBiometria?.();
 }
@@ -289,6 +434,7 @@ watch(fase, () => void nextTick(() => { medir(); void nextTick(medir); }));
 watch(identCoach, () => void nextTick(() => { medir(); void nextTick(medir); }), { deep: true });
 
 onMounted(() => {
+  deveGuiarInstalacao.value = !isStandaloneDisplay() && !wasInstallDismissed();
   tentarAbrir();
   window.addEventListener("resize", medir);
   window.addEventListener("scroll", medir, true);
@@ -428,6 +574,55 @@ onUnmounted(() => {
 .pa-coach__row > div:last-child {
   min-width: 0;
   flex: 1;
+}
+
+.pa-install__list {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pa-install__list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  line-height: 1.35;
+  color: #4a3036;
+  background: rgba(122, 18, 37, 0.06);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.pa-install__li-icon {
+  color: #7a1225;
+  flex-shrink: 0;
+}
+
+.pa-install__later {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  background: transparent;
+  border: 0;
+  color: #7a5560;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  min-height: 36px;
+  cursor: pointer;
+}
+
+:global(body.body--dark) .pa-install__list li {
+  color: #e8d4d8;
+  background: rgba(225, 29, 72, 0.1);
+}
+
+:global(body.body--dark) .pa-install__later {
+  color: #c49aa4;
 }
 
 @keyframes pa-spot-in {
