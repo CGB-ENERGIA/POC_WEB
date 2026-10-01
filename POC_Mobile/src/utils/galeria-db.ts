@@ -47,6 +47,16 @@ export async function dbListarFotos(): Promise<FotoEntry[]> {
   });
 }
 
+export async function dbListarFotosPorMatricula(matricula: string): Promise<FotoEntry[]> {
+  const db = await abrirDB();
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction(STORE, "readonly");
+    const req = tx.objectStore(STORE).index("matricula").getAll(matricula);
+    req.onsuccess = () => resolve(req.result as FotoEntry[]);
+    req.onerror   = () => reject(req.error);
+  });
+}
+
 export async function dbExcluirFoto(id: string): Promise<void> {
   const db = await abrirDB();
   return new Promise((resolve, reject) => {

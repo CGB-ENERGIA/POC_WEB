@@ -135,9 +135,9 @@ const $q      = useQuasar();
 const cameraAberta = ref(false);
 
 onMounted(async () => {
-  await galeria.carregar();
-  // Sincroniza com Supabase em background após carregar o cache local
-  if (session.matricula) galeria.sincronizarNuvem(session.matricula);
+  if (!session.matricula) return;
+  await galeria.carregar(session.matricula);
+  galeria.sincronizarNuvem(session.matricula);
 });
 
 // ── Object URL pool ──────────────────────────────────

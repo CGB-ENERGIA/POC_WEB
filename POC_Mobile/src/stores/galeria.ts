@@ -3,6 +3,7 @@ import { ref, computed } from "vue";
 import {
   dbSalvarFoto,
   dbListarFotos,
+  dbListarFotosPorMatricula,
   dbExcluirFoto,
   dbLimparExpirados,
   type FotoEntry,
@@ -21,15 +22,24 @@ export const useGaleriaStore = defineStore("galeria", () => {
   const carregando   = ref(false);
   const sincronizando = ref(false);
   let   iniciado     = false;
+  let   matriculaAtual: string | null = null;
 
   // ── Carregamento principal ──────────────────────────────
-  async function carregar() {
-    if (iniciado) return;
-    iniciado = true;
+  async function carregar(matricula?: string) {
+    if (iniciado && matriculaAtual === (matricula ?? null)) return;
+    // Troca de usuário: limpa imediatamente para não exibir fotos alheias
+    if (matriculaAtual !== (matricula ?? null)) {
+      fotos.value    = [];
+      iniciado       = false;
+    }
+    iniciado       = true;
+    matriculaAtual = matricula ?? null;
     carregando.value = true;
     try {
-      await dbLimparExpirados(); // limpa entradas locais > 3 meses
-      const todas = await dbListarFotos();
+      await dbLimparExpirados();
+      const todas = matricula
+        ? await dbListarFotosPorMatricula(matricula)
+        : await dbListarFotos();
       fotos.value = todas.sort((a, b) => b.dataHora.localeCompare(a.dataHora));
     } finally {
       carregando.value = false;
@@ -108,10 +118,11 @@ export const useGaleriaStore = defineStore("galeria", () => {
     }
   }
 
-  function forcarRecarregar() {
-    iniciado = false;
-    fotos.value = [];
-    return carregar();
+  function forcarRecarregar(matricula?: string) {
+    iniciado       = false;
+    matriculaAtual = null;
+    fotos.value    = [];
+    return carregar(matricula);
   }
 
   // ── Computeds ───────────────────────────────────────────

@@ -75,7 +75,7 @@ const selecionada  = ref<string | null>(null);
 const fotoSelecionada = ref<FotoEntry | null>(null);
 const processando = ref(false);
 
-onMounted(() => galeria.carregar());
+onMounted(() => { if (props.matricula) galeria.carregar(props.matricula); });
 
 // Ao abrir o picker, sincroniza fotos da nuvem (para ver fotos de outros dispositivos)
 watch(isOpen, (aberta) => {
