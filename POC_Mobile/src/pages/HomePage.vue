@@ -117,7 +117,7 @@
         <q-slide-transition>
           <div v-if="operacionalAberto" class="hp-items">
 
-            <button class="hp-item" @click="$router.push({ name: 'checklist-goman', query: idEmAndamento('GOMAN') ? { continuarId: idEmAndamento('GOMAN') } : undefined })">
+            <button class="hp-item" @click="$router.push({ name: 'checklist-goman' })">
               <div class="hp-item__body">
                 <div class="hp-item__label">
                   <q-icon name="mdi-wrench-outline" size="15px" class="q-mr-xs" />
@@ -131,7 +131,7 @@
 
             <div class="hp-item-sep" />
 
-            <button class="hp-item" @click="$router.push({ name: 'checklist-gstc', query: idEmAndamento('GSTC') ? { continuarId: idEmAndamento('GSTC') } : undefined })">
+            <button class="hp-item" @click="$router.push({ name: 'checklist-gstc' })">
               <div class="hp-item__body">
                 <div class="hp-item__label">
                   <q-icon name="mdi-crane" size="15px" class="q-mr-xs" />
@@ -168,7 +168,7 @@
         <q-slide-transition>
           <div v-if="administrativoAberto" class="hp-items">
 
-            <button class="hp-item" @click="$router.push({ name: 'checklist-administrativo', query: idEmAndamento('ADMINISTRATIVO') ? { continuarId: idEmAndamento('ADMINISTRATIVO') } : undefined })">
+            <button class="hp-item" @click="$router.push({ name: 'checklist-administrativo' })">
               <div class="hp-item__body">
                 <div class="hp-item__label">
                   <q-icon name="mdi-domain" size="15px" class="q-mr-xs" />
@@ -182,7 +182,7 @@
 
             <div class="hp-item-sep" />
 
-            <button class="hp-item" @click="$router.push({ name: 'checklist-alojamento', query: idEmAndamento('ALOJAMENTO') ? { continuarId: idEmAndamento('ALOJAMENTO') } : undefined })">
+            <button class="hp-item" @click="$router.push({ name: 'checklist-alojamento' })">
               <div class="hp-item__body">
                 <div class="hp-item__label">
                   <q-icon name="mdi-home-outline" size="15px" class="q-mr-xs" />
@@ -196,7 +196,7 @@
 
             <div class="hp-item-sep" />
 
-            <button class="hp-item" @click="$router.push({ name: 'checklist-logistica', query: idEmAndamento('LOGISTICA') ? { continuarId: idEmAndamento('LOGISTICA') } : undefined })">
+            <button class="hp-item" @click="$router.push({ name: 'checklist-logistica' })">
               <div class="hp-item__body">
                 <div class="hp-item__label">
                   <q-icon name="mdi-truck-outline" size="15px" class="q-mr-xs" />
@@ -210,7 +210,7 @@
 
             <div class="hp-item-sep" />
 
-            <button class="hp-item" @click="$router.push({ name: 'checklist-oficina', query: idEmAndamento('OFICINA') ? { continuarId: idEmAndamento('OFICINA') } : undefined })">
+            <button class="hp-item" @click="$router.push({ name: 'checklist-oficina' })">
               <div class="hp-item__body">
                 <div class="hp-item__label">
                   <q-icon name="mdi-car-wrench" size="15px" class="q-mr-xs" />
