@@ -194,15 +194,10 @@ const equipeSelecionada = ref<Equipe | null>(null);
 const busca             = ref("");
 const searchInput       = ref<HTMLInputElement | null>(null);
 
-const equipesBase = computed(() => {
-  const base = session.employee?.base;
-  return base ? EQUIPES.filter(e => e.base === base) : EQUIPES;
-});
-
 const equipesFiltradas = computed(() => {
   const q = busca.value.trim().toLowerCase();
-  if (!q) return equipesBase.value;
-  return equipesBase.value.filter(e =>
+  if (!q) return EQUIPES;
+  return EQUIPES.filter(e =>
     e.prefixo.toLowerCase().includes(q) || e.base.toLowerCase().includes(q)
   );
 });
