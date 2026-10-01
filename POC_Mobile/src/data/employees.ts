@@ -149,6 +149,7 @@ export const employees: Employee[] = [
   { matricula: "12513", nome: "Wanderson R.", nomeCompleto: "Wanderson Ribeiro Vale", gerencia: "GOMAN", base: "BCB", funcao: "Encarregado", meta: 2 },
   { matricula: "12506", nome: "Werbeth", nomeCompleto: "Werbeth Rodrigues Carvalho", gerencia: "GOMAN", base: "BCB", funcao: "Supervisor", meta: 2 },
   { matricula: "12383", nome: "Weyderson", nomeCompleto: "Weyderson Juan da Costa Santos", gerencia: "ADM", base: "BCB", funcao: "Adm", meta: 2 },
+  { matricula: "19873", nome: "Valdir R.", nomeCompleto: "Valdir Rabelo Junior", gerencia: "GOMAN", base: "BCB", funcao: "Coordenador Operacional Trainee", meta: 4 },
   { matricula: "12530", nome: "Wilke", nomeCompleto: "Wilke", gerencia: "GOMAN", base: "BCB", funcao: "Encarregado", meta: 2 },
   { matricula: "20548", nome: "Anibio", nomeCompleto: "Anibio da Silva Taveira", gerencia: "GOMAN", base: "BDC", funcao: "Encarregado", meta: 2 },
   { matricula: "13023", nome: "Bruno O.", nomeCompleto: "Bruno Oliveira da Silva", gerencia: "GSTC", base: "BDC", funcao: "Fiscal", meta: 2 },
