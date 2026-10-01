@@ -245,31 +245,32 @@ export function aplicarEquipesRemotas(list: Equipe[]): void {
   equipesAtivas.value = list;
 }
 
-const GERENCIA_AUDITAGEM: Record<string, GerenciaEquipe> = {
+const GERENCIA_AUDITAGEM: Record<string, GerenciaEquipe | GerenciaEquipe[]> = {
   GOMAN: "GOMAN",
-  GSTC: "GSTC",
+  GSTC: ["GSTC", "GERE"],
   ADMINISTRATIVO: "ADM",
   LOGISTICA: "LOGISTICA",
   OFICINA: "OFICINA",
 };
 
-/** Prefixos da base escolhida, somente da gerência pedida. GOMAN não inclui GERE (F). */
-export function equipesPorBase(base: string, gerencia?: GerenciaEquipe | string): string[] {
+/** Prefixos da base escolhida, somente da(s) gerência(s) pedida(s). */
+export function equipesPorBase(base: string, gerencia?: GerenciaEquipe | GerenciaEquipe[] | string): string[] {
   if (!base) return [];
-  const wanted = String(GERENCIA_AUDITAGEM[gerencia || ""] || gerencia || "")
-    .trim()
-    .toUpperCase();
+  const raw = (typeof gerencia === "string" ? GERENCIA_AUDITAGEM[gerencia] ?? gerencia : gerencia) ?? "";
+  const wanted = (Array.isArray(raw) ? raw : [raw])
+    .map(g => String(g).trim().toUpperCase())
+    .filter(Boolean);
   const baseN = base.trim().toUpperCase();
   return equipesAtivas.value
     .filter((e) => {
       if (e.base.trim().toUpperCase() !== baseN) return false;
-      if (!wanted) return true;
-      return String(e.gerencia).trim().toUpperCase() === wanted;
+      if (!wanted.length) return true;
+      return wanted.includes(String(e.gerencia).trim().toUpperCase());
     })
     .map((e) => e.prefixo)
     .sort();
 }
 
-export function gerenciaDaAuditagem(auditagem: string): GerenciaEquipe | undefined {
+export function gerenciaDaAuditagem(auditagem: string): GerenciaEquipe | GerenciaEquipe[] | undefined {
   return GERENCIA_AUDITAGEM[auditagem];
 }
