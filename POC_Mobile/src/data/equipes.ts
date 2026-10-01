@@ -246,7 +246,7 @@ export function aplicarEquipesRemotas(list: Equipe[]): void {
 }
 
 const GERENCIA_AUDITAGEM: Record<string, GerenciaEquipe | GerenciaEquipe[]> = {
-  GOMAN: "GOMAN",
+  GOMAN: ["GOMAN", "SPOT"],
   GSTC: ["GSTC", "GERE"],
   ADMINISTRATIVO: "ADM",
   LOGISTICA: "LOGISTICA",

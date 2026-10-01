@@ -66,7 +66,7 @@
               outlined
               dense
               :disable="!base"
-              :label="base ? 'Equipe GSTC' : 'Selecione a base'"
+              :label="base ? 'Equipe GSTC/GERE' : 'Selecione a base'"
               use-input
               input-debounce="0"
               hide-selected
@@ -76,7 +76,7 @@
             >
               <template #no-option>
                 <q-item>
-                  <q-item-section class="text-grey-6">Nenhuma equipe GSTC nesta base</q-item-section>
+                  <q-item-section class="text-grey-6">Nenhuma equipe GSTC/GERE nesta base</q-item-section>
                 </q-item>
               </template>
             </q-select>
