@@ -132,7 +132,17 @@
       >
         <template #body-cell-inconformidade="props">
           <q-td :props="props" class="inconformidade-cell">
-            {{ props.value }}
+            <span>{{ props.value }}</span>
+            <div v-if="props.row.itens && props.row.itens.length" class="nc-subitems">
+              <span
+                v-for="it in props.row.itens"
+                :key="it.nome"
+                :class="['nc-chip', it.conforme ? 'nc-chip--ok' : 'nc-chip--nc']"
+              >
+                <q-icon :name="it.conforme ? 'mdi-check' : 'mdi-close'" size="11px" />
+                {{ it.nome }}
+              </span>
+            </div>
           </q-td>
         </template>
 
@@ -254,6 +264,7 @@ interface NcRow {
   inconformidade: string;
   gravidade: string;
   resolvido: boolean | null;
+  itens: { nome: string; conforme: boolean }[] | null;
 }
 
 const subMap = computed(() => {
@@ -282,6 +293,7 @@ const todasNcs = computed<NcRow[]>(() => {
         inconformidade: r.pergunta,
         gravidade:      r.gravidade,
         resolvido:      r.resolvido ?? null,
+        itens:          r.itens ?? null,
       } satisfies NcRow;
     })
     .filter(Boolean) as NcRow[];
@@ -542,6 +554,36 @@ $brand: #8B1C2E;
   white-space: normal;
   line-height: 1.35;
   font-size: .82rem;
+}
+
+.nc-subitems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.nc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: .72rem;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &--ok {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #a5d6a7;
+  }
+
+  &--nc {
+    background: #fde8e8;
+    color: #c62828;
+    border: 1px solid #f5b6b6;
+  }
 }
 
 .status-badge {
