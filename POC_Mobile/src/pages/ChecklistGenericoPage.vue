@@ -94,6 +94,7 @@
           v-model="fotosGerais"
           :equipe="equipe"
           :observador="session.employee?.nomeCompleto ?? session.employee?.nome ?? ''"
+          :matricula="session.employee?.matricula"
         />
       </q-card>
 

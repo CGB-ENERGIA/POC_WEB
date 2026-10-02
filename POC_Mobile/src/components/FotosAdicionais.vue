@@ -16,20 +16,47 @@
       v-if="modelValue.length < MAX_FOTOS"
       class="fg-add"
       :class="{ 'fg-add--loading': carregando }"
-      @click="!carregando && abrirCamera()"
+      @click="!carregando && abrirSheet()"
     >
       <q-spinner v-if="carregando" color="primary" size="20px" />
       <q-icon v-else name="mdi-camera-plus-outline" size="22px" color="grey-5" />
     </div>
   </div>
 
+  <!-- Action sheet -->
+  <q-dialog v-model="sheetAberto" position="bottom">
+    <div class="foto-sheet">
+      <div class="foto-sheet__handle" />
+      <div class="foto-sheet__title">
+        <q-icon name="mdi-image-multiple-outline" size="18px" class="q-mr-sm" />
+        Outras fotos (opcional)
+      </div>
+      <div class="foto-sheet__actions">
+        <button class="foto-sheet__btn" @click="escolher('camera')">
+          <div class="foto-sheet__btn-icon">
+            <q-icon name="mdi-camera" size="26px" />
+          </div>
+          <span class="foto-sheet__btn-label">Tirar foto</span>
+        </button>
+        <button class="foto-sheet__btn" @click="escolher('galeria')">
+          <div class="foto-sheet__btn-icon foto-sheet__btn-icon--gallery">
+            <q-icon name="mdi-image-multiple-outline" size="26px" />
+          </div>
+          <span class="foto-sheet__btn-label">Da galeria</span>
+        </button>
+      </div>
+    </div>
+  </q-dialog>
+
   <CameraModal v-model="cameraAberta" @captured="onCaptured" />
+  <GaleriaPicker v-model="galeriaAberta" :matricula="matricula ?? ''" @selected="onGaleriaImportada" />
 </template>
 
 <script setup lang="ts">
 import { ref } from "vue";
 import { useQuasar } from "quasar";
 import CameraModal from "@/components/CameraModal.vue";
+import GaleriaPicker from "@/components/GaleriaPicker.vue";
 import { getTrustedTime, ServerTimeError } from "@/utils/server-time";
 import { stampAuditPhoto } from "@/utils/photo-stamp";
 
@@ -39,22 +66,31 @@ const props = defineProps<{
   modelValue: string[];
   equipe: string;
   observador: string;
+  matricula?: string;
 }>();
 const emit = defineEmits<{ (e: "update:modelValue", v: string[]): void }>();
 
 const $q = useQuasar();
 const cameraAberta = ref(false);
+const galeriaAberta = ref(false);
+const sheetAberto = ref(false);
 const carregando = ref(false);
 
-function abrirCamera() {
+function abrirSheet() {
   if (!props.equipe.trim()) {
-    $q.notify({ type: "warning", message: "Informe a equipe antes de tirar a foto", position: "top" });
+    $q.notify({ type: "warning", message: "Informe a equipe antes de adicionar fotos", position: "top" });
     return;
   }
-  cameraAberta.value = true;
+  sheetAberto.value = true;
 }
 
-async function onCaptured(base64: string) {
+function escolher(opcao: "camera" | "galeria") {
+  sheetAberto.value = false;
+  if (opcao === "camera") cameraAberta.value = true;
+  else galeriaAberta.value = true;
+}
+
+async function processarFoto(base64: string) {
   carregando.value = true;
   try {
     const { date } = await getTrustedTime();
@@ -70,6 +106,20 @@ async function onCaptured(base64: string) {
   } finally {
     carregando.value = false;
   }
+}
+
+async function onCaptured(base64: string) {
+  await processarFoto(base64);
+}
+
+async function onGaleriaImportada(blob: Blob) {
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+  await processarFoto(base64);
 }
 
 function remover(idx: number) {
@@ -138,4 +188,79 @@ function remover(idx: number) {
 }
 .fg-add:active { border-color: var(--q-primary); }
 .fg-add--loading { border-color: var(--q-primary); opacity: 0.7; cursor: wait; }
+
+/* ── Action sheet ── */
+.foto-sheet {
+  background: #1e2433;
+  border-radius: 20px 20px 0 0;
+  padding: 0 16px 32px;
+  width: 100%;
+}
+
+.foto-sheet__handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.2);
+  margin: 12px auto 20px;
+}
+
+.foto-sheet__title {
+  display: flex;
+  align-items: center;
+  color: rgba(255,255,255,0.55);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 20px;
+}
+
+.foto-sheet__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.foto-sheet__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 12px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.05);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  color: #fff;
+}
+.foto-sheet__btn:active {
+  background: rgba(255,255,255,0.12);
+  transform: scale(0.97);
+}
+
+.foto-sheet__btn-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: rgba(220, 38, 38, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ef4444;
+}
+
+.foto-sheet__btn-icon--gallery {
+  background: rgba(59, 130, 246, 0.18);
+  color: #60a5fa;
+}
+
+.foto-sheet__btn-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+}
 </style>
