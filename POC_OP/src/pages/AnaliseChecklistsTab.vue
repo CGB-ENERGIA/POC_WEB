@@ -653,29 +653,37 @@ $inactive-text: #475569;
   &__grid {
     display: grid; grid-template-columns: repeat(3, 1fr);
     gap: 0;
+    @media (max-width: 860px) { grid-template-columns: 1fr; }
   }
 }
 
 .ac-ev-slot {
   display: flex; flex-direction: column; align-items: center;
-  padding: 12px 8px 10px;
+  padding: 10px 10px 8px;
   border-right: 1px solid #e2e8f0;
   &:last-child { border-right: none; }
-  position: relative;
-  min-height: 100px;
 
-  &--filled { background: #fff; }
-  &--empty  { background: #f8fafc; }
+  @media (max-width: 860px) {
+    border-right: none;
+    border-bottom: 1px solid #e2e8f0;
+    &:last-child { border-bottom: none; }
+  }
+
+  &--filled { background: #f1f5f9; }
+  &--empty  { background: #f8fafc; min-height: 120px; justify-content: center; }
 
   &__img {
-    width: 100%; max-height: 140px;
-    object-fit: cover; border-radius: 6px;
+    width: 100%;
+    max-height: 260px;
+    object-fit: contain;
+    border-radius: 6px;
     cursor: zoom-in;
-    margin-bottom: 6px;
+    background: #000;
+    display: block;
   }
   &__label {
     font-size: 10.5px; color: #64748b; text-align: center;
-    font-weight: 500; margin-top: 4px;
+    font-weight: 500; margin-top: 6px;
     display: flex; align-items: center; gap: 3px;
   }
   &__num {
