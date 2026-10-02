@@ -1085,30 +1085,39 @@ async function onImportFile(event: Event) {
 </script>
 
 <style scoped lang="scss">
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 // ── Tokens ────────────────────────────────────────────────────────────────────
 :root {
+  --dbp-bg:         #0b0e18;
+  --dbp-bg1:        #10141f;
+  --dbp-bg2:        #161b29;
   --dbp-surface:    rgba(255,255,255,.045);
   --dbp-surface2:   rgba(255,255,255,.075);
   --dbp-border:     rgba(255,255,255,.09);
   --dbp-border2:    rgba(255,255,255,.055);
   --dbp-txt:        rgba(255,255,255,.93);
   --dbp-muted:      rgba(255,255,255,.38);
-  --dbp-accent:     #dc2626;
-  --dbp-accent-rgb: 220,38,38;
+  --dbp-accent:     #e02020;
+  --dbp-accent-rgb: 224,32,32;
   --dbp-radius:     12px;
   --c-goman:  #F59E0B;
   --c-gstc:   #3B82F6;
   --c-gere:   #10B981;
   --c-sesmt:  #A78BFA;
+  --c-adm:    #fb7185;
+  --c-log:    #22d3ee;
+  --c-ofic:   #94a3b8;
+  --c-spot:   #e879f9;
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 .dbp-page {
   min-height: 100vh;
   padding: 0;
-  background: transparent;
+  background: var(--dbp-bg) !important;
+  color: var(--dbp-txt);
+  font-family: 'Outfit', sans-serif;
 }
 
 // ── Header ────────────────────────────────────────────────────────────────────
@@ -1117,7 +1126,7 @@ async function onImportFile(event: Event) {
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-  padding: 40px 48px 36px;
+  padding: 44px 52px 40px;
   border-bottom: 1px solid var(--dbp-border);
   flex-wrap: wrap;
   position: relative;
@@ -1238,12 +1247,13 @@ async function onImportFile(event: Event) {
 }
 
 .dbp-hbtn {
+  font-family: 'Outfit', sans-serif;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
-  letter-spacing: .02em;
+  letter-spacing: .01em;
   border: 1px solid var(--dbp-border);
   border-radius: 9px;
   padding: 8px 14px;
@@ -1280,24 +1290,26 @@ async function onImportFile(event: Event) {
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 .dbp-tabs-wrap {
-  padding: 20px 48px 0;
-  @media (max-width: 640px) { padding: 16px 20px 0; }
+  padding: 0 52px;
+  background: var(--dbp-bg1);
+  @media (max-width: 640px) { padding: 0 24px; }
 }
 
 .dbp-tabs {
   display: flex;
-  gap: 2px;
+  gap: 0;
   border-bottom: 1px solid var(--dbp-border);
 }
 
 .dbp-tab {
+  font-family: 'Outfit', sans-serif;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 10px 18px 12px;
-  font-size: 12.5px;
+  gap: 8px;
+  padding: 16px 22px 14px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: .02em;
+  letter-spacing: .01em;
   color: var(--dbp-muted);
   background: transparent;
   border: none;
@@ -1306,17 +1318,15 @@ async function onImportFile(event: Event) {
   transition: all .16s ease;
   position: relative;
   bottom: -1px;
-  border-radius: 10px 10px 0 0;
 
   &:hover {
-    color: rgba(255,255,255,.75);
-    background: rgba(255,255,255,.03);
+    color: rgba(255,255,255,.72);
+    background: rgba(255,255,255,.025);
   }
 
   &.--active {
     color: var(--dbp-txt);
     border-bottom-color: var(--dbp-accent);
-    background: rgba(var(--dbp-accent-rgb),.04);
   }
 }
 
@@ -1325,7 +1335,7 @@ async function onImportFile(event: Event) {
   font-size: 10px;
   padding: 2px 7px;
   border-radius: 20px;
-  background: var(--dbp-surface);
+  background: rgba(255,255,255,.06);
   border: 1px solid var(--dbp-border);
   color: var(--dbp-muted);
   transition: all .16s;
@@ -1333,16 +1343,17 @@ async function onImportFile(event: Event) {
   text-align: center;
 
   .dbp-tab.--active & {
-    background: rgba(var(--dbp-accent-rgb),.16);
-    border-color: rgba(var(--dbp-accent-rgb),.32);
+    background: rgba(var(--dbp-accent-rgb),.18);
+    border-color: rgba(var(--dbp-accent-rgb),.36);
     color: #fc8181;
   }
 }
 
 // ── Body ──────────────────────────────────────────────────────────────────────
 .dbp-body {
-  padding: 28px 48px 60px;
-  @media (max-width: 640px) { padding: 20px 16px 40px; }
+  background: var(--dbp-bg);
+  padding: 30px 52px 60px;
+  @media (max-width: 640px) { padding: 20px 24px 40px; }
 }
 
 // ── Toolbar ───────────────────────────────────────────────────────────────────
@@ -1394,16 +1405,16 @@ async function onImportFile(event: Event) {
   min-width: 200px;
   display: flex;
   align-items: center;
-  height: 40px;
+  height: 42px;
   border: 1px solid var(--dbp-border);
   border-radius: var(--dbp-radius);
-  background: var(--dbp-surface);
-  padding: 0 10px;
+  background: var(--dbp-bg1);
+  padding: 0 12px;
   transition: border-color .16s, background .16s;
 
   &:focus-within {
     border-color: rgba(255,255,255,.22);
-    background: rgba(255,255,255,.055);
+    background: var(--dbp-bg2);
   }
 }
 
@@ -1415,7 +1426,9 @@ async function onImportFile(event: Event) {
   border: none;
   outline: none;
   color: var(--dbp-txt);
-  font-size: 13px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 13.5px;
+  font-weight: 500;
   padding: 0 8px;
   height: 100%;
   &::placeholder { color: var(--dbp-muted); }
@@ -1441,10 +1454,11 @@ async function onImportFile(event: Event) {
 }
 
 .dbp-pill {
-  font-size: 11px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 11.5px;
   font-weight: 700;
-  letter-spacing: .04em;
-  padding: 5px 11px;
+  letter-spacing: .03em;
+  padding: 5px 12px;
   border-radius: 20px;
   border: 1px solid var(--dbp-border);
   background: transparent;
@@ -1471,13 +1485,14 @@ async function onImportFile(event: Event) {
 }
 
 .dbp-add-btn {
+  font-family: 'Outfit', sans-serif;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: .03em;
-  padding: 9px 16px;
+  letter-spacing: .02em;
+  padding: 10px 18px;
   border-radius: var(--dbp-radius);
   background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
   color: #fff;
@@ -1531,6 +1546,7 @@ async function onImportFile(event: Event) {
   border: 1px solid var(--dbp-border);
   border-radius: var(--dbp-radius);
   overflow: hidden;
+  background: var(--dbp-bg1);
 }
 
 .dbp-record {
@@ -1610,16 +1626,17 @@ async function onImportFile(event: Event) {
   gap: 3px;
 }
 .dbp-record__name {
-  font-size: 13px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--dbp-txt);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  letter-spacing: -.01em;
 }
 .dbp-record__sub {
-  font-size: 11.5px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
   color: var(--dbp-muted);
   display: flex;
   align-items: center;
@@ -1652,11 +1669,12 @@ async function onImportFile(event: Event) {
 }
 
 .dbp-chip {
+  font-family: 'Outfit', sans-serif;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: .05em;
-  padding: 2px 7px;
-  border-radius: 4px;
+  padding: 2px 8px;
+  border-radius: 5px;
   border: 1px solid transparent;
 
   &[data-g="GOMAN"]    { color: var(--c-goman); background: rgba(245,158,11,.1);  border-color: rgba(245,158,11,.22);  }
@@ -1882,6 +1900,7 @@ async function onImportFile(event: Event) {
 }
 
 .dbp-dlg__cancel {
+  font-family: 'Outfit', sans-serif;
   font-size: 13px;
   font-weight: 600;
   padding: 9px 18px;
@@ -1895,6 +1914,7 @@ async function onImportFile(event: Event) {
 }
 
 .dbp-dlg__save {
+  font-family: 'Outfit', sans-serif;
   font-size: 13px;
   font-weight: 700;
   padding: 9px 22px;
