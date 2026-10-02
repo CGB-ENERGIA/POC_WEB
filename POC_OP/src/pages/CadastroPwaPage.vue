@@ -1087,32 +1087,29 @@ async function onImportFile(event: Event) {
 <style scoped lang="scss">
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-// ── Tokens ────────────────────────────────────────────────────────────────────
-:root {
-  --dbp-bg:         #0b0e18;
-  --dbp-bg1:        #10141f;
-  --dbp-bg2:        #161b29;
-  --dbp-surface:    rgba(255,255,255,.045);
-  --dbp-surface2:   rgba(255,255,255,.075);
-  --dbp-border:     rgba(255,255,255,.09);
-  --dbp-border2:    rgba(255,255,255,.055);
-  --dbp-txt:        rgba(255,255,255,.93);
-  --dbp-muted:      rgba(255,255,255,.38);
-  --dbp-accent:     #e02020;
-  --dbp-accent-rgb: 224,32,32;
-  --dbp-radius:     12px;
-  --c-goman:  #F59E0B;
-  --c-gstc:   #3B82F6;
-  --c-gere:   #10B981;
-  --c-sesmt:  #A78BFA;
-  --c-adm:    #fb7185;
-  --c-log:    #22d3ee;
-  --c-ofic:   #94a3b8;
-  --c-spot:   #e879f9;
-}
-
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ── Page + Tokens (vars inside component scope — funciona com scoped) ─────────
 .dbp-page {
+  --dbp-bg:         #f7f5f2;
+  --dbp-bg1:        #efecea;
+  --dbp-bg2:        #e5e2de;
+  --dbp-surface:    #ffffff;
+  --dbp-surface2:   #f0eeeb;
+  --dbp-border:     rgba(0,0,0,0.09);
+  --dbp-border2:    rgba(0,0,0,0.055);
+  --dbp-txt:        #1c1917;
+  --dbp-muted:      rgba(28,25,23,0.48);
+  --dbp-accent:     #991b1b;
+  --dbp-accent-rgb: 153,27,27;
+  --dbp-radius:     12px;
+  --c-goman:  #b45309;
+  --c-gstc:   #1d4ed8;
+  --c-gere:   #047857;
+  --c-sesmt:  #7c3aed;
+  --c-adm:    #be123c;
+  --c-log:    #0e7490;
+  --c-ofic:   #64748b;
+  --c-spot:   #a21caf;
+
   min-height: 100vh;
   padding: 0;
   background: var(--dbp-bg) !important;
@@ -1191,28 +1188,31 @@ async function onImportFile(event: Event) {
   border-radius: 11px;
   border: 1px solid var(--dbp-border);
   background: var(--dbp-surface);
-  min-width: 130px;
+  width: fit-content;
   transition: border-color .16s, background .16s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 
   &:hover {
     background: var(--dbp-surface2);
-    border-color: rgba(255,255,255,.14);
+    border-color: rgba(0,0,0,0.15);
   }
 }
 
 .dbp-stat__icon {
   width: 38px;
   height: 38px;
+  min-width: 38px;
+  min-height: 38px;
   border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 
-  &--emp  { background: rgba(var(--dbp-accent-rgb),.14); color: #f87171; }
-  &--eq   { background: rgba(59,130,246,.14); color: #60a5fa; }
-  &--aloj { background: rgba(16,185,129,.14); color: #34d399; }
-  &--col  { background: rgba(245,158,11,.14); color: #fbbf24; }
+  &--emp  { background: rgba(153,27,27,.1);   color: #991b1b; }
+  &--eq   { background: rgba(29,78,216,.1);   color: #1d4ed8; }
+  &--aloj { background: rgba(4,120,87,.1);    color: #047857; }
+  &--col  { background: rgba(180,83,9,.1);    color: #b45309; }
 }
 
 .dbp-stat__body {
@@ -1262,7 +1262,7 @@ async function onImportFile(event: Event) {
   background: var(--dbp-surface);
   color: var(--dbp-txt);
 
-  &:hover { background: var(--dbp-surface2); border-color: rgba(255,255,255,.16); }
+  &:hover { background: var(--dbp-surface2); border-color: rgba(0,0,0,0.16); }
 
   &--ghost {
     padding: 8px;
@@ -1272,17 +1272,17 @@ async function onImportFile(event: Event) {
   }
 
   &--export {
-    color: #60A5FA;
-    border-color: rgba(96,165,250,.2);
-    background: rgba(59,130,246,.07);
-    &:hover { background: rgba(59,130,246,.14); border-color: rgba(96,165,250,.36); }
+    color: #1d4ed8;
+    border-color: rgba(29,78,216,.22);
+    background: rgba(29,78,216,.06);
+    &:hover { background: rgba(29,78,216,.12); border-color: rgba(29,78,216,.36); }
   }
 
   &--import {
-    color: #34D399;
-    border-color: rgba(52,211,153,.2);
-    background: rgba(16,185,129,.07);
-    &:hover { background: rgba(16,185,129,.14); border-color: rgba(52,211,153,.36); }
+    color: #047857;
+    border-color: rgba(4,120,87,.22);
+    background: rgba(4,120,87,.06);
+    &:hover { background: rgba(4,120,87,.12); border-color: rgba(4,120,87,.36); }
   }
 }
 
@@ -1320,8 +1320,8 @@ async function onImportFile(event: Event) {
   bottom: -1px;
 
   &:hover {
-    color: rgba(255,255,255,.72);
-    background: rgba(255,255,255,.025);
+    color: var(--dbp-txt);
+    background: rgba(0,0,0,0.04);
   }
 
   &.--active {
@@ -1335,7 +1335,7 @@ async function onImportFile(event: Event) {
   font-size: 10px;
   padding: 2px 7px;
   border-radius: 20px;
-  background: rgba(255,255,255,.06);
+  background: rgba(0,0,0,0.06);
   border: 1px solid var(--dbp-border);
   color: var(--dbp-muted);
   transition: all .16s;
@@ -1343,9 +1343,9 @@ async function onImportFile(event: Event) {
   text-align: center;
 
   .dbp-tab.--active & {
-    background: rgba(var(--dbp-accent-rgb),.18);
-    border-color: rgba(var(--dbp-accent-rgb),.36);
-    color: #fc8181;
+    background: rgba(153,27,27,.12);
+    border-color: rgba(153,27,27,.3);
+    color: #991b1b;
   }
 }
 
@@ -1408,13 +1408,15 @@ async function onImportFile(event: Event) {
   height: 42px;
   border: 1px solid var(--dbp-border);
   border-radius: var(--dbp-radius);
-  background: var(--dbp-bg1);
+  background: var(--dbp-surface);
   padding: 0 12px;
   transition: border-color .16s, background .16s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 
   &:focus-within {
-    border-color: rgba(255,255,255,.22);
-    background: var(--dbp-bg2);
+    border-color: rgba(153,27,27,.4);
+    background: var(--dbp-surface);
+    box-shadow: 0 0 0 3px rgba(153,27,27,.08);
   }
 }
 
@@ -1444,7 +1446,7 @@ async function onImportFile(event: Event) {
   line-height: 1;
   display: flex;
   align-items: center;
-  &:hover { color: var(--dbp-txt); background: rgba(255,255,255,.06); }
+  &:hover { color: var(--dbp-txt); background: rgba(0,0,0,.06); }
 }
 
 .dbp-pills {
@@ -1461,27 +1463,29 @@ async function onImportFile(event: Event) {
   padding: 5px 12px;
   border-radius: 20px;
   border: 1px solid var(--dbp-border);
-  background: transparent;
+  background: var(--dbp-surface);
   color: var(--dbp-muted);
   cursor: pointer;
   transition: all .14s;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 
-  &:hover { color: rgba(255,255,255,.75); border-color: rgba(255,255,255,.16); }
+  &:hover { color: var(--dbp-txt); border-color: rgba(0,0,0,0.18); background: var(--dbp-surface2); }
 
   &.--active {
     color: var(--dbp-txt);
     background: var(--dbp-surface2);
-    border-color: rgba(255,255,255,.18);
+    border-color: rgba(0,0,0,0.14);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.06);
   }
 
-  &.--active.--goman    { color: var(--c-goman); border-color: rgba(245,158,11,.4);  background: rgba(245,158,11,.1);  }
-  &.--active.--gstc     { color: var(--c-gstc);  border-color: rgba(59,130,246,.4);  background: rgba(59,130,246,.1);  }
-  &.--active.--gere     { color: var(--c-gere);  border-color: rgba(16,185,129,.4);  background: rgba(16,185,129,.1);  }
-  &.--active.--sesmt    { color: var(--c-sesmt); border-color: rgba(167,139,250,.4); background: rgba(167,139,250,.1); }
-  &.--active.--adm      { color: #fb7185; border-color: rgba(251,113,133,.4); background: rgba(251,113,133,.1); }
-  &.--active.--logistica{ color: #22d3ee; border-color: rgba(34,211,238,.4);  background: rgba(34,211,238,.1);  }
-  &.--active.--oficina  { color: #a3a3a3; border-color: rgba(163,163,163,.4); background: rgba(163,163,163,.1); }
-  &.--active.--spot     { color: #e879f9; border-color: rgba(232,121,249,.4); background: rgba(232,121,249,.1); }
+  &.--active.--goman    { color: var(--c-goman); border-color: rgba(180,83,9,.35);   background: rgba(180,83,9,.08);   }
+  &.--active.--gstc     { color: var(--c-gstc);  border-color: rgba(29,78,216,.35);  background: rgba(29,78,216,.08);  }
+  &.--active.--gere     { color: var(--c-gere);  border-color: rgba(4,120,87,.35);   background: rgba(4,120,87,.08);   }
+  &.--active.--sesmt    { color: var(--c-sesmt); border-color: rgba(124,58,237,.35); background: rgba(124,58,237,.08); }
+  &.--active.--adm      { color: var(--c-adm);   border-color: rgba(190,18,60,.35);  background: rgba(190,18,60,.08);  }
+  &.--active.--logistica{ color: var(--c-log);   border-color: rgba(14,116,144,.35); background: rgba(14,116,144,.08); }
+  &.--active.--oficina  { color: var(--c-ofic);  border-color: rgba(100,116,139,.35);background: rgba(100,116,139,.08);}
+  &.--active.--spot     { color: var(--c-spot);  border-color: rgba(162,28,175,.35); background: rgba(162,28,175,.08); }
 }
 
 .dbp-add-btn {
@@ -1546,7 +1550,8 @@ async function onImportFile(event: Event) {
   border: 1px solid var(--dbp-border);
   border-radius: var(--dbp-radius);
   overflow: hidden;
-  background: var(--dbp-bg1);
+  background: var(--dbp-surface);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
 }
 
 .dbp-record {
@@ -1574,7 +1579,7 @@ async function onImportFile(event: Event) {
   &:last-child { border-bottom: none; }
 
   &:hover {
-    background: rgba(255,255,255,.033);
+    background: rgba(0,0,0,0.025);
     .dbp-record__acts { opacity: 1; }
   }
 
@@ -1592,6 +1597,8 @@ async function onImportFile(event: Event) {
 .dbp-record__av {
   width: 36px;
   height: 36px;
+  min-width: 36px;
+  min-height: 36px;
   border-radius: 9px;
   display: flex;
   align-items: center;
@@ -1603,14 +1610,14 @@ async function onImportFile(event: Event) {
   letter-spacing: -.01em;
   border: 1px solid transparent;
 
-  &[data-g="GOMAN"]    { background: rgba(245,158,11,.12);  color: var(--c-goman); border-color: rgba(245,158,11,.2);  }
-  &[data-g="GSTC"]     { background: rgba(59,130,246,.12);  color: var(--c-gstc);  border-color: rgba(59,130,246,.2);  }
-  &[data-g="GERE"]     { background: rgba(16,185,129,.12);  color: var(--c-gere);  border-color: rgba(16,185,129,.2);  }
-  &[data-g="SESMT"]    { background: rgba(167,139,250,.12); color: var(--c-sesmt); border-color: rgba(167,139,250,.2); }
-  &[data-g="ADM"]      { background: rgba(251,113,133,.12); color: #fb7185; border-color: rgba(251,113,133,.2); }
-  &[data-g="LOGISTICA"]{ background: rgba(34,211,238,.12);  color: #22d3ee; border-color: rgba(34,211,238,.2);  }
-  &[data-g="OFICINA"]  { background: rgba(163,163,163,.12); color: #a3a3a3; border-color: rgba(163,163,163,.2); }
-  &[data-g="SPOT"]     { background: rgba(232,121,249,.12); color: #e879f9; border-color: rgba(232,121,249,.2); }
+  &[data-g="GOMAN"]    { background: rgba(180,83,9,.1);    color: var(--c-goman); border-color: rgba(180,83,9,.2);    }
+  &[data-g="GSTC"]     { background: rgba(29,78,216,.1);   color: var(--c-gstc);  border-color: rgba(29,78,216,.2);   }
+  &[data-g="GERE"]     { background: rgba(4,120,87,.1);    color: var(--c-gere);  border-color: rgba(4,120,87,.2);    }
+  &[data-g="SESMT"]    { background: rgba(124,58,237,.1);  color: var(--c-sesmt); border-color: rgba(124,58,237,.2);  }
+  &[data-g="ADM"]      { background: rgba(190,18,60,.1);   color: var(--c-adm);   border-color: rgba(190,18,60,.2);   }
+  &[data-g="LOGISTICA"]{ background: rgba(14,116,144,.1);  color: var(--c-log);   border-color: rgba(14,116,144,.2);  }
+  &[data-g="OFICINA"]  { background: rgba(100,116,139,.1); color: var(--c-ofic);  border-color: rgba(100,116,139,.2); }
+  &[data-g="SPOT"]     { background: rgba(162,28,175,.1);  color: var(--c-spot);  border-color: rgba(162,28,175,.2);  }
 
   &--bus {
     font-size: 0;
@@ -1648,8 +1655,8 @@ async function onImportFile(event: Event) {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   font-weight: 500;
-  color: rgba(255,255,255,.5);
-  background: rgba(255,255,255,.05);
+  color: var(--dbp-muted);
+  background: rgba(0,0,0,0.05);
   padding: 1px 5px;
   border-radius: 4px;
   border: 1px solid var(--dbp-border);
@@ -1677,38 +1684,38 @@ async function onImportFile(event: Event) {
   border-radius: 5px;
   border: 1px solid transparent;
 
-  &[data-g="GOMAN"]    { color: var(--c-goman); background: rgba(245,158,11,.1);  border-color: rgba(245,158,11,.22);  }
-  &[data-g="GSTC"]     { color: var(--c-gstc);  background: rgba(59,130,246,.1);  border-color: rgba(59,130,246,.22);  }
-  &[data-g="GERE"]     { color: var(--c-gere);  background: rgba(16,185,129,.1);  border-color: rgba(16,185,129,.22);  }
-  &[data-g="SESMT"]    { color: var(--c-sesmt); background: rgba(167,139,250,.1); border-color: rgba(167,139,250,.22); }
-  &[data-g="ADM"]      { color: #fb7185; background: rgba(251,113,133,.1); border-color: rgba(251,113,133,.22); }
-  &[data-g="LOGISTICA"]{ color: #22d3ee; background: rgba(34,211,238,.1);  border-color: rgba(34,211,238,.22);  }
-  &[data-g="OFICINA"]  { color: #a3a3a3; background: rgba(163,163,163,.1); border-color: rgba(163,163,163,.22); }
-  &[data-g="SPOT"]     { color: #e879f9; background: rgba(232,121,249,.1); border-color: rgba(232,121,249,.22); }
+  &[data-g="GOMAN"]    { color: var(--c-goman); background: rgba(180,83,9,.1);    border-color: rgba(180,83,9,.25);    }
+  &[data-g="GSTC"]     { color: var(--c-gstc);  background: rgba(29,78,216,.1);   border-color: rgba(29,78,216,.25);   }
+  &[data-g="GERE"]     { color: var(--c-gere);  background: rgba(4,120,87,.1);    border-color: rgba(4,120,87,.25);    }
+  &[data-g="SESMT"]    { color: var(--c-sesmt); background: rgba(124,58,237,.1);  border-color: rgba(124,58,237,.25);  }
+  &[data-g="ADM"]      { color: var(--c-adm);   background: rgba(190,18,60,.1);   border-color: rgba(190,18,60,.25);   }
+  &[data-g="LOGISTICA"]{ color: var(--c-log);   background: rgba(14,116,144,.1);  border-color: rgba(14,116,144,.25);  }
+  &[data-g="OFICINA"]  { color: var(--c-ofic);  background: rgba(100,116,139,.1); border-color: rgba(100,116,139,.25); }
+  &[data-g="SPOT"]     { color: var(--c-spot);  background: rgba(162,28,175,.1);  border-color: rgba(162,28,175,.25);  }
 
   &--base {
-    color: rgba(255,255,255,.5);
-    background: rgba(255,255,255,.05);
+    color: var(--dbp-muted);
+    background: rgba(0,0,0,0.05);
     border-color: var(--dbp-border);
   }
   &--off {
-    color: #F87171;
-    background: rgba(248,113,113,.08);
-    border-color: rgba(248,113,113,.2);
+    color: #b91c1c;
+    background: rgba(185,28,28,.08);
+    border-color: rgba(185,28,28,.2);
   }
   &--prefixo {
-    color: #34d399;
-    background: rgba(52,211,153,.1);
-    border-color: rgba(52,211,153,.2);
+    color: #047857;
+    background: rgba(4,120,87,.1);
+    border-color: rgba(4,120,87,.2);
     font-family: 'JetBrains Mono', monospace;
   }
   &--loc {
-    color: rgba(255,255,255,.45);
-    background: rgba(255,255,255,.04);
+    color: var(--dbp-muted);
+    background: rgba(0,0,0,0.04);
     border-color: var(--dbp-border2);
   }
   &--ct {
-    color: rgba(255,255,255,.3);
+    color: var(--dbp-muted);
     background: transparent;
     border-color: var(--dbp-border2);
     font-family: 'JetBrains Mono', monospace;
@@ -1718,15 +1725,15 @@ async function onImportFile(event: Event) {
 
 .dbp-record__addr {
   font-size: 10.5px;
-  color: rgba(255,255,255,.28);
+  color: var(--dbp-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .dbp-record__av--home {
-  background: rgba(16,185,129,.12);
-  color: #34d399;
+  background: rgba(4,120,87,.1);
+  color: var(--c-gere);
   font-size: 0;
   i { font-size: 16px !important; }
 }
@@ -1735,18 +1742,18 @@ async function onImportFile(event: Event) {
   font-size: 0;
   i { font-size: 16px !important; }
 
-  &[data-base="BCB"] { background: rgba(96,165,250,.12);  color: #60a5fa; }
-  &[data-base="BDC"] { background: rgba(52,211,153,.12);  color: #34d399; }
-  &[data-base="ITM"] { background: rgba(163,230,53,.12);  color: #a3e635; }
-  &[data-base="PDS"] { background: rgba(251,146,60,.12);  color: #fb923c; }
-  &[data-base="PDT"] { background: rgba(192,132,252,.12); color: #c084fc; }
-  &[data-base="STI"] { background: rgba(244,114,182,.12); color: #f472b6; }
-  &[data-base="ADM"] { background: rgba(255,255,255,.06); color: rgba(255,255,255,.4); }
+  &[data-base="BCB"] { background: rgba(29,78,216,.1);   color: var(--c-gstc); }
+  &[data-base="BDC"] { background: rgba(4,120,87,.1);    color: var(--c-gere); }
+  &[data-base="ITM"] { background: rgba(101,163,13,.1);  color: #4d7c0f; }
+  &[data-base="PDS"] { background: rgba(194,65,12,.1);   color: #c2410c; }
+  &[data-base="PDT"] { background: rgba(124,58,237,.1);  color: var(--c-sesmt); }
+  &[data-base="STI"] { background: rgba(190,18,60,.1);   color: var(--c-adm); }
+  &[data-base="ADM"] { background: rgba(0,0,0,0.06);     color: var(--dbp-muted); }
 }
 
 .dbp-chip--rateio {
-  background: rgba(99,102,241,.14);
-  color: #818cf8;
+  background: rgba(99,102,241,.1);
+  color: #4338ca;
   border-color: rgba(99,102,241,.25);
   font-family: 'JetBrains Mono', monospace;
   letter-spacing: .04em;
@@ -1760,13 +1767,13 @@ async function onImportFile(event: Event) {
   border-radius: 4px;
   border: 1px solid transparent;
 
-  &[data-base="BCB"] { color: #60a5fa; background: rgba(96,165,250,.1);  border-color: rgba(96,165,250,.25);  }
-  &[data-base="BDC"] { color: #34d399; background: rgba(52,211,153,.1);  border-color: rgba(52,211,153,.25);  }
-  &[data-base="ITM"] { color: #a3e635; background: rgba(163,230,53,.1);  border-color: rgba(163,230,53,.25);  }
-  &[data-base="PDS"] { color: #fb923c; background: rgba(251,146,60,.1);  border-color: rgba(251,146,60,.25);  }
-  &[data-base="PDT"] { color: #c084fc; background: rgba(192,132,252,.1); border-color: rgba(192,132,252,.25); }
-  &[data-base="STI"] { color: #f472b6; background: rgba(244,114,182,.1); border-color: rgba(244,114,182,.25); }
-  &[data-base="ADM"] { color: rgba(255,255,255,.45); background: rgba(255,255,255,.05); border-color: var(--dbp-border); }
+  &[data-base="BCB"] { color: var(--c-gstc); background: rgba(29,78,216,.1);   border-color: rgba(29,78,216,.25);   }
+  &[data-base="BDC"] { color: var(--c-gere); background: rgba(4,120,87,.1);    border-color: rgba(4,120,87,.25);    }
+  &[data-base="ITM"] { color: #4d7c0f;       background: rgba(101,163,13,.1);  border-color: rgba(101,163,13,.25);  }
+  &[data-base="PDS"] { color: #c2410c;       background: rgba(194,65,12,.1);   border-color: rgba(194,65,12,.25);   }
+  &[data-base="PDT"] { color: var(--c-sesmt);background: rgba(124,58,237,.1);  border-color: rgba(124,58,237,.25);  }
+  &[data-base="STI"] { color: var(--c-adm);  background: rgba(190,18,60,.1);   border-color: rgba(190,18,60,.25);   }
+  &[data-base="ADM"] { color: var(--dbp-muted); background: rgba(0,0,0,.05);   border-color: var(--dbp-border); }
 }
 
 .dbp-record__acts {
@@ -1791,12 +1798,12 @@ async function onImportFile(event: Event) {
   transition: all .14s;
 
   &:hover {
-    background: rgba(255,255,255,.08);
+    background: rgba(0,0,0,0.07);
     color: var(--dbp-txt);
   }
   &--del:hover {
-    background: rgba(248,113,113,.12);
-    color: #F87171;
+    background: rgba(185,28,28,.1);
+    color: #991b1b;
   }
 }
 
@@ -1838,10 +1845,10 @@ async function onImportFile(event: Event) {
   &[data-g="GSTC"]     { background: linear-gradient(90deg, var(--c-gstc), transparent); }
   &[data-g="GERE"]     { background: linear-gradient(90deg, var(--c-gere), transparent); }
   &[data-g="SESMT"]    { background: linear-gradient(90deg, var(--c-sesmt), transparent); }
-  &[data-g="ADM"]      { background: linear-gradient(90deg, #fb7185, transparent); }
-  &[data-g="LOGISTICA"]{ background: linear-gradient(90deg, #22d3ee, transparent); }
-  &[data-g="OFICINA"]  { background: linear-gradient(90deg, #a3a3a3, transparent); }
-  &[data-g="SPOT"]     { background: linear-gradient(90deg, #e879f9, transparent); }
+  &[data-g="ADM"]      { background: linear-gradient(90deg, var(--c-adm), transparent); }
+  &[data-g="LOGISTICA"]{ background: linear-gradient(90deg, var(--c-log), transparent); }
+  &[data-g="OFICINA"]  { background: linear-gradient(90deg, var(--c-ofic), transparent); }
+  &[data-g="SPOT"]     { background: linear-gradient(90deg, var(--c-spot), transparent); }
 }
 
 .dbp-dlg__head {
@@ -1881,7 +1888,7 @@ async function onImportFile(event: Event) {
   align-items: center;
   justify-content: center;
   transition: all .14s;
-  &:hover { background: rgba(255,255,255,.07); color: var(--dbp-txt); }
+  &:hover { background: rgba(0,0,0,.06); color: var(--dbp-txt); }
 }
 
 .dbp-dlg__body {
@@ -1910,7 +1917,7 @@ async function onImportFile(event: Event) {
   color: var(--dbp-muted);
   cursor: pointer;
   transition: all .14s;
-  &:hover { background: rgba(255,255,255,.05); color: var(--dbp-txt); }
+  &:hover { background: rgba(0,0,0,.05); color: var(--dbp-txt); }
 }
 
 .dbp-dlg__save {
