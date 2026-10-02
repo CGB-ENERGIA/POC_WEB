@@ -7,25 +7,42 @@
         <p class="dbp-eyebrow">Administração · PWA</p>
         <h1 class="dbp-title">Banco de Dados</h1>
         <div class="dbp-stats">
-          <span class="dbp-stat">
-            <span class="dbp-stat__n">{{ employees.length }}</span>
-            <span class="dbp-stat__label">funcionários</span>
-          </span>
-          <span class="dbp-stat__div" />
-          <span class="dbp-stat">
-            <span class="dbp-stat__n">{{ equipes.length }}</span>
-            <span class="dbp-stat__label">equipes</span>
-          </span>
-          <span class="dbp-stat__div" />
-          <span class="dbp-stat">
-            <span class="dbp-stat__n">{{ ALOJAMENTOS.length }}</span>
-            <span class="dbp-stat__label">alojamentos</span>
-          </span>
-          <span class="dbp-stat__div" />
-          <span class="dbp-stat">
-            <span class="dbp-stat__n">{{ colaboradores.length }}</span>
-            <span class="dbp-stat__label">colaboradores</span>
-          </span>
+          <div class="dbp-stat">
+            <div class="dbp-stat__icon dbp-stat__icon--emp">
+              <q-icon name="mdi-account-group-outline" size="18px"/>
+            </div>
+            <div class="dbp-stat__body">
+              <span class="dbp-stat__n">{{ employees.length }}</span>
+              <span class="dbp-stat__label">funcionários</span>
+            </div>
+          </div>
+          <div class="dbp-stat">
+            <div class="dbp-stat__icon dbp-stat__icon--eq">
+              <q-icon name="mdi-bus-multiple" size="18px"/>
+            </div>
+            <div class="dbp-stat__body">
+              <span class="dbp-stat__n">{{ equipes.length }}</span>
+              <span class="dbp-stat__label">equipes</span>
+            </div>
+          </div>
+          <div class="dbp-stat">
+            <div class="dbp-stat__icon dbp-stat__icon--aloj">
+              <q-icon name="mdi-home-city-outline" size="18px"/>
+            </div>
+            <div class="dbp-stat__body">
+              <span class="dbp-stat__n">{{ ALOJAMENTOS.length }}</span>
+              <span class="dbp-stat__label">alojamentos</span>
+            </div>
+          </div>
+          <div class="dbp-stat">
+            <div class="dbp-stat__icon dbp-stat__icon--col">
+              <q-icon name="mdi-account-hard-hat-outline" size="18px"/>
+            </div>
+            <div class="dbp-stat__body">
+              <span class="dbp-stat__n">{{ colaboradores.length }}</span>
+              <span class="dbp-stat__label">colaboradores</span>
+            </div>
+          </div>
         </div>
       </div>
       <div class="dbp-header__right">
@@ -1072,14 +1089,15 @@ async function onImportFile(event: Event) {
 
 // ── Tokens ────────────────────────────────────────────────────────────────────
 :root {
-  --dbp-surface:  rgba(255,255,255,.035);
-  --dbp-border:   rgba(255,255,255,.08);
-  --dbp-border2:  rgba(255,255,255,.05);
-  --dbp-txt:      rgba(255,255,255,.92);
-  --dbp-muted:    rgba(255,255,255,.38);
-  --dbp-accent:   #8B1C2B;
-  --dbp-radius:   10px;
-  // Gerência
+  --dbp-surface:    rgba(255,255,255,.045);
+  --dbp-surface2:   rgba(255,255,255,.075);
+  --dbp-border:     rgba(255,255,255,.09);
+  --dbp-border2:    rgba(255,255,255,.055);
+  --dbp-txt:        rgba(255,255,255,.93);
+  --dbp-muted:      rgba(255,255,255,.38);
+  --dbp-accent:     #dc2626;
+  --dbp-accent-rgb: 220,38,38;
+  --dbp-radius:     12px;
   --c-goman:  #F59E0B;
   --c-gstc:   #3B82F6;
   --c-gere:   #10B981;
@@ -1096,12 +1114,22 @@ async function onImportFile(event: Event) {
 // ── Header ────────────────────────────────────────────────────────────────────
 .dbp-header {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-  padding: 40px 48px 32px;
+  padding: 40px 48px 36px;
   border-bottom: 1px solid var(--dbp-border);
   flex-wrap: wrap;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 55% 100% at 0% 0%, rgba(var(--dbp-accent-rgb),.08) 0%, transparent 65%);
+    pointer-events: none;
+  }
 
   @media (max-width: 640px) { padding: 28px 20px 24px; }
 }
@@ -1110,56 +1138,102 @@ async function onImportFile(event: Event) {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
   font-weight: 500;
-  letter-spacing: .18em;
+  letter-spacing: .2em;
   text-transform: uppercase;
   color: var(--dbp-accent);
-  margin: 0 0 8px;
-  opacity: .9;
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  &::before {
+    content: '';
+    display: inline-block;
+    width: 18px;
+    height: 1.5px;
+    background: var(--dbp-accent);
+    flex-shrink: 0;
+  }
 }
 
 .dbp-title {
   font-family: 'Syne', sans-serif;
-  font-size: 32px;
+  font-size: 36px;
   font-weight: 800;
-  letter-spacing: -.03em;
-  margin: 0 0 14px;
+  letter-spacing: -.04em;
+  margin: 0 0 24px;
   color: var(--dbp-txt);
   line-height: 1;
 }
 
+// Stats cards
 .dbp-stats {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  flex-wrap: wrap;
 }
+
 .dbp-stat {
   display: flex;
-  align-items: baseline;
-  gap: 5px;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 15px;
+  border-radius: 11px;
+  border: 1px solid var(--dbp-border);
+  background: var(--dbp-surface);
+  min-width: 130px;
+  transition: border-color .16s, background .16s;
+
+  &:hover {
+    background: var(--dbp-surface2);
+    border-color: rgba(255,255,255,.14);
+  }
 }
+
+.dbp-stat__icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  &--emp  { background: rgba(var(--dbp-accent-rgb),.14); color: #f87171; }
+  &--eq   { background: rgba(59,130,246,.14); color: #60a5fa; }
+  &--aloj { background: rgba(16,185,129,.14); color: #34d399; }
+  &--col  { background: rgba(245,158,11,.14); color: #fbbf24; }
+}
+
+.dbp-stat__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
 .dbp-stat__n {
   font-family: 'Syne', sans-serif;
   font-size: 22px;
   font-weight: 800;
   color: var(--dbp-txt);
   line-height: 1;
+  letter-spacing: -.02em;
 }
+
 .dbp-stat__label {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--dbp-muted);
   font-weight: 500;
-}
-.dbp-stat__div {
-  width: 1px;
-  height: 20px;
-  background: var(--dbp-border);
+  letter-spacing: .05em;
+  text-transform: uppercase;
 }
 
 .dbp-header__right {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding-bottom: 2px;
+  padding-top: 4px;
   flex-shrink: 0;
 }
 
@@ -1171,34 +1245,34 @@ async function onImportFile(event: Event) {
   font-weight: 600;
   letter-spacing: .02em;
   border: 1px solid var(--dbp-border);
-  border-radius: 8px;
-  padding: 7px 12px;
+  border-radius: 9px;
+  padding: 8px 14px;
   cursor: pointer;
   transition: all .18s ease;
   background: var(--dbp-surface);
   color: var(--dbp-txt);
 
-  &:hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.15); }
+  &:hover { background: var(--dbp-surface2); border-color: rgba(255,255,255,.16); }
 
   &--ghost {
-    padding: 7px;
+    padding: 8px;
     color: var(--dbp-muted);
-    &:hover { color: var(--dbp-txt); }
+    &:hover { color: var(--dbp-txt); background: var(--dbp-surface2); }
     .spin { animation: spin .7s linear infinite; }
   }
 
   &--export {
     color: #60A5FA;
-    border-color: rgba(96,165,250,.25);
-    background: rgba(59,130,246,.08);
-    &:hover { background: rgba(59,130,246,.16); border-color: rgba(96,165,250,.4); }
+    border-color: rgba(96,165,250,.2);
+    background: rgba(59,130,246,.07);
+    &:hover { background: rgba(59,130,246,.14); border-color: rgba(96,165,250,.36); }
   }
 
   &--import {
     color: #34D399;
-    border-color: rgba(52,211,153,.25);
-    background: rgba(16,185,129,.08);
-    &:hover { background: rgba(16,185,129,.16); border-color: rgba(52,211,153,.4); }
+    border-color: rgba(52,211,153,.2);
+    background: rgba(16,185,129,.07);
+    &:hover { background: rgba(16,185,129,.14); border-color: rgba(52,211,153,.36); }
   }
 }
 
@@ -1206,21 +1280,21 @@ async function onImportFile(event: Event) {
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 .dbp-tabs-wrap {
-  padding: 0 48px;
-  border-bottom: 1px solid var(--dbp-border);
-  @media (max-width: 640px) { padding: 0 20px; }
+  padding: 20px 48px 0;
+  @media (max-width: 640px) { padding: 16px 20px 0; }
 }
 
 .dbp-tabs {
   display: flex;
-  gap: 0;
+  gap: 2px;
+  border-bottom: 1px solid var(--dbp-border);
 }
 
 .dbp-tab {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 16px 20px 14px;
+  padding: 10px 18px 12px;
   font-size: 12.5px;
   font-weight: 600;
   letter-spacing: .02em;
@@ -1232,35 +1306,42 @@ async function onImportFile(event: Event) {
   transition: all .16s ease;
   position: relative;
   bottom: -1px;
+  border-radius: 10px 10px 0 0;
 
-  &:hover { color: var(--dbp-txt); }
+  &:hover {
+    color: rgba(255,255,255,.75);
+    background: rgba(255,255,255,.03);
+  }
 
   &.--active {
     color: var(--dbp-txt);
     border-bottom-color: var(--dbp-accent);
+    background: rgba(var(--dbp-accent-rgb),.04);
   }
 }
 
 .dbp-tab__ct {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
-  padding: 1px 6px;
+  padding: 2px 7px;
   border-radius: 20px;
   background: var(--dbp-surface);
   border: 1px solid var(--dbp-border);
   color: var(--dbp-muted);
   transition: all .16s;
+  min-width: 24px;
+  text-align: center;
 
   .dbp-tab.--active & {
-    background: rgba(139,28,43,.18);
-    border-color: rgba(139,28,43,.3);
-    color: #F87171;
+    background: rgba(var(--dbp-accent-rgb),.16);
+    border-color: rgba(var(--dbp-accent-rgb),.32);
+    color: #fc8181;
   }
 }
 
 // ── Body ──────────────────────────────────────────────────────────────────────
 .dbp-body {
-  padding: 28px 48px 48px;
+  padding: 28px 48px 60px;
   @media (max-width: 640px) { padding: 20px 16px 40px; }
 }
 
@@ -1269,7 +1350,7 @@ async function onImportFile(event: Event) {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 
   .dbp-search-shell { flex: 1; }
 }
@@ -1287,7 +1368,7 @@ async function onImportFile(event: Event) {
   align-items: center;
   gap: 14px;
   margin-bottom: 14px;
-  padding: 12px 14px;
+  padding: 14px 16px;
   border: 1px solid var(--dbp-border);
   border-radius: var(--dbp-radius);
   background: var(--dbp-surface);
@@ -1313,19 +1394,21 @@ async function onImportFile(event: Event) {
   min-width: 200px;
   display: flex;
   align-items: center;
-  gap: 0;
+  height: 40px;
   border: 1px solid var(--dbp-border);
   border-radius: var(--dbp-radius);
   background: var(--dbp-surface);
   padding: 0 10px;
-  transition: border-color .16s;
+  transition: border-color .16s, background .16s;
 
   &:focus-within {
-    border-color: rgba(255,255,255,.2);
-    background: rgba(255,255,255,.05);
+    border-color: rgba(255,255,255,.22);
+    background: rgba(255,255,255,.055);
   }
 }
+
 .dbp-search-icon { color: var(--dbp-muted); flex-shrink: 0; }
+
 .dbp-search {
   flex: 1;
   background: transparent;
@@ -1333,9 +1416,11 @@ async function onImportFile(event: Event) {
   outline: none;
   color: var(--dbp-txt);
   font-size: 13px;
-  padding: 9px 8px;
+  padding: 0 8px;
+  height: 100%;
   &::placeholder { color: var(--dbp-muted); }
 }
+
 .dbp-search-x {
   background: none;
   border: none;
@@ -1344,7 +1429,9 @@ async function onImportFile(event: Event) {
   padding: 4px;
   border-radius: 4px;
   line-height: 1;
-  &:hover { color: var(--dbp-txt); }
+  display: flex;
+  align-items: center;
+  &:hover { color: var(--dbp-txt); background: rgba(255,255,255,.06); }
 }
 
 .dbp-pills {
@@ -1357,7 +1444,7 @@ async function onImportFile(event: Event) {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .04em;
-  padding: 5px 10px;
+  padding: 5px 11px;
   border-radius: 20px;
   border: 1px solid var(--dbp-border);
   background: transparent;
@@ -1365,42 +1452,47 @@ async function onImportFile(event: Event) {
   cursor: pointer;
   transition: all .14s;
 
-  &:hover { color: var(--dbp-txt); border-color: rgba(255,255,255,.15); }
+  &:hover { color: rgba(255,255,255,.75); border-color: rgba(255,255,255,.16); }
 
   &.--active {
     color: var(--dbp-txt);
-    background: var(--dbp-surface);
+    background: var(--dbp-surface2);
     border-color: rgba(255,255,255,.18);
   }
 
-  &.--active.--goman { color: var(--c-goman); border-color: rgba(245,158,11,.35); background: rgba(245,158,11,.08); }
-  &.--active.--gstc  { color: var(--c-gstc);  border-color: rgba(59,130,246,.35);  background: rgba(59,130,246,.08);  }
-  &.--active.--gere  { color: var(--c-gere);  border-color: rgba(16,185,129,.35);  background: rgba(16,185,129,.08);  }
-  &.--active.--sesmt { color: var(--c-sesmt); border-color: rgba(167,139,250,.35); background: rgba(167,139,250,.08); }
-  &.--active.--adm { color: #fb7185; border-color: rgba(251,113,133,.35); background: rgba(251,113,133,.08); }
-  &.--active.--logistica { color: #22d3ee; border-color: rgba(34,211,238,.35); background: rgba(34,211,238,.08); }
-  &.--active.--oficina { color: #a3a3a3; border-color: rgba(163,163,163,.35); background: rgba(163,163,163,.08); }
-  &.--active.--spot { color: #e879f9; border-color: rgba(232,121,249,.35); background: rgba(232,121,249,.08); }
+  &.--active.--goman    { color: var(--c-goman); border-color: rgba(245,158,11,.4);  background: rgba(245,158,11,.1);  }
+  &.--active.--gstc     { color: var(--c-gstc);  border-color: rgba(59,130,246,.4);  background: rgba(59,130,246,.1);  }
+  &.--active.--gere     { color: var(--c-gere);  border-color: rgba(16,185,129,.4);  background: rgba(16,185,129,.1);  }
+  &.--active.--sesmt    { color: var(--c-sesmt); border-color: rgba(167,139,250,.4); background: rgba(167,139,250,.1); }
+  &.--active.--adm      { color: #fb7185; border-color: rgba(251,113,133,.4); background: rgba(251,113,133,.1); }
+  &.--active.--logistica{ color: #22d3ee; border-color: rgba(34,211,238,.4);  background: rgba(34,211,238,.1);  }
+  &.--active.--oficina  { color: #a3a3a3; border-color: rgba(163,163,163,.4); background: rgba(163,163,163,.1); }
+  &.--active.--spot     { color: #e879f9; border-color: rgba(232,121,249,.4); background: rgba(232,121,249,.1); }
 }
 
 .dbp-add-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 12px;
+  gap: 6px;
+  font-size: 12.5px;
   font-weight: 700;
   letter-spacing: .03em;
-  padding: 8px 14px;
+  padding: 9px 16px;
   border-radius: var(--dbp-radius);
-  background: var(--dbp-accent);
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
   color: #fff;
   border: none;
   cursor: pointer;
-  transition: opacity .15s, transform .12s;
+  transition: opacity .15s, transform .12s, box-shadow .15s;
   white-space: nowrap;
+  box-shadow: 0 2px 12px rgba(var(--dbp-accent-rgb),.28);
 
-  &:hover { opacity: .88; transform: translateY(-1px); }
-  &:active { transform: translateY(0); }
+  &:hover {
+    opacity: .92;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 18px rgba(var(--dbp-accent-rgb),.4);
+  }
+  &:active { transform: translateY(0); box-shadow: 0 1px 6px rgba(var(--dbp-accent-rgb),.2); }
 }
 
 // ── Count + Collapse ──────────────────────────────────────────────────────────
@@ -1445,20 +1537,46 @@ async function onImportFile(event: Event) {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 11px 16px;
+  padding: 12px 16px 12px 20px;
   border-bottom: 1px solid var(--dbp-border2);
   transition: background .12s;
   position: relative;
 
+  // Left accent bar by gerência
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 10px;
+    bottom: 10px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: transparent;
+    transition: background .18s;
+  }
+
   &:last-child { border-bottom: none; }
-  &:hover { background: rgba(255,255,255,.03); }
-  &:hover .dbp-record__acts { opacity: 1; }
+
+  &:hover {
+    background: rgba(255,255,255,.033);
+    .dbp-record__acts { opacity: 1; }
+  }
+
+  // Accent per gerência (on any record with a matching avatar)
+  &:has(.dbp-record__av[data-g="GOMAN"])::before { background: rgba(245,158,11,.5); }
+  &:has(.dbp-record__av[data-g="GSTC"])::before  { background: rgba(59,130,246,.5); }
+  &:has(.dbp-record__av[data-g="GERE"])::before  { background: rgba(16,185,129,.5); }
+  &:has(.dbp-record__av[data-g="SESMT"])::before { background: rgba(167,139,250,.5); }
+  &:has(.dbp-record__av[data-g="ADM"])::before      { background: rgba(251,113,133,.5); }
+  &:has(.dbp-record__av[data-g="LOGISTICA"])::before{ background: rgba(34,211,238,.5); }
+  &:has(.dbp-record__av[data-g="OFICINA"])::before  { background: rgba(163,163,163,.4); }
+  &:has(.dbp-record__av[data-g="SPOT"])::before     { background: rgba(232,121,249,.5); }
 }
 
 .dbp-record__av {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1467,11 +1585,16 @@ async function onImportFile(event: Event) {
   font-weight: 800;
   flex-shrink: 0;
   letter-spacing: -.01em;
+  border: 1px solid transparent;
 
-  &[data-g="GOMAN"] { background: rgba(245,158,11,.15); color: var(--c-goman); }
-  &[data-g="GSTC"]  { background: rgba(59,130,246,.15);  color: var(--c-gstc);  }
-  &[data-g="GERE"]  { background: rgba(16,185,129,.15);  color: var(--c-gere);  }
-  &[data-g="SESMT"] { background: rgba(167,139,250,.15); color: var(--c-sesmt); }
+  &[data-g="GOMAN"]    { background: rgba(245,158,11,.12);  color: var(--c-goman); border-color: rgba(245,158,11,.2);  }
+  &[data-g="GSTC"]     { background: rgba(59,130,246,.12);  color: var(--c-gstc);  border-color: rgba(59,130,246,.2);  }
+  &[data-g="GERE"]     { background: rgba(16,185,129,.12);  color: var(--c-gere);  border-color: rgba(16,185,129,.2);  }
+  &[data-g="SESMT"]    { background: rgba(167,139,250,.12); color: var(--c-sesmt); border-color: rgba(167,139,250,.2); }
+  &[data-g="ADM"]      { background: rgba(251,113,133,.12); color: #fb7185; border-color: rgba(251,113,133,.2); }
+  &[data-g="LOGISTICA"]{ background: rgba(34,211,238,.12);  color: #22d3ee; border-color: rgba(34,211,238,.2);  }
+  &[data-g="OFICINA"]  { background: rgba(163,163,163,.12); color: #a3a3a3; border-color: rgba(163,163,163,.2); }
+  &[data-g="SPOT"]     { background: rgba(232,121,249,.12); color: #e879f9; border-color: rgba(232,121,249,.2); }
 
   &--bus {
     font-size: 0;
@@ -1536,10 +1659,14 @@ async function onImportFile(event: Event) {
   border-radius: 4px;
   border: 1px solid transparent;
 
-  &[data-g="GOMAN"] { color: var(--c-goman); background: rgba(245,158,11,.1);  border-color: rgba(245,158,11,.2);  }
-  &[data-g="GSTC"]  { color: var(--c-gstc);  background: rgba(59,130,246,.1);  border-color: rgba(59,130,246,.2);  }
-  &[data-g="GERE"]  { color: var(--c-gere);  background: rgba(16,185,129,.1);  border-color: rgba(16,185,129,.2);  }
-  &[data-g="SESMT"] { color: var(--c-sesmt); background: rgba(167,139,250,.1); border-color: rgba(167,139,250,.2); }
+  &[data-g="GOMAN"]    { color: var(--c-goman); background: rgba(245,158,11,.1);  border-color: rgba(245,158,11,.22);  }
+  &[data-g="GSTC"]     { color: var(--c-gstc);  background: rgba(59,130,246,.1);  border-color: rgba(59,130,246,.22);  }
+  &[data-g="GERE"]     { color: var(--c-gere);  background: rgba(16,185,129,.1);  border-color: rgba(16,185,129,.22);  }
+  &[data-g="SESMT"]    { color: var(--c-sesmt); background: rgba(167,139,250,.1); border-color: rgba(167,139,250,.22); }
+  &[data-g="ADM"]      { color: #fb7185; background: rgba(251,113,133,.1); border-color: rgba(251,113,133,.22); }
+  &[data-g="LOGISTICA"]{ color: #22d3ee; background: rgba(34,211,238,.1);  border-color: rgba(34,211,238,.22);  }
+  &[data-g="OFICINA"]  { color: #a3a3a3; background: rgba(163,163,163,.1); border-color: rgba(163,163,163,.22); }
+  &[data-g="SPOT"]     { color: #e879f9; background: rgba(232,121,249,.1); border-color: rgba(232,121,249,.22); }
 
   &--base {
     color: rgba(255,255,255,.5);
@@ -1680,77 +1807,85 @@ async function onImportFile(event: Event) {
 
 // ── Dialog ────────────────────────────────────────────────────────────────────
 .dbp-dlg {
-  min-width: 380px;
+  min-width: 390px;
   max-width: 460px;
-  border-radius: 14px !important;
+  border-radius: 16px !important;
   overflow: hidden;
   border: 1px solid var(--dbp-border) !important;
 }
 
 .dbp-dlg__bar {
   height: 3px;
-  &[data-g="GOMAN"] { background: var(--c-goman); }
-  &[data-g="GSTC"]  { background: var(--c-gstc);  }
-  &[data-g="GERE"]  { background: var(--c-gere);  }
-  &[data-g="SESMT"] { background: var(--c-sesmt); }
-  &[data-g="ADM"] { background: #fb7185; }
-  &[data-g="LOGISTICA"] { background: #22d3ee; }
-  &[data-g="OFICINA"] { background: #a3a3a3; }
-  &[data-g="SPOT"] { background: #e879f9; }
+  &[data-g="GOMAN"]    { background: linear-gradient(90deg, var(--c-goman), transparent); }
+  &[data-g="GSTC"]     { background: linear-gradient(90deg, var(--c-gstc), transparent); }
+  &[data-g="GERE"]     { background: linear-gradient(90deg, var(--c-gere), transparent); }
+  &[data-g="SESMT"]    { background: linear-gradient(90deg, var(--c-sesmt), transparent); }
+  &[data-g="ADM"]      { background: linear-gradient(90deg, #fb7185, transparent); }
+  &[data-g="LOGISTICA"]{ background: linear-gradient(90deg, #22d3ee, transparent); }
+  &[data-g="OFICINA"]  { background: linear-gradient(90deg, #a3a3a3, transparent); }
+  &[data-g="SPOT"]     { background: linear-gradient(90deg, #e879f9, transparent); }
 }
 
 .dbp-dlg__head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 20px 20px 12px;
+  padding: 22px 22px 14px;
   border-bottom: 1px solid var(--dbp-border);
 }
+
 .dbp-dlg__title {
   font-family: 'Syne', sans-serif;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
-  margin: 0 0 3px;
-  letter-spacing: -.01em;
+  margin: 0 0 4px;
+  letter-spacing: -.02em;
 }
+
 .dbp-dlg__sub {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   color: var(--dbp-muted);
   margin: 0;
 }
+
 .dbp-dlg__x {
   background: none;
   border: none;
   cursor: pointer;
   color: var(--dbp-muted);
-  padding: 4px;
-  border-radius: 6px;
+  padding: 5px;
+  border-radius: 7px;
   line-height: 1;
-  margin-top: -2px;
+  margin-top: -3px;
   flex-shrink: 0;
-  &:hover { background: rgba(255,255,255,.06); color: var(--dbp-txt); }
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .14s;
+  &:hover { background: rgba(255,255,255,.07); color: var(--dbp-txt); }
 }
 
 .dbp-dlg__body {
-  padding: 16px 20px;
+  padding: 18px 22px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .dbp-dlg__foot {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  padding: 12px 20px 18px;
+  padding: 14px 22px 20px;
   border-top: 1px solid var(--dbp-border);
 }
+
 .dbp-dlg__cancel {
   font-size: 13px;
   font-weight: 600;
-  padding: 8px 16px;
-  border-radius: 8px;
+  padding: 9px 18px;
+  border-radius: 9px;
   border: 1px solid var(--dbp-border);
   background: transparent;
   color: var(--dbp-muted);
@@ -1758,21 +1893,28 @@ async function onImportFile(event: Event) {
   transition: all .14s;
   &:hover { background: rgba(255,255,255,.05); color: var(--dbp-txt); }
 }
+
 .dbp-dlg__save {
   font-size: 13px;
   font-weight: 700;
-  padding: 8px 20px;
-  border-radius: 8px;
+  padding: 9px 22px;
+  border-radius: 9px;
   border: none;
-  background: var(--dbp-accent);
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
   color: #fff;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  transition: opacity .14s, transform .12s;
-  &:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
-  &:disabled { opacity: .5; cursor: not-allowed; }
+  transition: opacity .14s, transform .12s, box-shadow .15s;
+  box-shadow: 0 2px 10px rgba(var(--dbp-accent-rgb),.24);
+
+  &:hover:not(:disabled) {
+    opacity: .9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(var(--dbp-accent-rgb),.36);
+  }
+  &:disabled { opacity: .45; cursor: not-allowed; }
 }
 
 @media (max-width: 500px) {
