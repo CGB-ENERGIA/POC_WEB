@@ -127,23 +127,34 @@
                     <div
                       v-for="slot in [0, 1, 2]"
                       :key="slot"
-                      class="ac-ev-slot"
-                      :class="fotosExpand.find(f => f.sort_order === slot) ? 'ac-ev-slot--filled' : 'ac-ev-slot--empty'"
+                      class="ac-ev-card"
+                      :class="fotosExpand.find(f => f.sort_order === slot) ? 'ac-ev-card--filled' : 'ac-ev-card--empty'"
                     >
                       <template v-if="fotosExpand.find(f => f.sort_order === slot)">
                         <img
                           :src="fotoUrl(fotosExpand.find(f => f.sort_order === slot)!.r2_key)!"
-                          class="ac-ev-slot__img"
+                          class="ac-ev-card__img"
                           @click="abrirFoto(fotoUrl(fotosExpand.find(f => f.sort_order === slot)!.r2_key)!)"
                         />
+                        <div class="ac-ev-card__caption">
+                          <q-icon :name="FOTO_LABELS[slot]?.icon ?? 'mdi-camera'" size="12px" />
+                          <span class="ac-ev-card__num">{{ slot + 1 }}º</span>
+                          {{ FOTO_LABELS[slot]?.label ?? `Foto ${slot + 1}` }}
+                        </div>
+                        <div class="ac-ev-card__badge ac-ev-card__badge--ok">
+                          <q-icon name="mdi-check" size="11px" />
+                        </div>
                       </template>
                       <template v-else>
-                        <q-icon :name="FOTO_LABELS[slot]?.icon ?? 'mdi-image-off-outline'" size="28px" color="grey-4" />
+                        <q-icon :name="FOTO_LABELS[slot]?.icon ?? 'mdi-image-off-outline'" size="30px" class="ac-ev-card__empty-icon" />
+                        <div class="ac-ev-card__empty-label">
+                          <span class="ac-ev-card__num">{{ slot + 1 }}º</span>
+                          {{ FOTO_LABELS[slot]?.label ?? `Foto ${slot + 1}` }}
+                        </div>
+                        <div class="ac-ev-card__badge ac-ev-card__badge--miss">
+                          <q-icon name="mdi-alert" size="11px" />
+                        </div>
                       </template>
-                      <div class="ac-ev-slot__label">
-                        <span class="ac-ev-slot__num">{{ slot + 1 }}º</span>
-                        {{ FOTO_LABELS[slot]?.label ?? `Foto ${slot + 1}` }}
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -699,60 +710,74 @@ $inactive-text: #475569;
 
 // ── Evidências Obrigatórias ───────────────────────────────────────────────────
 .ac-evidencias {
-  border: 1.5px solid #e2e8f0; border-radius: 10px;
-  overflow: hidden; background: #fff;
+  border: 1.5px solid #e2e8f0; border-radius: 12px;
+  overflow: hidden; background: #f8fafc;
 
   &__header {
     display: flex; align-items: center;
-    padding: 8px 12px;
-    background: #f8fafc;
+    padding: 10px 14px;
+    background: #fff;
     border-bottom: 1px solid #e2e8f0;
-    font-size: 11px; font-weight: 700; color: #64748b; letter-spacing: .5px;
+    font-size: 11px; font-weight: 700; color: #64748b; letter-spacing: .8px;
   }
   &__count {
     margin-left: auto;
-    font-size: 12px; font-weight: 700;
+    font-size: 13px; font-weight: 800;
     &--ok   { color: #16a34a; }
     &--warn { color: #d97706; }
   }
   &__grid {
     display: grid; grid-template-columns: repeat(3, 1fr);
-    gap: 0;
-    @media (max-width: 860px) { grid-template-columns: 1fr; }
+    gap: 10px; padding: 10px;
+    @media (max-width: 700px) { grid-template-columns: 1fr; }
   }
 }
 
-.ac-ev-slot {
-  display: flex; flex-direction: column; align-items: center;
-  padding: 10px 10px 8px;
-  border-right: 1px solid #e2e8f0;
-  &:last-child { border-right: none; }
+.ac-ev-card {
+  position: relative; border-radius: 8px; overflow: hidden;
+  background: #fff; border: 1.5px solid #e2e8f0;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
 
-  @media (max-width: 860px) {
-    border-right: none;
-    border-bottom: 1px solid #e2e8f0;
-    &:last-child { border-bottom: none; }
+  &--filled { }
+  &--empty {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: 130px; gap: 8px;
+    border-style: dashed; border-color: #cbd5e1;
+    background: #f8fafc;
   }
-
-  &--filled { background: #f1f5f9; }
-  &--empty  { background: #f8fafc; min-height: 120px; justify-content: center; }
 
   &__img {
-    width: 100%;
-    aspect-ratio: 4/3;
-    object-fit: cover;
-    object-position: center top;
-    border-radius: 6px;
-    cursor: zoom-in;
-    display: block;
+    width: 100%; aspect-ratio: 4/3;
+    object-fit: cover; object-position: center;
+    display: block; cursor: zoom-in;
   }
-  &__label {
-    font-size: 10.5px; color: #64748b; text-align: center;
-    font-weight: 500; margin-top: 6px;
+
+  &__caption {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,.72));
+    color: #fff; padding: 20px 10px 8px;
+    font-size: 11px; font-weight: 600;
+    display: flex; align-items: center; gap: 4px;
+    pointer-events: none;
+  }
+
+  &__num { font-weight: 800; opacity: .8; }
+
+  &__badge {
+    position: absolute; top: 7px; right: 7px;
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,.25);
+    &--ok   { background: #16a34a; color: #fff; }
+    &--miss { background: #d97706; color: #fff; }
+  }
+
+  &__empty-icon { color: #cbd5e1; }
+  &__empty-label {
+    font-size: 11.5px; color: #94a3b8; font-weight: 500;
+    text-align: center; padding: 0 8px;
     display: flex; align-items: center; gap: 3px;
-  }
-  &__num {
-    font-weight: 700; color: #94a3b8;
   }
 }
 
