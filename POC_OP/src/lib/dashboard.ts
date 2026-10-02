@@ -697,6 +697,27 @@ export async function deletarChecklist(id: string, clientId: string | null): Pro
   }
 }
 
+// ─── Fotos obrigatórias do checklist ─────────────────────────────────────────
+
+export interface FotoChecklistRow {
+  id: string;
+  submission_id: string;
+  tipo: string;
+  pergunta_id: string | null;
+  r2_key: string;
+  sort_order: number;
+}
+
+export async function fetchFotosChecklist(submissionId: string): Promise<FotoChecklistRow[]> {
+  const { data, error } = await supabase
+    .from("checklist_photos")
+    .select("id,submission_id,tipo,pergunta_id,r2_key,sort_order")
+    .eq("submission_id", submissionId)
+    .order("sort_order");
+  if (error) throw error;
+  return (data ?? []) as FotoChecklistRow[];
+}
+
 /** Filtra gerência de employee lookup. */
 export function filterByGerencia(
   subs: SubmissionRow[],

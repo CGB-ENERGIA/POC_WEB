@@ -113,26 +113,63 @@
             </button>
             <div v-if="expandedId === item.id" class="ac-expand__body">
               <q-spinner v-if="loadingResp" color="primary" size="20px" />
-              <div v-else-if="!respostasExpand.length" class="text-caption text-grey-5">Nenhuma resposta encontrada.</div>
-              <div v-else class="ac-resp-list">
-                <div v-for="r in respostasExpand" :key="r.pergunta_id" class="ac-resp-row">
-                  <q-icon
-                    :name="r.resposta === 'conforme' ? 'mdi-check-circle' : 'mdi-close-circle'"
-                    :color="r.resposta === 'conforme' ? 'positive' : 'negative'"
-                    size="16px"
-                  />
-                  <div class="ac-resp-row__text">
-                    <div class="ac-resp-row__pergunta">{{ r.pergunta }}</div>
-                    <div v-if="r.observacao" class="ac-resp-row__obs">{{ r.observacao }}</div>
+              <template v-else>
+                <!-- Evidências Obrigatórias -->
+                <div class="ac-evidencias">
+                  <div class="ac-evidencias__header">
+                    <q-icon name="mdi-camera-outline" size="15px" class="q-mr-xs" />
+                    EVIDÊNCIAS OBRIGATÓRIAS
+                    <span :class="['ac-evidencias__count', fotosExpand.length >= 3 ? 'ac-evidencias__count--ok' : 'ac-evidencias__count--warn']">
+                      {{ fotosExpand.length }}/3
+                    </span>
                   </div>
-                  <img
-                    v-if="fotoUrl(r.foto_r2_key)"
-                    :src="fotoUrl(r.foto_r2_key)!"
-                    class="ac-resp-row__foto"
-                    @click="abrirFoto(fotoUrl(r.foto_r2_key)!)"
-                  />
+                  <div class="ac-evidencias__grid">
+                    <div
+                      v-for="slot in [0, 1, 2]"
+                      :key="slot"
+                      class="ac-ev-slot"
+                      :class="fotosExpand.find(f => f.sort_order === slot) ? 'ac-ev-slot--filled' : 'ac-ev-slot--empty'"
+                    >
+                      <template v-if="fotosExpand.find(f => f.sort_order === slot)">
+                        <img
+                          :src="fotoUrl(fotosExpand.find(f => f.sort_order === slot)!.r2_key)!"
+                          class="ac-ev-slot__img"
+                          @click="abrirFoto(fotoUrl(fotosExpand.find(f => f.sort_order === slot)!.r2_key)!)"
+                        />
+                      </template>
+                      <template v-else>
+                        <q-icon :name="FOTO_LABELS[slot]?.icon ?? 'mdi-image-off-outline'" size="28px" color="grey-4" />
+                      </template>
+                      <div class="ac-ev-slot__label">
+                        <span class="ac-ev-slot__num">{{ slot + 1 }}º</span>
+                        {{ FOTO_LABELS[slot]?.label ?? `Foto ${slot + 1}` }}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+
+                <!-- Respostas -->
+                <div v-if="!respostasExpand.length" class="text-caption text-grey-5 q-mt-sm">Nenhuma resposta encontrada.</div>
+                <div v-else class="ac-resp-list q-mt-sm">
+                  <div v-for="r in respostasExpand" :key="r.pergunta_id" class="ac-resp-row">
+                    <q-icon
+                      :name="r.resposta === 'conforme' ? 'mdi-check-circle' : 'mdi-close-circle'"
+                      :color="r.resposta === 'conforme' ? 'positive' : 'negative'"
+                      size="16px"
+                    />
+                    <div class="ac-resp-row__text">
+                      <div class="ac-resp-row__pergunta">{{ r.pergunta }}</div>
+                      <div v-if="r.observacao" class="ac-resp-row__obs">{{ r.observacao }}</div>
+                    </div>
+                    <img
+                      v-if="fotoUrl(r.foto_r2_key)"
+                      :src="fotoUrl(r.foto_r2_key)!"
+                      class="ac-resp-row__foto"
+                      @click="abrirFoto(fotoUrl(r.foto_r2_key)!)"
+                    />
+                  </div>
+                </div>
+              </template>
             </div>
           </div>
         </div>
@@ -251,8 +288,10 @@ import {
   atualizarStatusChecklist,
   deletarChecklist,
   fetchResponses,
+  fetchFotosChecklist,
   type ChecklistParaAnalise,
   type ResponseRow,
+  type FotoChecklistRow,
   type AnaliseStatus,
 } from "@/lib/dashboard";
 import { useAuth } from "@/composables/useAuth";
@@ -353,14 +392,24 @@ function fmtDate(iso: string) {
 const expandedId = ref<string | null>(null);
 const loadingResp = ref(false);
 const respostasExpand = ref<ResponseRow[]>([]);
+const fotosExpand = ref<FotoChecklistRow[]>([]);
+
+const FOTO_LABELS: Record<number, { icon: string; label: string }> = {
+  0: { icon: "mdi-account-group-outline", label: "Selfie com a equipe" },
+  1: { icon: "mdi-truck-outline",          label: "Foto da viatura (prefixo)" },
+  2: { icon: "mdi-account-hard-hat-outline", label: "Colaboradores em atividade" },
+};
 
 async function toggleExpand(id: string) {
   if (expandedId.value === id) { expandedId.value = null; return; }
   expandedId.value = id;
   loadingResp.value = true;
   respostasExpand.value = [];
+  fotosExpand.value = [];
   try {
-    respostasExpand.value = await fetchResponses([id]);
+    const [respostas, fotos] = await Promise.all([fetchResponses([id]), fetchFotosChecklist(id)]);
+    respostasExpand.value = respostas;
+    fotosExpand.value = fotos;
   } finally {
     loadingResp.value = false;
   }
@@ -582,6 +631,57 @@ $inactive-text: #475569;
   font-size: 11px; font-weight: 700; letter-spacing: .5px;
 }
 .td-mono { font-variant-numeric: tabular-nums; }
+
+// ── Evidências Obrigatórias ───────────────────────────────────────────────────
+.ac-evidencias {
+  border: 1.5px solid #e2e8f0; border-radius: 10px;
+  overflow: hidden; background: #fff;
+
+  &__header {
+    display: flex; align-items: center;
+    padding: 8px 12px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 11px; font-weight: 700; color: #64748b; letter-spacing: .5px;
+  }
+  &__count {
+    margin-left: auto;
+    font-size: 12px; font-weight: 700;
+    &--ok   { color: #16a34a; }
+    &--warn { color: #d97706; }
+  }
+  &__grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+  }
+}
+
+.ac-ev-slot {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 12px 8px 10px;
+  border-right: 1px solid #e2e8f0;
+  &:last-child { border-right: none; }
+  position: relative;
+  min-height: 100px;
+
+  &--filled { background: #fff; }
+  &--empty  { background: #f8fafc; }
+
+  &__img {
+    width: 100%; max-height: 140px;
+    object-fit: cover; border-radius: 6px;
+    cursor: zoom-in;
+    margin-bottom: 6px;
+  }
+  &__label {
+    font-size: 10.5px; color: #64748b; text-align: center;
+    font-weight: 500; margin-top: 4px;
+    display: flex; align-items: center; gap: 3px;
+  }
+  &__num {
+    font-weight: 700; color: #94a3b8;
+  }
+}
 
 // ── Dark mode ─────────────────────────────────────────────────────────────────
 .body--dark {
