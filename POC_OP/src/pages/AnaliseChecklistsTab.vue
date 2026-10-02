@@ -167,6 +167,15 @@
                       <q-icon name="mdi-close-circle" color="negative" size="16px" class="ac-nc-item__icon" />
                       <div class="ac-nc-item__body">
                         <div class="ac-nc-item__pergunta">{{ r.pergunta }}</div>
+                        <div v-if="r.itens?.length" class="ac-nc-item__itens">
+                          <span
+                            v-for="it in r.itens" :key="it.nome"
+                            :class="['ac-item-chip', it.conforme ? 'ac-item-chip--ok' : 'ac-item-chip--nc']"
+                          >
+                            <q-icon :name="it.conforme ? 'mdi-check' : 'mdi-close'" size="11px" />
+                            {{ it.nome }}
+                          </span>
+                        </div>
                         <div v-if="r.observacao" class="ac-nc-item__obs">
                           <q-icon name="mdi-comment-text-outline" size="12px" class="q-mr-xs" />{{ r.observacao }}
                         </div>
@@ -195,6 +204,15 @@
                     />
                     <div class="ac-resp-row__text">
                       <div class="ac-resp-row__pergunta">{{ r.pergunta }}</div>
+                      <div v-if="r.itens?.length" class="ac-resp-row__itens">
+                        <span
+                          v-for="it in r.itens" :key="it.nome"
+                          :class="['ac-item-chip', it.conforme ? 'ac-item-chip--ok' : 'ac-item-chip--nc']"
+                        >
+                          <q-icon :name="it.conforme ? 'mdi-check' : 'mdi-close'" size="11px" />
+                          {{ it.nome }}
+                        </span>
+                      </div>
                       <div v-if="r.observacao" class="ac-resp-row__obs">{{ r.observacao }}</div>
                     </div>
                     <img
@@ -644,8 +662,19 @@ $inactive-text: #475569;
 .ac-resp-row { display: flex; align-items: flex-start; gap: 8px; }
 .ac-resp-row__text { flex: 1; min-width: 0; }
 .ac-resp-row__pergunta { font-size: 12px; color: #334155; font-weight: 500; }
+.ac-resp-row__itens { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .ac-resp-row__obs { font-size: 11px; color: #64748b; margin-top: 2px; }
 .ac-resp-row__foto { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; cursor: zoom-in; flex-shrink: 0; }
+
+.ac-nc-item__itens { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+
+.ac-item-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 7px; border-radius: 999px;
+  font-size: 11px; font-weight: 600;
+  &--ok { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+  &--nc { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+}
 
 // ── Badges ────────────────────────────────────────────────────────────────────
 .status-badge {
