@@ -75,7 +75,8 @@
 
       <!-- ── FUNCIONÁRIOS ─────────────────────────────────────────────────────── -->
       <template v-if="tab === 'funcionarios'">
-        <div class="dbp-toolbar">
+        <!-- Linha busca + botão Adicionar sempre visível -->
+        <div class="dbp-toolbar-top">
           <div class="dbp-search-shell">
             <q-icon name="mdi-magnify" size="17px" class="dbp-search-icon" />
             <input
@@ -88,21 +89,21 @@
               <q-icon name="mdi-close" size="13px" />
             </button>
           </div>
-
-          <div class="dbp-pills">
-            <button
-              v-for="g in ['Todas', 'GOMAN', 'GSTC', 'GERE', 'ADM', 'LOGISTICA', 'OFICINA', 'SESMT', 'SPOT']"
-              :key="g"
-              class="dbp-pill"
-              :class="[{ '--active': empGerenciaFilter === g }, g !== 'Todas' ? `--${g.toLowerCase()}` : '']"
-              @click="empGerenciaFilter = g"
-            >{{ g }}</button>
-          </div>
-
           <button class="dbp-add-btn" @click="openEmpDialog()">
             <q-icon name="mdi-plus" size="16px" />
             Adicionar
           </button>
+        </div>
+
+        <!-- Filtros de gerência -->
+        <div class="dbp-pills q-mb-sm">
+          <button
+            v-for="g in ['Todas', 'GOMAN', 'GSTC', 'GERE', 'ADM', 'LOGISTICA', 'OFICINA', 'SESMT', 'SPOT']"
+            :key="g"
+            class="dbp-pill"
+            :class="[{ '--active': empGerenciaFilter === g }, g !== 'Todas' ? `--${g.toLowerCase()}` : '']"
+            @click="empGerenciaFilter = g"
+          >{{ g }}</button>
         </div>
 
         <button class="dbp-collapse-row" @click="empListOpen = !empListOpen">
@@ -1264,6 +1265,15 @@ async function onImportFile(event: Event) {
 }
 
 // ── Toolbar ───────────────────────────────────────────────────────────────────
+.dbp-toolbar-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+
+  .dbp-search-shell { flex: 1; }
+}
+
 .dbp-toolbar {
   display: flex;
   align-items: center;
