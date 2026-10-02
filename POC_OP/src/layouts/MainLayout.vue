@@ -45,7 +45,7 @@
       </q-toolbar>
     </q-header>
 
-    <q-drawer ref="drawerRef" v-model="leftDrawerOpen" show-if-above bordered class="app-drawer">
+    <q-drawer v-model="leftDrawerOpen" show-if-above bordered class="app-drawer">
       <div class="sidebar-brand">
         <BrandLogo stacked :size="72" :title="BRAND.name" :subtitle="BRAND.tagline" />
       </div>
@@ -243,7 +243,6 @@ const fieldLinks: EssentialLinkProps[] = [
   },
 ];
 
-const drawerRef = ref<{ $el: HTMLElement } | null>(null);
 const leftDrawerOpen = ref(false);
 
 function toggleLeftDrawer() {
@@ -255,22 +254,12 @@ function toggleDarkMode() {
   localStorage.setItem("darkMode", String($q.dark.isActive));
 }
 
-function handleOutsideClick(event: MouseEvent) {
-  if (!leftDrawerOpen.value) return;
-  const drawerEl = drawerRef.value?.$el;
-  if (drawerEl && !drawerEl.contains(event.target as Node)) {
-    leftDrawerOpen.value = false;
-  }
-}
-
 onMounted(() => {
-  document.addEventListener("click", handleOutsideClick);
   const saved = localStorage.getItem("darkMode");
   if (saved !== null) {
     $q.dark.set(saved === "true");
   }
 });
-onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
 </script>
 
 <style scoped>

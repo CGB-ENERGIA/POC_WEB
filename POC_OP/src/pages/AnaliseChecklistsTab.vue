@@ -748,8 +748,8 @@ $inactive-text: #475569;
   }
 
   &__img {
-    width: 100%; aspect-ratio: 4/3;
-    object-fit: cover; object-position: center;
+    width: 100%; aspect-ratio: 3/4;
+    object-fit: contain; background: #111;
     display: block; cursor: zoom-in;
   }
 
