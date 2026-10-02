@@ -148,7 +148,43 @@
                   </div>
                 </div>
 
-                <!-- Respostas -->
+                <!-- Não Conformidades em destaque -->
+                <div
+                  v-if="respostasExpand.filter(r => r.resposta === 'nao_conforme').length"
+                  class="ac-ncs q-mt-sm"
+                >
+                  <div class="ac-ncs__header">
+                    <q-icon name="mdi-alert-circle-outline" size="15px" class="q-mr-xs" />
+                    NÃO CONFORMIDADES
+                    <span class="ac-ncs__count">{{ respostasExpand.filter(r => r.resposta === 'nao_conforme').length }}</span>
+                  </div>
+                  <div class="ac-ncs__list">
+                    <div
+                      v-for="r in respostasExpand.filter(r => r.resposta === 'nao_conforme')"
+                      :key="'nc-' + r.pergunta_id"
+                      class="ac-nc-item"
+                    >
+                      <q-icon name="mdi-close-circle" color="negative" size="16px" class="ac-nc-item__icon" />
+                      <div class="ac-nc-item__body">
+                        <div class="ac-nc-item__pergunta">{{ r.pergunta }}</div>
+                        <div v-if="r.observacao" class="ac-nc-item__obs">
+                          <q-icon name="mdi-comment-text-outline" size="12px" class="q-mr-xs" />{{ r.observacao }}
+                        </div>
+                        <div v-if="r.atribuido_nome" class="ac-nc-item__atrib">
+                          <q-icon name="mdi-account-outline" size="12px" class="q-mr-xs" />{{ r.atribuido_nome }}
+                        </div>
+                      </div>
+                      <img
+                        v-if="fotoUrl(r.foto_r2_key)"
+                        :src="fotoUrl(r.foto_r2_key)!"
+                        class="ac-nc-item__foto"
+                        @click="abrirFoto(fotoUrl(r.foto_r2_key)!)"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Respostas completas -->
                 <div v-if="!respostasExpand.length" class="text-caption text-grey-5 q-mt-sm">Nenhuma resposta encontrada.</div>
                 <div v-else class="ac-resp-list q-mt-sm">
                   <div v-for="r in respostasExpand" :key="r.pergunta_id" class="ac-resp-row">
@@ -674,11 +710,11 @@ $inactive-text: #475569;
 
   &__img {
     width: 100%;
-    max-height: 260px;
-    object-fit: contain;
+    aspect-ratio: 4/3;
+    object-fit: cover;
+    object-position: center top;
     border-radius: 6px;
     cursor: zoom-in;
-    background: #000;
     display: block;
   }
   &__label {
@@ -688,6 +724,54 @@ $inactive-text: #475569;
   }
   &__num {
     font-weight: 700; color: #94a3b8;
+  }
+}
+
+// ── Não Conformidades destaque ────────────────────────────────────────────────
+.ac-ncs {
+  border: 1.5px solid rgba(220,38,38,.3); border-radius: 10px;
+  overflow: hidden; background: #fff8f8;
+
+  &__header {
+    display: flex; align-items: center;
+    padding: 8px 12px;
+    background: #fef2f2;
+    border-bottom: 1px solid rgba(220,38,38,.2);
+    font-size: 11px; font-weight: 700; color: #991b1b; letter-spacing: .5px;
+  }
+  &__count {
+    margin-left: 6px;
+    background: #dc2626; color: #fff;
+    border-radius: 999px; padding: 0 7px;
+    font-size: 11px; font-weight: 700;
+  }
+  &__list { display: flex; flex-direction: column; gap: 0; }
+}
+
+.ac-nc-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(220,38,38,.1);
+  &:last-child { border-bottom: none; }
+
+  &__icon { flex-shrink: 0; margin-top: 2px; }
+  &__body { flex: 1; min-width: 0; }
+  &__pergunta { font-size: 12.5px; font-weight: 600; color: #7f1d1d; }
+  &__obs {
+    font-size: 11.5px; color: #991b1b;
+    margin-top: 3px; display: flex; align-items: center;
+    background: rgba(220,38,38,.06); border-radius: 4px;
+    padding: 3px 6px;
+  }
+  &__atrib {
+    font-size: 11px; color: #b91c1c; margin-top: 3px;
+    display: flex; align-items: center;
+  }
+  &__foto {
+    width: 72px; height: 72px;
+    object-fit: cover; border-radius: 6px;
+    cursor: zoom-in; flex-shrink: 0;
+    border: 1.5px solid rgba(220,38,38,.25);
   }
 }
 
