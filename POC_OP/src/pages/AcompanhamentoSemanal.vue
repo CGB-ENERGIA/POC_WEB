@@ -845,7 +845,7 @@ const barBase = computed(() => {
       },
     },
     grid: { left: 12, right: 12, top: 44, bottom: 40 },
-    xAxis: cleanXAxis(entries.map(([nome]) => nome)),
+    xAxis: cleanXAxis(entries.map(([nome]) => nome), { interval: 0, hideOverlap: false }),
     yAxis: { show: false },
     series: [{
       type: "bar" as const,
@@ -901,7 +901,7 @@ const barProcesso = computed(() => {
       },
     },
     grid: { left: 12, right: 12, top: 52, bottom: 40 },
-    xAxis: cleanXAxis(labels),
+    xAxis: cleanXAxis(labels, { interval: 0, hideOverlap: false, width: 88, overflow: "break" }),
     yAxis: silentYAxis,
     series: [{
       type: "bar" as const,

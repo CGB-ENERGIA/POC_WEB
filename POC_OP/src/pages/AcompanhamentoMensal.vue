@@ -771,7 +771,7 @@ const chartBase = computed(() => {
         ], "Clique para ver só esta base"),
     },
     grid: { left: 12, right: 12, top: 44, bottom: 28 },
-    xAxis: cleanXAxis(names),
+    xAxis: cleanXAxis(names, { interval: 0, hideOverlap: false }),
     yAxis: { show: false, min: 0, max: yPadMax(vals) },
     series: singleBar(names, vals, selected),
   };
@@ -791,7 +791,7 @@ const chartGerencia = computed(() => {
         ], "Clique para filtrar a gerência"),
     },
     grid: { left: 12, right: 12, top: 44, bottom: 52 },
-    xAxis: cleanXAxis(names, { rotate: 20 }),
+    xAxis: cleanXAxis(names, { rotate: 20, interval: 0, hideOverlap: false }),
     yAxis: { show: false, min: 0, max: yPadMax(vals) },
     series: singleBar(names, vals, selected),
   };
