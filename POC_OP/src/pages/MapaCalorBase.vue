@@ -238,7 +238,7 @@ const semanasOpts = [
 ];
 const mesesOpts    = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26","jul/26","ago/26","set/26","out/26","nov/26","dez/26"];
 const anosOpts     = ["2024","2025","2026"];
-const gerenciasOpts = ["Todos","GERE","GOMAN","GSTC","SPOT"];
+const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
 const gerentesOpts  = ["Todos","Afonso","Jamerson","Julio C.","Marcos","Paulo","Rafaela","Ricardo"];
 const basesOpts    = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 

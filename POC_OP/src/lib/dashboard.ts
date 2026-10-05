@@ -1,5 +1,12 @@
 import { supabase } from "./supabase";
 
+/**
+ * Gerências válidas — exatamente como estão na tabela `employees`.
+ * Usar sempre esta constante para evitar inconsistências entre páginas.
+ */
+export const GERENCIAS = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT", "SPOT"] as const;
+export type Gerencia = typeof GERENCIAS[number];
+
 export interface Filters {
   ano: number;
   mes?: number;

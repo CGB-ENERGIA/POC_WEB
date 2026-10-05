@@ -276,7 +276,7 @@ const meses = [
   { value: 9,  label: "set" }, { value: 10, label: "out" },
   { value: 11, label: "nov" }, { value: 12, label: "dez" },
 ];
-const gerencias = ["Todos", "GERE", "GOMAN", "GSTC", "OFICINA", "ADM", "SESMT"];
+const gerencias = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT", "SPOT"];
 const bases     = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const tiposPoc  = ["Todos", "Administrativo", "Operacional"];
 const gerentes  = [

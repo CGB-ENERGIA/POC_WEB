@@ -322,7 +322,7 @@ const bases = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 
 const funcoes = ["Todos", "Analista", "Coordenador", "Especialista", "Técnico"];
 
-const gerencias = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT"];
+const gerencias = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT", "SPOT"];
 
 const gerentes = [
   "Todos", "Afonso", "Jamerson", "João F.", "Julio C.", "Leandro",

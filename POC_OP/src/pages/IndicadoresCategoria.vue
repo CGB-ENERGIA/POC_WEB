@@ -232,7 +232,7 @@ const now = new Date();
 
 const anosOpts     = ["2024","2025","2026"];
 const basesOpts    = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
-const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","LOGÍSTICA"];
+const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
 const gerentesOpts  = ["Todos","Afonso","Jackson","Jamerson","Julio C.","Marcos","Paulo","Pryscilla","Rafaela","Ricardo"];
 const tiposOpts     = ["Operacional","Administrativo","Alojamento"];
 

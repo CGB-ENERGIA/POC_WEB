@@ -311,7 +311,7 @@ const showFilters = ref(false);
 
 const anosOpts     = ["2024","2025","2026"];
 const basesOpts    = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
-const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT"];
+const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
 const tiposOpts     = ["Todos","Administrativo","Operacional"];
 const TIPO_AUDITAGEM: Record<string, string[]> = {
   Administrativo: ["ADMINISTRATIVO", "LOGISTICA", "OFICINA", "ADM"],

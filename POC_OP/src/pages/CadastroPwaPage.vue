@@ -115,7 +115,7 @@
         <!-- Filtros de gerência -->
         <div class="dbp-pills q-mb-sm">
           <button
-            v-for="g in ['Todas', 'GOMAN', 'GSTC', 'GERE', 'ADM', 'LOGISTICA', 'OFICINA', 'SESMT', 'SPOT']"
+            v-for="g in ['Todas', 'ADM', 'GERE', 'GOMAN', 'GSTC', 'OFICINA', 'SESMT', 'SPOT']"
             :key="g"
             class="dbp-pill"
             :class="[{ '--active': empGerenciaFilter === g }, g !== 'Todas' ? `--${g.toLowerCase()}` : '']"
@@ -190,7 +190,7 @@
 
           <div class="dbp-pills">
             <button
-              v-for="g in ['Todas', 'GOMAN', 'GSTC', 'GERE', 'ADM', 'LOGISTICA', 'OFICINA', 'SPOT']"
+              v-for="g in ['Todas', 'ADM', 'GERE', 'GOMAN', 'GSTC', 'OFICINA', 'SESMT', 'SPOT']"
               :key="g"
               class="dbp-pill"
               :class="[{ '--active': eqGerenciaFilter === g }, g !== 'Todas' ? `--${g.toLowerCase()}` : '']"
@@ -430,7 +430,7 @@
           <q-input v-model="empForm.nome" label="Nome curto *" dense outlined />
           <q-input v-model="empForm.nome_completo" label="Nome completo *" dense outlined />
           <div class="row q-gutter-sm">
-            <q-select v-model="empForm.gerencia" :options="['GOMAN','GSTC','GERE','ADM','LOGISTICA','OFICINA','SESMT','SPOT']" label="Gerência *" dense outlined class="col" />
+            <q-select v-model="empForm.gerencia" :options="['ADM','GERE','GOMAN','GSTC','OFICINA','SESMT','SPOT']" label="Gerência *" dense outlined class="col" />
             <q-input v-model="empForm.base" label="Base *" dense outlined class="col" />
           </div>
           <div class="row q-gutter-sm items-center">
@@ -463,7 +463,7 @@
         <div class="dbp-dlg__body">
           <q-input v-model="eqForm.base" label="Base *" dense outlined />
           <q-input v-model="eqForm.prefixo" label="Prefixo *" dense outlined />
-          <q-select v-model="eqForm.gerencia" :options="['GOMAN','GSTC','GERE','ADM','LOGISTICA','OFICINA','SPOT']" label="Gerência *" dense outlined />
+          <q-select v-model="eqForm.gerencia" :options="['ADM','GERE','GOMAN','GSTC','OFICINA','SESMT','SPOT']" label="Gerência *" dense outlined />
           <q-input v-model="eqForm.coordenador" label="Coordenador" dense outlined />
           <q-input v-model="eqForm.gerente" label="Gerente" dense outlined />
           <p v-if="eqError" class="text-negative text-caption q-mb-none">{{ eqError }}</p>

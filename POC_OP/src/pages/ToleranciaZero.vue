@@ -238,7 +238,7 @@ const gerentesFinal = ["Todos","Afonso","Jamerson","João F.","Julio C.","Leandr
 const bases        = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const mesesOpts    = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26","jul/26","ago/26","set/26","out/26","nov/26","dez/26"];
 const semanasOpts  = ["Todos","1ª Semana","2ª Semana","3ª Semana","4ª Semana"];
-const gerenciasOpts = ["Todos","GERE","GOMAN","GSTC","SPOT"];
+const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
 
 const allPrefixes: string[] = [
   "MA-BCB-E001M","MA-BCB-E002M","MA-PDT-P002M","MA-BDC-E002M",

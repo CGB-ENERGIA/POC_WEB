@@ -280,7 +280,7 @@ const gerentes = [
   "Marcos", "Paulo", "Rafaela", "Ricardo", "Valvick", "Waldir"
 ];
 
-const gerencias = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT"];
+const gerencias = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT", "SPOT"];
 
 // ─── Filter state ────────────────────────────────────────────────────────────
 const now = new Date();

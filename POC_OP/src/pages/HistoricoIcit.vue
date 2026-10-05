@@ -144,7 +144,7 @@
 <script setup lang="ts">
 import { reactive, computed, ref, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente } from "@/lib/dashboard";
 
 const { loading, error, submissions, responses, employees, load } = useChecklistData();
 
@@ -156,7 +156,7 @@ interface Row  { prefixo: string; months: (Cell | null)[]; total: { reinc: numbe
 const now = new Date();
 const bases     = ["BCB","BDC","ITM","PDS","PDT","STI"];
 const gerentes  = ["Afonso","Jackson","Julio C.","Marcos","Paulo","Pryscilla","Rafaela","Ricardo"];
-const gerencias = ["GERE","GOMAN","GSTC"];
+const gerencias = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
 const meses     = [
   { v: 1, l: "jan" }, { v: 2, l: "fev" },
   { v: 3, l: "mar" }, { v: 4, l: "abr" },
@@ -252,8 +252,8 @@ const allPrefixes: string[] = [
 
 // â"€â"€â"€ Real data: per-equipe per-month ICIT â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const rawRows = computed<Row[]>(() => {
-  let subs = filterByGerencia(submissions.value, employees.value, filters.gerencia || "Todos");
-  if (filters.gerente) subs = subs.filter(s => s.observador === filters.gerente);
+  let subs = filterByGerente(submissions.value, employees.value, filters.gerente || "Todos");
+  subs = filterByGerencia(subs, employees.value, filters.gerencia || "Todos");
   const subIds = new Set(subs.map(s => s.id));
 
   // Map submission_id â†’ { month, conf, total }
