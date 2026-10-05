@@ -104,7 +104,7 @@ UPDATE public.employees SET coordenador='Paulo', gerente='Cesar', processo='Plan
 UPDATE public.employees SET coordenador='Valvick', gerente='Jamerson', processo='Administrativo' WHERE matricula='12354';
 UPDATE public.employees SET coordenador='Paulo', gerente='Cesar', processo='Plantão' WHERE matricula='12842';
 UPDATE public.employees SET coordenador='Afonso', gerente='Jamerson', processo='Plantão' WHERE matricula='12724';
-UPDATE public.employees SET coordenador='Thiago F.', gerente='Cesar', processo='tat' WHERE matricula='12882';
+UPDATE public.employees SET coordenador='Thiago F.', gerente='Cesar', processo='GOMAN' WHERE matricula='12882';
 UPDATE public.employees SET coordenador='Luis C.', gerente='Jamerson', processo='Construção' WHERE matricula='13744';
 UPDATE public.employees SET coordenador='Rafaela', gerente='Cesar', processo='Construção' WHERE matricula='24109';
 UPDATE public.employees SET coordenador='Rafaela', gerente='Cesar', processo='Linha Viva' WHERE matricula='19677';
