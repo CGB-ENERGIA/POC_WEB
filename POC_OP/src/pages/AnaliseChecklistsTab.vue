@@ -266,9 +266,14 @@
             />
           </template>
           <q-btn
+            flat icon="mdi-pencil-outline" label="Editar"
+            size="sm" color="primary"
+            class="q-ml-auto"
+            @click="abrirEdicao(item)"
+          />
+          <q-btn
             flat icon="mdi-delete-outline" label="Apagar"
             size="sm" color="negative"
-            class="q-ml-auto"
             @click="abrirDelete(item)"
           />
         </div>
@@ -312,6 +317,85 @@
       </q-card>
     </q-dialog>
 
+    <!-- Dialog editar checklist -->
+    <q-dialog v-model="editDialog.open" persistent>
+      <q-card style="width:720px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column">
+        <q-card-section class="row items-center q-pb-none">
+          <q-icon name="mdi-pencil-outline" color="primary" size="24px" class="q-mr-sm" />
+          <div>
+            <div class="text-subtitle1 text-weight-bold">Editar Checklist</div>
+            <div v-if="editDialog.item" class="text-caption text-grey-6">
+              {{ fmtDate(editDialog.item.data) }} · matrícula {{ editDialog.item.matricula }}
+            </div>
+          </div>
+          <q-space />
+          <q-btn flat round dense icon="mdi-close" :disable="editDialog.saving" @click="editDialog.open = false" />
+        </q-card-section>
+
+        <q-card-section style="overflow:auto;flex:1">
+          <div class="text-overline text-grey-6">Cabeçalho</div>
+          <div class="row q-col-gutter-sm q-mb-sm">
+            <div class="col-12 col-sm-6">
+              <q-input v-model="editDialog.equipe" dense outlined label="Equipe / prefixo" />
+            </div>
+            <div class="col-12 col-sm-3">
+              <q-select v-model="editDialog.base" dense outlined label="Base" :options="['BCB','BDC','ITM','PDS','PDT','STI','ADM']" />
+            </div>
+            <div class="col-12 col-sm-3">
+              <q-input v-model="editDialog.observador" dense outlined label="Observador" />
+            </div>
+          </div>
+
+          <div class="text-overline text-grey-6">Membros</div>
+          <div v-for="(m, i) in editDialog.membros" :key="i" class="row q-col-gutter-sm q-mb-xs items-center">
+            <div class="col"><q-input v-model="m.nome" dense outlined label="Nome" /></div>
+            <div class="col-4"><q-input v-model="m.matricula" dense outlined label="Matrícula" /></div>
+            <div class="col-auto">
+              <q-btn flat round dense icon="mdi-close" color="negative" @click="editDialog.membros.splice(i, 1)" />
+            </div>
+          </div>
+          <q-btn
+            flat dense size="sm" icon="mdi-plus" label="Adicionar membro" color="primary" class="q-mb-md"
+            @click="editDialog.membros.push({ nome: '', matricula: '' })"
+          />
+
+          <div class="text-overline text-grey-6">
+            Respostas
+            <span v-if="editDialog.loadingResp"> · carregando…</span>
+            <span v-else> · {{ editDialog.respostas.length }} itens · {{ editDialog.alteradas }} alterado(s)</span>
+          </div>
+          <q-spinner v-if="editDialog.loadingResp" color="primary" size="22px" />
+          <div
+            v-for="r in editDialog.respostas" :key="r.pergunta_id"
+            class="edit-resp" :class="{ 'edit-resp--changed': respostaAlterada(r) }"
+          >
+            <div class="edit-resp__pergunta">{{ r.pergunta }}</div>
+            <div class="row items-center q-gutter-sm">
+              <q-btn-toggle
+                v-model="r.resposta" dense unelevated no-caps size="sm"
+                toggle-color="primary"
+                :options="[{ label: 'Conforme', value: 'conforme' }, { label: 'Não conforme', value: 'nao_conforme' }]"
+              />
+              <q-input v-model="r.observacao" dense outlined class="col" placeholder="Observação" />
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-section v-if="editDialog.error" class="q-py-none">
+          <div class="text-negative text-caption">
+            <q-icon name="mdi-alert-circle-outline" size="14px" /> {{ editDialog.error }}
+          </div>
+        </q-card-section>
+        <q-card-actions align="right" class="q-pb-md q-px-md">
+          <q-btn flat label="Cancelar" color="grey-7" :disable="editDialog.saving" @click="editDialog.open = false" />
+          <q-btn
+            unelevated color="primary" label="Salvar alterações" :loading="editDialog.saving"
+            :disable="editDialog.loadingResp || !editDialog.equipe.trim()" @click="salvarEdicao"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <!-- Lightbox foto -->
     <q-dialog v-model="fotoDialog.open">
       <q-card style="max-width:90vw;max-height:90vh;overflow:hidden;background:transparent;box-shadow:none">
@@ -346,12 +430,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, reactive } from "vue";
+import { ref, computed, onMounted, reactive, watch } from "vue";
 import { useQuasar } from "quasar";
 import {
   fetchChecklistsParaAnalise,
   atualizarStatusChecklist,
   deletarChecklist,
+  editarChecklist,
   fetchResponses,
   fetchFotosChecklist,
   type ChecklistParaAnalise,
@@ -532,6 +617,99 @@ async function confirmarReprovacao() {
     acaoDialog.error = (e as Error).message;
   } finally {
     acaoDialog.saving = false;
+  }
+}
+
+// ── Dialog editar ─────────────────────────────────────────────────────────────
+type RespostaEdit = {
+  pergunta_id: string;
+  pergunta: string;
+  resposta: "conforme" | "nao_conforme";
+  observacao: string | null;
+  _orig: { resposta: "conforme" | "nao_conforme"; observacao: string | null };
+};
+
+const editDialog = reactive({
+  open: false,
+  item: null as ChecklistParaAnalise | null,
+  equipe: "",
+  base: "",
+  observador: "",
+  membros: [] as { nome: string; matricula: string }[],
+  respostas: [] as RespostaEdit[],
+  loadingResp: false,
+  saving: false,
+  error: null as string | null,
+  alteradas: 0,
+});
+
+const normObs = (v: string | null | undefined) => (v ?? "").trim();
+function respostaAlterada(r: RespostaEdit) {
+  return r.resposta !== r._orig.resposta || normObs(r.observacao) !== normObs(r._orig.observacao);
+}
+
+async function abrirEdicao(item: ChecklistParaAnalise) {
+  editDialog.item = item;
+  editDialog.equipe = item.equipe ?? "";
+  editDialog.base = item.base ?? "";
+  editDialog.observador = item.observador ?? "";
+  editDialog.membros = (item.membros ?? []).map((m) => ({ nome: m.nome, matricula: m.matricula }));
+  editDialog.respostas = [];
+  editDialog.error = null;
+  editDialog.open = true;
+  editDialog.loadingResp = true;
+  try {
+    const resp = await fetchResponses([item.id]);
+    editDialog.respostas = resp.map((r) => ({
+      pergunta_id: r.pergunta_id,
+      pergunta: r.pergunta,
+      resposta: r.resposta,
+      observacao: r.observacao,
+      _orig: { resposta: r.resposta, observacao: r.observacao },
+    }));
+  } catch (e) {
+    editDialog.error = (e as Error).message;
+  } finally {
+    editDialog.loadingResp = false;
+  }
+}
+
+watch(
+  () => editDialog.respostas.map((r) => `${r.resposta}|${r.observacao ?? ""}`).join("§"),
+  () => { editDialog.alteradas = editDialog.respostas.filter(respostaAlterada).length; },
+);
+
+async function salvarEdicao() {
+  const item = editDialog.item;
+  if (!item) return;
+  editDialog.saving = true;
+  editDialog.error = null;
+  try {
+    const membros = editDialog.membros
+      .map((m) => ({ nome: m.nome.trim(), matricula: m.matricula.trim() }))
+      .filter((m) => m.nome || m.matricula);
+    const updated = await editarChecklist(item, {
+      equipe: editDialog.equipe,
+      base: editDialog.base,
+      observador: editDialog.observador,
+      membros,
+      respostas: editDialog.respostas.filter(respostaAlterada).map((r) => ({
+        pergunta_id: r.pergunta_id,
+        resposta: r.resposta,
+        observacao: normObs(r.observacao) || null,
+      })),
+    });
+    const idx = itens.value.findIndex((i) => i.id === updated.id);
+    if (idx >= 0) itens.value[idx] = { ...itens.value[idx], ...updated };
+    if (expandedId.value === item.id) {
+      respostasExpand.value = await fetchResponses([item.id]);
+    }
+    editDialog.open = false;
+    $q.notify({ type: "positive", message: "Checklist atualizado.", position: "top", timeout: 3000 });
+  } catch (e) {
+    editDialog.error = (e as Error).message;
+  } finally {
+    editDialog.saving = false;
   }
 }
 
@@ -840,4 +1018,13 @@ $inactive-text: #475569;
   .ac-expand__body { background: #0f172a; }
   .ac-resp-row__pergunta { color: #e2e8f0; }
 }
+
+.edit-resp {
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  border: 1px solid rgba(128, 128, 128, 0.25);
+  border-radius: 8px;
+}
+.edit-resp--changed { border-color: #d97706; background: rgba(217, 119, 6, 0.08); }
+.edit-resp__pergunta { font-size: 12.5px; margin-bottom: 6px; line-height: 1.35; }
 </style>

@@ -705,6 +705,92 @@ export async function atualizarStatusChecklist(
   return row;
 }
 
+export interface EdicaoChecklist {
+  equipe: string;
+  base: string;
+  observador: string;
+  membros: { nome: string; matricula: string }[];
+  /** Somente respostas alteradas. */
+  respostas: { pergunta_id: string; resposta: "conforme" | "nao_conforme"; observacao: string | null }[];
+}
+
+/**
+ * Corrige um checklist já enviado (cabeçalho + respostas) e recalcula o resumo.
+ * Reflete equipe/base/observador/contagens no espelho de user_observations (PWA).
+ */
+export async function editarChecklist(
+  item: ChecklistParaAnalise,
+  edit: EdicaoChecklist,
+): Promise<ChecklistParaAnalise> {
+  for (const r of edit.respostas) {
+    // Ao marcar conforme, os sub-itens deixam de ficar como não conformes.
+    const patch: Record<string, unknown> = { resposta: r.resposta, observacao: r.observacao };
+    if (r.resposta === "conforme") {
+      const { data: atual } = await supabase
+        .from("checklist_responses")
+        .select("itens")
+        .eq("submission_id", item.id)
+        .eq("pergunta_id", r.pergunta_id)
+        .maybeSingle();
+      const itens = (atual?.itens ?? null) as { nome: string; conforme: boolean }[] | null;
+      if (itens?.length) patch.itens = itens.map((it) => ({ ...it, conforme: true }));
+    }
+    const { error } = await supabase
+      .from("checklist_responses")
+      .update(patch)
+      .eq("submission_id", item.id)
+      .eq("pergunta_id", r.pergunta_id);
+    if (error) throw error;
+  }
+
+  const { data: respostas, error: respErr } = await supabase
+    .from("checklist_responses")
+    .select("resposta")
+    .eq("submission_id", item.id);
+  if (respErr) throw respErr;
+  const total = respostas?.length ?? 0;
+  const conformes = (respostas ?? []).filter((r) => r.resposta === "conforme").length;
+  const resumo = {
+    ...(item.resumo as unknown as Record<string, unknown>),
+    total,
+    conformes,
+    naoConformes: total - conformes,
+  };
+
+  const cab = {
+    equipe: edit.equipe.trim(),
+    base: edit.base.trim(),
+    observador: edit.observador.trim(),
+    membros: edit.membros,
+    resumo,
+  };
+  const { data, error } = await supabase
+    .from("checklist_submissions")
+    .update(cab)
+    .eq("id", item.id)
+    .select(CHECKLIST_ANALISE_FIELDS)
+    .single();
+  if (error) throw error;
+
+  if (item.client_id) {
+    const { data: espelho } = await supabase
+      .from("user_observations")
+      .select("resumo")
+      .eq("id", item.client_id)
+      .maybeSingle();
+    await supabase
+      .from("user_observations")
+      .update({
+        equipe: cab.equipe,
+        base: cab.base,
+        observador: cab.observador,
+        resumo: { ...((espelho?.resumo ?? {}) as Record<string, unknown>), total, conformes, naoConformes: total - conformes },
+      })
+      .eq("id", item.client_id);
+  }
+  return data as ChecklistParaAnalise;
+}
+
 /**
  * Apaga um checklist enviado (e em cascata suas respostas/fotos via FK).
  * Remove também o registro espelho em user_observations (usado no PWA), que
