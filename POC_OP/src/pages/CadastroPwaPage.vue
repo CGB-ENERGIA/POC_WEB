@@ -361,6 +361,11 @@
             </button>
           </div>
 
+          <button class="dbp-add-btn" @click="openColabDialog()">
+            <q-icon name="mdi-plus" size="16px" />
+            Adicionar
+          </button>
+
           <div class="dbp-pills">
             <button
               v-for="b in ['Todas', 'BCB', 'BDC', 'ITM', 'PDS', 'PDT', 'STI', 'ADM']" :key="b"
@@ -442,6 +447,37 @@
         <div class="dbp-dlg__foot">
           <button class="dbp-dlg__cancel" v-close-popup>Cancelar</button>
           <button class="dbp-dlg__save" :disabled="saving" @click="saveEmployee">
+            <q-spinner v-if="saving" size="13px" color="white" />
+            {{ saving ? 'Salvando…' : 'Salvar' }}
+          </button>
+        </div>
+      </q-card>
+    </q-dialog>
+
+    <!-- ══ DIALOG COLABORADOR (GERAL) ══════════════════════════════════════════ -->
+    <q-dialog v-model="colabDialog" persistent transition-show="scale" transition-hide="scale">
+      <q-card class="dbp-dlg">
+        <div class="dbp-dlg__bar" data-g="GOMAN" />
+        <div class="dbp-dlg__head">
+          <div>
+            <p class="dbp-dlg__title">Novo Colaborador</p>
+            <p class="dbp-dlg__sub">Membro que aparece na busca de equipes do PWA</p>
+          </div>
+          <button class="dbp-dlg__x" v-close-popup><q-icon name="mdi-close" size="18px" /></button>
+        </div>
+        <div class="dbp-dlg__body">
+          <q-input v-model="colabForm.chapa" label="Chapa *" dense outlined inputmode="numeric" />
+          <q-input v-model="colabForm.nome" label="Nome completo *" dense outlined />
+          <div class="row q-gutter-sm">
+            <q-input v-model="colabForm.funcao" label="Função *" dense outlined class="col" />
+            <q-select v-model="colabForm.base" :options="['BCB','BDC','ITM','PDS','PDT','STI','ADM']" label="Base *" dense outlined class="col" />
+          </div>
+          <q-input v-model="colabForm.rateio" label="Rateio (opcional)" dense outlined placeholder="ex.: 2.169.01" />
+          <p v-if="colabError" class="text-negative text-caption q-mb-none">{{ colabError }}</p>
+        </div>
+        <div class="dbp-dlg__foot">
+          <button class="dbp-dlg__cancel" v-close-popup>Cancelar</button>
+          <button class="dbp-dlg__save" :disabled="saving" @click="saveColaborador">
             <q-spinner v-if="saving" size="13px" color="white" />
             {{ saving ? 'Salvando…' : 'Salvar' }}
           </button>
@@ -623,6 +659,46 @@ const geralBaseFilter = ref("Todas");
 const geralListOpen   = ref(true);
 
 const colaboradores = ref([...FUNCIONARIOS]);
+
+const colabDialog = ref(false);
+const colabError  = ref("");
+const colabForm   = ref({ chapa: "", nome: "", funcao: "", base: "BCB", rateio: "" });
+
+function openColabDialog() {
+  colabError.value = "";
+  colabForm.value  = { chapa: "", nome: "", funcao: "", base: "BCB", rateio: "" };
+  colabDialog.value = true;
+}
+
+async function saveColaborador() {
+  const f = colabForm.value;
+  const chapa = f.chapa.trim();
+  const nome  = f.nome.trim();
+  const funcao = f.funcao.trim();
+  if (!chapa || !nome || !funcao || !f.base) {
+    colabError.value = "Preencha chapa, nome, função e base.";
+    return;
+  }
+  if (!/^\d+$/.test(chapa)) {
+    colabError.value = "A chapa deve conter apenas números.";
+    return;
+  }
+  if (colaboradores.value.some((c) => c.chapa.replace(/^0+/, "") === chapa.replace(/^0+/, ""))) {
+    colabError.value = "Já existe um colaborador com essa chapa.";
+    return;
+  }
+  saving.value = true;
+  colabError.value = "";
+  const { error } = await supabase
+    .from("pwa_colaboradores")
+    .insert({ chapa, nome, funcao, base: f.base, rateio: f.rateio.trim() });
+  saving.value = false;
+  if (error) { colabError.value = error.message; return; }
+
+  $q.notify({ type: "positive", message: "Colaborador adicionado." });
+  colabDialog.value = false;
+  await fetchColaboradores();
+}
 
 const filteredFuncionarios = computed(() => {
   const q = geralSearch.value.toLowerCase();
@@ -831,11 +907,21 @@ async function seedColaboradoresSeVazio() {
 async function fetchColaboradores() {
   try {
     await seedColaboradoresSeVazio();
-    const { data } = await supabase
-      .from("pwa_colaboradores")
-      .select("chapa,nome,funcao,base,rateio")
-      .order("nome");
-    if (data?.length) colaboradores.value = data;
+    // O Supabase devolve no máximo 1000 linhas por consulta: busca em páginas.
+    const todos: typeof colaboradores.value = [];
+    const PAGE = 1000;
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from("pwa_colaboradores")
+        .select("chapa,nome,funcao,base,rateio")
+        .order("nome")
+        .order("chapa")
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      todos.push(...(data ?? []));
+      if (!data || data.length < PAGE) break;
+    }
+    if (todos.length) colaboradores.value = todos;
   } catch {
     colaboradores.value = [...FUNCIONARIOS];
   }
