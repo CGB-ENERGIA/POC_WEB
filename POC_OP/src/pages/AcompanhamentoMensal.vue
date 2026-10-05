@@ -267,17 +267,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import {
-  filterByGerencia,
-  filterByGerente,
-  semanaDaData,
-  filterObserverRoster,
-  uniqueChartLabels,
-  tallyObserverRecords,
-  normMatricula,
-  indexEmployees,
-  matchSubmissionToEmployee,
-} from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDaData, filterObserverRoster, uniqueChartLabels, tallyObserverRecords, normMatricula, indexEmployees, matchSubmissionToEmployee, GERENTES } from "@/lib/dashboard";
 import { useGoals } from "@/composables/useGoals";
 const { goalForColaborador } = useGoals();
 
@@ -324,10 +314,7 @@ const funcoes = ["Todos", "Analista", "Coordenador", "Especialista", "Técnico"]
 
 const gerencias = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT", "SPOT"];
 
-const gerentes = [
-  "Todos", "Afonso", "Jamerson", "João F.", "Julio C.", "Leandro",
-  "Marcos", "Paulo", "Rafaela", "Ricardo", "Valvick", "Waldir"
-];
+const gerentes = [...GERENTES];
 
 // ─── Filter state ─────────────────────────────────────────────────────────────
 const now = new Date();

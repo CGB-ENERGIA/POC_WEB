@@ -283,17 +283,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtPct, fmtN } from "@/composables/useChecklistData";
-import {
-  filterByGerencia,
-  filterByGerente,
-  semanaDaData,
-  indexEmployees,
-  matchSubmissionToEmployee,
-  fetchSubmissions,
-  fetchResponses,
-  type ResponseRow,
-  type SubmissionRow,
-} from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDaData, indexEmployees, matchSubmissionToEmployee, fetchSubmissions, fetchResponses, type ResponseRow, type SubmissionRow, GERENTES } from "@/lib/dashboard";
 import { metaRoleFrom } from "@/composables/useGoals";
 
 use([
@@ -340,10 +330,7 @@ const gerencias  = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT",
 const bases      = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const segurancas = ["Todos", "Segurança"];
 const tiposPoc   = ["Todos", "Administrativo", "Operacional"];
-const gerentes   = [
-  "Todos", "Afonso", "Jamerson", "João F.", "Julio C.", "Leandro",
-  "Marcos", "Paulo", "Rafaela", "Ricardo", "Valvick", "Waldir"
-];
+const gerentes = [...GERENTES];
 
 // â"€â"€â"€ Filter state â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const filters = reactive({

@@ -219,7 +219,7 @@ import { TooltipComponent, GridComponent, DataZoomComponent } from "echarts/comp
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDoMes } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDoMes, GERENTES } from "@/lib/dashboard";
 
 use([CanvasRenderer, BarChart, TreemapChart, TooltipComponent, GridComponent, DataZoomComponent]);
 
@@ -234,7 +234,7 @@ const showFilters = ref(false);
 
 const anos         = ["2024", "2025", "2026"];
 const categorias   = ["Todos", "APR", "Padrinho de Segurança", "Procedimento", "Regras de Ouro"];
-const gerentesFinal = ["Todos","Afonso","Jamerson","João F.","Julio C.","Leandro","Marcos","Paulo","Pryscilla"];
+const gerentesFinal = [...GERENTES];
 const bases        = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const mesesOpts    = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26","jul/26","ago/26","set/26","out/26","nov/26","dez/26"];
 const semanasOpts  = ["Todos","1ª Semana","2ª Semana","3ª Semana","4ª Semana"];

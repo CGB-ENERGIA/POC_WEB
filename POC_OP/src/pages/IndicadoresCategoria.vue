@@ -203,7 +203,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, GERENTES } from "@/lib/dashboard";
 
 use([CanvasRenderer, BarChart, GaugeChart, GridComponent, TooltipComponent, LegendComponent]);
 
@@ -233,7 +233,7 @@ const now = new Date();
 const anosOpts     = ["2024","2025","2026"];
 const basesOpts    = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
-const gerentesOpts  = ["Todos","Afonso","Jackson","Jamerson","Julio C.","Marcos","Paulo","Pryscilla","Rafaela","Ricardo"];
+const gerentesOpts = [...GERENTES];
 const tiposOpts     = ["Operacional","Administrativo","Alojamento"];
 
 // Mapeia o "Tipo de POC" para os valores reais de auditagem gravados no checklist

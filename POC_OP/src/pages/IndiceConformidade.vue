@@ -239,7 +239,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN, fmtPct } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, fetchNaoConformesPorMes, semanaDaData, indexEmployees, matchSubmissionToEmployee } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, fetchNaoConformesPorMes, semanaDaData, indexEmployees, matchSubmissionToEmployee, GERENTES } from "@/lib/dashboard";
 
 use([
   CanvasRenderer, BarChart, LineChart,
@@ -279,10 +279,7 @@ const meses = [
 const gerencias = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT", "SPOT"];
 const bases     = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const tiposPoc  = ["Todos", "Administrativo", "Operacional"];
-const gerentes  = [
-  "Todos", "Afonso", "Jamerson", "João F.", "Julio C.", "Leandro",
-  "Marcos", "Paulo", "Rafaela", "Ricardo", "Valvick", "Waldir"
-];
+const gerentes = [...GERENTES];
 
 // ─── Filter state ─────────────────────────────────────────────────────────────
 const now = new Date();

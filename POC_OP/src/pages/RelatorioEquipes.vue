@@ -321,7 +321,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, fetchIcitPorPrefixo, indexEmployees, matchSubmissionToEmployee, type IcitPrefixo } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, fetchIcitPorPrefixo, indexEmployees, matchSubmissionToEmployee, type IcitPrefixo, GERENTES } from "@/lib/dashboard";
 
 use([CanvasRenderer, BarChart, GaugeChart, GridComponent, TooltipComponent, DataZoomComponent]);
 
@@ -348,7 +348,7 @@ const anosOpts     = ["2024","2025","2026"];
 const categoriasOpts = ["Todos","Procedimento","Padrinho de Segurança","Veículos e Equipamentos","EPI/EPC","APR","Trabalho em Altura","Regras de Ouro"];
 const basesOpts    = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
-const gerentesOpts = ["Todos","Afonso","Jamerson","João F.","Julio C.","Leandro","Marcos","Paulo","Rafaela","Ricardo","Valvick","Waldir"];
+const gerentesOpts = [...GERENTES];
 const funcaoOpts   = ["Todos","Eletricista","Motorista","Operador","Técnico"];
 const tiposPoc     = ["Administrativo","Operacional","Alojamento"];
 

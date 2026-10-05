@@ -160,7 +160,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useChecklistData, type SubmissionRow, type ResponseRow, type EmployeeRow } from "@/composables/useChecklistData";
-import { filterByGerencia, foldName, semanaDoMes } from "@/lib/dashboard";
+import { filterByGerente, semanaDoMes, GERENTES } from "@/lib/dashboard";
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
@@ -182,7 +182,7 @@ const meses = [
 
 const bases    = ["BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const gerencias = ["ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT", "SPOT"];
-const gerentes  = ["Afonso", "Jackson", "Jamerson", "João F.", "Julio C.", "Leandro", "Marcos", "Paulo", "Pryscilla", "Rafaela", "Ricardo", "Valvick", "Waldir"];
+const gerentes = [...GERENTES].filter((g) => g !== "Todos");
 
 const mesesAbrev = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
 
@@ -323,11 +323,10 @@ const listaFiltrada = computed<NcRow[]>(() => {
   }
 
   if (filters.gerente) {
-    const g = foldName(filters.gerente);
-    rows = rows.filter(r => {
-      const obs = foldName(r.observador);
-      return obs === g || obs.startsWith(`${g} `);
-    });
+    const subIds = new Set(
+      filterByGerente(submissions.value, employees.value, filters.gerente).map(s => s.id),
+    );
+    rows = rows.filter(r => subIds.has(r.key.split("_")[0]!));
   }
 
   if (filters.observador) {

@@ -300,7 +300,7 @@ import { GridComponent, TooltipComponent, LegendComponent } from "echarts/compon
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDoMes, indexEmployees, matchSubmissionToEmployee } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDoMes, indexEmployees, matchSubmissionToEmployee, GERENTES } from "@/lib/dashboard";
 
 use([CanvasRenderer, BarChart, GaugeChart, PieChart, GridComponent, TooltipComponent, LegendComponent]);
 
@@ -320,7 +320,7 @@ const TIPO_AUDITAGEM: Record<string, string[]> = {
 const mesesOpts     = ["Todos","jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
 const semanasOpts   = ["Todos","Semana 1","Semana 2","Semana 3","Semana 4"];
 const funcoesOpts   = ["Todos","ENCARREGADO","SUPERVISOR","SESMT","FISCAL","COORDENADOR","GERENTE"];
-const gerentesOpts  = ["Todos","Afonso","Jackson","Jamerson","Julio C.","Leandro","Marcos","Paulo","Rafaela"];
+const gerentesOpts = [...GERENTES];
 
 const filters = reactive({
   ano: "2026", base: "Todos", gerencia: "Todos", tipo: "Operacional",

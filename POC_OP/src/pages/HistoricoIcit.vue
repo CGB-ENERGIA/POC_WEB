@@ -144,7 +144,7 @@
 <script setup lang="ts">
 import { reactive, computed, ref, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, GERENTES } from "@/lib/dashboard";
 
 const { loading, error, submissions, responses, employees, load } = useChecklistData();
 
@@ -155,7 +155,7 @@ interface Row  { prefixo: string; months: (Cell | null)[]; total: { reinc: numbe
 // â"€â"€â"€ Filter state â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const now = new Date();
 const bases     = ["BCB","BDC","ITM","PDS","PDT","STI"];
-const gerentes  = ["Afonso","Jackson","Julio C.","Marcos","Paulo","Pryscilla","Rafaela","Ricardo"];
+const gerentes = [...GERENTES].filter((g) => g !== "Todos");
 const gerencias = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
 const meses     = [
   { v: 1, l: "jan" }, { v: 2, l: "fev" },

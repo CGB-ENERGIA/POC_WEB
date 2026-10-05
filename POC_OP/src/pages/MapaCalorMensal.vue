@@ -290,7 +290,7 @@
 <script setup lang="ts">
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDaData } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDaData, GERENTES } from "@/lib/dashboard";
 import KpiFlame from "@/components/KpiFlame.vue";
 
 const { loading, submissions, responses, employees, load } = useChecklistData();
@@ -309,7 +309,7 @@ const months = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov
 const mesesOpts = [{ v: 0, l: "Todos" }, ...months.map((l, i) => ({ v: i + 1, l }))];
 const anosOpts      = ["2024","2025","2026"];
 const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
-const gerentesOpts  = ["Todos","Afonso","Jamerson","Julio C.","Marcos","Paulo","Rafaela","Ricardo"];
+const gerentesOpts = [...GERENTES];
 const basesOpts     = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 const tiposOpts     = ["Operacional","Administrativo","Alojamento","Todos"];
 

@@ -7,6 +7,16 @@ import { supabase } from "./supabase";
 export const GERENCIAS = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT", "SPOT"] as const;
 export type Gerencia = typeof GERENCIAS[number];
 
+/**
+ * Opções do filtro "Gerente": gerentes (Cesar, Jamerson) e coordenadores, como na
+ * planilha de equipes. Filtrar por um deles traz toda a equipe dele (colunas
+ * `gerente` / `coordenador` de `employees`) e também as próprias observações.
+ */
+export const GERENTES = [
+  "Todos", "Cesar", "Jamerson", "Afonso", "Camila", "Daniel", "Jackson", "Julio C.",
+  "Luis C.", "Marcos", "Paulo", "Rafaela", "Ruan", "Thiago F.", "Valvick",
+] as const;
+
 export interface Filters {
   ano: number;
   mes?: number;
@@ -210,6 +220,9 @@ export interface EmployeeRow {
   gerencia: string;
   base: string;
   funcao: string;
+  coordenador?: string | null;
+  gerente?: string | null;
+  processo?: string | null;
 }
 
 // ─── Queries ─────────────────────────────────────────────────────────────────
@@ -355,7 +368,7 @@ export async function fetchIcitPorPrefixo(startIso: string, endIso: string, base
 export async function fetchEmployees(): Promise<EmployeeRow[]> {
   const { data, error } = await supabase
     .from("employees")
-    .select("matricula,nome,nome_completo,gerencia,base,funcao")
+    .select("matricula,nome,nome_completo,gerencia,base,funcao,coordenador,gerente,processo")
     .eq("ativo", true)
     .order("nome_completo");
   if (error) throw error;
@@ -399,6 +412,7 @@ export function filterObserverRoster(
   if (opts.gerente && opts.gerente !== "Todos") {
     const g = foldName(opts.gerente);
     list = list.filter((e) => {
+      if (foldName(e.coordenador) === g || foldName(e.gerente) === g) return true;
       const nome = foldName(e.nome);
       const full = foldName(e.nome_completo);
       return nome === g || full === g || full.startsWith(`${g} `) || nome.startsWith(`${g} `);
