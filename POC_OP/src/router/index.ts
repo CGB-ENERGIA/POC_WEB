@@ -71,6 +71,9 @@ export default defineRouter((/* { store, ssrContext } */) => {
         return "/alterar-senha";
       }
 
+      // Sem isso, member com troca pendente entra em loop "/" <-> "/alterar-senha"
+      if (to.path === "/alterar-senha") return true;
+
       if (to.meta.requiresAdmin) return "/";
 
       if (profile.role === "member") {
