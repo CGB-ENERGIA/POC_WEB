@@ -68,6 +68,7 @@ import CameraModal from "@/components/CameraModal.vue";
 import GaleriaPicker from "@/components/GaleriaPicker.vue";
 import { getTrustedTime, ServerTimeError } from "@/utils/server-time";
 import { stampAuditPhoto } from "@/utils/photo-stamp";
+import { prepararFotoDaGaleria, FotoGaleriaAntigaError } from "@/utils/galeria-import";
 
 const SLOTS_PADRAO = [
   { icon: "mdi-account-group-outline", label: "Selfie com a equipe" },
@@ -145,14 +146,22 @@ async function onCaptured(base64: string) {
   await processarFoto(base64);
 }
 
-async function onGaleriaImportada(blob: Blob) {
-  const base64 = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
-  await processarFoto(base64);
+async function onGaleriaImportada(blob: Blob, dataHora?: string) {
+  const idx = idxAtivo.value;
+  if (idx === null) return;
+  carregandoIdx.value = idx;
+  try {
+    // Mantém o carimbo original (hora em que foi tirada); foto antiga recebe faixa de aviso
+    const foto = await prepararFotoDaGaleria(blob, dataHora);
+    const next = [...props.modelValue];
+    next[idx] = foto;
+    emit("update:modelValue", next);
+  } catch (err) {
+    const message = err instanceof FotoGaleriaAntigaError ? err.message : "Erro ao processar foto";
+    $q.notify({ type: "warning", message, position: "top", timeout: 5000 });
+  } finally {
+    carregandoIdx.value = null;
+  }
 }
 </script>
 

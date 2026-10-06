@@ -66,7 +66,7 @@ import { useGaleriaStore, type FotoEntry } from "@/stores/galeria";
 
 const props = defineProps<{ matricula?: string }>();
 const emit = defineEmits<{
-  (e: "selected", blob: Blob): void;
+  (e: "selected", blob: Blob, dataHora?: string): void;
 }>();
 
 const isOpen    = defineModel<boolean>({ required: true });
@@ -110,7 +110,7 @@ async function confirmar() {
       blob = await resp.blob();
     }
     if (!blob) return;
-    emit("selected", blob);
+    emit("selected", blob, fotoSelecionada.value.dataHora);
     isOpen.value = false;
     selecionada.value    = null;
     fotoSelecionada.value = null;

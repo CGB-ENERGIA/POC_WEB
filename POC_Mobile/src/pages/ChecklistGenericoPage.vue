@@ -474,6 +474,7 @@ import type { RespostaSalva } from "@/types/checklist";
 import { compressBase64 } from "@/utils/image";
 import { getTrustedTime, ServerTimeError } from "@/utils/server-time";
 import { stampAuditPhoto } from "@/utils/photo-stamp";
+import { prepararFotoDaGaleria, FotoGaleriaAntigaError } from "@/utils/galeria-import";
 import { extrairItensPergunta } from "@/utils/pergunta-itens";
 import { contarRespondidas, gruposPendentes } from "@/utils/checklist-meta";
 import { useChecklistDraft } from "@/composables/useChecklistDraft";
@@ -860,25 +861,13 @@ async function onFotoNcCapturada(base64: string) {
   }
 }
 
-async function onFotoGaleriaImportada(blob: Blob) {
+async function onFotoGaleriaImportada(blob: Blob, dataHora?: string) {
   modalPhotoLoading.value = true;
   try {
-    const base64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload  = () => resolve(reader.result as string);
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(blob);
-    });
-    const { date } = await getTrustedTime();
-    const compressed = await compressBase64(base64);
-    modalFotoPreview.value = await stampAuditPhoto(compressed, {
-      time:     date,
-      observer: session.employee?.nomeCompleto ?? session.employee?.nome ?? "—",
-      equipe:   equipe.value.trim(),
-    });
+    // Mantém o carimbo original (hora em que foi tirada); foto antiga recebe faixa de aviso
+    modalFotoPreview.value = await prepararFotoDaGaleria(blob, dataHora);
   } catch (err) {
-    const message =
-      err instanceof ServerTimeError ? err.message : "Não foi possível processar a foto";
+    const message = err instanceof FotoGaleriaAntigaError ? err.message : "Não foi possível processar a foto";
     $q.notify({ type: "negative", message, position: "top" });
   } finally {
     modalPhotoLoading.value = false;
