@@ -37,6 +37,15 @@ interface TimeSyncRecord {
   provider?: "supabase" | "cloudflare";
 }
 
+/** Espera máxima pelo servidor quando já há uma sincronização válida guardada. */
+const FETCH_RAPIDO_MS = 2000;
+/** Uma sincronização feita há menos que isso é reaproveitada (várias fotos/etapas seguidas). */
+const REUSO_SYNC_MS = 2 * 60 * 1000;
+
+/** Depois de uma tentativa rápida falhar, não insiste no servidor por este tempo (usa a hora salva). */
+const PAUSA_APOS_FALHA_MS = 30 * 1000;
+let falhaRedeEm = Number.NEGATIVE_INFINITY;
+
 let sessionPerfAnchor: { serverMs: number; perfMs: number } | null = null;
 
 function maxSyncAgeMs(): number {
@@ -60,21 +69,21 @@ function persistSync(date: Date, provider: "supabase" | "cloudflare") {
   };
 }
 
-async function fetchSupabaseServerTime(): Promise<Date> {
+async function fetchSupabaseServerTime(timeoutMs = 5000): Promise<Date> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .rpc("get_server_time")
-    .abortSignal(AbortSignal.timeout(5000));
+    .abortSignal(AbortSignal.timeout(timeoutMs));
   if (error || !data) {
     throw error ?? new Error("Resposta de hora inválida");
   }
   return new Date(data as string);
 }
 
-async function fetchCloudflareServerTime(): Promise<Date> {
+async function fetchCloudflareServerTime(timeoutMs = 5000): Promise<Date> {
   const res = await fetch(TRACE_URL, {
     cache: "no-store",
-    signal: AbortSignal.timeout(5000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   const text = await res.text();
   const ts = text.match(/ts=([0-9.]+)/)?.[1];
@@ -86,17 +95,23 @@ async function fetchCloudflareServerTime(): Promise<Date> {
   throw new Error("Resposta de hora inválida");
 }
 
-/** Postgres (Supabase) → Cloudflare trace → falha. */
-async function fetchAuthoritativeTime(): Promise<{ date: Date; provider: "supabase" | "cloudflare" }> {
+/**
+ * Postgres (Supabase) → Cloudflare trace → falha.
+ * `rapido`: já existe uma sincronização válida guardada; tenta só uma vez e por pouco
+ * tempo, para não travar o app quando há sinal mas não há internet de verdade.
+ */
+async function fetchAuthoritativeTime(rapido = false): Promise<{ date: Date; provider: "supabase" | "cloudflare" }> {
+  const limite = rapido ? FETCH_RAPIDO_MS : 5000;
   if (isSupabaseConfigured()) {
     try {
-      return { date: await fetchSupabaseServerTime(), provider: "supabase" };
-    } catch {
+      return { date: await fetchSupabaseServerTime(limite), provider: "supabase" };
+    } catch (err) {
+      if (rapido) throw err; // com sync guardada, não gasta mais tempo no fallback
       // fallback se Supabase indisponível momentaneamente
     }
   }
 
-  return { date: await fetchCloudflareServerTime(), provider: "cloudflare" };
+  return { date: await fetchCloudflareServerTime(limite), provider: "cloudflare" };
 }
 
 function extrapolateFromSync(sync: TimeSyncRecord): Date {
@@ -140,13 +155,29 @@ export async function refreshServerTimeSync(): Promise<boolean> {
   }
 }
 
+function temSyncValida(): boolean {
+  const sync = loadSync();
+  if (!sync) return false;
+  try {
+    assertSyncFresh(sync);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function getTrustedTimeOnce(): Promise<TrustedTime> {
   if (navigator.onLine) {
+    const rapido = temSyncValida();
+    if (rapido && performance.now() - falhaRedeEm < PAUSA_APOS_FALHA_MS) {
+      return syncResult(loadSync()!); // sinal sem internet: já falhou há pouco, usa a hora salva
+    }
     try {
-      const { date, provider } = await fetchAuthoritativeTime();
+      const { date, provider } = await fetchAuthoritativeTime(rapido);
       persistSync(date, provider);
       return { date, source: "server", provider };
     } catch {
+      if (rapido) falhaRedeEm = performance.now();
       const sync = loadSync();
       if (!sync) {
         throw new ServerTimeError(
@@ -177,6 +208,17 @@ async function getTrustedTimeOnce(): Promise<TrustedTime> {
  * Em caso de fetch_failed online, tenta uma vez após 1.5 s antes de desistir.
  */
 export async function getTrustedTime(): Promise<TrustedTime> {
+  // Sincronização feita há poucos segundos: extrapola com o relógio monotônico (performance.now),
+  // que não é afetado por mudar a hora do celular. Evita refazer a ida ao servidor a cada passo.
+  if (sessionPerfAnchor) {
+    const idade = performance.now() - sessionPerfAnchor.perfMs;
+    if (idade >= 0 && idade < REUSO_SYNC_MS) {
+      const provider = loadSync()?.provider;
+      const reuso: TrustedTime = { date: new Date(sessionPerfAnchor.serverMs + idade), source: "server" };
+      if (provider) reuso.provider = provider;
+      return reuso;
+    }
+  }
   try {
     return await getTrustedTimeOnce();
   } catch (err) {

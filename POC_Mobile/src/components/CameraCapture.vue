@@ -172,7 +172,7 @@ import { useSessionStore } from "@/stores/session";
 import { useQuasar } from "quasar";
 import { EQUIPES, type Equipe } from "@/data/equipes";
 import { stampAuditPhoto } from "@/utils/photo-stamp";
-import { getTrustedTime } from "@/utils/server-time";
+import { getTrustedTime, ServerTimeError } from "@/utils/server-time";
 import { abrirCameraNativa, fotoNativaParaBase64, FotoAntigaError } from "@/utils/native-camera";
 
 const props = defineProps<{
@@ -272,7 +272,10 @@ async function onArquivo(e: Event) {
     fotoBlob.value    = await resp.blob();
     fotoDataUrl.value = URL.createObjectURL(fotoBlob.value);
   } catch (err) {
-    erroMsg.value = err instanceof FotoAntigaError ? err.message : "Erro ao processar foto. Tente novamente.";
+    // Mensagens com orientação: foto antiga/relógio errado, ou horário do servidor vencido (precisa de internet 1x)
+    erroMsg.value = err instanceof FotoAntigaError || err instanceof ServerTimeError
+      ? err.message
+      : "Erro ao processar foto. Tente novamente.";
   } finally {
     processando.value = false;
   }
