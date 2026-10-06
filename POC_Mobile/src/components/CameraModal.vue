@@ -67,7 +67,15 @@ const emit = defineEmits<{ (e: "captured", base64: string): void }>();
 const videoRef = ref<HTMLVideoElement | null>(null);
 const rootRef = ref<HTMLElement | null>(null);
 const { videoStyle, medirVideo, girarManual, dimensoesIdeais, desenharNoCanvas } =
-  useCameraRotation(videoRef, rootRef);
+  useCameraRotation(videoRef, rootRef, reiniciarPorOrientacao);
+
+/** Virou o celular: refaz a câmera na nova orientação (só se estiver aberta). */
+async function reiniciarPorOrientacao() {
+  if (!isOpen.value || !pronto.value || virandoCamera.value) return;
+  pararCamera();
+  await nextTick();
+  await iniciarCamera();
+}
 const pronto = ref(false);
 const erro = ref("");
 const virandoCamera = ref(false);

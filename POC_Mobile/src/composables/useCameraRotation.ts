@@ -2,9 +2,13 @@ import { computed, onMounted, onUnmounted, ref, watch, type Ref } from "vue";
 
 const ROT_KEY = "cgb-camera-rot-extra";
 
-function lerRotExtra(): number {
+function chave(emPe: boolean) {
+  return `${ROT_KEY}-${emPe ? "pe" : "deitado"}`;
+}
+
+function lerRotExtra(emPe: boolean): number {
   try {
-    const v = Number(localStorage.getItem(ROT_KEY));
+    const v = Number(localStorage.getItem(chave(emPe)));
     return [0, 90, 180, 270].includes(v) ? v : 0;
   } catch {
     return 0;
@@ -14,14 +18,18 @@ function lerRotExtra(): number {
 /**
  * Corrige a orientação da câmera.
  *
- * Alguns iPhones (principalmente no PWA instalado) entregam o quadro do sensor
- * deitado mesmo com o celular em pé. Comparamos a orientação da tela com a do
- * vídeo e giramos a imagem (preview e foto capturada) para ficar em pé. O botão
- * de girar permite ajustar à mão em passos de 90° (a escolha fica salva).
+ * - Pede ao getUserMedia um vídeo 4:3 na mesma orientação da tela (4:3 usa o campo
+ *   de visão completo do sensor; 16:9 dá a impressão de "zoom" no iPhone).
+ * - Ao virar o celular, reinicia a câmera com a proporção da nova orientação
+ *   (`reiniciar`), em vez de girar a imagem na mão.
+ * - Só gira por conta própria o caso conhecido: tela em pé recebendo quadro deitado.
+ * - O botão de girar ajusta em passos de 90°; a escolha é salva separadamente para
+ *   o celular em pé e deitado.
  */
 export function useCameraRotation(
   videoRef: Ref<HTMLVideoElement | null>,
   containerRef: Ref<HTMLElement | null>,
+  reiniciar?: () => void | Promise<void>,
 ) {
   const telaW = ref(window.innerWidth);
   const telaH = ref(window.innerHeight);
@@ -29,21 +37,23 @@ export function useCameraRotation(
   const vidH = ref(0);
   const boxW = ref(0);
   const boxH = ref(0);
-  const rotExtra = ref(lerRotExtra());
 
+  const telaEmPe = computed(() => telaH.value >= telaW.value);
+  const rotExtra = ref(lerRotExtra(telaEmPe.value));
+  watch(telaEmPe, (v) => { rotExtra.value = lerRotExtra(v); });
+
+  /** Tela em pé recebendo quadro deitado: gira 90° (sentido horário). */
   const rotAuto = computed(() => {
     if (!vidW.value || !vidH.value) return 0;
-    const telaEmPe = telaH.value >= telaW.value;
     const videoEmPe = vidH.value >= vidW.value;
-    if (telaEmPe === videoEmPe) return 0;
-    return telaEmPe ? 90 : 270;
+    return telaEmPe.value && !videoEmPe ? 90 : 0;
   });
   const rotTotal = computed(() => (rotAuto.value + rotExtra.value) % 360);
 
   function girarManual() {
     rotExtra.value = (rotExtra.value + 90) % 360;
     try {
-      localStorage.setItem(ROT_KEY, String(rotExtra.value));
+      localStorage.setItem(chave(telaEmPe.value), String(rotExtra.value));
     } catch {
       /* sem storage */
     }
@@ -70,10 +80,10 @@ export function useCameraRotation(
     };
   });
 
-  /** Dimensões a pedir ao getUserMedia, na mesma orientação da tela. */
+  /** Dimensões a pedir ao getUserMedia: 4:3 na orientação da tela. */
   function dimensoesIdeais() {
     const emPe = window.innerHeight >= window.innerWidth;
-    return emPe ? { width: 1080, height: 1920 } : { width: 1920, height: 1080 };
+    return emPe ? { width: 1440, height: 1920 } : { width: 1920, height: 1440 };
   }
 
   /** Desenha o quadro atual do vídeo no canvas já com o giro aplicado. */
@@ -90,11 +100,23 @@ export function useCameraRotation(
     ctx.drawImage(video, -w / 2, -h / 2, w, h);
   }
 
-  function atualizarTela() {
+  let timer = 0;
+  function lerTela() {
     telaW.value = window.innerWidth;
     telaH.value = window.innerHeight;
     medirVideo();
   }
+  function atualizarTela() {
+    lerTela();
+    // O iOS atualiza o tamanho da janela com atraso depois de girar: relê em seguida.
+    window.clearTimeout(timer);
+    timer = window.setTimeout(lerTela, 350);
+  }
+
+  // Virou o celular: refaz a câmera com a proporção da nova orientação.
+  watch(telaEmPe, () => {
+    window.setTimeout(() => { void reiniciar?.(); }, 150);
+  });
 
   let ro: ResizeObserver | null = null;
   onMounted(() => {
@@ -102,6 +124,7 @@ export function useCameraRotation(
     window.addEventListener("orientationchange", atualizarTela);
   });
   onUnmounted(() => {
+    window.clearTimeout(timer);
     ro?.disconnect();
     window.removeEventListener("resize", atualizarTela);
     window.removeEventListener("orientationchange", atualizarTela);

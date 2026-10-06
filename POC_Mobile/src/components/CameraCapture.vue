@@ -245,7 +245,14 @@ function voltarParaEquipe() {
 // ── Orientação ───────────────────────────────────────────
 const vfEl = ref<HTMLElement | null>(null);
 const { videoStyle, medirVideo, girarManual, dimensoesIdeais, desenharNoCanvas } =
-  useCameraRotation(videoEl, vfEl);
+  useCameraRotation(videoEl, vfEl, reiniciarPorOrientacao);
+
+/** Virou o celular: refaz a câmera na nova orientação (só se estiver ao vivo). */
+async function reiniciarPorOrientacao() {
+  if (passo.value !== "camera" || fotoDataUrl.value || !streamAtivo.value) return;
+  pararStream();
+  await iniciarStream();
+}
 
 // ── Stream ───────────────────────────────────────────────
 let stream: MediaStream | null = null;
