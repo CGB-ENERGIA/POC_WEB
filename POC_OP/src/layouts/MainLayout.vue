@@ -80,13 +80,13 @@
             v-bind="link"
           />
           <EssentialLink
-            v-if="isAdmin"
+            v-if="isFullAdmin"
             label="Acessos"
             icon="mdi-shield-account"
             link="/aprovacoes"
           />
           <EssentialLink
-            v-if="isAdmin"
+            v-if="isFullAdmin"
             label="Banco de Dados PWA"
             icon="mdi-database-edit-outline"
             link="/cadastro-pwa"
@@ -145,6 +145,8 @@ watch(
   { immediate: true }
 );
 const isMember = computed(() => role.value === "member");
+// Usuários com role "admin" no banco também têm acesso às seções administrativas
+const isFullAdmin = computed(() => isAdmin.value || role.value === "admin");
 
 async function logout() {
   await signOut();
