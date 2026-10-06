@@ -1,15 +1,12 @@
 <template>
   <q-dialog v-model="isOpen" persistent maximized transition-show="slide-up" transition-hide="slide-down">
-    <div ref="rootRef" class="camera-root">
-      <video
-        ref="videoRef"
-        autoplay
-        playsinline
-        webkit-playsinline
-        muted
-        class="camera-video"
-        :style="videoStyle"
-        @resize="medirVideo"
+    <div class="camera-root">
+      <CameraViewfinder
+        ref="vf"
+        class="camera-vf"
+        :ativo="isOpen"
+        @pronto="pronto = $event"
+        @erro="erro = $event ?? ''"
       />
 
       <!-- Erro de acesso -->
@@ -27,19 +24,8 @@
 
       <!-- Controles -->
       <div class="camera-controls">
-        <div class="camera-side">
-          <q-btn flat round icon="mdi-close" color="white" size="lg" @click="isOpen = false" />
-          <q-btn
-            flat round
-            icon="mdi-screen-rotation"
-            color="white"
-            size="md"
-            aria-label="Girar imagem"
-            :disable="!pronto"
-            @click="girarManual"
-          />
-        </div>
-        <button class="shutter-btn" :disabled="!pronto" @click="capturar">
+        <q-btn flat round icon="mdi-close" color="white" size="lg" @click="isOpen = false" />
+        <button class="shutter-btn" :disabled="!pronto" aria-label="Tirar foto" @click="capturar">
           <div class="shutter-btn__ring" />
           <div class="shutter-btn__inner" />
         </button>
@@ -48,6 +34,7 @@
           icon="mdi-camera-flip-outline"
           color="white"
           size="lg"
+          aria-label="Virar câmera"
           :disable="!pronto || virandoCamera"
           @click="virarCamera"
         />
@@ -57,89 +44,36 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick, onUnmounted } from "vue";
+import { ref } from "vue";
 import { compressBase64 } from "@/utils/image";
-import { useCameraRotation } from "@/composables/useCameraRotation";
+import CameraViewfinder from "@/components/CameraViewfinder.vue";
 
 const isOpen = defineModel<boolean>({ required: true });
 const emit = defineEmits<{ (e: "captured", base64: string): void }>();
 
-const videoRef = ref<HTMLVideoElement | null>(null);
-const rootRef = ref<HTMLElement | null>(null);
-const { videoStyle, medirVideo, girarManual, dimensoesIdeais, desenharNoCanvas } =
-  useCameraRotation(videoRef, rootRef, reiniciarPorOrientacao);
-
-/** Virou o celular: refaz a câmera na nova orientação (só se estiver aberta). */
-async function reiniciarPorOrientacao() {
-  if (!isOpen.value || !pronto.value || virandoCamera.value) return;
-  pararCamera();
-  await nextTick();
-  await iniciarCamera();
-}
+const vf = ref<InstanceType<typeof CameraViewfinder> | null>(null);
 const pronto = ref(false);
 const erro = ref("");
 const virandoCamera = ref(false);
-const facingMode = ref<"environment" | "user">("environment");
-let stream: MediaStream | null = null;
-
-watch(isOpen, async (val) => {
-  if (val) {
-    erro.value = "";
-    pronto.value = false;
-    facingMode.value = "environment";
-    await nextTick();
-    await iniciarCamera();
-  } else {
-    pararCamera();
-  }
-});
-
-async function iniciarCamera() {
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: facingMode.value },
-        width: { ideal: dimensoesIdeais().width },
-        height: { ideal: dimensoesIdeais().height },
-      },
-      audio: false,
-    });
-    const video = videoRef.value;
-    if (!video) return;
-    video.srcObject = stream;
-    video.onloadedmetadata = () => { medirVideo(); pronto.value = true; };
-  } catch {
-    erro.value = "Não foi possível acessar a câmera. Verifique as permissões do navegador.";
-  }
-}
-
-function pararCamera() {
-  stream?.getTracks().forEach((t) => t.stop());
-  stream = null;
-  pronto.value = false;
-}
 
 async function virarCamera() {
   virandoCamera.value = true;
-  facingMode.value = facingMode.value === "environment" ? "user" : "environment";
-  pararCamera();
-  await nextTick();
-  await iniciarCamera();
-  virandoCamera.value = false;
+  try { await vf.value?.virar(); } finally { virandoCamera.value = false; }
 }
 
 async function capturar() {
-  const video = videoRef.value;
-  if (!video || !pronto.value) return;
-  const canvas = document.createElement("canvas");
-  desenharNoCanvas(video, canvas);
-  const raw = canvas.toDataURL("image/jpeg", 0.92);
+  if (!pronto.value || !vf.value) return;
+  let raw: string;
+  try {
+    raw = vf.value.capturar();
+  } catch {
+    erro.value = "Não foi possível tirar a foto. Tente novamente.";
+    return;
+  }
   isOpen.value = false;
   const compressed = await compressBase64(raw);
   emit("captured", compressed);
 }
-
-onUnmounted(pararCamera);
 </script>
 
 <style scoped>
@@ -160,6 +94,11 @@ onUnmounted(pararCamera);
   object-fit: cover;
 }
 
+.camera-vf {
+  flex: 1;
+  min-height: 0;
+}
+
 .camera-side {
   display: flex;
   align-items: center;
@@ -177,15 +116,13 @@ onUnmounted(pararCamera);
 }
 
 .camera-controls {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  position: relative;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 20px 32px max(env(safe-area-inset-bottom), 20px);
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.55));
+  background: #000;
 }
 
 .shutter-btn {

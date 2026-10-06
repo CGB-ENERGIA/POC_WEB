@@ -86,20 +86,6 @@ export function useCameraRotation(
     return emPe ? { width: 1440, height: 1920 } : { width: 1920, height: 1440 };
   }
 
-  /** Desenha o quadro atual do vídeo no canvas já com o giro aplicado. */
-  function desenharNoCanvas(video: HTMLVideoElement, canvas: HTMLCanvasElement) {
-    const w = video.videoWidth || 1280;
-    const h = video.videoHeight || 720;
-    const rot = rotTotal.value;
-    const lado = rot === 90 || rot === 270;
-    canvas.width = lado ? h : w;
-    canvas.height = lado ? w : h;
-    const ctx = canvas.getContext("2d")!;
-    ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.rotate((rot * Math.PI) / 180);
-    ctx.drawImage(video, -w / 2, -h / 2, w, h);
-  }
-
   let timer = 0;
   function lerTela() {
     telaW.value = window.innerWidth;
@@ -141,5 +127,5 @@ export function useCameraRotation(
     ro.observe(el);
   });
 
-  return { rotTotal, videoStyle, medirVideo, girarManual, dimensoesIdeais, desenharNoCanvas };
+  return { rotTotal, videoStyle, medirVideo, girarManual, dimensoesIdeais, vidW, vidH };
 }

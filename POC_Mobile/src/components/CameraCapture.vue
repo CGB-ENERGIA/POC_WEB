@@ -88,6 +88,7 @@
             <button
               class="cc-icon-btn"
               :class="{ 'cc-icon-btn--disabled': fotoDataUrl !== null }"
+              aria-label="Virar câmera"
               @click="alternarCamera"
             >
               <q-icon name="mdi-camera-flip-outline" size="24px" />
@@ -95,43 +96,28 @@
           </div>
 
           <!-- VIEWFINDER -->
-          <div ref="vfEl" class="cc-viewfinder">
-            <video
+          <div class="cc-viewfinder">
+            <CameraViewfinder
               v-show="!fotoDataUrl"
-              ref="videoEl"
-              autoplay
-              playsinline
-              webkit-playsinline
-              muted
-              class="cc-video"
-              :style="videoStyle"
-              @loadedmetadata="medirVideo"
-              @resize="medirVideo"
-            />
+              ref="vf"
+              :ativo="modelValue && passo === 'camera'"
+              @pronto="streamAtivo = $event"
+              @erro="erroMsg = $event"
+            >
+              <div class="cc-timestamp">{{ timestampAtual }}</div>
+            </CameraViewfinder>
             <img
               v-if="fotoDataUrl"
               :src="fotoDataUrl"
               class="cc-preview-img"
               alt="Foto capturada"
             />
-            <div v-if="!fotoDataUrl" class="cc-timestamp">
-              {{ timestampAtual }}
-            </div>
           </div>
 
           <!-- FOOTER -->
           <div class="cc-footer">
             <template v-if="!fotoDataUrl">
-              <div class="cc-footer__spacer cc-footer__side">
-                <button
-                  class="cc-icon-btn"
-                  :disabled="!streamAtivo"
-                  aria-label="Girar imagem"
-                  @click="girarManual"
-                >
-                  <q-icon name="mdi-screen-rotation" size="24px" />
-                </button>
-              </div>
+              <div class="cc-footer__spacer" />
               <button
                 class="cc-capture-btn"
                 :disabled="!streamAtivo || processando"
@@ -165,8 +151,6 @@
             {{ erroMsg }}
           </div>
 
-          <!-- canvas oculto -->
-          <canvas ref="canvasEl" style="display:none" />
         </template>
 
       </div>
@@ -183,7 +167,7 @@ import { EQUIPES, type Equipe } from "@/data/equipes";
 import { stampAuditPhoto } from "@/utils/photo-stamp";
 import { getTrustedTime } from "@/utils/server-time";
 import { compressBase64 } from "@/utils/image";
-import { useCameraRotation } from "@/composables/useCameraRotation";
+import CameraViewfinder from "@/components/CameraViewfinder.vue";
 
 const props = defineProps<{
   modelValue: boolean;
@@ -197,9 +181,6 @@ const emit = defineEmits<{
 const $q      = useQuasar();
 const galeria = useGaleriaStore();
 const session = useSessionStore();
-
-const videoEl  = ref<HTMLVideoElement | null>(null);
-const canvasEl = ref<HTMLCanvasElement | null>(null);
 
 // ── Fluxo ────────────────────────────────────────────────
 type Passo = "equipe" | "camera";
@@ -227,76 +208,23 @@ function selecionarEquipe(eq: Equipe) {
   equipeSelecionada.value = eq;
 }
 
-async function confirmarEquipe() {
+function confirmarEquipe() {
   if (!equipeSelecionada.value) return;
   busca.value = "";
   passo.value = "camera";
-  await iniciarStream();
 }
 
 function voltarParaEquipe() {
   descartar();
-  pararStream();
   busca.value = "";
   passo.value = "equipe";
   nextTick(() => searchInput.value?.focus());
 }
 
-// ── Orientação ───────────────────────────────────────────
-const vfEl = ref<HTMLElement | null>(null);
-const { videoStyle, medirVideo, girarManual, dimensoesIdeais, desenharNoCanvas } =
-  useCameraRotation(videoEl, vfEl, reiniciarPorOrientacao);
-
-/** Virou o celular: refaz a câmera na nova orientação (só se estiver ao vivo). */
-async function reiniciarPorOrientacao() {
-  if (passo.value !== "camera" || fotoDataUrl.value || !streamAtivo.value) return;
-  pararStream();
-  await iniciarStream();
-}
-
-// ── Stream ───────────────────────────────────────────────
-let stream: MediaStream | null = null;
+// ── Câmera (CameraViewfinder cuida do stream, zoom, orientação…) ──
+const vf          = ref<InstanceType<typeof CameraViewfinder> | null>(null);
 const streamAtivo = ref(false);
-const faceMode    = ref<"environment" | "user">("environment");
 const erroMsg     = ref<string | null>(null);
-
-async function iniciarStream() {
-  erroMsg.value = null;
-  try {
-    // Pede a proporção na mesma orientação da tela (em pé = altura maior).
-    const dim = dimensoesIdeais();
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: faceMode.value },
-        width:  { ideal: dim.width },
-        height: { ideal: dim.height },
-      },
-      audio: false,
-    });
-    if (videoEl.value) {
-      videoEl.value.srcObject = stream;
-      await videoEl.value.play();
-    }
-    streamAtivo.value = true;
-  } catch (err: unknown) {
-    const name = (err as DOMException)?.name ?? "";
-    if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-      erroMsg.value = "Permissão de câmera negada. Verifique as configurações do navegador.";
-    } else if (name === "NotFoundError") {
-      erroMsg.value = "Câmera não encontrada neste dispositivo.";
-    } else {
-      erroMsg.value = "Não foi possível acessar a câmera.";
-    }
-    streamAtivo.value = false;
-  }
-}
-
-function pararStream() {
-  stream?.getTracks().forEach(t => t.stop());
-  stream = null;
-  streamAtivo.value = false;
-  if (videoEl.value) videoEl.value.srcObject = null;
-}
 
 // ── Timestamp live ───────────────────────────────────────
 const agora = ref(new Date());
@@ -316,17 +244,14 @@ const salvando    = ref(false);
 const processando = ref(false);
 
 async function capturar() {
-  const video  = videoEl.value;
-  const canvas = canvasEl.value;
-  if (!video || !canvas || !streamAtivo.value || !equipeSelecionada.value) return;
+  if (!vf.value || !streamAtivo.value || !equipeSelecionada.value) return;
 
   processando.value = true;
   erroMsg.value = null;
 
   try {
-    // Captura raw do frame
-    desenharNoCanvas(video, canvas);
-    const rawBase64 = canvas.toDataURL("image/jpeg", 0.92);
+    // Foto com o mesmo enquadramento mostrado na tela (zoom e giro já aplicados)
+    const rawBase64 = vf.value.capturar();
 
     // Aplicar carimbo igual ao dos checklists
     const { date } = await getTrustedTime();
@@ -371,14 +296,11 @@ function descartar() {
 
 async function alternarCamera() {
   if (fotoDataUrl.value) return;
-  faceMode.value = faceMode.value === "environment" ? "user" : "environment";
-  pararStream();
-  await iniciarStream();
+  await vf.value?.virar();
 }
 
 function fechar() {
   descartar();
-  pararStream();
   passo.value = "equipe";
   busca.value = "";
   emit("update:modelValue", false);
@@ -397,14 +319,13 @@ watch(
     } else {
       clearInterval(tickId);
       descartar();
-      pararStream();
       passo.value = "equipe";
       busca.value = "";
     }
   }
 );
 
-onUnmounted(() => { clearInterval(tickId); descartar(); pararStream(); });
+onUnmounted(() => { clearInterval(tickId); descartar(); });
 </script>
 
 <style scoped>
@@ -557,12 +478,15 @@ onUnmounted(() => { clearInterval(tickId); descartar(); pararStream(); });
   overflow: hidden;
   background: #111;
 }
-.cc-video, .cc-preview-img {
+.cc-viewfinder > :deep(.vf-root) { position: absolute; inset: 0; }
+.cc-preview-img {
+  position: absolute; inset: 0;
   width: 100%; height: 100%;
-  object-fit: cover; display: block;
+  object-fit: contain; display: block;
+  background: #000;
 }
 .cc-timestamp {
-  position: absolute; bottom: 12px; left: 12px; right: 12px;
+  position: absolute; top: 10px; left: 12px; right: 64px;
   font-size: 13px; font-weight: 600; font-family: monospace;
   color: rgba(255,255,255,.9);
   text-shadow: 0 1px 4px rgba(0,0,0,.8);
@@ -581,8 +505,6 @@ onUnmounted(() => { clearInterval(tickId); descartar(); pararStream(); });
   flex-shrink: 0;
 }
 .cc-footer__spacer { flex: 1; }
-.cc-footer__side { display: flex; justify-content: flex-start; }
-.cc-footer__side .cc-icon-btn:disabled { opacity: .35; pointer-events: none; }
 
 .cc-capture-btn {
   position: relative;
