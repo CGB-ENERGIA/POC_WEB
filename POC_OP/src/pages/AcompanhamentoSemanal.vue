@@ -156,14 +156,31 @@
 
       <!-- Charts Row 1 -->
       <div class="row q-col-gutter-md q-mb-md">
-        <div class="col-12 col-md-8">
+        <div :class="verTodosObs ? 'col-12' : 'col-12 col-md-8'">
           <q-card flat bordered class="chart-card">
-            <q-card-section class="q-pb-none">
-              <div class="text-subtitle1 text-weight-bold">Observações Realizadas na Semana</div>
-              <div class="text-caption text-grey-6">Clique numa vela, base, processo ou semana para filtrar a página · clique de novo para limpar</div>
+            <q-card-section class="q-pb-none row items-start no-wrap">
+              <div class="col">
+                <div class="text-subtitle1 text-weight-bold">Observações Realizadas na Semana</div>
+                <div class="text-caption text-grey-6">Clique numa vela, base, processo ou semana para filtrar a página · clique de novo para limpar</div>
+              </div>
+              <q-btn
+                flat round dense
+                :icon="verTodosObs ? 'mdi-magnify-minus-outline' : 'mdi-magnify-plus-outline'"
+                :color="verTodosObs ? 'primary' : 'grey-7'"
+                @click="verTodosObs = !verTodosObs"
+              >
+                <q-tooltip>{{ verTodosObs ? 'Voltar à visão com rolagem' : `Mostrar todos os ${observerRows.length} observadores de uma vez` }}</q-tooltip>
+              </q-btn>
             </q-card-section>
             <q-card-section>
-              <v-chart class="chart-hit" :option="barObservadores" autoresize style="height: 300px" @click="onObsClick" />
+              <v-chart
+                :key="`obs-${verTodosObs}`"
+                class="chart-hit"
+                :option="barObservadores"
+                autoresize
+                :style="{ height: verTodosObs ? '380px' : '300px' }"
+                @click="onObsClick"
+              />
             </q-card-section>
           </q-card>
         </div>
@@ -645,6 +662,9 @@ function cleanXAxis(data: string[], extra: Record<string, unknown> = {}) {
 }
 
 // ─── Observações Realizadas na Semana ─────────────────────────────────────────
+/** Lupa: mostra todos os observadores de uma vez (sem rolagem), para tirar um print só. */
+const verTodosObs = ref(false);
+
 const barObservadores = computed(() => {
   const rows = observerRows.value;
   const names = rows.map(r => r.short);
@@ -652,7 +672,8 @@ const barObservadores = computed(() => {
   const okColor = chartInk.ok;
   const missColor = chartInk.miss;
   const metaTick = chartInk.metaTick;
-  const visible = Math.min(18, Math.max(8, rows.length));
+  const todos = verTodosObs.value;
+  const visible = todos ? rows.length : Math.min(18, Math.max(8, rows.length));
   const labelHalo = {
     textBorderColor: chartInk.halo,
     textBorderWidth: 3,
@@ -675,8 +696,9 @@ const barObservadores = computed(() => {
         ], "Clique para filtrar este observador");
       },
     },
-    grid: { left: 8, right: 8, top: 40, bottom: 78 },
-    dataZoom: [
+    grid: { left: 8, right: 8, top: 40, bottom: todos ? 62 : 78 },
+    // Com a lupa ligada não há rolagem: o gráfico inteiro cabe na tela.
+    dataZoom: todos ? [] : [
       {
         type: "inside" as const,
         startValue: 0, endValue: visible - 1,
@@ -704,7 +726,7 @@ const barObservadores = computed(() => {
         moveHandleSize: 6,
       },
     ],
-    xAxis: cleanXAxis(names, { fontSize: 10, interval: 0, rotate: 28 }),
+    xAxis: cleanXAxis(names, { fontSize: todos && rows.length > 30 ? 9 : 10, interval: 0, rotate: todos && rows.length > 30 ? 40 : 28 }),
     yAxis: { ...silentYAxis, min: 0, max: maxY },
     series: [
       {
