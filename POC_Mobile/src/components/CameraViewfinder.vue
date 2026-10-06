@@ -138,8 +138,8 @@ function alternarGrade() {
 
 // ── Orientação / tamanho do quadro ───────────────────────
 const {
-  rotTotal, videoStyle, medirVideo, girarManual, dimensoesIdeais, vidW, vidH,
-} = useCameraRotation(videoEl, stageEl, reiniciarPorOrientacao);
+  rotTotal, rotExtra, angulo, videoStyle, medirVideo, girarManual, dimensoesIdeais, vidW, vidH,
+} = useCameraRotation(videoEl, stageEl, reiniciarPorOrientacao, facing);
 
 const areaW = ref(0);
 const areaH = ref(0);
@@ -402,11 +402,10 @@ function cancelarPressao() { window.clearTimeout(pressTimer); }
 
 const debugTexto = computed(() => {
   const s = (track?.getSettings?.() ?? {}) as MediaTrackSettings;
-  const ang = (screen.orientation && screen.orientation.angle) ?? (window as unknown as { orientation?: number }).orientation;
   return [
-    `tela ${window.innerWidth}x${window.innerHeight} ang=${ang}`,
+    `tela ${window.innerWidth}x${window.innerHeight} angulo=${angulo.value}`,
     `video ${vidW.value}x${vidH.value} settings ${s.width}x${s.height}`,
-    `giro total=${rotTotal.value} zoom=${zoom.value.toFixed(2)} hw=${zoomHw.value}`,
+    `giro total=${rotTotal.value} (manual=${rotExtra.value}) zoom=${zoom.value.toFixed(2)} hw=${zoomHw.value}`,
     `facing=${facing.value} torch=${caps.value.torch ? "sim" : "nao"} foco=${(caps.value.focusMode ?? []).join(",")}`,
     `${navigator.userAgent.slice(0, 80)}`,
     "(toque para fechar)",
