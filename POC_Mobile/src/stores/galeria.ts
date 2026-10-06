@@ -14,6 +14,8 @@ import {
   cloudLimparExpirados,
   cloudListarFotos,
 } from "@/services/galeria-cloud";
+import { getTrustedTime } from "@/utils/server-time";
+import { dataCorrigidaPelaNuvem } from "@/utils/galeria-datas";
 
 export type { FotoEntry };
 
@@ -49,10 +51,13 @@ export const useGaleriaStore = defineStore("galeria", () => {
 
   // ── Adicionar + upload nuvem em background ──────────────
   async function adicionarFoto(blob: Blob, matricula: string): Promise<FotoEntry> {
+    // Horário do servidor: o relógio do celular pode estar errado (e a galeria agrupa por data).
+    let agora = new Date();
+    try { agora = (await getTrustedTime()).date; } catch { /* sem horário confiável: usa o do aparelho */ }
     const entry: FotoEntry = {
-      id:        `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      id:        `${agora.getTime()}-${Math.random().toString(36).slice(2, 7)}`,
       matricula,
-      dataHora:  new Date().toISOString(),
+      dataHora:  agora.toISOString(),
       blob,
       tamanho:   blob.size,
       cloudUrl:  null,
@@ -95,6 +100,18 @@ export const useGaleriaStore = defineStore("galeria", () => {
       // Busca todas as fotos da matrícula no Supabase Storage
       const cloudFotos = await cloudListarFotos(matricula);
 
+      // Corrige datas no futuro (celular com relógio adiantado) usando a data de envio da nuvem
+      for (const cf of cloudFotos) {
+        const idx = fotos.value.findIndex(f => f.id === cf.id);
+        if (idx === -1) continue;
+        const local = fotos.value[idx]!;
+        const certa = dataCorrigidaPelaNuvem(local.dataHora, cf.dataHora);
+        if (!certa) continue;
+        const atualizada = { ...local, dataHora: certa };
+        fotos.value[idx] = atualizada;
+        dbSalvarFoto(atualizada).catch(() => {/* silencioso */});
+      }
+
       // Mescla: adiciona em memória as fotos cloud que não existem localmente
       const localIds = new Set(fotos.value.map(f => f.id));
       for (const cf of cloudFotos) {
@@ -112,8 +129,9 @@ export const useGaleriaStore = defineStore("galeria", () => {
 
       // Re-ordena por data decrescente
       fotos.value.sort((a, b) => b.dataHora.localeCompare(a.dataHora));
-    } catch {
+    } catch (err) {
       // Offline — ok, usa cache local
+      console.warn("[galeria] sincronizarNuvem falhou:", err);
     } finally {
       sincronizando.value = false;
     }
