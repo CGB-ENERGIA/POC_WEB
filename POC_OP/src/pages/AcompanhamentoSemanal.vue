@@ -173,14 +173,16 @@
               </q-btn>
             </q-card-section>
             <q-card-section>
-              <v-chart
-                :key="`obs-${verTodosObs}`"
-                class="chart-hit"
-                :option="barObservadores"
-                autoresize
-                :style="{ height: verTodosObs ? '380px' : '300px' }"
-                @click="onObsClick"
-              />
+              <div ref="obsWrap">
+                <v-chart
+                  :key="`obs-${verTodosObs}-${linhasObs}`"
+                  class="chart-hit"
+                  :option="barObservadores"
+                  autoresize
+                  :style="{ height: `${alturaObs}px` }"
+                  @click="onObsClick"
+                />
+              </div>
             </q-card-section>
           </q-card>
         </div>
@@ -236,7 +238,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, ref, watch, onMounted } from "vue";
+import { reactive, computed, ref, watch, onMounted, onBeforeUnmount } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, LineChart, PieChart, ScatterChart } from "echarts/charts";
@@ -346,12 +348,15 @@ function toggleProcesso(code: string) {
 type EcClick = {
   componentType?: string;
   dataIndex?: number;
+  seriesIndex?: number;
   name?: string;
 };
 
 function onObsClick(p: EcClick) {
   if (p.componentType !== "series") return;
-  const row = observerRows.value[p.dataIndex ?? -1];
+  // Na lupa com várias linhas, cada linha tem suas séries (2 por linha): converte para o índice global
+  const idxGlobal = (p.dataIndex ?? -1) + Math.floor((p.seriesIndex ?? 0) / 2) * porLinhaObs.value;
+  const row = observerRows.value[idxGlobal];
   if (!row) return;
   const mat = row.matricula;
   if (viz.matricula === mat) {
@@ -665,26 +670,139 @@ function cleanXAxis(data: string[], extra: Record<string, unknown> = {}) {
 /** Lupa: mostra todos os observadores de uma vez (sem rolagem), para tirar um print só. */
 const verTodosObs = ref(false);
 
+// Com a lupa e muitos nomes, o gráfico é quebrado em várias linhas (cada uma com seu eixo) para
+// nada ficar um em cima do outro. Tudo continua numa única imagem.
+const obsWrap = ref<HTMLElement | null>(null);
+const larguraObs = ref(1400);
+const PX_POR_NOME = 52;
+const ALTURA_LINHA_OBS = 210;
+const porLinhaObs = computed(() =>
+  verTodosObs.value ? Math.max(12, Math.floor(larguraObs.value / PX_POR_NOME)) : Number.MAX_SAFE_INTEGER,
+);
+const linhasObs = computed(() =>
+  verTodosObs.value ? Math.max(1, Math.ceil(observerRows.value.length / porLinhaObs.value)) : 1,
+);
+const alturaObs = computed(() =>
+  verTodosObs.value ? Math.max(380, linhasObs.value * ALTURA_LINHA_OBS + 24) : 300,
+);
+
+let roObs: ResizeObserver | null = null;
+onMounted(() => {
+  if (!obsWrap.value) return;
+  larguraObs.value = obsWrap.value.clientWidth || larguraObs.value;
+  roObs = new ResizeObserver(() => { larguraObs.value = obsWrap.value?.clientWidth || larguraObs.value; });
+  roObs.observe(obsWrap.value);
+});
+onBeforeUnmount(() => roObs?.disconnect());
+
 const barObservadores = computed(() => {
   const rows = observerRows.value;
-  const names = rows.map(r => r.short);
   const maxY = Math.max(2, ...rows.map(r => Math.max(r.realizado, r.meta)), 0) + 1.8;
   const okColor = chartInk.ok;
   const missColor = chartInk.miss;
   const metaTick = chartInk.metaTick;
   const todos = verTodosObs.value;
+  const porLinha = porLinhaObs.value;
+  const multi = todos && rows.length > porLinha;
   const visible = todos ? rows.length : Math.min(18, Math.max(8, rows.length));
   const labelHalo = {
     textBorderColor: chartInk.halo,
     textBorderWidth: 3,
   };
 
+  // Quando o realizado fica logo abaixo da meta, o número da barra bateria no tracinho da meta:
+  // nesse caso o número sobe acima do tracinho (e o número da meta sobe junto).
+  const alturaPlot = multi ? ALTURA_LINHA_OBS - 104 : alturaObs.value - 40 - (todos ? 62 : 78);
+  const pxPorUnidade = alturaPlot / maxY;
+  const colide = (r: { realizado: number; meta: number }) =>
+    r.meta >= r.realizado && (r.meta - r.realizado) * pxPorUnidade < 16;
+
+  // Cada "bloco" é uma linha do gráfico (ou o gráfico inteiro, se não precisar quebrar).
+  const blocos = multi
+    ? Array.from({ length: Math.ceil(rows.length / porLinha) }, (_, c) => ({ ini: c * porLinha, rows: rows.slice(c * porLinha, (c + 1) * porLinha) }))
+    : [{ ini: 0, rows }];
+
+  const series = blocos.flatMap((bl, i) => [
+    {
+      name: "Realizado",
+      type: "bar" as const,
+      xAxisIndex: i,
+      yAxisIndex: i,
+      data: bl.rows.map(r => ({
+        value: r.realizado,
+        itemStyle: {
+          color: r.realizado >= r.meta
+            ? grad(chartInk.okHi, okColor)
+            : grad(chartInk.missHi, chartInk.missBar),
+          borderRadius: [6, 6, 0, 0],
+          opacity: !viz.matricula || r.matricula === viz.matricula ? 1 : 0.22,
+          shadowColor: r.realizado >= r.meta ? "rgba(74,222,128,.28)" : "rgba(244,63,94,.35)",
+          shadowBlur: 6,
+          shadowOffsetY: 3,
+        },
+        label: {
+          color: r.realizado >= r.meta ? okColor : missColor,
+          offset: colide(r) ? [0, -13] : [0, 0],
+        },
+      })),
+      barMaxWidth: 22,
+      cursor: "pointer",
+      label: {
+        show: true,
+        position: "top" as const,
+        distance: 2,
+        fontSize: 11,
+        fontWeight: "bold" as const,
+        formatter: (p: { value: number }) => String(p.value),
+        ...labelHalo,
+      },
+    },
+    {
+      name: "Meta",
+      type: "scatter" as const,
+      xAxisIndex: i,
+      yAxisIndex: i,
+      data: bl.rows.map(r => ({
+        value: [r.short, r.meta],
+        itemStyle: { opacity: !viz.matricula || r.matricula === viz.matricula ? 1 : 0.22 },
+        label: { distance: colide(r) ? 22 : 8 },
+      })),
+      symbol: "rect",
+      symbolSize: [20, 5],
+      cursor: "pointer",
+      itemStyle: {
+        color: metaTick,
+        borderColor: chartInk.halo,
+        borderWidth: 1,
+        shadowColor: "rgba(254,205,211,.45)",
+        shadowBlur: 6,
+      },
+      z: 10,
+      label: {
+        show: true,
+        position: "top" as const,
+        distance: 8,
+        fontSize: 11,
+        fontWeight: "bold" as const,
+        color: metaTick,
+        ...labelHalo,
+        formatter: (p: { value: [string, number]; dataIndex: number }) => {
+          const r = bl.rows[p.dataIndex];
+          if (r && r.realizado === r.meta) return "";
+          return String(p.value[1]);
+        },
+      },
+      emphasis: { scale: false },
+    },
+  ]);
+
   return {
     tooltip: {
       ...tooltipSkin("axis"),
-      formatter: (params: { seriesName: string; dataIndex: number }[]) => {
-        const i = params[0]?.dataIndex ?? 0;
-        const r = rows[i];
+      formatter: (params: { seriesName: string; seriesIndex: number; dataIndex: number }[]) => {
+        const first = params[0];
+        if (!first) return "";
+        const r = rows[Math.floor(first.seriesIndex / 2) * (multi ? porLinha : rows.length) + first.dataIndex];
         if (!r) return "";
         const ok = r.realizado >= r.meta;
         const falta = Math.max(0, r.meta - r.realizado);
@@ -696,7 +814,9 @@ const barObservadores = computed(() => {
         ], "Clique para filtrar este observador");
       },
     },
-    grid: { left: 8, right: 8, top: 40, bottom: todos ? 62 : 78 },
+    grid: multi
+      ? blocos.map((_, i) => ({ left: 8, right: 8, top: i * ALTURA_LINHA_OBS + 34, height: ALTURA_LINHA_OBS - 104 }))
+      : { left: 8, right: 8, top: 40, bottom: todos ? 62 : 78 },
     // Com a lupa ligada não há rolagem: o gráfico inteiro cabe na tela.
     dataZoom: todos ? [] : [
       {
@@ -726,73 +846,12 @@ const barObservadores = computed(() => {
         moveHandleSize: 6,
       },
     ],
-    xAxis: cleanXAxis(names, { fontSize: todos && rows.length > 30 ? 9 : 10, interval: 0, rotate: todos && rows.length > 30 ? 40 : 28 }),
-    yAxis: { ...silentYAxis, min: 0, max: maxY },
-    series: [
-      {
-        name: "Realizado",
-        type: "bar" as const,
-        data: rows.map(r => ({
-          value: r.realizado,
-          itemStyle: {
-            color: r.realizado >= r.meta
-              ? grad(chartInk.okHi, okColor)
-              : grad(chartInk.missHi, chartInk.missBar),
-            borderRadius: [6, 6, 0, 0],
-            opacity: !viz.matricula || r.matricula === viz.matricula ? 1 : 0.22,
-            shadowColor: r.realizado >= r.meta ? "rgba(74,222,128,.28)" : "rgba(244,63,94,.35)",
-            shadowBlur: 6,
-            shadowOffsetY: 3,
-          },
-          label: { color: r.realizado >= r.meta ? okColor : missColor },
-        })),
-        barMaxWidth: 22,
-        cursor: "pointer",
-        label: {
-          show: true,
-          position: "top" as const,
-          distance: 2,
-          fontSize: 11,
-          fontWeight: "bold" as const,
-          formatter: (p: { value: number }) => String(p.value),
-          ...labelHalo,
-        },
-      },
-      {
-        name: "Meta",
-        type: "scatter" as const,
-        data: rows.map(r => ({
-          value: [r.short, r.meta],
-          itemStyle: { opacity: !viz.matricula || r.matricula === viz.matricula ? 1 : 0.22 },
-        })),
-        symbol: "rect",
-        symbolSize: [20, 5],
-        cursor: "pointer",
-        itemStyle: {
-          color: metaTick,
-          borderColor: chartInk.halo,
-          borderWidth: 1,
-          shadowColor: "rgba(254,205,211,.45)",
-          shadowBlur: 6,
-        },
-        z: 10,
-        label: {
-          show: true,
-          position: "top" as const,
-          distance: 8,
-          fontSize: 11,
-          fontWeight: "bold" as const,
-          color: metaTick,
-          ...labelHalo,
-          formatter: (p: { value: [string, number]; dataIndex: number }) => {
-            const r = rows[p.dataIndex];
-            if (r && r.realizado === r.meta) return "";
-            return String(p.value[1]);
-          },
-        },
-        emphasis: { scale: false },
-      },
-    ],
+    xAxis: blocos.map((bl, i) => ({
+      ...cleanXAxis(bl.rows.map(r => r.short), { fontSize: 10, interval: 0, rotate: 28 }),
+      gridIndex: i,
+    })),
+    yAxis: blocos.map((_, i) => ({ ...silentYAxis, min: 0, max: maxY, gridIndex: i })),
+    series,
   };
 });
 
