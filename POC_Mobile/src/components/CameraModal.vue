@@ -1,162 +1,139 @@
 <template>
-  <q-dialog v-model="isOpen" persistent maximized transition-show="slide-up" transition-hide="slide-down">
-    <div class="camera-root">
-      <CameraViewfinder
-        ref="vf"
-        class="camera-vf"
-        :ativo="isOpen"
-        @pronto="pronto = $event"
-        @erro="erro = $event ?? ''"
+  <q-dialog v-model="isOpen" position="bottom" @hide="processando = false">
+    <div class="cm-sheet">
+      <input
+        ref="inputEl"
+        type="file"
+        accept="image/*"
+        capture="environment"
+        class="cm-input"
+        @change="onArquivo"
+        @cancel="onCancelar"
       />
 
-      <!-- Erro de acesso -->
-      <div v-if="erro" class="camera-estado">
-        <q-icon name="mdi-camera-off" size="52px" color="grey-4" />
-        <div class="text-body1 text-white q-mt-md text-center q-px-lg">{{ erro }}</div>
-        <q-btn outline color="white" no-caps label="Fechar" class="q-mt-xl" @click="isOpen = false" />
-      </div>
-
-      <!-- Aguardando stream -->
-      <div v-else-if="!pronto" class="camera-estado">
-        <q-spinner color="white" size="42px" />
-        <div class="text-caption text-white q-mt-md">Iniciando câmera…</div>
-      </div>
-
-      <!-- Controles -->
-      <div class="camera-controls">
-        <q-btn flat round icon="mdi-close" color="white" size="lg" @click="isOpen = false" />
-        <button class="shutter-btn" :disabled="!pronto" aria-label="Tirar foto" @click="capturar">
-          <div class="shutter-btn__ring" />
-          <div class="shutter-btn__inner" />
+      <template v-if="processando">
+        <q-spinner color="primary" size="36px" />
+        <div class="cm-text">Preparando foto…</div>
+      </template>
+      <template v-else>
+        <div class="cm-title">Tirar foto</div>
+        <div v-if="erro" class="cm-erro">
+          <q-icon name="mdi-alert-circle-outline" size="18px" />
+          {{ erro }}
+        </div>
+        <button class="cm-btn" @click="abrir">
+          <q-icon name="mdi-camera" size="22px" />
+          Abrir câmera
         </button>
-        <q-btn
-          flat round
-          icon="mdi-camera-flip-outline"
-          color="white"
-          size="lg"
-          aria-label="Virar câmera"
-          :disable="!pronto || virandoCamera"
-          @click="virarCamera"
-        />
-      </div>
+        <button class="cm-cancel" @click="isOpen = false">Cancelar</button>
+      </template>
     </div>
   </q-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import { compressBase64 } from "@/utils/image";
-import CameraViewfinder from "@/components/CameraViewfinder.vue";
+import { ref, watch, nextTick } from "vue";
+import { abrirCameraNativa, fotoNativaParaBase64 } from "@/utils/native-camera";
 
+/**
+ * Abre a câmera nativa do celular (zoom, foco, flash, rotação e selfie do próprio
+ * aparelho) e devolve a foto já em pé e reduzida via evento "captured".
+ */
 const isOpen = defineModel<boolean>({ required: true });
 const emit = defineEmits<{ (e: "captured", base64: string): void }>();
 
-const vf = ref<InstanceType<typeof CameraViewfinder> | null>(null);
-const pronto = ref(false);
+const inputEl = ref<HTMLInputElement | null>(null);
+const processando = ref(false);
 const erro = ref("");
-const virandoCamera = ref(false);
 
-async function virarCamera() {
-  virandoCamera.value = true;
-  try { await vf.value?.virar(); } finally { virandoCamera.value = false; }
+function abrir() {
+  erro.value = "";
+  abrirCameraNativa(inputEl.value);
 }
 
-async function capturar() {
-  if (!pronto.value || !vf.value) return;
-  let raw: string;
+// Ao abrir, já chama a câmera (o toque que abriu o modal ainda vale como gesto do usuário).
+// Se o aparelho bloquear, o botão "Abrir câmera" continua na tela.
+watch(isOpen, async (aberto) => {
+  if (!aberto) return;
+  erro.value = "";
+  processando.value = false;
+  await nextTick();
+  abrir();
+});
+
+function onCancelar() {
+  if (!processando.value) isOpen.value = false;
+}
+
+async function onArquivo(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0];
+  if (!file) return;
+  processando.value = true;
   try {
-    raw = vf.value.capturar();
+    const base64 = await fotoNativaParaBase64(file);
+    isOpen.value = false;
+    emit("captured", base64);
   } catch {
-    erro.value = "Não foi possível tirar a foto. Tente novamente.";
-    return;
+    erro.value = "Não foi possível ler a foto. Tente novamente.";
+  } finally {
+    processando.value = false;
   }
-  isOpen.value = false;
-  const compressed = await compressBase64(raw);
-  emit("captured", compressed);
 }
 </script>
 
 <style scoped>
-.camera-root {
-  position: relative;
+.cm-sheet {
   width: 100%;
-  height: 100%;
-  background: #000;
+  background: #fff;
+  border-radius: 18px 18px 0 0;
+  padding: 20px 20px max(20px, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  align-items: stretch;
+  gap: 12px;
+  text-align: center;
 }
-
-.camera-video {
-  flex: 1;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.camera-vf {
-  flex: 1;
-  min-height: 0;
-}
-
-.camera-side {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.camera-estado {
+.cm-input {
   position: absolute;
-  inset: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.cm-title { font-size: 16px; font-weight: 700; color: #1c1917; }
+.cm-text { font-size: 14px; color: #57534e; }
+.cm-erro {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.82);
+  gap: 6px;
+  font-size: 13px;
+  color: #b91c1c;
 }
-
-.camera-controls {
-  position: relative;
-  flex-shrink: 0;
+.cm-btn {
+  appearance: none;
+  border: 0;
+  height: 52px;
+  border-radius: 14px;
+  background: var(--brand, #7a1225);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 20px 32px max(env(safe-area-inset-bottom), 20px);
-  background: #000;
-}
-
-.shutter-btn {
-  position: relative;
-  width: 72px;
-  height: 72px;
-  background: none;
-  border: none;
+  justify-content: center;
+  gap: 8px;
   cursor: pointer;
-  padding: 0;
-  flex-shrink: 0;
 }
-
-.shutter-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.shutter-btn__ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.9);
-}
-
-.shutter-btn__inner {
-  position: absolute;
-  inset: 7px;
-  border-radius: 50%;
-  background: #fff;
-  transition: transform 0.1s ease;
-}
-
-.shutter-btn:not(:disabled):active .shutter-btn__inner {
-  transform: scale(0.86);
+.cm-btn:active { background: var(--brand-deep, #5c0e1c); }
+.cm-cancel {
+  appearance: none;
+  border: 0;
+  background: none;
+  height: 40px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #57534e;
+  cursor: pointer;
 }
 </style>

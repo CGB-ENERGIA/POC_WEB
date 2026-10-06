@@ -85,64 +85,57 @@
             <span class="cc-header__title">
               {{ fotoDataUrl ? 'Confirmar foto' : equipeSelecionada?.prefixo ?? 'Câmera' }}
             </span>
-            <button
-              class="cc-icon-btn"
-              :class="{ 'cc-icon-btn--disabled': fotoDataUrl !== null }"
-              aria-label="Virar câmera"
-              @click="alternarCamera"
-            >
-              <q-icon name="mdi-camera-flip-outline" size="24px" />
-            </button>
+            <div style="width:40px" />
           </div>
 
-          <!-- VIEWFINDER -->
+          <!-- Câmera nativa do aparelho (zoom, foco, flash, rotação e selfie do próprio celular) -->
+          <input
+            ref="inputEl"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            class="cc-input"
+            @change="onArquivo"
+          />
+
           <div class="cc-viewfinder">
-            <CameraViewfinder
-              v-show="!fotoDataUrl"
-              ref="vf"
-              :ativo="modelValue && passo === 'camera'"
-              @pronto="streamAtivo = $event"
-              @erro="erroMsg = $event"
-            >
-              <div class="cc-timestamp">{{ timestampAtual }}</div>
-            </CameraViewfinder>
             <img
               v-if="fotoDataUrl"
               :src="fotoDataUrl"
               class="cc-preview-img"
               alt="Foto capturada"
             />
+            <div v-else class="cc-wait">
+              <template v-if="processando">
+                <q-spinner color="white" size="40px" />
+                <span>Preparando foto…</span>
+              </template>
+              <template v-else>
+                <q-icon name="mdi-camera-outline" size="56px" />
+                <span>Toque para abrir a câmera do celular</span>
+                <button class="cc-equipe-confirmar cc-wait__btn" @click="abrirCamera">
+                  <q-icon name="mdi-camera" size="22px" />
+                  Abrir câmera
+                </button>
+              </template>
+            </div>
           </div>
 
           <!-- FOOTER -->
-          <div class="cc-footer">
-            <template v-if="!fotoDataUrl">
-              <div class="cc-footer__spacer" />
-              <button
-                class="cc-capture-btn"
-                :disabled="!streamAtivo || processando"
-                @click="capturar"
-              >
-                <div class="cc-capture-btn__ring" />
-                <div class="cc-capture-btn__disc" />
-              </button>
-              <div class="cc-footer__spacer" />
-            </template>
-            <template v-else>
-              <button class="cc-action-btn cc-action-btn--cancel" @click="descartar">
-                <q-icon name="mdi-camera-retake-outline" size="24px" />
-                <span>Refazer</span>
-              </button>
-              <button
-                class="cc-action-btn cc-action-btn--confirm"
-                :disabled="salvando"
-                @click="confirmar"
-              >
-                <q-spinner v-if="salvando" size="24px" />
-                <q-icon v-else name="mdi-check-circle-outline" size="24px" />
-                <span>{{ salvando ? 'Salvando…' : 'Salvar' }}</span>
-              </button>
-            </template>
+          <div v-if="fotoDataUrl" class="cc-footer">
+            <button class="cc-action-btn cc-action-btn--cancel" @click="refazer">
+              <q-icon name="mdi-camera-retake-outline" size="24px" />
+              <span>Refazer</span>
+            </button>
+            <button
+              class="cc-action-btn cc-action-btn--confirm"
+              :disabled="salvando"
+              @click="confirmar"
+            >
+              <q-spinner v-if="salvando" size="24px" />
+              <q-icon v-else name="mdi-check-circle-outline" size="24px" />
+              <span>{{ salvando ? 'Salvando…' : 'Salvar' }}</span>
+            </button>
           </div>
 
           <!-- ERRO -->
@@ -166,8 +159,7 @@ import { useQuasar } from "quasar";
 import { EQUIPES, type Equipe } from "@/data/equipes";
 import { stampAuditPhoto } from "@/utils/photo-stamp";
 import { getTrustedTime } from "@/utils/server-time";
-import { compressBase64 } from "@/utils/image";
-import CameraViewfinder from "@/components/CameraViewfinder.vue";
+import { abrirCameraNativa, fotoNativaParaBase64 } from "@/utils/native-camera";
 
 const props = defineProps<{
   modelValue: boolean;
@@ -212,6 +204,8 @@ function confirmarEquipe() {
   if (!equipeSelecionada.value) return;
   busca.value = "";
   passo.value = "camera";
+  // Abre a câmera ainda dentro do toque no botão (exigência do navegador).
+  abrirCamera();
 }
 
 function voltarParaEquipe() {
@@ -221,21 +215,16 @@ function voltarParaEquipe() {
   nextTick(() => searchInput.value?.focus());
 }
 
-// ── Câmera (CameraViewfinder cuida do stream, zoom, orientação…) ──
-const vf          = ref<InstanceType<typeof CameraViewfinder> | null>(null);
-const streamAtivo = ref(false);
-const erroMsg     = ref<string | null>(null);
+// ── Câmera nativa ───────────────────────────────────────
+const inputEl = ref<HTMLInputElement | null>(null);
+const erroMsg = ref<string | null>(null);
 
-// ── Timestamp live ───────────────────────────────────────
-const agora = ref(new Date());
-let tickId = 0;
-
-const timestampAtual = computed(() => {
-  const d    = agora.value;
-  const date = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
-  const time = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  return `${date}  ${time}`;
-});
+function abrirCamera() {
+  erroMsg.value = null;
+  // O input só existe no passo 2; quando vem do botão do passo 1, espera o render.
+  if (inputEl.value) abrirCameraNativa(inputEl.value);
+  else void nextTick(() => abrirCameraNativa(inputEl.value));
+}
 
 // ── Captura + stamp ──────────────────────────────────────
 const fotoDataUrl = ref<string | null>(null);
@@ -243,20 +232,20 @@ const fotoBlob    = ref<Blob | null>(null);
 const salvando    = ref(false);
 const processando = ref(false);
 
-async function capturar() {
-  if (!vf.value || !streamAtivo.value || !equipeSelecionada.value) return;
+async function onArquivo(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0];
+  if (!file || !equipeSelecionada.value) return;
 
   processando.value = true;
   erroMsg.value = null;
 
   try {
-    // Foto com o mesmo enquadramento mostrado na tela (zoom e giro já aplicados)
-    const rawBase64 = vf.value.capturar();
+    // Foto já em pé (orientação do aparelho) e reduzida
+    const foto = await fotoNativaParaBase64(file);
 
     // Aplicar carimbo igual ao dos checklists
     const { date } = await getTrustedTime();
-    const compressed = await compressBase64(rawBase64);
-    const carimbada  = await stampAuditPhoto(compressed, {
+    const carimbada = await stampAuditPhoto(foto, {
       time:     date,
       observer: session.employee?.nomeCompleto ?? session.employee?.nome ?? "—",
       equipe:   equipeSelecionada.value.prefixo,
@@ -271,6 +260,11 @@ async function capturar() {
   } finally {
     processando.value = false;
   }
+}
+
+function refazer() {
+  descartar();
+  abrirCamera();
 }
 
 async function confirmar() {
@@ -294,11 +288,6 @@ function descartar() {
   erroMsg.value  = null;
 }
 
-async function alternarCamera() {
-  if (fotoDataUrl.value) return;
-  await vf.value?.virar();
-}
-
 function fechar() {
   descartar();
   passo.value = "equipe";
@@ -313,11 +302,8 @@ watch(
       passo.value = "equipe";
       equipeSelecionada.value = null;
       busca.value = "";
-      agora.value = new Date();
-      tickId = window.setInterval(() => { agora.value = new Date(); }, 1000);
       nextTick(() => searchInput.value?.focus());
     } else {
-      clearInterval(tickId);
       descartar();
       passo.value = "equipe";
       busca.value = "";
@@ -325,7 +311,7 @@ watch(
   }
 );
 
-onUnmounted(() => { clearInterval(tickId); descartar(); });
+onUnmounted(() => { descartar(); });
 </script>
 
 <style scoped>
@@ -478,21 +464,23 @@ onUnmounted(() => { clearInterval(tickId); descartar(); });
   overflow: hidden;
   background: #111;
 }
-.cc-viewfinder > :deep(.vf-root) { position: absolute; inset: 0; }
+.cc-input {
+  position: absolute; width: 1px; height: 1px;
+  opacity: 0; pointer-events: none;
+}
+.cc-wait {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 24px;
+  color: rgba(255,255,255,.75); font-size: 14px; text-align: center;
+}
+.cc-wait__btn { width: auto; padding: 0 28px; margin-top: 6px; }
 .cc-preview-img {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
   object-fit: contain; display: block;
   background: #000;
 }
-.cc-timestamp {
-  position: absolute; top: 10px; left: 12px; right: 64px;
-  font-size: 13px; font-weight: 600; font-family: monospace;
-  color: rgba(255,255,255,.9);
-  text-shadow: 0 1px 4px rgba(0,0,0,.8);
-  pointer-events: none;
-}
-
 /* ── Footer câmera ────────────────────────────────────── */
 .cc-footer {
   display: flex;
@@ -504,24 +492,6 @@ onUnmounted(() => { clearInterval(tickId); descartar(); });
   gap: 20px;
   flex-shrink: 0;
 }
-.cc-footer__spacer { flex: 1; }
-
-.cc-capture-btn {
-  position: relative;
-  width: 72px; height: 72px;
-  background: none; border: 0;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-.cc-capture-btn:disabled { opacity: .4; }
-.cc-capture-btn__ring { position: absolute; inset: 0; border-radius: 50%; border: 3px solid #fff; }
-.cc-capture-btn__disc {
-  width: 56px; height: 56px; border-radius: 50%; background: #fff;
-  transition: transform .1s, background .1s;
-}
-.cc-capture-btn:active .cc-capture-btn__disc { transform: scale(.88); background: #ddd; }
-
 .cc-action-btn {
   flex: 1;
   display: flex; flex-direction: column; align-items: center; gap: 6px;
