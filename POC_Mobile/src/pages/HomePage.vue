@@ -367,7 +367,16 @@ onMounted(() => {
       .finally(() => { syncLoading.value = false; });
   }
 
-  void galeriaStore.carregar();
+  // Mesmo critério da tela Galeria (fotos desta matrícula + as que só existem na nuvem),
+  // para o selo da home bater com o que a galeria mostra. Offline: só as do aparelho.
+  const matGaleria = session.matricula;
+  if (matGaleria) {
+    void galeriaStore.carregar(matGaleria).then(() => {
+      if (navigator.onLine) void galeriaStore.sincronizarNuvem(matGaleria);
+    });
+  } else {
+    void galeriaStore.carregar();
+  }
 
   if (draftGoman.value || draftGstc.value)                                                                      operacionalAberto.value    = true;
   if (draftAdministrativo.value || draftAlojamento.value || draftLogistica.value || draftOficina.value)         administrativoAberto.value = true;
