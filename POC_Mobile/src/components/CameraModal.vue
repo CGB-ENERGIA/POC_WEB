@@ -33,7 +33,7 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick } from "vue";
-import { abrirCameraNativa, fotoNativaParaBase64 } from "@/utils/native-camera";
+import { abrirCameraNativa, fotoNativaParaBase64, FotoAntigaError } from "@/utils/native-camera";
 
 /**
  * Abre a câmera nativa do celular (zoom, foco, flash, rotação e selfie do próprio
@@ -73,8 +73,8 @@ async function onArquivo(e: Event) {
     const base64 = await fotoNativaParaBase64(file);
     isOpen.value = false;
     emit("captured", base64);
-  } catch {
-    erro.value = "Não foi possível ler a foto. Tente novamente.";
+  } catch (err) {
+    erro.value = err instanceof FotoAntigaError ? err.message : "Não foi possível ler a foto. Tente novamente.";
   } finally {
     processando.value = false;
   }

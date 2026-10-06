@@ -159,7 +159,7 @@ import { useQuasar } from "quasar";
 import { EQUIPES, type Equipe } from "@/data/equipes";
 import { stampAuditPhoto } from "@/utils/photo-stamp";
 import { getTrustedTime } from "@/utils/server-time";
-import { abrirCameraNativa, fotoNativaParaBase64 } from "@/utils/native-camera";
+import { abrirCameraNativa, fotoNativaParaBase64, FotoAntigaError } from "@/utils/native-camera";
 
 const props = defineProps<{
   modelValue: boolean;
@@ -255,8 +255,8 @@ async function onArquivo(e: Event) {
     const resp = await fetch(carimbada);
     fotoBlob.value    = await resp.blob();
     fotoDataUrl.value = URL.createObjectURL(fotoBlob.value);
-  } catch {
-    erroMsg.value = "Erro ao processar foto. Tente novamente.";
+  } catch (err) {
+    erroMsg.value = err instanceof FotoAntigaError ? err.message : "Erro ao processar foto. Tente novamente.";
   } finally {
     processando.value = false;
   }
@@ -274,7 +274,7 @@ async function confirmar() {
     const entry = await galeria.adicionarFoto(fotoBlob.value, props.matricula);
     emit("salva", entry.id);
     $q.notify({ type: "positive", message: "Foto salva na galeria!", position: "top", timeout: 2000 });
-    descartar();
+    fechar(); // volta para a tela anterior em vez de ficar pedindo para abrir a câmera
   } catch {
     erroMsg.value = "Erro ao salvar foto. Tente novamente.";
   } finally {
