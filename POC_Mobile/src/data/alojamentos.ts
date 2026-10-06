@@ -79,3 +79,12 @@ const ALOJ_POR_BASE: Record<string, string[]> = {
 export function alojamentosPorBase(base: string): string[] {
   return ALOJ_POR_BASE[base] ?? [];
 }
+
+/** Todos os alojamentos com código ALOJxx, como "ALOJ01 – ALTAMIRA", com a base de cada um. */
+export function todosAlojamentos(): { prefixo: string; base: string }[] {
+  const out: { prefixo: string; base: string }[] = [];
+  for (const [b, lista] of Object.entries(ALOJ_POR_BASE)) {
+    for (const rotulo of lista) out.push({ prefixo: rotulo, base: b });
+  }
+  return out.sort((a, b) => a.prefixo.localeCompare(b.prefixo, "pt-BR", { numeric: true }));
+}

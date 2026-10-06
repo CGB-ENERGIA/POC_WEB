@@ -11,7 +11,7 @@
             <button class="cc-icon-btn" @click="fechar">
               <q-icon name="mdi-close" size="26px" />
             </button>
-            <span class="cc-header__title">Selecione a equipe</span>
+            <span class="cc-header__title">Equipe ou alojamento</span>
             <div style="width:40px" />
           </div>
 
@@ -23,7 +23,7 @@
                 ref="searchInput"
                 v-model="busca"
                 class="cc-equipe-search__input"
-                placeholder="Buscar equipe (ex: F001, BCB…)"
+                :placeholder="aba === 'equipes' ? 'Buscar equipe (ex: F001, BCB…)' : 'Buscar alojamento (ex: ALOJ01, Bacabal…)'"
                 autocomplete="off"
                 spellcheck="false"
               />
@@ -33,11 +33,28 @@
             </div>
           </div>
 
+          <!-- ABAS: equipes / alojamentos -->
+          <div class="cc-abas">
+            <button class="cc-aba" :class="{ 'cc-aba--on': aba === 'equipes' }" @click="aba = 'equipes'">
+              Equipes <span class="cc-aba__n">{{ listaEquipes.length }}</span>
+            </button>
+            <button class="cc-aba" :class="{ 'cc-aba--on': aba === 'alojamentos' }" @click="aba = 'alojamentos'">
+              Alojamentos <span class="cc-aba__n">{{ listaAlojamentos.length }}</span>
+            </button>
+          </div>
+
           <div class="cc-equipe-body">
             <!-- Sem resultados -->
             <div v-if="equipesFiltradas.length === 0" class="cc-equipe-empty">
               <q-icon name="mdi-magnify-remove-outline" size="40px" />
-              <span>Nenhuma equipe encontrada para "{{ busca }}"</span>
+              <span>
+                Nenhum{{ aba === 'equipes' ? 'a equipe' : ' alojamento' }} encontrad{{ aba === 'equipes' ? 'a' : 'o' }}
+                para "{{ busca }}"
+              </span>
+              <button v-if="resultadosOutraAba > 0" class="cc-aba-dica" @click="aba = aba === 'equipes' ? 'alojamentos' : 'equipes'">
+                Ver {{ resultadosOutraAba }} resultado{{ resultadosOutraAba === 1 ? '' : 's' }} em
+                {{ aba === 'equipes' ? 'Alojamentos' : 'Equipes' }}
+              </button>
             </div>
 
             <div v-else class="cc-equipe-list">
@@ -170,7 +187,8 @@ import { ref, watch, onUnmounted, computed, nextTick } from "vue";
 import { useGaleriaStore } from "@/stores/galeria";
 import { useSessionStore } from "@/stores/session";
 import { useQuasar } from "quasar";
-import { EQUIPES, type Equipe } from "@/data/equipes";
+import { equipesAtivas } from "@/data/equipes";
+import { todosAlojamentos } from "@/data/alojamentos";
 import { stampAuditPhoto } from "@/utils/photo-stamp";
 import { getTrustedTime, ServerTimeError } from "@/utils/server-time";
 import { abrirCameraNativa, fotoNativaParaBase64, FotoAntigaError } from "@/utils/native-camera";
@@ -191,17 +209,33 @@ const session = useSessionStore();
 // ── Fluxo ────────────────────────────────────────────────
 type Passo = "equipe" | "camera";
 const passo             = ref<Passo>("equipe");
-const equipeSelecionada = ref<Equipe | null>(null);
+// Equipe ou alojamento (o carimbo da foto mostra o prefixo escolhido)
+type Opcao = { prefixo: string; base: string };
+const equipeSelecionada = ref<Opcao | null>(null);
+const aba               = ref<"equipes" | "alojamentos">("equipes");
 const busca             = ref("");
 const searchInput       = ref<HTMLInputElement | null>(null);
 
-const equipesFiltradas = computed(() => {
+// Lista sincronizada com o painel (Banco de Dados); sem internet usa a última salva
+const listaEquipes     = computed<Opcao[]>(() => equipesAtivas.value.map(e => ({ prefixo: e.prefixo, base: e.base })));
+const listaAlojamentos = todosAlojamentos();
+
+function filtrar(lista: Opcao[]): Opcao[] {
   const q = busca.value.trim().toLowerCase();
-  if (!q) return EQUIPES;
-  return EQUIPES.filter(e =>
+  if (!q) return lista;
+  return lista.filter(e =>
     e.prefixo.toLowerCase().includes(q) || e.base.toLowerCase().includes(q)
   );
-});
+}
+
+const equipesFiltradas = computed(() =>
+  filtrar(aba.value === "equipes" ? listaEquipes.value : listaAlojamentos),
+);
+
+/** Quantos resultados da busca existem na outra aba (para sugerir trocar). */
+const resultadosOutraAba = computed(() =>
+  busca.value.trim() ? filtrar(aba.value === "equipes" ? listaAlojamentos : listaEquipes.value).length : 0,
+);
 
 function destacar(texto: string): string {
   const q = busca.value.trim();
@@ -210,7 +244,7 @@ function destacar(texto: string): string {
   return texto.replace(re, '<mark class="cc-mark">$1</mark>');
 }
 
-function selecionarEquipe(eq: Equipe) {
+function selecionarEquipe(eq: Opcao) {
   equipeSelecionada.value = eq;
 }
 
@@ -327,6 +361,7 @@ watch(
     if (aberto) {
       passo.value = "equipe";
       equipeSelecionada.value = null;
+      aba.value = "equipes";
       busca.value = "";
       nextTick(() => searchInput.value?.focus());
     } else {
@@ -416,6 +451,24 @@ onUnmounted(() => { descartar(); });
 }
 .cc-equipe-search__clear:hover { color: #94a3b8; }
 
+.cc-abas {
+  display: flex; gap: 8px; padding: 12px 16px 0; background: #0f172a; flex-shrink: 0;
+}
+.cc-aba {
+  appearance: none; flex: 1; height: 40px; border-radius: 10px;
+  border: 1.5px solid rgba(255,255,255,.14); background: rgba(255,255,255,.05);
+  color: rgba(255,255,255,.7); font-size: 14px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.cc-aba--on { background: rgba(var(--brand-rgb),.35); border-color: var(--brand-accent); color: #fff; }
+.cc-aba__n {
+  font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px;
+  background: rgba(255,255,255,.14);
+}
+.cc-aba-dica {
+  appearance: none; border: 0; background: none; cursor: pointer;
+  color: #fff; font-size: 14px; font-weight: 700; text-decoration: underline; padding: 8px;
+}
 .cc-equipe-body {
   flex: 1;
   overflow-y: auto;
