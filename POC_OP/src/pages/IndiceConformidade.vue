@@ -52,6 +52,16 @@
               </template>
             </q-select>
           </div>
+          <div class="fgroup fgroup--gerente">
+            <span class="fgroup__label">Coordenador</span>
+            <q-select v-model="filters.coordenador" :options="coordenadores"
+              dense outlined hide-bottom-space class="gerente-select"
+              popup-content-class="gerente-popup">
+              <template #prepend>
+                <q-icon name="mdi-account" size="16px" class="gerente-icon" />
+              </template>
+            </q-select>
+          </div>
 
         </div>
 
@@ -112,6 +122,7 @@
           <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ nomeBase(filters.base) }}</span>
           <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
           <span v-if="filters.gerente !== 'Todos'" class="filter-chip">{{ filters.gerente }}</span>
+          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip">{{ filters.coordenador }}</span>
           <span v-if="filters.tipoPoc !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.tipoPoc = 'Todos'">{{ filters.tipoPoc }}</span>
           <span v-if="viz.equipe" class="filter-chip filter-chip--hit" @click="viz.equipe = null">{{ viz.equipe }}</span>
           <span v-if="viz.perguntaCurta" class="filter-chip filter-chip--hit" @click="clearPergunta">{{ viz.perguntaCurta }}</span>
@@ -239,7 +250,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN, fmtPct } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, fetchNaoConformesPorMes, semanaDaData, indexEmployees, matchSubmissionToEmployee, GERENTES } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, fetchNaoConformesPorMes, semanaDaData, indexEmployees, matchSubmissionToEmployee, GERENTES, COORDENADORES, filterByCoordenador } from "@/lib/dashboard";
 
 use([
   CanvasRenderer, BarChart, LineChart,
@@ -280,6 +291,7 @@ const gerencias = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT", 
 const bases     = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const tiposPoc  = ["Todos", "Administrativo", "Operacional"];
 const gerentes = [...GERENTES];
+const coordenadores = [...COORDENADORES];
 
 // ─── Filter state ─────────────────────────────────────────────────────────────
 const now = new Date();
@@ -290,7 +302,7 @@ const filters = reactive({
   gerencia: "Todos",
   base:     "Todos",
   tipoPoc:  "Todos",
-  gerente:  "Todos",
+  gerente:  "Todos", coordenador: "Todos",
 });
 
 // ─── Dados reais ──────────────────────────────────────────────────────────────
@@ -346,6 +358,7 @@ function resetSlice() {
   filters.base = "Todos";
   filters.tipoPoc = "Todos";
   filters.gerente = "Todos";
+  filters.coordenador = "Todos";
   viz.equipe = null;
   clearPergunta();
 }
@@ -402,6 +415,7 @@ const hasActiveFilters = computed(() =>
   || filters.base !== "Todos"
   || filters.gerencia !== "Todos"
   || filters.gerente !== "Todos"
+  || filters.coordenador !== "Todos"
   || filters.tipoPoc !== "Todos"
   || !!viz.equipe
   || !!viz.pergunta,
@@ -435,6 +449,7 @@ function applySlice(
   omit: { week?: boolean; base?: boolean; gerencia?: boolean; tipo?: boolean; equipe?: boolean } = {},
 ) {
   let s = filterByGerente(source, employees.value, filters.gerente);
+  s = filterByCoordenador(s, employees.value, filters.coordenador);
   if (!omit.gerencia) s = filterByGerencia(s, employees.value, filters.gerencia);
   if (!omit.week && filters.semana) {
     s = s.filter((sub) => semanaDaData(sub.data) === filters.semana);

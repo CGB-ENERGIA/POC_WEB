@@ -50,6 +50,14 @@
                 @click="filters.gerenteFinal = g">{{ g }}</button>
             </div>
           </div>
+          <div class="fgroup">
+            <span class="fgroup__label">Coordenador</span>
+            <div class="pill-group">
+              <button v-for="g in coordenadoresOpts" :key="g"
+                :class="['pill', filters.coordenador === g && 'pill--active']"
+                @click="filters.coordenador = g">{{ g }}</button>
+            </div>
+          </div>
 
           <div class="filter-divider" />
 
@@ -117,6 +125,7 @@
           <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ filters.base }}</span>
           <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
           <span v-if="filters.gerenteFinal !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerenteFinal = 'Todos'">{{ filters.gerenteFinal }}</span>
+          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ filters.coordenador }}</span>
           <span v-if="filters.observador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.observador = 'Todos'">{{ filters.observador }}</span>
           <span v-if="filters.categoria !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.categoria = 'Todos'">{{ filters.categoria }}</span>
           <span v-if="filters.prefixo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.prefixo = 'Todos'">{{ filters.prefixo }}</span>
@@ -219,7 +228,7 @@ import { TooltipComponent, GridComponent, DataZoomComponent } from "echarts/comp
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDoMes, GERENTES } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDoMes, GERENTES, COORDENADORES, filterByCoordenador } from "@/lib/dashboard";
 
 use([CanvasRenderer, BarChart, TreemapChart, TooltipComponent, GridComponent, DataZoomComponent]);
 
@@ -235,6 +244,7 @@ const showFilters = ref(false);
 const anos         = ["2024", "2025", "2026"];
 const categorias   = ["Todos", "APR", "Padrinho de Segurança", "Procedimento", "Regras de Ouro"];
 const gerentesFinal = [...GERENTES];
+const coordenadoresOpts = [...COORDENADORES];
 const bases        = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const mesesOpts    = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26","jul/26","ago/26","set/26","out/26","nov/26","dez/26"];
 const semanasOpts  = ["Todos","1ª Semana","2ª Semana","3ª Semana","4ª Semana"];
@@ -307,7 +317,7 @@ const MONTH_MAP: Record<string, number> = {
 const curMesLabel = mesesOpts[now.getMonth()] ?? "jan/26";
 
 const filters = reactive({
-  ano: String(now.getFullYear()), categoria: "Todos", gerenteFinal: "Todos",
+  ano: String(now.getFullYear()), categoria: "Todos", gerenteFinal: "Todos", coordenador: "Todos",
   observador: "Todos", mes: curMesLabel, semana: "Todos",
   base: "Todos", gerencia: "Todos", prefixo: "Todos",
 });
@@ -346,6 +356,7 @@ function onEquipeClick(p: EcClick) {
 function resetSlice() {
   filters.categoria = "Todos";
   filters.gerenteFinal = "Todos";
+  filters.coordenador = "Todos";
   filters.observador = "Todos";
   filters.semana = "Todos";
   filters.gerencia = "Todos";
@@ -358,6 +369,7 @@ const hasActiveFilters = computed(() =>
   || filters.base !== "Todos"
   || filters.gerencia !== "Todos"
   || filters.gerenteFinal !== "Todos"
+  || filters.coordenador !== "Todos"
   || filters.observador !== "Todos"
   || filters.categoria !== "Todos"
   || filters.prefixo !== "Todos"
@@ -382,6 +394,7 @@ function applySlice(
   omit: { gerencia?: boolean; prefixo?: boolean; observador?: boolean; week?: boolean } = {},
 ) {
   let s = filterByGerente(source, employees.value, filters.gerenteFinal);
+  s = filterByCoordenador(s, employees.value, filters.coordenador);
   if (!omit.gerencia) s = filterByGerencia(s, employees.value, filters.gerencia);
   if (!omit.week && filters.semana !== "Todos") {
     const semNum = Number(filters.semana.replace(/\D/g, "")) || 0;

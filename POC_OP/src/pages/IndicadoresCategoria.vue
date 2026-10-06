@@ -39,6 +39,16 @@
               </template>
             </q-select>
           </div>
+          <div class="fgroup fgroup--gerente">
+            <span class="fgroup__label">Coordenador</span>
+            <q-select v-model="filters.coordenador" :options="coordenadoresOpts"
+              dense outlined hide-bottom-space class="gerente-select"
+              popup-content-class="gerente-popup">
+              <template #prepend>
+                <q-icon name="mdi-account" size="16px" class="gerente-icon" />
+              </template>
+            </q-select>
+          </div>
         </div>
 
         <!-- Row 2: Base · Gerência · Prefixo · Tipo de POC -->
@@ -88,6 +98,7 @@
           <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ filters.base }}</span>
           <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
           <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ filters.gerente }}</span>
+          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ filters.coordenador }}</span>
           <span v-if="filters.prefixo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.prefixo = 'Todos'">{{ filters.prefixo }}</span>
           <span v-if="filters.tipo !== 'Operacional'" class="filter-chip filter-chip--hit" @click="filters.tipo = 'Operacional'">{{ filters.tipo }}</span>
           <span v-if="viz.mes" class="filter-chip filter-chip--hit" @click="viz.mes = null">{{ months[viz.mes - 1] }}</span>
@@ -203,7 +214,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, GERENTES } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, GERENTES, COORDENADORES, filterByCoordenador } from "@/lib/dashboard";
 
 use([CanvasRenderer, BarChart, GaugeChart, GridComponent, TooltipComponent, LegendComponent]);
 
@@ -234,6 +245,7 @@ const anosOpts     = ["2024","2025","2026"];
 const basesOpts    = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
 const gerentesOpts = [...GERENTES];
+const coordenadoresOpts = [...COORDENADORES];
 const tiposOpts     = ["Operacional","Administrativo","Alojamento"];
 
 // Mapeia o "Tipo de POC" para os valores reais de auditagem gravados no checklist
@@ -259,7 +271,7 @@ function filterPrefixo(val: string, update: (fn: () => void) => void) {
 
 const filters = reactive({
   ano: String(now.getFullYear()), base: "Todos",
-  gerencia: "Todos", gerente: "Todos",
+  gerencia: "Todos", gerente: "Todos", coordenador: "Todos",
   prefixo: "Todos", tipo: "Operacional",
 });
 
@@ -298,6 +310,7 @@ function onMesClick(p: EcClick) {
 function resetSlice() {
   filters.gerencia = "Todos";
   filters.gerente = "Todos";
+  filters.coordenador = "Todos";
   filters.prefixo = "Todos";
   filters.tipo = "Operacional";
   viz.mes = null;
@@ -308,6 +321,7 @@ const hasActiveFilters = computed(() =>
   filters.base !== "Todos"
   || filters.gerencia !== "Todos"
   || filters.gerente !== "Todos"
+  || filters.coordenador !== "Todos"
   || filters.prefixo !== "Todos"
   || filters.tipo !== "Operacional"
   || viz.mes != null
@@ -325,6 +339,7 @@ function applySlice(
   omit: { gerencia?: boolean; prefixo?: boolean; tipo?: boolean; mes?: boolean } = {},
 ) {
   let s = filterByGerente(source, employees.value, filters.gerente);
+  s = filterByCoordenador(s, employees.value, filters.coordenador);
   if (!omit.gerencia) s = filterByGerencia(s, employees.value, filters.gerencia);
   if (!omit.tipo) s = s.filter((sub) => matchTipoPoc(sub.auditagem));
   if (!omit.prefixo && filters.prefixo !== "Todos") {

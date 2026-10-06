@@ -53,6 +53,16 @@
               </template>
             </q-select>
           </div>
+          <div class="fgroup fgroup--gerente">
+            <span class="fgroup__label">Coordenador</span>
+            <q-select v-model="filters.coordenador" :options="coordenadores"
+              dense outlined hide-bottom-space class="gerente-select"
+              popup-content-class="gerente-popup">
+              <template #prepend>
+                <q-icon name="mdi-account" size="16px" class="gerente-icon" />
+              </template>
+            </q-select>
+          </div>
 
         </div>
 
@@ -127,6 +137,7 @@
           <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ nomeBase(filters.base) }}</span>
           <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
           <span v-if="filters.gerente !== 'Todos'" class="filter-chip">{{ filters.gerente }}</span>
+          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip">{{ filters.coordenador }}</span>
           <span v-if="filters.tipoPoc !== 'Operacional'" class="filter-chip filter-chip--hit" @click="filters.tipoPoc = 'Operacional'">{{ filters.tipoPoc }}</span>
           <span v-if="filters.seguranca !== 'Segurança'" class="filter-chip filter-chip--hit" @click="filters.seguranca = 'Segurança'">{{ filters.seguranca }}</span>
           <span v-if="viz.equipe" class="filter-chip filter-chip--hit" @click="viz.equipe = null">{{ viz.equipe }}</span>
@@ -283,7 +294,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtPct, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDaData, indexEmployees, matchSubmissionToEmployee, fetchSubmissions, fetchResponses, type ResponseRow, type SubmissionRow, GERENTES } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDaData, indexEmployees, matchSubmissionToEmployee, fetchSubmissions, fetchResponses, type ResponseRow, type SubmissionRow, GERENTES, COORDENADORES, filterByCoordenador } from "@/lib/dashboard";
 import { metaRoleFrom } from "@/composables/useGoals";
 
 use([
@@ -331,6 +342,7 @@ const bases      = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const segurancas = ["Todos", "Segurança"];
 const tiposPoc   = ["Todos", "Administrativo", "Operacional"];
 const gerentes = [...GERENTES];
+const coordenadores = [...COORDENADORES];
 
 // â"€â"€â"€ Filter state â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const filters = reactive({
@@ -341,7 +353,7 @@ const filters = reactive({
   base:      "Todos",
   seguranca: "Segurança",
   tipoPoc:   "Operacional",
-  gerente:   "Todos",
+  gerente:   "Todos", coordenador: "Todos",
 });
 
 async function recarregarMes() {
@@ -412,6 +424,7 @@ function resetSlice() {
   filters.tipoPoc = "Operacional";
   filters.seguranca = "Segurança";
   filters.gerente = "Todos";
+  filters.coordenador = "Todos";
   viz.equipe = null;
   viz.categoria = null;
   viz.lado = null;
@@ -472,6 +485,7 @@ const hasActiveFilters = computed(() =>
   || filters.base !== "Todos"
   || filters.gerencia !== "Todos"
   || filters.gerente !== "Todos"
+  || filters.coordenador !== "Todos"
   || filters.tipoPoc !== "Operacional"
   || filters.seguranca !== "Segurança"
   || !!viz.equipe
@@ -485,6 +499,7 @@ function applySlice(
 ) {
   const idx = indexEmployees(employees.value);
   let s = filterByGerente(source, employees.value, filters.gerente);
+  s = filterByCoordenador(s, employees.value, filters.coordenador);
   if (!omit.gerencia) s = filterByGerencia(s, employees.value, filters.gerencia);
   if (!omit.week && filters.semana) {
     s = s.filter((sub) => semanaDaData(sub.data) === filters.semana);

@@ -59,6 +59,14 @@
                 @click="filters.gerente = (filters.gerente === g ? '' : g)">{{ g }}</button>
             </div>
           </div>
+          <div class="fgroup">
+            <span class="fgroup__label">Coordenador</span>
+            <div class="pill-group">
+              <button v-for="g in coordenadores" :key="g"
+                :class="['pill pill--sm', filters.coordenador === g && 'pill--active']"
+                @click="filters.coordenador = (filters.coordenador === g ? '' : g)">{{ g }}</button>
+            </div>
+          </div>
 
         </div>
         <div class="frow">
@@ -144,7 +152,7 @@
 <script setup lang="ts">
 import { reactive, computed, ref, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, GERENTES } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, GERENTES, COORDENADORES, filterByCoordenador } from "@/lib/dashboard";
 
 const { loading, error, submissions, responses, employees, load } = useChecklistData();
 
@@ -156,6 +164,7 @@ interface Row  { prefixo: string; months: (Cell | null)[]; total: { reinc: numbe
 const now = new Date();
 const bases     = ["BCB","BDC","ITM","PDS","PDT","STI"];
 const gerentes = [...GERENTES].filter((g) => g !== "Todos");
+const coordenadores = [...COORDENADORES].filter((g) => g !== "Todos");
 const gerencias = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
 const meses     = [
   { v: 1, l: "jan" }, { v: 2, l: "fev" },
@@ -183,7 +192,7 @@ const filters = reactive({
   mes:      now.getMonth() + 1,
   base:     "",
   prefixo:  "Todos",
-  gerente:  "",
+  gerente:  "", coordenador: "",
   gerencia: "",
   tipo:     "Geral",
 });
@@ -253,6 +262,7 @@ const allPrefixes: string[] = [
 // â"€â"€â"€ Real data: per-equipe per-month ICIT â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const rawRows = computed<Row[]>(() => {
   let subs = filterByGerente(submissions.value, employees.value, filters.gerente || "Todos");
+  subs = filterByCoordenador(subs, employees.value, filters.coordenador || "Todos");
   subs = filterByGerencia(subs, employees.value, filters.gerencia || "Todos");
   const subIds = new Set(subs.map(s => s.id));
 

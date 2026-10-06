@@ -53,6 +53,22 @@
               </template>
             </q-select>
           </div>
+          <div class="fgroup fgroup--gerente">
+            <span class="fgroup__label">Coordenador</span>
+            <q-select
+              v-model="filters.coordenador"
+              :options="coordenadores"
+              dense
+              outlined
+              hide-bottom-space
+              class="gerente-select"
+              popup-content-class="gerente-popup"
+            >
+              <template #prepend>
+                <q-icon name="mdi-account" size="16px" class="gerente-icon" />
+              </template>
+            </q-select>
+          </div>
 
         </div>
 
@@ -119,6 +135,7 @@
           <span class="filter-chip">{{ mesLabel }}</span>
           <span class="filter-chip">{{ semanaLabel }}</span>
           <span v-if="filters.gerente && filters.gerente !== 'Todos'" class="filter-chip">{{ filters.gerente }}</span>
+          <span v-if="filters.coordenador && filters.coordenador !== 'Todos'" class="filter-chip">{{ filters.coordenador }}</span>
           <span v-if="filters.gerencia !== 'Todos'" class="filter-chip">{{ filters.gerencia }}</span>
           <span v-if="viz.observadorNome" class="filter-chip filter-chip--hit" @click="viz.matricula = null; viz.observadorNome = null">{{ viz.observadorNome }}</span>
           <span v-if="viz.base" class="filter-chip filter-chip--hit" @click="viz.base = null">{{ viz.base }}</span>
@@ -254,7 +271,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDaData, semanaDoMes, filterObserverRoster, uniqueChartLabels, tallyObserverRecords, normMatricula, indexEmployees, matchSubmissionToEmployee, GERENTES } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDaData, semanaDoMes, filterObserverRoster, uniqueChartLabels, tallyObserverRecords, normMatricula, indexEmployees, matchSubmissionToEmployee, GERENTES, COORDENADORES, filterByCoordenador } from "@/lib/dashboard";
 import { useGoals } from "@/composables/useGoals";
 const { goalForColaborador } = useGoals();
 
@@ -284,6 +301,7 @@ const meses = [
 ];
 
 const gerentes = [...GERENTES];
+const coordenadores = [...COORDENADORES];
 
 const gerencias = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT", "SPOT"];
 
@@ -293,7 +311,7 @@ const filters = reactive({
   semana: semanaDoMes(now.getDate()),
   ano: now.getFullYear(),
   mes: now.getMonth() + 1,
-  gerente: "Todos",
+  gerente: "Todos", coordenador: "Todos",
   gerencia: "Todos",
   alojamento: false,
 });
@@ -335,6 +353,7 @@ function resetFilters() {
   filters.ano = now.getFullYear();
   filters.mes = now.getMonth() + 1;
   filters.gerente = "Todos";
+  filters.coordenador = "Todos";
   filters.gerencia = "Todos";
   filters.alojamento = false;
   resetViz();
@@ -393,6 +412,7 @@ const semanaLabel = computed(() => semanas.find(s => s.value === filters.semana)
 const mesLabel = computed(() => meses.find(m => m.value === filters.mes)?.label ?? "");
 const hasActiveFilters = computed(() =>
   filters.gerente !== "Todos"
+  || filters.coordenador !== "Todos"
   || filters.gerencia !== "Todos"
   || !!viz.matricula
   || !!viz.base
@@ -421,10 +441,14 @@ watch(() => [filters.ano, filters.mes], recarregar);
 
 // Todos os subs do mês após filtros de gerência/gerente (sem filtro de semana)
 const barraGerencia = computed(() =>
-  filterByGerente(
-    filterByGerencia(submissions.value, employees.value, filters.gerencia),
+  filterByCoordenador(
+    filterByGerente(
+      filterByGerencia(submissions.value, employees.value, filters.gerencia),
+      employees.value,
+      filters.gerente,
+    ),
     employees.value,
-    filters.gerente,
+    filters.coordenador,
   ),
 );
 
@@ -475,6 +499,7 @@ const observerRoster = computed(() =>
   filterObserverRoster(employees.value, {
     gerencia: filters.gerencia,
     gerente: filters.gerente,
+    coordenador: filters.coordenador,
   }),
 );
 

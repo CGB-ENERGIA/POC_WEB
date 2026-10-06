@@ -57,6 +57,16 @@
               </template>
             </q-select>
           </div>
+          <div class="fgroup fgroup--gerente">
+            <span class="fgroup__label">Coordenador</span>
+            <q-select v-model="filters.coordenador" :options="coordenadoresOpts"
+              dense outlined hide-bottom-space class="gerente-select"
+              popup-content-class="gerente-popup">
+              <template #prepend>
+                <q-icon name="mdi-account" size="16px" class="gerente-icon" />
+              </template>
+            </q-select>
+          </div>
         </div>
 
         <!-- Row 2: Gerência · Tipo de POC · Função -->
@@ -119,6 +129,7 @@
           <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ nomeBase(filters.base) }}</span>
           <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
           <span v-if="filters.gerente !== 'Todos'" class="filter-chip">{{ filters.gerente }}</span>
+          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip">{{ filters.coordenador }}</span>
           <span v-if="filters.tipoPoc !== 'Operacional'" class="filter-chip filter-chip--hit" @click="filters.tipoPoc = 'Operacional'">{{ filters.tipoPoc }}</span>
           <span v-if="filters.funcao !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.funcao = 'Todos'">{{ filters.funcao }}</span>
           <span v-if="filters.categoria !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.categoria = 'Todos'">{{ filters.categoria }}</span>
@@ -321,7 +332,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, fetchIcitPorPrefixo, indexEmployees, matchSubmissionToEmployee, type IcitPrefixo, GERENTES } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, fetchIcitPorPrefixo, indexEmployees, matchSubmissionToEmployee, type IcitPrefixo, GERENTES, COORDENADORES, filterByCoordenador } from "@/lib/dashboard";
 
 use([CanvasRenderer, BarChart, GaugeChart, GridComponent, TooltipComponent, DataZoomComponent]);
 
@@ -349,6 +360,7 @@ const categoriasOpts = ["Todos","Procedimento","Padrinho de Segurança","Veícul
 const basesOpts    = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
 const gerentesOpts = [...GERENTES];
+const coordenadoresOpts = [...COORDENADORES];
 const funcaoOpts   = ["Todos","Eletricista","Motorista","Operador","Técnico"];
 const tiposPoc     = ["Administrativo","Operacional","Alojamento"];
 
@@ -357,7 +369,7 @@ const curMesLabel = mesesOpts[now.getMonth()] ?? "jan/26";
 const filters = reactive({
   mes: curMesLabel, ano: String(now.getFullYear()), categoria: "Todos",
   base: "Todos", prefixo: "Todos", gerencia: "Todos",
-  gerente: "Todos", observador: "Todos", funcao: "Todos",
+  gerente: "Todos", coordenador: "Todos", observador: "Todos", funcao: "Todos",
   tipoPoc: "Operacional",
 });
 
@@ -443,6 +455,7 @@ function resetSlice() {
   filters.base = "Todos";
   filters.gerencia = "Todos";
   filters.gerente = "Todos";
+  filters.coordenador = "Todos";
   filters.tipoPoc = "Operacional";
   filters.funcao = "Todos";
   filters.categoria = "Todos";
@@ -454,6 +467,7 @@ const hasActiveFilters = computed(() =>
   filters.base !== "Todos"
   || filters.gerencia !== "Todos"
   || filters.gerente !== "Todos"
+  || filters.coordenador !== "Todos"
   || filters.tipoPoc !== "Operacional"
   || filters.funcao !== "Todos"
   || filters.categoria !== "Todos"
@@ -467,6 +481,7 @@ function applySlice(
 ) {
   const idx = indexEmployees(employees.value);
   let s = filterByGerente(source, employees.value, filters.gerente);
+  s = filterByCoordenador(s, employees.value, filters.coordenador);
   if (!omit.gerencia) s = filterByGerencia(s, employees.value, filters.gerencia);
   if (!omit.base && filters.base !== "Todos") s = s.filter((sub) => sub.base === filters.base);
   if (!omit.tipo) s = s.filter((sub) => matchTipoPoc(sub.auditagem));

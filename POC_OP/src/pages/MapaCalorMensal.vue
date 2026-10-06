@@ -65,6 +65,14 @@
                 @click="filters.gerente = g">{{ g }}</button>
             </div>
           </div>
+          <div class="fgroup">
+            <span class="fgroup__label">Coordenador</span>
+            <div class="pill-group">
+              <button v-for="g in coordenadoresOpts" :key="g"
+                :class="['pill', filters.coordenador === g && 'pill--active']"
+                @click="filters.coordenador = g">{{ g }}</button>
+            </div>
+          </div>
         </div>
 
         <!-- Row 3: Base · Tipo de POC -->
@@ -98,6 +106,7 @@
           <span v-if="filters.semana !== 0" class="filter-chip filter-chip--hit" @click="filters.semana = 0">{{ semanaLabel }}</span>
           <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
           <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ filters.gerente }}</span>
+          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ filters.coordenador }}</span>
           <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ filters.base }}</span>
           <span v-if="filters.tipo !== 'Operacional'" class="filter-chip filter-chip--hit" @click="filters.tipo = 'Operacional'">{{ filters.tipo }}</span>
           <span v-if="viz.base && viz.base !== filters.base" class="filter-chip filter-chip--hit" @click="viz.base = null">{{ viz.base }}</span>
@@ -290,7 +299,7 @@
 <script setup lang="ts">
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDaData, GERENTES } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDaData, GERENTES, COORDENADORES, filterByCoordenador } from "@/lib/dashboard";
 import KpiFlame from "@/components/KpiFlame.vue";
 
 const { loading, submissions, responses, employees, load } = useChecklistData();
@@ -310,6 +319,7 @@ const mesesOpts = [{ v: 0, l: "Todos" }, ...months.map((l, i) => ({ v: i + 1, l 
 const anosOpts      = ["2024","2025","2026"];
 const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
 const gerentesOpts = [...GERENTES];
+const coordenadoresOpts = [...COORDENADORES];
 const basesOpts     = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 const tiposOpts     = ["Operacional","Administrativo","Alojamento","Todos"];
 
@@ -331,7 +341,7 @@ const CAT_DEFS = [
 
 const filters = reactive({
   semana: 0, mes: 0, ano: String(now.getFullYear()),
-  gerencia: "Todos", gerente: "Todos", base: "Todos", tipo: "Operacional",
+  gerencia: "Todos", gerente: "Todos", coordenador: "Todos", base: "Todos", tipo: "Operacional",
 });
 
 const viz = reactive({
@@ -379,6 +389,7 @@ function resetSlice() {
   filters.mes = 0;
   filters.gerencia = "Todos";
   filters.gerente = "Todos";
+  filters.coordenador = "Todos";
   filters.base = "Todos";
   filters.tipo = "Operacional";
   viz.cat = null;
@@ -390,6 +401,7 @@ const hasActiveFilters = computed(() =>
   || filters.mes !== 0
   || filters.gerencia !== "Todos"
   || filters.gerente !== "Todos"
+  || filters.coordenador !== "Todos"
   || filters.base !== "Todos"
   || filters.tipo !== "Operacional"
   || !!viz.cat
@@ -440,6 +452,7 @@ function catIndex(categoria: string | undefined) {
 
 function applySlice(omit: { base?: boolean; mes?: boolean } = {}) {
   let s = filterByGerente(submissions.value, employees.value, filters.gerente);
+  s = filterByCoordenador(s, employees.value, filters.coordenador);
   s = filterByGerencia(s, employees.value, filters.gerencia);
   s = s.filter((sub) => matchTipoPoc(sub.auditagem));
   if (filters.semana) {

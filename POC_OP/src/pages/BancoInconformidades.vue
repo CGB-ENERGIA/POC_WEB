@@ -91,6 +91,16 @@
                 >{{ g }}</button>
               </div>
             </div>
+            <div class="fgroup fgroup--gerente">
+              <span class="flabel">Coordenador</span>
+              <div class="fchips">
+                <button
+                  v-for="g in coordenadores" :key="g"
+                  :class="['fchip', filters.coordenador === g && 'fchip--on']"
+                  @click="toggleCoordenador(g)"
+                >{{ g }}</button>
+              </div>
+            </div>
           </div>
 
           <!-- Observador + Equipe -->
@@ -160,7 +170,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useChecklistData, type SubmissionRow, type ResponseRow, type EmployeeRow } from "@/composables/useChecklistData";
-import { filterByGerente, semanaDoMes, GERENTES } from "@/lib/dashboard";
+import { filterByGerente, semanaDoMes, GERENTES, COORDENADORES, filterByCoordenador } from "@/lib/dashboard";
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
@@ -183,6 +193,7 @@ const meses = [
 const bases    = ["BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const gerencias = ["ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT", "SPOT"];
 const gerentes = [...GERENTES].filter((g) => g !== "Todos");
+const coordenadores = [...COORDENADORES].filter((g) => g !== "Todos");
 
 const mesesAbrev = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
 
@@ -210,14 +221,14 @@ const filters = reactive({
   semana:     null as number | null,
   base:       null as string | null,
   gerencia:   null as string | null,
-  gerente:    null as string | null,
+  gerente:    null as string | null, coordenador: null as string | null,
   observador: null as string | null,
   equipe:     null as string | null,
 });
 
 const filtrosAbertos = ref(true);
 const filtrosAtivosCount = computed(() =>
-  [filters.semana, filters.base, filters.gerencia, filters.gerente, filters.observador, filters.equipe]
+  [filters.semana, filters.base, filters.gerencia, filters.gerente, filters.coordenador, filters.observador, filters.equipe]
     .filter(v => v !== null).length
 );
 
@@ -226,6 +237,7 @@ function toggleMes    (v: number)  { filters.mes       = filters.mes      === v 
 function toggleBase   (v: string)  { filters.base      = filters.base     === v    ? null : v; }
 function toggleGerencia(v: string) { filters.gerencia  = filters.gerencia === v    ? null : v; }
 function toggleGerente (v: string) { filters.gerente   = filters.gerente  === v    ? null : v; }
+function toggleCoordenador(v: string) { filters.coordenador = filters.coordenador === v ? null : v; }
 
 // ─── Dados ───────────────────────────────────────────────────────────────────
 
@@ -327,6 +339,13 @@ const listaFiltrada = computed<NcRow[]>(() => {
       filterByGerente(submissions.value, employees.value, filters.gerente).map(s => s.id),
     );
     rows = rows.filter(r => subIds.has(r.key.split("_")[0]!));
+  }
+
+  if (filters.coordenador) {
+    const idsCoord = new Set(
+      filterByCoordenador(submissions.value, employees.value, filters.coordenador).map(s => s.id),
+    );
+    rows = rows.filter(r => idsCoord.has(r.key.split("_")[0]!));
   }
 
   if (filters.observador) {

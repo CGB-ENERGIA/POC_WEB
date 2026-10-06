@@ -60,6 +60,20 @@
               </template>
             </q-select>
           </div>
+          <div class="fgroup fgroup--gerente">
+            <span class="fgroup__label">Coordenador</span>
+            <q-select
+              v-model="filters.coordenador"
+              :options="coordenadores"
+              dense outlined hide-bottom-space
+              class="gerente-select"
+              popup-content-class="gerente-popup"
+            >
+              <template #prepend>
+                <q-icon name="mdi-account" size="16px" class="gerente-icon" />
+              </template>
+            </q-select>
+          </div>
 
         </div>
 
@@ -128,6 +142,7 @@
           <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ nomeBase(filters.base) }}</span>
           <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
           <span v-if="filters.gerente !== 'Todos'" class="filter-chip">{{ filters.gerente }}</span>
+          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip">{{ filters.coordenador }}</span>
           <span v-if="filters.funcao !== 'Todos'" class="filter-chip">{{ filters.funcao }}</span>
           <span v-if="viz.observadorNome" class="filter-chip filter-chip--hit" @click="clearObs">{{ viz.observadorNome }}</span>
           <button class="filter-clear" @click="resetSlice">
@@ -286,7 +301,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDaData, filterObserverRoster, uniqueChartLabels, tallyObserverRecords, normMatricula, indexEmployees, matchSubmissionToEmployee, GERENTES } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDaData, filterObserverRoster, uniqueChartLabels, tallyObserverRecords, normMatricula, indexEmployees, matchSubmissionToEmployee, GERENTES, COORDENADORES, filterByCoordenador } from "@/lib/dashboard";
 import { useGoals } from "@/composables/useGoals";
 const { goalForColaborador } = useGoals();
 
@@ -334,6 +349,7 @@ const funcoes = ["Todos", "Analista", "Coordenador", "Especialista", "Técnico"]
 const gerencias = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT", "SPOT"];
 
 const gerentes = [...GERENTES];
+const coordenadores = [...COORDENADORES];
 
 // ─── Filter state ─────────────────────────────────────────────────────────────
 const now = new Date();
@@ -344,7 +360,7 @@ const filters = reactive({
   base:     "Todos",
   funcao:   "Todos",
   gerencia: "Todos",
-  gerente:  "Todos",
+  gerente:  "Todos", coordenador: "Todos",
 });
 
 // ─── Dados reais ──────────────────────────────────────────────────────────────
@@ -397,6 +413,7 @@ function resetSlice() {
   filters.funcao = "Todos";
   filters.gerencia = "Todos";
   filters.gerente = "Todos";
+  filters.coordenador = "Todos";
   clearObs();
 }
 
@@ -459,12 +476,17 @@ const hasActiveFilters = computed(() =>
   || filters.base !== "Todos"
   || filters.gerencia !== "Todos"
   || filters.gerente !== "Todos"
+  || filters.coordenador !== "Todos"
   || filters.funcao !== "Todos"
   || !!viz.matricula,
 );
 
 const barraGerente = computed(() =>
-  filterByGerente(submissions.value, employees.value, filters.gerente),
+  filterByCoordenador(
+    filterByGerente(submissions.value, employees.value, filters.gerente),
+    employees.value,
+    filters.coordenador,
+  ),
 );
 
 function applySlice(
@@ -522,6 +544,7 @@ const observerRoster = computed(() =>
   filterObserverRoster(employees.value, {
     gerencia: filters.gerencia,
     gerente: filters.gerente,
+    coordenador: filters.coordenador,
     funcao: filters.funcao,
   }),
 );

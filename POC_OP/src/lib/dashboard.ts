@@ -8,13 +8,18 @@ export const GERENCIAS = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "S
 export type Gerencia = typeof GERENCIAS[number];
 
 /**
- * Opções do filtro "Gerente": gerentes (Cesar, Jamerson) e coordenadores, como na
- * planilha de equipes. Filtrar por um deles traz toda a equipe dele (colunas
- * `gerente` / `coordenador` de `employees`) e também as próprias observações.
+ * Filtro "Gerente": só os gerentes. Filtrar por um deles traz a equipe inteira dele
+ * (colunas `gerente` e `coordenador` de `employees`) e também as próprias observações.
  */
-export const GERENTES = [
-  "Todos", "Cesar", "Jamerson", "Afonso", "Camila", "Daniel", "Jackson", "Julio C.",
-  "Luis C.", "Marcos", "Paulo", "Rafaela", "Ruan", "Thiago F.", "Valvick",
+export const GERENTES = ["Todos", "Cesar", "Jamerson", "Valvick"] as const;
+
+/**
+ * Filtro "Coordenador": traz as pessoas coordenadas por ele (coluna `coordenador` de
+ * `employees`) e as próprias observações do coordenador.
+ */
+export const COORDENADORES = [
+  "Todos", "Afonso", "Camila", "Daniel", "Jackson", "Julio C.", "Luis C.",
+  "Marcos", "Paulo", "Rafaela", "Ruan", "Thiago F.", "Valvick",
 ] as const;
 
 export interface Filters {
@@ -397,7 +402,7 @@ export function countByMatricula(subs: SubmissionRow[]): Record<string, number> 
 /** Roster de observadores para gráficos de meta (todos, inclusive quem fez 0). */
 export function filterObserverRoster(
   employees: EmployeeRow[],
-  opts: { gerencia?: string; gerente?: string; funcao?: string; base?: string } = {},
+  opts: { gerencia?: string; gerente?: string; coordenador?: string; funcao?: string; base?: string } = {},
 ): EmployeeRow[] {
   let list = employees;
   if (opts.gerencia && opts.gerencia !== "Todos") {
@@ -408,6 +413,15 @@ export function filterObserverRoster(
   }
   if (opts.base && opts.base !== "Todos") {
     list = list.filter((e) => e.base === opts.base);
+  }
+  if (opts.coordenador && opts.coordenador !== "Todos") {
+    const c = foldName(opts.coordenador);
+    list = list.filter((e) => {
+      if (foldName(e.coordenador) === c) return true;
+      const nome = foldName(e.nome);
+      const full = foldName(e.nome_completo);
+      return nome === c || full === c || full.startsWith(`${c} `) || nome.startsWith(`${c} `);
+    });
   }
   if (opts.gerente && opts.gerente !== "Todos") {
     const g = foldName(opts.gerente);
@@ -840,6 +854,25 @@ export function filterByGerencia(
     if (mats.has(normMatricula(s.matricula))) return true;
     const emp = matchSubmissionToEmployee(s, idx);
     return emp?.gerencia === gerencia;
+  });
+}
+
+export function filterByCoordenador(
+  subs: SubmissionRow[],
+  employees: EmployeeRow[],
+  coordenador: string | null | undefined,
+): SubmissionRow[] {
+  if (!coordenador || coordenador === "Todos") return subs;
+  const allowed = new Set(
+    filterObserverRoster(employees, { coordenador }).map((e) => normMatricula(e.matricula)),
+  );
+  const idx = indexEmployees(employees);
+  const c = foldName(coordenador);
+  return subs.filter((s) => {
+    const emp = matchSubmissionToEmployee(s, idx);
+    if (emp) return allowed.has(normMatricula(emp.matricula));
+    const obs = foldName(s.observador);
+    return obs === c || obs.startsWith(`${c} `);
   });
 }
 

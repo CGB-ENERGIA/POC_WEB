@@ -87,6 +87,16 @@
               </template>
             </q-select>
           </div>
+          <div class="fgroup fgroup--sel">
+            <span class="fgroup__label">Coordenador</span>
+            <q-select v-model="filters.coordenador" :options="coordenadoresOpts"
+              dense outlined hide-bottom-space class="gerente-select"
+              popup-content-class="gerente-popup">
+              <template #prepend>
+                <q-icon name="mdi-account" size="16px" class="gerente-icon" />
+              </template>
+            </q-select>
+          </div>
           <div class="filter-divider" />
           <div class="fgroup fgroup--sel" style="min-width:160px">
             <span class="fgroup__label">Observador</span>
@@ -110,6 +120,7 @@
           <span v-if="filters.tipo !== 'Operacional'" class="filter-chip filter-chip--hit" @click="filters.tipo = 'Operacional'">{{ filters.tipo }}</span>
           <span v-if="filters.funcao !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.funcao = 'Todos'">{{ filters.funcao }}</span>
           <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ filters.gerente }}</span>
+          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ filters.coordenador }}</span>
           <span v-if="filters.observador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.observador = 'Todos'">{{ filters.observador }}</span>
           <span v-if="viz.prefixo" class="filter-chip filter-chip--hit" @click="viz.prefixo = null">{{ viz.prefixo }}</span>
           <span v-if="viz.categoria" class="filter-chip filter-chip--hit" @click="viz.categoria = null">{{ viz.categoria }}</span>
@@ -300,7 +311,7 @@ import { GridComponent, TooltipComponent, LegendComponent } from "echarts/compon
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDoMes, indexEmployees, matchSubmissionToEmployee, GERENTES } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDoMes, indexEmployees, matchSubmissionToEmployee, GERENTES, COORDENADORES, filterByCoordenador } from "@/lib/dashboard";
 
 use([CanvasRenderer, BarChart, GaugeChart, PieChart, GridComponent, TooltipComponent, LegendComponent]);
 
@@ -321,11 +332,12 @@ const mesesOpts     = ["Todos","jan","fev","mar","abr","mai","jun","jul","ago","
 const semanasOpts   = ["Todos","Semana 1","Semana 2","Semana 3","Semana 4"];
 const funcoesOpts   = ["Todos","ENCARREGADO","SUPERVISOR","SESMT","FISCAL","COORDENADOR","GERENTE"];
 const gerentesOpts = [...GERENTES];
+const coordenadoresOpts = [...COORDENADORES];
 
 const filters = reactive({
   ano: "2026", base: "Todos", gerencia: "Todos", tipo: "Operacional",
   mes: "Todos", semana: "Todos", funcao: "Todos",
-  gerente: "Todos", observador: "Todos",
+  gerente: "Todos", coordenador: "Todos", observador: "Todos",
 });
 
 // ─── Dados reais ─────────────────────────────────────────────────────────────
@@ -383,6 +395,7 @@ function resetSlice() {
   filters.semana = "Todos";
   filters.funcao = "Todos";
   filters.gerente = "Todos";
+  filters.coordenador = "Todos";
   filters.observador = "Todos";
   viz.prefixo = null;
   viz.categoria = null;
@@ -396,6 +409,7 @@ const hasActiveFilters = computed(() =>
   || filters.semana !== "Todos"
   || filters.funcao !== "Todos"
   || filters.gerente !== "Todos"
+  || filters.coordenador !== "Todos"
   || filters.observador !== "Todos"
   || !!viz.prefixo
   || !!viz.categoria,
@@ -414,6 +428,7 @@ function applySlice(
 ) {
   const idx = indexEmployees(employees.value);
   let s = filterByGerente(source, employees.value, filters.gerente);
+  s = filterByCoordenador(s, employees.value, filters.coordenador);
   if (!omit.gerencia) s = filterByGerencia(s, employees.value, filters.gerencia);
   if (!omit.tipo) s = s.filter((sub) => matchTipoPoc(sub.auditagem));
   if (!omit.week && filters.semana !== "Todos") {
