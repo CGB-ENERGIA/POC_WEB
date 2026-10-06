@@ -1,7 +1,16 @@
 <template>
   <q-dialog v-model="isOpen" persistent maximized transition-show="slide-up" transition-hide="slide-down">
-    <div class="camera-root">
-      <video ref="videoRef" autoplay playsinline muted class="camera-video" />
+    <div ref="rootRef" class="camera-root">
+      <video
+        ref="videoRef"
+        autoplay
+        playsinline
+        webkit-playsinline
+        muted
+        class="camera-video"
+        :style="videoStyle"
+        @resize="medirVideo"
+      />
 
       <!-- Erro de acesso -->
       <div v-if="erro" class="camera-estado">
@@ -18,7 +27,18 @@
 
       <!-- Controles -->
       <div class="camera-controls">
-        <q-btn flat round icon="mdi-close" color="white" size="lg" @click="isOpen = false" />
+        <div class="camera-side">
+          <q-btn flat round icon="mdi-close" color="white" size="lg" @click="isOpen = false" />
+          <q-btn
+            flat round
+            icon="mdi-screen-rotation"
+            color="white"
+            size="md"
+            aria-label="Girar imagem"
+            :disable="!pronto"
+            @click="girarManual"
+          />
+        </div>
         <button class="shutter-btn" :disabled="!pronto" @click="capturar">
           <div class="shutter-btn__ring" />
           <div class="shutter-btn__inner" />
@@ -39,11 +59,15 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onUnmounted } from "vue";
 import { compressBase64 } from "@/utils/image";
+import { useCameraRotation } from "@/composables/useCameraRotation";
 
 const isOpen = defineModel<boolean>({ required: true });
 const emit = defineEmits<{ (e: "captured", base64: string): void }>();
 
 const videoRef = ref<HTMLVideoElement | null>(null);
+const rootRef = ref<HTMLElement | null>(null);
+const { videoStyle, medirVideo, girarManual, dimensoesIdeais, desenharNoCanvas } =
+  useCameraRotation(videoRef, rootRef);
 const pronto = ref(false);
 const erro = ref("");
 const virandoCamera = ref(false);
@@ -65,13 +89,17 @@ watch(isOpen, async (val) => {
 async function iniciarCamera() {
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: facingMode.value }, width: { ideal: 1920 } },
+      video: {
+        facingMode: { ideal: facingMode.value },
+        width: { ideal: dimensoesIdeais().width },
+        height: { ideal: dimensoesIdeais().height },
+      },
       audio: false,
     });
     const video = videoRef.value;
     if (!video) return;
     video.srcObject = stream;
-    video.onloadedmetadata = () => { pronto.value = true; };
+    video.onloadedmetadata = () => { medirVideo(); pronto.value = true; };
   } catch {
     erro.value = "Não foi possível acessar a câmera. Verifique as permissões do navegador.";
   }
@@ -96,9 +124,7 @@ async function capturar() {
   const video = videoRef.value;
   if (!video || !pronto.value) return;
   const canvas = document.createElement("canvas");
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext("2d")!.drawImage(video, 0, 0);
+  desenharNoCanvas(video, canvas);
   const raw = canvas.toDataURL("image/jpeg", 0.92);
   isOpen.value = false;
   const compressed = await compressBase64(raw);
@@ -124,6 +150,12 @@ onUnmounted(pararCamera);
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.camera-side {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .camera-estado {

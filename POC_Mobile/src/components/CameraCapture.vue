@@ -95,14 +95,18 @@
           </div>
 
           <!-- VIEWFINDER -->
-          <div class="cc-viewfinder">
+          <div ref="vfEl" class="cc-viewfinder">
             <video
               v-show="!fotoDataUrl"
               ref="videoEl"
               autoplay
               playsinline
+              webkit-playsinline
               muted
               class="cc-video"
+              :style="videoStyle"
+              @loadedmetadata="medirVideo"
+              @resize="medirVideo"
             />
             <img
               v-if="fotoDataUrl"
@@ -118,7 +122,16 @@
           <!-- FOOTER -->
           <div class="cc-footer">
             <template v-if="!fotoDataUrl">
-              <div class="cc-footer__spacer" />
+              <div class="cc-footer__spacer cc-footer__side">
+                <button
+                  class="cc-icon-btn"
+                  :disabled="!streamAtivo"
+                  aria-label="Girar imagem"
+                  @click="girarManual"
+                >
+                  <q-icon name="mdi-screen-rotation" size="24px" />
+                </button>
+              </div>
               <button
                 class="cc-capture-btn"
                 :disabled="!streamAtivo || processando"
@@ -170,6 +183,7 @@ import { EQUIPES, type Equipe } from "@/data/equipes";
 import { stampAuditPhoto } from "@/utils/photo-stamp";
 import { getTrustedTime } from "@/utils/server-time";
 import { compressBase64 } from "@/utils/image";
+import { useCameraRotation } from "@/composables/useCameraRotation";
 
 const props = defineProps<{
   modelValue: boolean;
@@ -228,6 +242,11 @@ function voltarParaEquipe() {
   nextTick(() => searchInput.value?.focus());
 }
 
+// ── Orientação ───────────────────────────────────────────
+const vfEl = ref<HTMLElement | null>(null);
+const { videoStyle, medirVideo, girarManual, dimensoesIdeais, desenharNoCanvas } =
+  useCameraRotation(videoEl, vfEl);
+
 // ── Stream ───────────────────────────────────────────────
 let stream: MediaStream | null = null;
 const streamAtivo = ref(false);
@@ -237,8 +256,14 @@ const erroMsg     = ref<string | null>(null);
 async function iniciarStream() {
   erroMsg.value = null;
   try {
+    // Pede a proporção na mesma orientação da tela (em pé = altura maior).
+    const dim = dimensoesIdeais();
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: faceMode.value }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      video: {
+        facingMode: { ideal: faceMode.value },
+        width:  { ideal: dim.width },
+        height: { ideal: dim.height },
+      },
       audio: false,
     });
     if (videoEl.value) {
@@ -293,11 +318,7 @@ async function capturar() {
 
   try {
     // Captura raw do frame
-    const w = video.videoWidth  || 1280;
-    const h = video.videoHeight || 720;
-    canvas.width  = w;
-    canvas.height = h;
-    canvas.getContext("2d")!.drawImage(video, 0, 0, w, h);
+    desenharNoCanvas(video, canvas);
     const rawBase64 = canvas.toDataURL("image/jpeg", 0.92);
 
     // Aplicar carimbo igual ao dos checklists
@@ -553,6 +574,8 @@ onUnmounted(() => { clearInterval(tickId); descartar(); pararStream(); });
   flex-shrink: 0;
 }
 .cc-footer__spacer { flex: 1; }
+.cc-footer__side { display: flex; justify-content: flex-start; }
+.cc-footer__side .cc-icon-btn:disabled { opacity: .35; pointer-events: none; }
 
 .cc-capture-btn {
   position: relative;
