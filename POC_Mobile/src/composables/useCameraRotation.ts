@@ -42,9 +42,15 @@ export function useCameraRotation(
   const rotExtra = ref(lerRotExtra(telaEmPe.value));
   watch(telaEmPe, (v) => { rotExtra.value = lerRotExtra(v); });
 
-  /** Tela em pé recebendo quadro deitado: gira 90° (sentido horário). */
+  /**
+   * Só no iOS: tela em pé recebendo quadro deitado (sensor sem girar) → gira 90° (horário).
+   * No Android o Chrome já entrega o quadro em pé, mesmo quando a proporção é deitada;
+   * girar lá deixaria a imagem de lado.
+   */
+  const ehIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const rotAuto = computed(() => {
-    if (!vidW.value || !vidH.value) return 0;
+    if (!ehIOS || !vidW.value || !vidH.value) return 0;
     const videoEmPe = vidH.value >= vidW.value;
     return telaEmPe.value && !videoEmPe ? 90 : 0;
   });
@@ -80,10 +86,12 @@ export function useCameraRotation(
     };
   });
 
-  /** Dimensões a pedir ao getUserMedia: 4:3 na orientação da tela. */
+  /** Dimensões a pedir ao getUserMedia: 4:3 na orientação da tela (com a proporção explícita). */
   function dimensoesIdeais() {
     const emPe = window.innerHeight >= window.innerWidth;
-    return emPe ? { width: 1440, height: 1920 } : { width: 1920, height: 1440 };
+    return emPe
+      ? { width: 1440, height: 1920, aspectRatio: 3 / 4 }
+      : { width: 1920, height: 1440, aspectRatio: 4 / 3 };
   }
 
   let timer = 0;

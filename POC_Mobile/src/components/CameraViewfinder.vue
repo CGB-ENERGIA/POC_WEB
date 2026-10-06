@@ -9,7 +9,7 @@
       @pointerup="onUp"
       @pointercancel="onCancel"
     >
-      <div ref="stageEl" class="vf-stage" :style="stageSize">
+      <div ref="stageEl" class="vf-stage">
         <div class="vf-zoomwrap" :style="zoomStyle">
           <video
             ref="videoEl"
@@ -145,26 +145,10 @@ const areaW = ref(0);
 const areaH = ref(0);
 let roArea: ResizeObserver | null = null;
 
-/** Proporção do quadro como o usuário vê (já considerando o giro). */
-const razao = computed(() => {
-  if (!vidW.value || !vidH.value) return 3 / 4;
-  const lado = rotTotal.value === 90 || rotTotal.value === 270;
-  return lado ? vidH.value / vidW.value : vidW.value / vidH.value;
-});
-
-/** O quadro ocupa o máximo possível da área sem cortar a imagem (o que se vê é o que sai na foto). */
-const stageSize = computed(() => {
-  const ar = razao.value;
-  let w = areaW.value;
-  let h = w / ar;
-  if (h > areaH.value) { h = areaH.value; w = h * ar; }
-  return { width: `${Math.floor(w)}px`, height: `${Math.floor(h)}px` };
-});
-
+// Sem espelhar (nem na selfie): a foto é evidência e textos/prefixos não podem sair invertidos.
 const zoomStyle = computed(() => {
-  const espelho = facing.value === "user" ? " scaleX(-1)" : "";
   const z = zoomHw.value ? 1 : zoom.value;
-  return { transform: `scale(${z})${espelho}` };
+  return { transform: `scale(${z})` };
 });
 
 const atalhosZoom = computed(() => {
@@ -203,6 +187,15 @@ async function iniciar() {
 
   const dim = dimensoesIdeais();
   const tentativas: MediaStreamConstraints[] = [
+    {
+      video: {
+        facingMode: { ideal: facing.value },
+        width: { ideal: dim.width },
+        height: { ideal: dim.height },
+        aspectRatio: { ideal: dim.aspectRatio },
+      },
+      audio: false,
+    },
     {
       video: {
         facingMode: { ideal: facing.value },
@@ -355,28 +348,41 @@ async function focarEm(cx: number, cy: number) {
 // ── Captura ──────────────────────────────────────────────
 const flash = ref(false);
 
-/** Foto com exatamente o enquadramento mostrado na tela (zoom e giro aplicados). */
+/**
+ * Foto com exatamente o enquadramento mostrado na tela: mesma região (a tela mostra o
+ * quadro preenchendo a área, cortando o excesso), com zoom e giro aplicados, sem espelhar.
+ */
 function capturar(): string {
   const v = videoEl.value;
-  if (!v || !pronto.value || !v.videoWidth) throw new Error("Câmera não está pronta");
+  if (!v || !pronto.value || !v.videoWidth || !areaW.value || !areaH.value) {
+    throw new Error("Câmera não está pronta");
+  }
 
   const z = zoomHw.value ? 1 : zoom.value;
   const w = v.videoWidth;
   const h = v.videoHeight;
-  const sw = w / z;
-  const sh = h / z;
-  const sx = (w - sw) / 2;
-  const sy = (h - sh) / 2;
   const rot = rotTotal.value;
   const lado = rot === 90 || rot === 270;
 
+  // Quadro já girado, como aparece na tela
+  const dw = lado ? h : w;
+  const dh = lado ? w : h;
+  // Região visível: a área da tela (object-fit: cover corta o excesso, centralizado)
+  const areaR = areaW.value / areaH.value;
+  let cw: number;
+  let ch: number;
+  if (dw / dh > areaR) { ch = dh; cw = dh * areaR; }
+  else { cw = dw; ch = dw / areaR; }
+  cw /= z;
+  ch /= z;
+
   const canvas = document.createElement("canvas");
-  canvas.width = Math.round(lado ? sh : sw);
-  canvas.height = Math.round(lado ? sw : sh);
+  canvas.width = Math.round(cw);
+  canvas.height = Math.round(ch);
   const ctx = canvas.getContext("2d")!;
   ctx.translate(canvas.width / 2, canvas.height / 2);
   ctx.rotate((rot * Math.PI) / 180);
-  ctx.drawImage(v, sx, sy, sw, sh, -sw / 2, -sh / 2, sw, sh);
+  ctx.drawImage(v, -w / 2, -h / 2, w, h);
 
   flash.value = true;
   window.setTimeout(() => { flash.value = false; }, 160);
@@ -458,7 +464,8 @@ defineExpose({ capturar, virar });
   position: relative;
   overflow: hidden;
   background: #111;
-  flex-shrink: 0;
+  width: 100%;
+  height: 100%;
 }
 .vf-zoomwrap {
   position: absolute;
