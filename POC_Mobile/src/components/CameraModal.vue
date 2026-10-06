@@ -15,6 +15,18 @@
         <q-spinner color="primary" size="36px" />
         <div class="cm-text">Preparando foto…</div>
       </template>
+      <template v-else-if="tiradas > 0">
+        <q-icon name="mdi-check-circle" size="40px" color="positive" />
+        <div class="cm-title">
+          {{ tiradas }} {{ tiradas === 1 ? 'foto adicionada' : 'fotos adicionadas' }}
+        </div>
+        <div class="cm-text">Você ainda pode tirar mais {{ limiteSessao - tiradas }}.</div>
+        <button class="cm-btn" @click="abrir">
+          <q-icon name="mdi-camera-plus" size="22px" />
+          Tirar outra foto
+        </button>
+        <button class="cm-cancel" @click="isOpen = false">Concluir</button>
+      </template>
       <template v-else>
         <div class="cm-title">Tirar foto</div>
         <div v-if="erro" class="cm-erro">
@@ -41,6 +53,13 @@ import { abrirCameraNativa, fotoNativaParaBase64, FotoAntigaError } from "@/util
  */
 const isOpen = defineModel<boolean>({ required: true });
 const emit = defineEmits<{ (e: "captured", base64: string): void }>();
+/**
+ * Quantas fotos ainda cabem. Com 1 (padrão) fecha após a foto; com mais de 1 mostra
+ * "Tirar outra foto" / "Concluir" e fecha sozinho ao completar o limite.
+ */
+const props = withDefaults(defineProps<{ limite?: number }>(), { limite: 1 });
+const tiradas = ref(0);
+const limiteSessao = ref(1);
 
 const inputEl = ref<HTMLInputElement | null>(null);
 const processando = ref(false);
@@ -57,12 +76,15 @@ watch(isOpen, async (aberto) => {
   if (!aberto) return;
   erro.value = "";
   processando.value = false;
+  tiradas.value = 0;
+  limiteSessao.value = Math.max(1, props.limite);
   await nextTick();
   abrir();
 });
 
 function onCancelar() {
-  if (!processando.value) isOpen.value = false;
+  // Já tirou alguma: fica no resumo para o usuário escolher "Tirar outra" ou "Concluir".
+  if (!processando.value && tiradas.value === 0) isOpen.value = false;
 }
 
 async function onArquivo(e: Event) {
@@ -71,8 +93,9 @@ async function onArquivo(e: Event) {
   processando.value = true;
   try {
     const base64 = await fotoNativaParaBase64(file);
-    isOpen.value = false;
     emit("captured", base64);
+    tiradas.value++;
+    if (tiradas.value >= limiteSessao.value) isOpen.value = false;
   } catch (err) {
     erro.value = err instanceof FotoAntigaError ? err.message : "Não foi possível ler a foto. Tente novamente.";
   } finally {

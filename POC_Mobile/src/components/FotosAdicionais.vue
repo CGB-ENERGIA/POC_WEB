@@ -48,7 +48,7 @@
     </div>
   </q-dialog>
 
-  <CameraModal v-model="cameraAberta" @captured="onCaptured" />
+  <CameraModal v-model="cameraAberta" :limite="MAX_FOTOS - modelValue.length" @captured="onCaptured" />
   <GaleriaPicker v-model="galeriaAberta" :matricula="matricula ?? ''" @selected="onGaleriaImportada" />
 </template>
 

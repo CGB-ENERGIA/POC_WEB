@@ -110,6 +110,20 @@
                 <q-spinner color="white" size="40px" />
                 <span>Preparando foto…</span>
               </template>
+              <template v-else-if="miniaturas.length">
+                <q-icon name="mdi-check-circle" size="52px" color="positive" />
+                <span class="cc-wait__title">
+                  {{ miniaturas.length }} {{ miniaturas.length === 1 ? 'foto salva' : 'fotos salvas' }}
+                </span>
+                <div class="cc-thumbs">
+                  <img v-for="(m, i) in miniaturas" :key="i" :src="m" alt="" />
+                </div>
+                <button class="cc-equipe-confirmar cc-wait__btn" @click="abrirCamera">
+                  <q-icon name="mdi-camera-plus" size="22px" />
+                  Tirar outra foto
+                </button>
+                <button class="cc-wait__done" @click="fechar">Concluir</button>
+              </template>
               <template v-else>
                 <q-icon name="mdi-camera-outline" size="56px" />
                 <span>Toque para abrir a câmera do celular</span>
@@ -210,6 +224,7 @@ function confirmarEquipe() {
 
 function voltarParaEquipe() {
   descartar();
+  limparMiniaturas();
   busca.value = "";
   passo.value = "equipe";
   nextTick(() => searchInput.value?.focus());
@@ -227,6 +242,7 @@ function abrirCamera() {
 }
 
 // ── Captura + stamp ──────────────────────────────────────
+const miniaturas  = ref<string[]>([]); // fotos salvas nesta sessão (para o resumo)
 const fotoDataUrl = ref<string | null>(null);
 const fotoBlob    = ref<Blob | null>(null);
 const salvando    = ref(false);
@@ -272,9 +288,10 @@ async function confirmar() {
   salvando.value = true;
   try {
     const entry = await galeria.adicionarFoto(fotoBlob.value, props.matricula);
+    miniaturas.value.push(URL.createObjectURL(fotoBlob.value));
     emit("salva", entry.id);
-    $q.notify({ type: "positive", message: "Foto salva na galeria!", position: "top", timeout: 2000 });
-    fechar(); // volta para a tela anterior em vez de ficar pedindo para abrir a câmera
+    $q.notify({ type: "positive", message: "Foto salva na galeria!", position: "top", timeout: 1500 });
+    descartar(); // volta ao resumo: "Tirar outra foto" ou "Concluir"
   } catch {
     erroMsg.value = "Erro ao salvar foto. Tente novamente.";
   } finally {
@@ -288,8 +305,14 @@ function descartar() {
   erroMsg.value  = null;
 }
 
+function limparMiniaturas() {
+  miniaturas.value.forEach((u) => URL.revokeObjectURL(u));
+  miniaturas.value = [];
+}
+
 function fechar() {
   descartar();
+  limparMiniaturas();
   passo.value = "equipe";
   busca.value = "";
   emit("update:modelValue", false);
@@ -305,6 +328,7 @@ watch(
       nextTick(() => searchInput.value?.focus());
     } else {
       descartar();
+      limparMiniaturas();
       passo.value = "equipe";
       busca.value = "";
     }
@@ -475,6 +499,20 @@ onUnmounted(() => { descartar(); });
   color: rgba(255,255,255,.75); font-size: 14px; text-align: center;
 }
 .cc-wait__btn { width: auto; padding: 0 28px; margin-top: 6px; }
+.cc-wait__title { font-size: 18px; font-weight: 700; color: #fff; }
+.cc-wait__done {
+  appearance: none; border: 0; background: none;
+  color: rgba(255,255,255,.8); font-size: 15px; font-weight: 600;
+  height: 44px; padding: 0 20px; cursor: pointer;
+}
+.cc-thumbs {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+  max-width: 100%; max-height: 190px; overflow-y: auto;
+}
+.cc-thumbs img {
+  width: 64px; height: 64px; object-fit: cover; border-radius: 10px;
+  border: 1.5px solid rgba(255,255,255,.25);
+}
 .cc-preview-img {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
