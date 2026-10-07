@@ -300,7 +300,7 @@
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import {
   fetchSubmissions, fetchEmployees, fetchNcLight,
-  filterByGerencia, filterByGerente, semanaDaData, GERENTES, COORDENADORES, filterByCoordenador,
+  filterByGerencia, filterByGerente, semanaDaData, uniqueHierarchyOpts, filterByCoordenador,
   type SubmissionRow, type EmployeeRow, type NcLightRow,
 } from "@/lib/dashboard";
 import KpiFlame from "@/components/KpiFlame.vue";
@@ -324,8 +324,8 @@ const months = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov
 const mesesOpts = [{ v: 0, l: "Todos" }, ...months.map((l, i) => ({ v: i + 1, l }))];
 const anosOpts      = ["2024","2025","2026"];
 const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
-const gerentesOpts = [...GERENTES];
-const coordenadoresOpts = [...COORDENADORES];
+const gerentesOpts = computed(() => uniqueHierarchyOpts(employees.value, "gerente"));
+const coordenadoresOpts = computed(() => uniqueHierarchyOpts(employees.value, "coordenador"));
 const basesOpts     = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 const tiposOpts     = ["Operacional","Administrativo","Alojamento","Todos"];
 

@@ -250,7 +250,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN, fmtPct } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, fetchNaoConformesPorMes, semanaDaData, indexEmployees, matchSubmissionToEmployee, GERENTES, COORDENADORES, filterByCoordenador } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, fetchNaoConformesPorMes, semanaDaData, indexEmployees, matchSubmissionToEmployee, filterByCoordenador } from "@/lib/dashboard";
 
 use([
   CanvasRenderer, BarChart, LineChart,
@@ -290,8 +290,6 @@ const meses = [
 const gerencias = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT", "SPOT"];
 const bases     = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const tiposPoc  = ["Todos", "Administrativo", "Operacional"];
-const gerentes = [...GERENTES];
-const coordenadores = [...COORDENADORES];
 
 // ─── Filter state ─────────────────────────────────────────────────────────────
 const now = new Date();
@@ -312,6 +310,8 @@ const {
   submissions,
   responses,
   employees,
+  gerentesOpts: gerentes,
+  coordenadoresOpts: coordenadores,
 } = useChecklistData();
 
 const ncPorMes = ref<Record<number, number>>({});

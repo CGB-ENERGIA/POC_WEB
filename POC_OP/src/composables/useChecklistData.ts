@@ -3,6 +3,7 @@ import {
   fetchSubmissions,
   fetchResponses,
   fetchEmployees,
+  uniqueHierarchyOpts,
   countByObservador,
   countByBase,
   countBySemana,
@@ -96,6 +97,9 @@ export function useChecklistData() {
   const byCategoria = computed(() => conformidadePorCategoria(responses.value));
   const byGravidade = computed(() => ncPorGravidade(responses.value));
 
+  const gerentesOpts = computed(() => uniqueHierarchyOpts(employees.value, "gerente"));
+  const coordenadoresOpts = computed(() => uniqueHierarchyOpts(employees.value, "coordenador"));
+
   const byGerencia = computed(() => {
     const map: Record<string, number> = {};
     for (const s of submissions.value) {
@@ -156,6 +160,8 @@ export function useChecklistData() {
     byCategoria,
     byGravidade,
     byGerencia,
+    gerentesOpts,
+    coordenadoresOpts,
     conformidadePorObservador,
   };
 }

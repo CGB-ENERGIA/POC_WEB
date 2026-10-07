@@ -8,19 +8,23 @@ export const GERENCIAS = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "S
 export type Gerencia = typeof GERENCIAS[number];
 
 /**
- * Filtro "Gerente": só os gerentes. Filtrar por um deles traz a equipe inteira dele
- * (colunas `gerente` e `coordenador` de `employees`) e também as próprias observações.
+ * Nomes únicos de gerente/coordenador a partir do banco (`employees` / equipes).
+ * Os filtros das dashboards usam isto — não uma lista fixa — para acompanhar a planilha.
  */
-export const GERENTES = ["Todos", "Cesar", "Jamerson", "Valvick"] as const;
-
-/**
- * Filtro "Coordenador": traz as pessoas coordenadas por ele (coluna `coordenador` de
- * `employees`) e as próprias observações do coordenador.
- */
-export const COORDENADORES = [
-  "Todos", "Afonso", "Camila", "Daniel", "Jackson", "Julio C.", "Luis C.",
-  "Marcos", "Paulo", "Pryscilla", "Rafaela", "Ruan", "Salazar", "Thiago F.", "Valvick",
-] as const;
+export function uniqueHierarchyOpts(
+  rows: Array<{ coordenador?: string | null; gerente?: string | null }>,
+  field: "coordenador" | "gerente",
+  includeTodos = true,
+): string[] {
+  const names = [
+    ...new Set(
+      rows
+        .map((r) => (r[field] ?? "").trim())
+        .filter(Boolean),
+    ),
+  ].sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+  return includeTodos ? ["Todos", ...names] : names;
+}
 
 export interface Filters {
   ano: number;

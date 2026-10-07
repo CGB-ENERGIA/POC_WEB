@@ -271,7 +271,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDaData, semanaDoMes, filterObserverRoster, uniqueChartLabels, tallyObserverRecords, normMatricula, indexEmployees, matchSubmissionToEmployee, GERENTES, COORDENADORES, filterByCoordenador } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDaData, semanaDoMes, filterObserverRoster, uniqueChartLabels, tallyObserverRecords, normMatricula, indexEmployees, matchSubmissionToEmployee, filterByCoordenador } from "@/lib/dashboard";
 import { useGoals } from "@/composables/useGoals";
 const { goalForColaborador } = useGoals();
 
@@ -300,8 +300,6 @@ const meses = [
   { value: 10, label: "out" }, { value: 11, label: "nov" }, { value: 12, label: "dez" }
 ];
 
-const gerentes = [...GERENTES];
-const coordenadores = [...COORDENADORES];
 
 const gerencias = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT", "SPOT"];
 
@@ -426,6 +424,8 @@ const {
   submissions,
   responses,
   employees,
+  gerentesOpts: gerentes,
+  coordenadoresOpts: coordenadores,
 } = useChecklistData();
 
 async function recarregar() {

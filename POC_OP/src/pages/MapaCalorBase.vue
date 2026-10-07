@@ -224,10 +224,10 @@
 <script setup lang="ts">
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDaData, GERENTES, COORDENADORES, filterByCoordenador } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDaData, filterByCoordenador } from "@/lib/dashboard";
 import KpiFlame from "@/components/KpiFlame.vue";
 
-const { loading, error, submissions, responses, employees, load } = useChecklistData();
+const { loading, error, submissions, responses, employees, load, gerentesOpts, coordenadoresOpts } = useChecklistData();
 
 // â"€â"€â"€ Filters â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const showFilters = ref(false);
@@ -248,8 +248,6 @@ const semanasOpts = [
 const mesesOpts    = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26","jul/26","ago/26","set/26","out/26","nov/26","dez/26"];
 const anosOpts     = ["2024","2025","2026"];
 const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
-const gerentesOpts = [...GERENTES];
-const coordenadoresOpts = [...COORDENADORES];
 const basesOpts    = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 
 const curMesLabel = mesesOpts[now.getMonth()] ?? "jan/26";

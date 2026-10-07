@@ -197,7 +197,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useChecklistData, type SubmissionRow, type ResponseRow, type EmployeeRow } from "@/composables/useChecklistData";
-import { filterByGerente, semanaDoMes, GERENTES, COORDENADORES, filterByCoordenador } from "@/lib/dashboard";
+import { filterByGerente, semanaDoMes, uniqueHierarchyOpts, filterByCoordenador } from "@/lib/dashboard";
 
 const R2_PUBLIC_BASE = (import.meta.env.VITE_R2_PUBLIC_BASE_URL as string ?? "").replace(/\/$/, "");
 function fotoUrl(key: string | null | undefined): string | null {
@@ -227,8 +227,6 @@ const meses = [
 
 const bases    = ["BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const gerencias = ["ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT", "SPOT"];
-const gerentes = [...GERENTES].filter((g) => g !== "Todos");
-const coordenadores = [...COORDENADORES].filter((g) => g !== "Todos");
 
 const mesesAbrev = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
 
@@ -277,6 +275,8 @@ function toggleCoordenador(v: string) { filters.coordenador = filters.coordenado
 // ─── Dados ───────────────────────────────────────────────────────────────────
 
 const { loading, load, submissions, responses, employees } = useChecklistData();
+const gerentes = computed(() => uniqueHierarchyOpts(employees.value, "gerente", false));
+const coordenadores = computed(() => uniqueHierarchyOpts(employees.value, "coordenador", false));
 
 async function recarregar() {
   await load(

@@ -532,7 +532,7 @@
 <script setup lang="ts">
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { fetchResolucoes, inserirResolucao, reabrirResolucao, filterByGerencia, filterByGerente, semanaDaData, type ResolucaoRow, GERENTES, COORDENADORES, filterByCoordenador } from "@/lib/dashboard";
+import { fetchResolucoes, inserirResolucao, reabrirResolucao, filterByGerencia, filterByGerente, semanaDaData, type ResolucaoRow, filterByCoordenador } from "@/lib/dashboard";
 import { useAuth } from "@/composables/useAuth";
 
 // ─── R2 upload ────────────────────────────────────────────────────────────────
@@ -568,8 +568,6 @@ const mesesOpts     = ["jan","fev","mar","abr","mai","jun","jul","ago","set","ou
 const anosOpts      = ["2024","2025","2026"];
 const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
 const basesOpts     = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
-const gerentesOpts = [...GERENTES];
-const coordenadoresOpts = [...COORDENADORES];
 
 const MONTH_MAP: Record<string, number> = {
   jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6,
@@ -649,7 +647,7 @@ function fmtData(data: string) {
 }
 
 // ─── Dados reais ──────────────────────────────────────────────────────────────
-const { loading, load, submissions, responses, employees } = useChecklistData();
+const { loading, load, submissions, responses, employees, gerentesOpts, coordenadoresOpts } = useChecklistData();
 const resolucoes = ref<ResolucaoRow[]>([]);
 
 async function recarregar() {

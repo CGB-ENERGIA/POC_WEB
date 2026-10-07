@@ -152,7 +152,7 @@
 <script setup lang="ts">
 import { reactive, computed, ref, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, GERENTES, COORDENADORES, filterByCoordenador } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, uniqueHierarchyOpts, filterByCoordenador } from "@/lib/dashboard";
 
 const { loading, error, submissions, responses, employees, load } = useChecklistData();
 
@@ -163,8 +163,8 @@ interface Row  { prefixo: string; months: (Cell | null)[]; total: { reinc: numbe
 // â"€â"€â"€ Filter state â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const now = new Date();
 const bases     = ["BCB","BDC","ITM","PDS","PDT","STI"];
-const gerentes = [...GERENTES].filter((g) => g !== "Todos");
-const coordenadores = [...COORDENADORES].filter((g) => g !== "Todos");
+const gerentes = computed(() => uniqueHierarchyOpts(employees.value, "gerente", false));
+const coordenadores = computed(() => uniqueHierarchyOpts(employees.value, "coordenador", false));
 const gerencias = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
 const meses     = [
   { v: 1, l: "jan" }, { v: 2, l: "fev" },

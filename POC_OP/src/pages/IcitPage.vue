@@ -294,7 +294,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtPct, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDaData, indexEmployees, matchSubmissionToEmployee, fetchSubmissions, fetchResponses, type ResponseRow, type SubmissionRow, GERENTES, COORDENADORES, filterByCoordenador } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDaData, indexEmployees, matchSubmissionToEmployee, fetchSubmissions, fetchResponses, type ResponseRow, type SubmissionRow, filterByCoordenador } from "@/lib/dashboard";
 import { metaRoleFrom } from "@/composables/useGoals";
 
 use([
@@ -307,6 +307,8 @@ const {
   loading,
   submissions, responses, employees,
   load,
+  gerentesOpts: gerentes,
+  coordenadoresOpts: coordenadores,
 } = useChecklistData();
 
 // â"€â"€â"€ Paleta â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
@@ -341,9 +343,6 @@ const gerencias  = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT",
 const bases      = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const segurancas = ["Todos", "Segurança"];
 const tiposPoc   = ["Todos", "Administrativo", "Operacional"];
-const gerentes = [...GERENTES];
-const coordenadores = [...COORDENADORES];
-
 // â"€â"€â"€ Filter state â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const filters = reactive({
   ano:       now.getFullYear(),

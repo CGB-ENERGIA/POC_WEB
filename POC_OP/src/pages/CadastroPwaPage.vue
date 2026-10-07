@@ -451,8 +451,8 @@
             <q-toggle v-model="empForm.ativo" label="Ativo" color="positive" />
           </div>
           <div class="row q-gutter-sm">
-            <q-select v-model="empForm.coordenador" :options="['', 'Afonso', 'Camila', 'Daniel', 'Jackson', 'Julio C.', 'Luis C.', 'Marcos', 'Paulo', 'Pryscilla', 'Rafaela', 'Ruan', 'Salazar', 'Thiago F.', 'Valvick']" label="Coordenador" dense outlined clearable class="col" emit-value map-options />
-            <q-select v-model="empForm.gerente" :options="['', 'Cesar', 'Jamerson', 'Valvick']" label="Gerente/Supervisor" dense outlined clearable class="col" emit-value map-options />
+            <q-select v-model="empForm.coordenador" :options="coordFormOpts" label="Coordenador" dense outlined clearable class="col" emit-value map-options use-input new-value-mode="add" />
+            <q-select v-model="empForm.gerente" :options="gerenteFormOpts" label="Gerente/Supervisor" dense outlined clearable class="col" emit-value map-options use-input new-value-mode="add" />
           </div>
           <p v-if="empError" class="text-negative text-caption q-mb-none">{{ empError }}</p>
         </div>
@@ -535,6 +535,7 @@ import { useQuasar } from "quasar";
 import { supabase } from "@/lib/supabase";
 import * as XLSX from "xlsx";
 import { FUNCIONARIOS } from "@/data/funcionarios";
+import { uniqueHierarchyOpts } from "@/lib/dashboard";
 
 const $q      = useQuasar();
 const loading     = ref(false);
@@ -835,6 +836,8 @@ interface Equipe {
 }
 
 const equipes          = ref<Equipe[]>([]);
+const coordFormOpts = computed(() => uniqueHierarchyOpts([...employees.value, ...equipes.value], "coordenador", false));
+const gerenteFormOpts = computed(() => uniqueHierarchyOpts([...employees.value, ...equipes.value], "gerente", false));
 const eqSearch         = ref("");
 const eqGerenciaFilter  = ref("Todas");
 const eqDialog         = ref(false);
