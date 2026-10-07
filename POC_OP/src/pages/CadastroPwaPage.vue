@@ -435,8 +435,8 @@
           <q-input v-model="empForm.nome" label="Nome curto *" dense outlined />
           <q-input v-model="empForm.nome_completo" label="Nome completo *" dense outlined />
           <div class="row q-gutter-sm">
-            <q-select v-model="empForm.gerencia" :options="['ADM','GERE','GOMAN','GSTC','OFICINA','SESMT','SPOT']" label="Gerência *" dense outlined class="col" />
-            <q-input v-model="empForm.base" label="Base *" dense outlined class="col" />
+            <q-select v-model="empForm.gerencia" :options="['Todos','ADM','GERE','GOMAN','GSTC','OFICINA','SESMT','SPOT']" label="Gerência *" dense outlined class="col" />
+            <q-select v-model="empForm.base" :options="['Todos','BCB','BDC','ITM','PDS','PDT','STI']" label="Base *" dense outlined class="col" />
           </div>
           <div class="row q-gutter-sm items-center">
             <q-input v-model="empForm.funcao" label="Função *" dense outlined class="col" />
