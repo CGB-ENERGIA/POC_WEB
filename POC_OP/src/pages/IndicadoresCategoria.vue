@@ -357,7 +357,9 @@ function applySlice(
 function catMatch(categoria: string | undefined, key: string) {
   const def = CAT_DEFS.find((d) => d.key === key);
   if (!def) return false;
-  return !!(categoria?.includes(def.match) || categoria === def.match);
+  const cat = (categoria ?? "").toLowerCase();
+  const m = def.match.toLowerCase();
+  return cat.includes(m) || cat === m;
 }
 
 function respsOf(subs: typeof submissions.value, omitCat = false) {
@@ -402,7 +404,8 @@ const rawData = computed(() => {
   for (const r of chartResps.value) {
     const mes = subMonthMap.value[r.submission_id];
     if (!mes) continue;
-    const def = CAT_DEFS.find(d => r.categoria?.includes(d.match) || d.match === r.categoria);
+    const cat = (r.categoria ?? "").toLowerCase();
+    const def = CAT_DEFS.find(d => cat.includes(d.match.toLowerCase()) || d.match.toLowerCase() === cat);
     if (!def) continue;
     if (r.resposta === "conforme") result[def.key].conf[mes - 1]++;
     else if (r.resposta === "nao_conforme") result[def.key].inc[mes - 1]++;

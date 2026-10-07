@@ -140,6 +140,10 @@
         no-data-label="Nenhuma inconformidade encontrada"
         class="banco-table"
       >
+        <template #body-cell-num="props">
+          <q-td :props="props" class="num-cell">{{ props.rowIndex + 1 }}</q-td>
+        </template>
+
         <template #body-cell-inconformidade="props">
           <q-td :props="props" class="inconformidade-cell">
             <div class="nc-cell-inner">
@@ -417,6 +421,7 @@ const equipesOpts = computed(() =>
 // ─── Colunas da tabela ───────────────────────────────────────────────────────
 
 const colunas = [
+  { name: "num",           label: "#",              field: "num",           align: "center" as const, sortable: false },
   { name: "mes",           label: "Mês",           field: "mes",           align: "center" as const, sortable: true  },
   { name: "observador",    label: "Observador",     field: "observador",    align: "center" as const, sortable: true  },
   { name: "equipe",        label: "Equipe",         field: "equipe",        align: "center" as const, sortable: true  },
