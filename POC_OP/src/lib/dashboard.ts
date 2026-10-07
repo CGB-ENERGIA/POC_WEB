@@ -382,6 +382,30 @@ export async function fetchIcitPorPrefixo(startIso: string, endIso: string, base
   return map;
 }
 
+export interface NcLightRow {
+  submission_id: string;
+  categoria: string;
+}
+
+/** Busca apenas NCs (submission_id + categoria) — versão leve para o mapa de calor. */
+export async function fetchNcLight(submissionIds: string[]): Promise<NcLightRow[]> {
+  if (!submissionIds.length) return [];
+  const CHUNK = 300;
+  const all: NcLightRow[] = [];
+  for (let i = 0; i < submissionIds.length; i += CHUNK) {
+    const chunk = submissionIds.slice(i, i + CHUNK);
+    const rows = await allPages<NcLightRow>(() =>
+      supabase
+        .from("checklist_responses")
+        .select("submission_id,categoria")
+        .eq("resposta", "nao_conforme")
+        .in("submission_id", chunk)
+    );
+    all.push(...rows);
+  }
+  return all;
+}
+
 /** Todos os funcionários ativos. */
 export async function fetchEmployees(): Promise<EmployeeRow[]> {
   const { data, error } = await supabase

@@ -298,11 +298,17 @@
 
 <script setup lang="ts">
 import { reactive, ref, computed, watch, onMounted } from "vue";
-import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDaData, GERENTES, COORDENADORES, filterByCoordenador } from "@/lib/dashboard";
+import {
+  fetchSubmissions, fetchEmployees, fetchNcLight,
+  filterByGerencia, filterByGerente, semanaDaData, GERENTES, COORDENADORES, filterByCoordenador,
+  type SubmissionRow, type EmployeeRow, type NcLightRow,
+} from "@/lib/dashboard";
 import KpiFlame from "@/components/KpiFlame.vue";
 
-const { loading, submissions, responses, employees, load } = useChecklistData();
+const loading = ref(false);
+const submissions = ref<SubmissionRow[]>([]);
+const employees  = ref<EmployeeRow[]>([]);
+const ncLight    = ref<NcLightRow[]>([]);
 
 const showFilters = ref(false);
 const now = new Date();
@@ -424,7 +430,18 @@ function isBaseDim(base: string, mes: number) {
 }
 
 async function recarregar() {
-  await load({ ano: Number(filters.ano) });
+  loading.value = true;
+  try {
+    const [subs, emps] = await Promise.all([
+      fetchSubmissions({ ano: Number(filters.ano) }),
+      employees.value.length ? Promise.resolve(employees.value) : fetchEmployees(),
+    ]);
+    submissions.value = subs;
+    employees.value   = emps;
+    ncLight.value     = await fetchNcLight(subs.map((s) => s.id));
+  } finally {
+    loading.value = false;
+  }
 }
 onMounted(recarregar);
 watch(() => filters.ano, recarregar);
@@ -491,8 +508,7 @@ const catData = computed(() => {
   const rows = CAT_DEFS.map((c) => ({ label: c.label, values: Array(12).fill(0) as number[] }));
   const rowMap: Record<string, number[]> = {};
   rows.forEach((r) => { rowMap[r.label] = r.values; });
-  for (const r of responses.value) {
-    if (r.resposta !== "nao_conforme") continue;
+  for (const r of ncLight.value) {
     const mes = catMonthMap.value[r.submission_id];
     if (!mes) continue;
     const ci = catIndex(r.categoria);
@@ -510,8 +526,7 @@ const baseData = computed(() => {
   const subBase: Record<string, string> = {};
   for (const s of baseChartSubs.value) subBase[s.id] = s.base;
   const catCi = viz.cat ? CAT_DEFS.findIndex((c) => c.label === viz.cat) : -1;
-  for (const r of responses.value) {
-    if (r.resposta !== "nao_conforme") continue;
+  for (const r of ncLight.value) {
     const mes = baseMonthMap.value[r.submission_id];
     const base = subBase[r.submission_id];
     if (!mes || !base || !rowMap[base]) continue;
@@ -535,8 +550,7 @@ const totalInc = computed(() => {
   const ids = new Set(filteredSubs.value.map((s) => s.id));
   const catCi = viz.cat ? CAT_DEFS.findIndex((c) => c.label === viz.cat) : -1;
   let n = 0;
-  for (const r of responses.value) {
-    if (r.resposta !== "nao_conforme") continue;
+  for (const r of ncLight.value) {
     if (!ids.has(r.submission_id)) continue;
     if (catCi >= 0 && catIndex(r.categoria) !== catCi) continue;
     n++;
