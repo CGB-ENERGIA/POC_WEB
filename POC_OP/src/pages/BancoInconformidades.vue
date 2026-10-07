@@ -217,7 +217,7 @@ onUnmounted(() => clearInterval(clockInterval));
 const now = new Date();
 const filters = reactive({
   ano:        now.getFullYear(),
-  mes:        now.getMonth() + 1,
+  mes:        null as number | null,
   semana:     null as number | null,
   base:       null as string | null,
   gerencia:   null as string | null,
@@ -233,7 +233,7 @@ const filtrosAtivosCount = computed(() =>
 );
 
 function toggleSemana (v: number)  { filters.semana   = filters.semana   === v    ? null : v; }
-function toggleMes    (v: number)  { filters.mes       = filters.mes      === v    ? null as unknown as number : v; }
+function toggleMes    (v: number)  { filters.mes       = filters.mes      === v    ? null : v; }
 function toggleBase   (v: string)  { filters.base      = filters.base     === v    ? null : v; }
 function toggleGerencia(v: string) { filters.gerencia  = filters.gerencia === v    ? null : v; }
 function toggleGerente (v: string) { filters.gerente   = filters.gerente  === v    ? null : v; }
