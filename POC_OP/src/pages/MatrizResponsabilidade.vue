@@ -269,7 +269,18 @@
                 </template>
 
                 <tr v-if="filteredData.length === 0">
-                  <td colspan="7" class="td-empty">Nenhum registro encontrado.</td>
+                  <td colspan="7" class="td-empty">
+                    <template v-if="loading">Carregando…</template>
+                    <template v-else-if="submissions.length === 0">
+                      Nenhum checklist aprovado no período selecionado.
+                    </template>
+                    <template v-else-if="allData.length === 0">
+                      {{ submissions.length }} checklist{{ submissions.length !== 1 ? 's' : '' }} aprovado{{ submissions.length !== 1 ? 's' : '' }} — nenhum com não conformidades pendentes.
+                    </template>
+                    <template v-else>
+                      Nenhum registro corresponde aos filtros aplicados.
+                    </template>
+                  </td>
                 </tr>
               </tbody>
             </table>

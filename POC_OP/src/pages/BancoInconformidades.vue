@@ -142,27 +142,50 @@
       >
         <template #body-cell-inconformidade="props">
           <q-td :props="props" class="inconformidade-cell">
-            <span>{{ props.value }}</span>
-            <div v-if="props.row.itens && props.row.itens.length" class="nc-subitems">
-              <span
-                v-for="it in props.row.itens"
-                :key="it.nome"
-                :class="['nc-chip', it.conforme ? 'nc-chip--ok' : 'nc-chip--nc']"
-              >
-                <q-icon :name="it.conforme ? 'mdi-check' : 'mdi-close'" size="11px" />
-                {{ it.nome }}
-              </span>
+            <div class="nc-cell-inner">
+              <img
+                v-if="props.row.fotoSrc"
+                :src="props.row.fotoSrc"
+                class="nc-foto-thumb"
+                alt=""
+                @click.stop="fotoViewer = props.row.fotoSrc"
+              />
+              <div class="nc-cell-text">
+                <span>{{ props.value }}</span>
+                <div v-if="props.row.itens && props.row.itens.length" class="nc-subitems">
+                  <span
+                    v-for="it in props.row.itens"
+                    :key="it.nome"
+                    :class="['nc-chip', it.conforme ? 'nc-chip--ok' : 'nc-chip--nc']"
+                  >
+                    <q-icon :name="it.conforme ? 'mdi-check' : 'mdi-close'" size="11px" />
+                    {{ it.nome }}
+                  </span>
+                </div>
+              </div>
             </div>
           </q-td>
         </template>
 
         <template #body-cell-status="props">
-          <q-td :props="props">
+          <q-td :props="props" class="status-cell">
             <span class="status-badge status-badge--nc">Não Conforme</span>
+            <div v-if="props.row.atribuido" class="atribuido-label">
+              <q-icon name="mdi-account" size="12px" />
+              {{ props.row.atribuido }}
+            </div>
           </q-td>
         </template>
       </q-table>
     </div>
+
+    <!-- ── Viewer de foto ──────────────────────────────────────────────────────── -->
+    <q-dialog v-model="fotoViewerOpen" maximized>
+      <div class="foto-viewer" @click="fotoViewer = null">
+        <img :src="fotoViewer ?? ''" class="foto-viewer__img" alt="" @click.stop />
+        <q-btn flat round icon="mdi-close" color="white" class="foto-viewer__close" @click="fotoViewer = null" />
+      </div>
+    </q-dialog>
 
   </q-page>
 </template>
@@ -171,6 +194,14 @@
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useChecklistData, type SubmissionRow, type ResponseRow, type EmployeeRow } from "@/composables/useChecklistData";
 import { filterByGerente, semanaDoMes, GERENTES, COORDENADORES, filterByCoordenador } from "@/lib/dashboard";
+
+const R2_PUBLIC_BASE = (import.meta.env.VITE_R2_PUBLIC_BASE_URL as string ?? "").replace(/\/$/, "");
+function fotoUrl(key: string | null | undefined): string | null {
+  if (!key) return null;
+  if (key.startsWith("http")) return key;
+  if (!R2_PUBLIC_BASE) return null;
+  return `${R2_PUBLIC_BASE}/${key}`;
+}
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
@@ -277,6 +308,8 @@ interface NcRow {
   gravidade: string;
   resolvido: boolean | null;
   itens: { nome: string; conforme: boolean }[] | null;
+  fotoSrc: string | null;
+  atribuido: string | null;
 }
 
 const subMap = computed(() => {
@@ -287,12 +320,15 @@ const subMap = computed(() => {
 
 const todasNcs = computed<NcRow[]>(() => {
   return responses.value
-    .filter((r: ResponseRow) => r.resposta === "nao_conforme")
+    .filter((r: ResponseRow) => r.resposta === "nao_conforme" && r.foto_r2_key !== null)
     .map((r: ResponseRow) => {
       const sub = subMap.value[r.submission_id];
       if (!sub) return null;
       const emp = empMap.value[sub.matricula];
       const d   = new Date(sub.data);
+      const atrib = r.atribuido_nome
+        ? (r.atribuido_tipo === "equipe" ? `Equipe · ${r.atribuido_nome}` : r.atribuido_nome)
+        : null;
       return {
         key:            `${r.submission_id}_${r.pergunta_id}`,
         mes:            mesesAbrev[d.getMonth()] ?? "",
@@ -306,6 +342,8 @@ const todasNcs = computed<NcRow[]>(() => {
         gravidade:      r.gravidade,
         resolvido:      r.resolvido ?? null,
         itens:          r.itens ?? null,
+        fotoSrc:        fotoUrl(r.foto_r2_key),
+        atribuido:      atrib,
       } satisfies NcRow;
     })
     .filter(Boolean) as NcRow[];
@@ -357,6 +395,13 @@ const listaFiltrada = computed<NcRow[]>(() => {
   }
 
   return rows;
+});
+
+// ─── Foto viewer ─────────────────────────────────────────────────────────────
+const fotoViewer = ref<string | null>(null);
+const fotoViewerOpen = computed({
+  get: () => fotoViewer.value !== null,
+  set: (v) => { if (!v) fotoViewer.value = null; },
 });
 
 // ─── Opções dinâmicas dos selects ────────────────────────────────────────────
@@ -572,10 +617,70 @@ $brand: #8B1C2E;
 }
 
 .inconformidade-cell {
-  max-width: 420px;
+  max-width: 460px;
   white-space: normal;
   line-height: 1.35;
   font-size: .82rem;
+}
+
+.nc-cell-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.nc-foto-thumb {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  cursor: zoom-in;
+  transition: opacity .15s;
+  &:hover { opacity: .85; }
+}
+
+.nc-cell-text { flex: 1; min-width: 0; }
+
+.status-cell { min-width: 130px; }
+
+.atribuido-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-size: .72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.foto-viewer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.88);
+  width: 100%;
+  height: 100%;
+  position: relative;
+
+  &__img {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 4px;
+  }
+
+  &__close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+  }
 }
 
 .nc-subitems {
@@ -656,6 +761,14 @@ $brand: #8B1C2E;
     :deep(td) { color: #e2e8f0; }
     :deep(tr:nth-child(even) td) { background: #24334a; }
     :deep(tr td) { border-bottom-color: #334155; }
+  }
+
+  .nc-foto-thumb { border-color: #334155; }
+
+  .atribuido-label {
+    background: #1e3a5f;
+    border-color: #1d4ed8;
+    color: #93c5fd;
   }
 }
 </style>
