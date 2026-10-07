@@ -442,6 +442,10 @@
             <q-input v-model="empForm.funcao" label="Função *" dense outlined class="col" />
             <q-toggle v-model="empForm.ativo" label="Ativo" color="positive" />
           </div>
+          <div class="row q-gutter-sm">
+            <q-select v-model="empForm.coordenador" :options="['', 'Afonso', 'Camila', 'Daniel', 'Jackson', 'Julio C.', 'Luis C.', 'Marcos', 'Paulo', 'Rafaela', 'Ruan', 'Thiago F.', 'Valvick']" label="Coordenador" dense outlined clearable class="col" emit-value map-options />
+            <q-select v-model="empForm.gerente" :options="['', 'Cesar', 'Jamerson', 'Valvick']" label="Gerente/Supervisor" dense outlined clearable class="col" emit-value map-options />
+          </div>
           <p v-if="empError" class="text-negative text-caption q-mb-none">{{ empError }}</p>
         </div>
         <div class="dbp-dlg__foot">
@@ -737,6 +741,8 @@ interface Employee {
   base: string;
   funcao: string;
   ativo: boolean;
+  coordenador?: string | null;
+  gerente?: string | null;
 }
 
 const employees        = ref<Employee[]>([]);
@@ -776,6 +782,8 @@ async function saveEmployee() {
   const payload = {
     matricula: f.matricula, nome: f.nome, nome_completo: f.nome_completo,
     gerencia: f.gerencia, base: f.base, funcao: f.funcao, ativo: f.ativo ?? true,
+    coordenador: f.coordenador || null,
+    gerente: f.gerente || null,
   };
 
   const { error } = empIsEditing.value
@@ -930,7 +938,7 @@ async function fetchColaboradores() {
 async function fetchEmployees() {
   const { data } = await supabase
     .from("employees")
-    .select("matricula, nome, nome_completo, gerencia, base, funcao, ativo")
+    .select("matricula, nome, nome_completo, gerencia, base, funcao, ativo, coordenador, gerente")
     .order("nome_completo");
   if (data) employees.value = data as Employee[];
 }
@@ -970,10 +978,12 @@ function exportExcel() {
     Gerencia:      e.gerencia,
     Base:          e.base,
     Funcao:        e.funcao,
+    Coordenador:   e.coordenador ?? "",
+    Gerente:       e.gerente ?? "",
     Ativo:         e.ativo ? "SIM" : "NÃO",
   }));
   const wsEmp = XLSX.utils.json_to_sheet(empData);
-  wsEmp["!cols"] = [10, 22, 40, 8, 8, 22, 6].map((w) => ({ wch: w }));
+  wsEmp["!cols"] = [10, 22, 40, 8, 8, 22, 18, 14, 6].map((w) => ({ wch: w }));
   XLSX.utils.book_append_sheet(wb, wsEmp, "Funcionarios");
 
   const eqData = equipes.value.map((eq) => ({
@@ -1103,6 +1113,8 @@ async function onImportFile(event: Event) {
         funcao: isObsSheet
           ? titleFuncao(cell(r, "Função", "Funcao", "funcao"))
           : cell(r, "Funcao", "Função", "funcao"),
+        coordenador: cell(r, "Coordenador", "coordenador") || null,
+        gerente: cell(r, "Gerente", "gerente") || null,
         ativo: cell(r, "Ativo", "ativo").toUpperCase() !== "NÃO",
       };
     }).filter((r) => r.matricula && r.nome && r.gerencia && r.base);
