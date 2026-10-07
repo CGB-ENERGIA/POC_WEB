@@ -49,11 +49,11 @@
         <button class="dbp-hbtn dbp-hbtn--ghost" :class="{ 'is-loading': loading }" @click="fetchAll" title="Atualizar">
           <q-icon name="mdi-refresh" size="16px" :class="{ 'spin': loading }" />
         </button>
-        <button class="dbp-hbtn dbp-hbtn--export" @click="exportExcel">
+        <button class="dbp-hbtn dbp-hbtn--export" @click="exportExcel" title="Baixar Equipes - OP e ADM.xlsx">
           <q-icon name="mdi-arrow-down-circle-outline" size="15px" />
           Exportar
         </button>
-        <button class="dbp-hbtn dbp-hbtn--import" :class="{ 'is-loading': importing }" @click="triggerImport">
+        <button class="dbp-hbtn dbp-hbtn--import" :class="{ 'is-loading': importing }" @click="triggerImport" title="Atualizar com Equipes - OP e ADM.xlsx">
           <q-icon name="mdi-arrow-up-circle-outline" size="15px" />
           Importar
         </button>
@@ -151,6 +151,8 @@
               <div class="dbp-record__chips">
                 <span class="dbp-chip" :data-g="e.gerencia">{{ e.gerencia }}</span>
                 <span class="dbp-chip dbp-chip--base">{{ e.base }}</span>
+                <span v-if="e.coordenador" class="dbp-chip">{{ e.coordenador }}</span>
+                <span v-if="e.gerente" class="dbp-chip dbp-chip--base">{{ e.gerente }}</span>
                 <span v-if="!e.ativo" class="dbp-chip dbp-chip--off">INATIVO</span>
               </div>
               <div class="dbp-record__acts">
@@ -190,7 +192,7 @@
 
           <div class="dbp-pills">
             <button
-              v-for="g in ['Todas', 'ADM', 'GERE', 'GOMAN', 'GSTC', 'OFICINA', 'SESMT', 'SPOT']"
+              v-for="g in ['Todas', 'ADM', 'GERE', 'GOMAN', 'GSTC', 'LOGISTICA', 'OFICINA', 'SESMT', 'SPOT']"
               :key="g"
               class="dbp-pill"
               :class="[{ '--active': eqGerenciaFilter === g }, g !== 'Todas' ? `--${g.toLowerCase()}` : '']"
@@ -449,7 +451,7 @@
             <q-toggle v-model="empForm.ativo" label="Ativo" color="positive" />
           </div>
           <div class="row q-gutter-sm">
-            <q-select v-model="empForm.coordenador" :options="['', 'Afonso', 'Camila', 'Daniel', 'Jackson', 'Luis C.', 'Marcos', 'Paulo', 'Rafaela', 'Ruan', 'Salazar', 'Thiago F.', 'Valvick']" label="Coordenador" dense outlined clearable class="col" emit-value map-options />
+            <q-select v-model="empForm.coordenador" :options="['', 'Afonso', 'Camila', 'Daniel', 'Jackson', 'Julio C.', 'Luis C.', 'Marcos', 'Paulo', 'Pryscilla', 'Rafaela', 'Ruan', 'Salazar', 'Thiago F.', 'Valvick']" label="Coordenador" dense outlined clearable class="col" emit-value map-options />
             <q-select v-model="empForm.gerente" :options="['', 'Cesar', 'Jamerson', 'Valvick']" label="Gerente/Supervisor" dense outlined clearable class="col" emit-value map-options />
           </div>
           <p v-if="empError" class="text-negative text-caption q-mb-none">{{ empError }}</p>
@@ -509,7 +511,7 @@
         <div class="dbp-dlg__body">
           <q-input v-model="eqForm.base" label="Base *" dense outlined />
           <q-input v-model="eqForm.prefixo" label="Prefixo *" dense outlined />
-          <q-select v-model="eqForm.gerencia" :options="['ADM','GERE','GOMAN','GSTC','OFICINA','SESMT','SPOT']" label="Gerência *" dense outlined />
+          <q-select v-model="eqForm.gerencia" :options="['ADM','GERE','GOMAN','GSTC','LOGISTICA','OFICINA','SESMT','SPOT']" label="Gerência *" dense outlined />
           <q-input v-model="eqForm.coordenador" label="Coordenador" dense outlined />
           <q-input v-model="eqForm.gerente" label="Gerente" dense outlined />
           <p v-if="eqError" class="text-negative text-caption q-mb-none">{{ eqError }}</p>
@@ -749,6 +751,7 @@ interface Employee {
   ativo: boolean;
   coordenador?: string | null;
   gerente?: string | null;
+  processo?: string | null;
 }
 
 const employees        = ref<Employee[]>([]);
@@ -790,6 +793,7 @@ async function saveEmployee() {
     gerencia: f.gerencia, base: f.base, funcao: f.funcao, ativo: f.ativo ?? true,
     coordenador: f.coordenador || null,
     gerente: f.gerente || null,
+    processo: f.processo || null,
   };
 
   const { error } = empIsEditing.value
@@ -944,7 +948,7 @@ async function fetchColaboradores() {
 async function fetchEmployees() {
   const { data } = await supabase
     .from("employees")
-    .select("matricula, nome, nome_completo, gerencia, base, funcao, ativo, coordenador, gerente")
+    .select("matricula, nome, nome_completo, gerencia, base, funcao, ativo, coordenador, gerente, processo")
     .order("nome_completo");
   if (data) employees.value = data as Employee[];
 }
@@ -974,33 +978,42 @@ onMounted(fetchAll);
 const importInput = ref<HTMLInputElement | null>(null);
 const importing   = ref(false);
 
+const PLANILHA_BASE = "Equipes - OP e ADM.xlsx";
+
+function foldKey(s: string): string {
+  return String(s || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[\s_\-./]+/g, "");
+}
+
+function sheetByName(wb: XLSX.WorkBook, ...names: string[]): XLSX.WorkSheet | undefined {
+  const map = new Map(wb.SheetNames.map((n) => [foldKey(n), n]));
+  for (const name of names) {
+    const hit = map.get(foldKey(name));
+    if (hit) return wb.Sheets[hit];
+  }
+  return undefined;
+}
+
+function withFilter(ws: XLSX.WorkSheet) {
+  if (ws["!ref"]) ws["!autofilter"] = { ref: ws["!ref"] };
+  return ws;
+}
+
 function exportExcel() {
   const wb = XLSX.utils.book_new();
 
-  const empData = employees.value.map((e) => ({
-    Matricula:     e.matricula,
-    Nome:          e.nome,
-    Nome_Completo: e.nome_completo,
-    Gerencia:      e.gerencia,
-    Base:          e.base,
-    Funcao:        e.funcao,
-    Coordenador:   e.coordenador ?? "",
-    Gerente:       e.gerente ?? "",
-    Ativo:         e.ativo ? "SIM" : "NÃO",
-  }));
-  const wsEmp = XLSX.utils.json_to_sheet(empData);
-  wsEmp["!cols"] = [10, 22, 40, 8, 8, 22, 18, 14, 6].map((w) => ({ wch: w }));
-  XLSX.utils.book_append_sheet(wb, wsEmp, "Funcionarios");
-
   const eqData = equipes.value.map((eq) => ({
     Prefixo: eq.prefixo,
-    Base: eq.base,
+    Base: mapBaseToCidade(eq.base),
     Gerência: eq.gerencia,
     Coordenador: eq.coordenador ?? "",
     Gerente: eq.gerente ?? "",
   }));
-  const wsEq = XLSX.utils.json_to_sheet(eqData);
-  wsEq["!cols"] = [16, 8, 12, 16, 14].map((w) => ({ wch: w }));
+  const wsEq = withFilter(XLSX.utils.json_to_sheet(eqData));
+  wsEq["!cols"] = [16, 20, 12, 16, 14].map((w) => ({ wch: w }));
   XLSX.utils.book_append_sheet(wb, wsEq, "Equipes");
 
   const obsData = employees.value.map((e) => ({
@@ -1008,17 +1021,17 @@ function exportExcel() {
     Observador: e.nome,
     Função: e.funcao,
     Base: e.base,
-    Coordenador: "",
-    Gerente: "",
-    Processo: "",
+    Coordenador: e.coordenador ?? "",
+    Gerente: e.gerente ?? "",
+    Processo: e.processo ?? "",
     Gerência: e.gerencia,
   }));
-  const wsObs = XLSX.utils.json_to_sheet(obsData);
-  wsObs["!cols"] = [10, 22, 18, 8, 14, 12, 14, 12].map((w) => ({ wch: w }));
+  const wsObs = withFilter(XLSX.utils.json_to_sheet(obsData));
+  wsObs["!cols"] = [10, 22, 28, 8, 14, 12, 16, 12].map((w) => ({ wch: w }));
   XLSX.utils.book_append_sheet(wb, wsObs, "observadores");
 
-  XLSX.writeFile(wb, "banco_pwa.xlsx");
-  $q.notify({ type: "positive", message: "Arquivo exportado com sucesso." });
+  XLSX.writeFile(wb, PLANILHA_BASE);
+  $q.notify({ type: "positive", message: `Exportado no formato ${PLANILHA_BASE}` });
 }
 
 function triggerImport() {
@@ -1026,11 +1039,28 @@ function triggerImport() {
 }
 
 function cell(row: Record<string, unknown>, ...keys: string[]): string {
+  const folded = new Map<string, unknown>();
+  for (const [k, v] of Object.entries(row)) folded.set(foldKey(k), v);
   for (const k of keys) {
-    const v = row[k];
-    if (v != null && String(v).trim()) return String(v).trim();
+    const v = folded.get(foldKey(k));
+    if (v == null || String(v).trim() === "") continue;
+    return String(v).trim().replace(/\.0$/, "");
   }
   return "";
+}
+
+const CIDADE_POR_BASE: Record<string, string> = {
+  BCB: "BACABAL",
+  PDT: "PRESIDENTE DUTRA",
+  STI: "SANTA INÊS",
+  PDS: "PEDREIRAS",
+  ITM: "ITAPECURU MIRIM",
+  BDC: "BARRA DO CORDA",
+};
+
+function mapBaseToCidade(raw: string): string {
+  const code = mapBaseCidade(raw);
+  return CIDADE_POR_BASE[code] || raw;
 }
 
 function mapBaseCidade(raw: string): string {
@@ -1046,7 +1076,7 @@ function mapBaseCidade(raw: string): string {
     PEDREIRAS: "PDS",
     "ITAPECURU MIRIM": "ITM",
     "ITAPECURU-MIRIM": "ITM",
-    "ITAPECURU": "ITM",
+    ITAPECURU: "ITM",
     "BARRA DO CORDA": "BDC",
     BCB: "BCB",
     PDT: "PDT",
@@ -1088,56 +1118,56 @@ async function onImportFile(event: Event) {
     const buffer = await file.arrayBuffer();
     const wb     = XLSX.read(buffer, { type: "array" });
 
-    const wsEq = wb.Sheets["Equipes"];
-    const eqRows = wsEq ? XLSX.utils.sheet_to_json<Record<string, unknown>>(wsEq) : [];
+    const wsEq = sheetByName(wb, "Equipes");
+    const eqRows = wsEq ? XLSX.utils.sheet_to_json<Record<string, unknown>>(wsEq, { defval: "", raw: false }) : [];
     const eqPayload = eqRows.map((r) => ({
-      prefixo: cell(r, "Prefixo", "prefixo"),
-      base: mapBaseCidade(cell(r, "Base", "base")),
-      gerencia: cell(r, "Gerência", "Gerencia", "gerencia"),
+      prefixo: cell(r, "Prefixo"),
+      base: mapBaseCidade(cell(r, "Base")),
+      gerencia: cell(r, "Gerência", "Gerencia"),
       coordenador: cell(r, "Coordenador"),
       gerente: cell(r, "Gerente"),
     })).filter((r) => r.prefixo && r.base && r.gerencia);
 
-    const wsObs =
-      wb.Sheets["observadores"] ||
-      wb.Sheets["Observadores"] ||
-      wb.Sheets["Funcionarios"];
-    const obsRows = wsObs ? XLSX.utils.sheet_to_json<Record<string, unknown>>(wsObs) : [];
-    const isObsSheet = !!(wb.Sheets["observadores"] || wb.Sheets["Observadores"]);
+    const wsObs = sheetByName(wb, "observadores", "Observadores", "Funcionarios");
+    const obsRows = wsObs ? XLSX.utils.sheet_to_json<Record<string, unknown>>(wsObs, { defval: "", raw: false }) : [];
+    const isObsSheet = !!sheetByName(wb, "observadores", "Observadores");
     const empPayload = obsRows.map((r) => {
-      const matricula = cell(r, "Chapa", "Matricula", "matricula");
-      const nome = cell(r, "Observador", "Nome", "nome");
+      const matricula = cell(r, "Chapa", "Matricula");
+      const nome = cell(r, "Observador", "Nome");
       const nomeCompleto = cell(r, "Nome_Completo", "Nome Completo") ||
         employees.value.find((e) => e.matricula === matricula)?.nome_completo ||
         nome;
+      const coordenador = cell(r, "Coordenador");
+      const gerente = cell(r, "Gerente");
+      const processo = cell(r, "Processo");
+      const funcaoRaw = cell(r, "Função", "Funcao");
       return {
         matricula,
         nome,
         nome_completo: nomeCompleto,
-        gerencia: cell(r, "Gerência", "Gerencia", "gerencia"),
-        base: mapBaseCidade(cell(r, "Base", "base")),
-        funcao: isObsSheet
-          ? titleFuncao(cell(r, "Função", "Funcao", "funcao"))
-          : cell(r, "Funcao", "Função", "funcao"),
-        coordenador: cell(r, "Coordenador", "coordenador") || null,
-        gerente: cell(r, "Gerente", "gerente") || null,
-        ativo: cell(r, "Ativo", "ativo").toUpperCase() !== "NÃO",
+        gerencia: cell(r, "Gerência", "Gerencia"),
+        base: mapBaseCidade(cell(r, "Base")),
+        funcao: isObsSheet ? titleFuncao(funcaoRaw) : funcaoRaw,
+        ...(coordenador ? { coordenador } : {}),
+        ...(gerente ? { gerente } : {}),
+        ...(processo ? { processo } : {}),
+        ativo: cell(r, "Ativo").toUpperCase() !== "NÃO",
       };
     }).filter((r) => r.matricula && r.nome && r.gerencia && r.base);
 
     if (!eqPayload.length && !empPayload.length) {
-      throw new Error("Não achei as abas Equipes, observadores ou Funcionarios com colunas válidas.");
+      throw new Error(`Use o arquivo ${PLANILHA_BASE} com as abas Equipes e observadores.`);
     }
 
     let purge = false;
     const confirmed = await new Promise<boolean>((resolve) => {
       $q.dialog({
-        title: "Atualizar o banco",
+        title: "Atualizar pelo arquivo-base",
         message:
-          `Arquivo: ${file.name}\n\n` +
-          (eqPayload.length ? `• ${eqPayload.length} equipes\n` : "") +
-          (empPayload.length ? `• ${empPayload.length} observadores / funcionários\n` : "") +
-          "\nQuem já existir (mesmo prefixo ou matrícula) será atualizado.",
+          `Arquivo: ${file.name}\nFormato: ${PLANILHA_BASE}\n\n` +
+          (eqPayload.length ? `• ${eqPayload.length} equipes (prefixo, base, gerência, coordenador, gerente)\n` : "") +
+          (empPayload.length ? `• ${empPayload.length} observadores (chapa, coordenador, gerente, processo)\n` : "") +
+          "\nPrefixo ou matrícula iguais são substituídos.",
         options: eqPayload.length
           ? {
               type: "checkbox",
