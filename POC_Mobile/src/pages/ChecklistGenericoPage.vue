@@ -602,7 +602,7 @@ onMounted(() => {
   }
   const saved = LocalStorage.getItem<{ evidencias: (string | null)[]; fotosGerais: string[] }>(draftKey);
   if (saved) {
-    evidencias.value = [0, 1, 2].map(i => saved.evidencias?.[i] ?? null);
+    evidencias.value = (isAdministrativo.value ? [0, 1] : [0, 1, 2]).map(i => saved.evidencias?.[i] ?? null);
     fotosGerais.value = saved.fotosGerais ?? [];
   }
 });
