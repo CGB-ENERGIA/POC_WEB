@@ -439,11 +439,17 @@
             <q-select v-model="empForm.base" :options="['Todos','BCB','BDC','ITM','PDS','PDT','STI']" label="Base *" dense outlined class="col" />
           </div>
           <div class="row q-gutter-sm items-center">
-            <q-input v-model="empForm.funcao" label="Função *" dense outlined class="col" />
+            <q-select
+              v-model="empForm.funcao"
+              :options="['Coordenador', 'Observador', 'Supervisor', 'Gerente', 'Técnico', 'Administrativo', 'Motorista', 'Operador']"
+              label="Função *" dense outlined class="col"
+              use-input input-debounce="0" new-value-mode="add"
+              @filter="(val, update) => update()"
+            />
             <q-toggle v-model="empForm.ativo" label="Ativo" color="positive" />
           </div>
           <div class="row q-gutter-sm">
-            <q-select v-model="empForm.coordenador" :options="['', 'Afonso', 'Camila', 'Daniel', 'Jackson', 'Julio C.', 'Luis C.', 'Marcos', 'Paulo', 'Rafaela', 'Ruan', 'Thiago F.', 'Valvick']" label="Coordenador" dense outlined clearable class="col" emit-value map-options />
+            <q-select v-model="empForm.coordenador" :options="['', 'Afonso', 'Camila', 'Daniel', 'Jackson', 'Luis C.', 'Marcos', 'Paulo', 'Rafaela', 'Ruan', 'Salazar', 'Thiago F.', 'Valvick']" label="Coordenador" dense outlined clearable class="col" emit-value map-options />
             <q-select v-model="empForm.gerente" :options="['', 'Cesar', 'Jamerson', 'Valvick']" label="Gerente/Supervisor" dense outlined clearable class="col" emit-value map-options />
           </div>
           <p v-if="empError" class="text-negative text-caption q-mb-none">{{ empError }}</p>

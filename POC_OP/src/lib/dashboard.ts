@@ -18,8 +18,8 @@ export const GERENTES = ["Todos", "Cesar", "Jamerson", "Valvick"] as const;
  * `employees`) e as próprias observações do coordenador.
  */
 export const COORDENADORES = [
-  "Todos", "Afonso", "Camila", "Daniel", "Jackson", "Julio C.", "Luis C.",
-  "Marcos", "Paulo", "Rafaela", "Ruan", "Thiago F.", "Valvick",
+  "Todos", "Afonso", "Camila", "Daniel", "Jackson", "Luis C.",
+  "Marcos", "Paulo", "Rafaela", "Ruan", "Salazar", "Thiago F.", "Valvick",
 ] as const;
 
 export interface Filters {

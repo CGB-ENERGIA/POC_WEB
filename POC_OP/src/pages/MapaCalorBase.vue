@@ -351,7 +351,8 @@ const categories = CAT_DEFS.map((c) => c.label);
 
 function catIndex(categoria: string | undefined) {
   if (!categoria) return -1;
-  return CAT_DEFS.findIndex((c) => categoria.includes(c.match) || categoria === c.match);
+  const cat = categoria.toLowerCase();
+  return CAT_DEFS.findIndex((c) => cat.includes(c.match.toLowerCase()) || cat === c.match.toLowerCase());
 }
 
 // â"€â"€â"€ NC Matrix base Ã— category from real data â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€

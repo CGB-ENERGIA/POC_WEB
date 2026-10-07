@@ -447,7 +447,8 @@ function mesDaData(data: string): number {
 
 function catIndex(categoria: string | undefined) {
   if (!categoria) return -1;
-  return CAT_DEFS.findIndex((c) => categoria.includes(c.match) || categoria === c.match);
+  const cat = categoria.toLowerCase();
+  return CAT_DEFS.findIndex((c) => cat.includes(c.match.toLowerCase()) || cat === c.match.toLowerCase());
 }
 
 function applySlice(omit: { base?: boolean; mes?: boolean } = {}) {
