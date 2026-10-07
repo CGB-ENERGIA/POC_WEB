@@ -425,6 +425,11 @@ function matchTipoPoc(auditagem: string | undefined) {
   return allowed.includes((auditagem ?? "").toUpperCase());
 }
 
+function extractPrefixo(equipe: string | undefined): string {
+  if (!equipe) return "";
+  return equipe.split(" - ")[0].trim();
+}
+
 function togglePrefixo(code: string) {
   filters.prefixo = filters.prefixo === code ? "Todos" : code;
 }
@@ -492,7 +497,7 @@ function applySlice(
     s = s.filter((sub) => sub.observador === filters.observador);
   }
   if (!omit.prefixo && filters.prefixo !== "Todos") {
-    s = s.filter((sub) => sub.equipe === filters.prefixo);
+    s = s.filter((sub) => extractPrefixo(sub.equipe) === filters.prefixo);
   }
   return s;
 }
@@ -609,11 +614,20 @@ const allPrefixes: string[] = [
   "MA-BDC-H001M","MA-PDT-H001M","MA-ITM-H001M",
 ];
 
+const prefixoBaseList = computed(() =>
+  filters.tipoPoc === "Alojamento"
+    ? ALOJ_ROSTER.map(a => a.prefixo)
+    : allPrefixes
+);
 const prefixoOpts = ref<string[]>(["Todos", ...allPrefixes]);
+watch(() => filters.tipoPoc, () => {
+  filters.prefixo = "Todos";
+  prefixoOpts.value = ["Todos", ...prefixoBaseList.value];
+});
 function filterPrefixo(val: string, update: (fn: () => void) => void) {
   update(() => {
     const n = val.toLowerCase();
-    prefixoOpts.value = ["Todos", ...allPrefixes.filter(p => p.toLowerCase().includes(n))];
+    prefixoOpts.value = ["Todos", ...prefixoBaseList.value.filter(p => p.toLowerCase().includes(n))];
   });
 }
 
@@ -631,7 +645,8 @@ const rosterPrefixes = computed(() => {
 const visitadasSorted = computed(() => {
   const counts: Record<string, number> = {};
   for (const sub of subsNoPrefixo.value) {
-    if (sub.equipe) counts[sub.equipe] = (counts[sub.equipe] ?? 0) + 1;
+    const pref = extractPrefixo(sub.equipe);
+    if (pref) counts[pref] = (counts[pref] ?? 0) + 1;
   }
   return Object.entries(counts)
     .map(([nome, v]) => ({ nome, v }))
@@ -651,9 +666,10 @@ const icitAtualPorPrefixo = computed(() => {
   }
   const map = new Map<string, IcitPrefixo>();
   for (const sub of filteredSubs.value) {
-    if (!sub.equipe) continue;
-    if (!map.has(sub.equipe)) map.set(sub.equipe, { visitas: 0, semNc: 0 });
-    const entry = map.get(sub.equipe)!;
+    const pref = extractPrefixo(sub.equipe);
+    if (!pref) continue;
+    if (!map.has(pref)) map.set(pref, { visitas: 0, semNc: 0 });
+    const entry = map.get(pref)!;
     entry.visitas++;
     if (!ncPerSub.has(sub.id)) entry.semNc++;
   }
@@ -932,8 +948,9 @@ const ncPerEquipe = computed(() => {
   const counts: Record<string, number> = {};
   for (const sub of subsNoPrefixo.value) {
     const nc = ncPerSub[sub.id] ?? 0;
-    if (nc === 0 || !sub.equipe) continue;
-    counts[sub.equipe] = (counts[sub.equipe] ?? 0) + nc;
+    const pref = extractPrefixo(sub.equipe);
+    if (nc === 0 || !pref) continue;
+    counts[pref] = (counts[pref] ?? 0) + nc;
   }
   return Object.entries(counts)
     .map(([name, v]) => ({ name, v }))
