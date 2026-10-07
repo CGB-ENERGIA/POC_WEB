@@ -245,7 +245,7 @@ const { loading, load, submissions, responses, employees } = useChecklistData();
 
 async function recarregar() {
   await load(
-    { ano: filters.ano, mes: filters.mes ?? undefined },
+    { ano: filters.ano, mes: filters.mes ?? undefined, contarMeta: true },
     false,
     false
   );
