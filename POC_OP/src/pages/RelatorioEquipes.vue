@@ -521,7 +521,43 @@ const respsNoCat = computed(() => {
 
 const totalSubmissions = computed(() => filteredSubs.value.length);
 
-// â"€â"€â"€ Full prefix list â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+// ─── Roster de alojamentos (prefixo → base) ──────────────────────────────────
+const ALOJ_ROSTER: Array<{ prefixo: string; base: string }> = [
+  { prefixo: "ALOJ01", base: "BCB" }, { prefixo: "ALOJ03", base: "BCB" },
+  { prefixo: "ALOJ04", base: "BCB" }, { prefixo: "ALOJ05", base: "BCB" },
+  { prefixo: "ALOJ06", base: "BCB" }, { prefixo: "ALOJ07", base: "BCB" },
+  { prefixo: "ALOJ08", base: "BCB" }, { prefixo: "ALOJ10", base: "BCB" },
+  { prefixo: "ALOJ11", base: "BCB" }, { prefixo: "ALOJ64", base: "BCB" },
+  { prefixo: "ALOJ75", base: "BCB" }, { prefixo: "ALOJ76", base: "BCB" },
+  { prefixo: "ALOJ13", base: "BDC" }, { prefixo: "ALOJ15", base: "BDC" },
+  { prefixo: "ALOJ27", base: "BDC" }, { prefixo: "ALOJ58", base: "BDC" },
+  { prefixo: "ALOJ62", base: "BDC" }, { prefixo: "ALOJ66", base: "BDC" },
+  { prefixo: "ALOJ67", base: "BDC" }, { prefixo: "ALOJ69", base: "BDC" },
+  { prefixo: "ALOJ77", base: "BDC" }, { prefixo: "ALOJ78", base: "BDC" },
+  { prefixo: "ALOJ14", base: "PDT" }, { prefixo: "ALOJ16", base: "PDT" },
+  { prefixo: "ALOJ17", base: "PDT" }, { prefixo: "ALOJ19", base: "PDT" },
+  { prefixo: "ALOJ20", base: "PDT" }, { prefixo: "ALOJ21", base: "PDT" },
+  { prefixo: "ALOJ22", base: "PDT" }, { prefixo: "ALOJ23", base: "PDT" },
+  { prefixo: "ALOJ28", base: "PDT" }, { prefixo: "ALOJ70", base: "PDT" },
+  { prefixo: "ALOJ30", base: "STI" }, { prefixo: "ALOJ31", base: "STI" },
+  { prefixo: "ALOJ32", base: "STI" }, { prefixo: "ALOJ33", base: "STI" },
+  { prefixo: "ALOJ35", base: "STI" }, { prefixo: "ALOJ36", base: "STI" },
+  { prefixo: "ALOJ37", base: "STI" }, { prefixo: "ALOJ38", base: "STI" },
+  { prefixo: "ALOJ39", base: "STI" }, { prefixo: "ALOJ61", base: "STI" },
+  { prefixo: "ALOJ63", base: "STI" }, { prefixo: "ALOJ72", base: "STI" },
+  { prefixo: "ALOJ73", base: "STI" }, { prefixo: "ALOJ74", base: "STI" },
+  { prefixo: "ALOJ79", base: "STI" },
+  { prefixo: "ALOJ40", base: "ITM" }, { prefixo: "ALOJ41", base: "ITM" },
+  { prefixo: "ALOJ42", base: "ITM" }, { prefixo: "ALOJ43", base: "ITM" },
+  { prefixo: "ALOJ45", base: "ITM" }, { prefixo: "ALOJ46", base: "ITM" },
+  { prefixo: "ALOJ47", base: "ITM" }, { prefixo: "ALOJ48", base: "ITM" },
+  { prefixo: "ALOJ49", base: "PDS" }, { prefixo: "ALOJ50", base: "PDS" },
+  { prefixo: "ALOJ51", base: "PDS" }, { prefixo: "ALOJ52", base: "PDS" },
+  { prefixo: "ALOJ53", base: "PDS" }, { prefixo: "ALOJ54", base: "PDS" },
+  { prefixo: "ALOJ56", base: "PDS" }, { prefixo: "ALOJ57", base: "PDS" },
+];
+
+// ─── Full prefix list ─────────────────────────────────────────────────────────
 const allPrefixes: string[] = [
   "MA-BCB-E001M","MA-BCB-E002M","MA-PDT-P002M","MA-BDC-E002M",
   "MA-PDT-M001M","MA-BDC-C001M","MA-PDT-O035M","MA-BDC-F001M",
@@ -582,6 +618,11 @@ function filterPrefixo(val: string, update: (fn: () => void) => void) {
 }
 
 const rosterPrefixes = computed(() => {
+  if (filters.tipoPoc === "Alojamento") {
+    return ALOJ_ROSTER
+      .filter(a => filters.base === "Todos" || a.base === filters.base)
+      .map(a => a.prefixo);
+  }
   if (filters.base === "Todos") return allPrefixes;
   return allPrefixes.filter((p) => prefixBase(p) === filters.base);
 });
