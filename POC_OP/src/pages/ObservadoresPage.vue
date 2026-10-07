@@ -728,6 +728,25 @@ const chartEquipes = computed(() => {
   };
 });
 
+const ncDetalhesPorCat = computed(() => {
+  const map: Record<string, Record<string, number>> = {};
+  for (const r of respsNoCat.value) {
+    if (r.resposta !== "nao_conforme") continue;
+    const cat = r.categoria ?? "Sem categoria";
+    const perg = (r.pergunta ?? "").trim() || "Sem descrição";
+    if (!map[cat]) map[cat] = {};
+    map[cat][perg] = (map[cat][perg] ?? 0) + 1;
+  }
+  const result: Record<string, { pergunta: string; count: number }[]> = {};
+  for (const [cat, pergs] of Object.entries(map)) {
+    result[cat] = Object.entries(pergs)
+      .map(([pergunta, count]) => ({ pergunta, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8);
+  }
+  return result;
+});
+
 const chartIncCat = computed(() => {
   const map: Record<string, number> = {};
   for (const r of respsNoCat.value) {
@@ -737,11 +756,34 @@ const chartIncCat = computed(() => {
   }
   const cats = Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 6);
   const selected = viz.categoria;
+  const detalheRef = ncDetalhesPorCat.value;
   return {
     tooltip: {
       ...tooltipSkin(),
-      formatter: (p: { name: string; value: number }) =>
-        `<b>${p.name}</b><br/>Inc: <b style="color:${G.brand}">${p.value}</b><div style="font-size:10px;margin-top:6px;opacity:.8">Clique para filtrar</div>`,
+      enterable: false,
+      extraCssText:
+        `background:${chartInk.tipBg} !important;color:${chartInk.tipText} !important;border:1px solid ${chartInk.tipBorder};`
+        + "border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.55);opacity:1;max-width:300px;",
+      formatter: (p: { name: string; value: number }) => {
+        const cat = p.name;
+        const detalhe = detalheRef[cat] ?? [];
+        let html = `<div style="font-weight:700;font-size:12px;margin-bottom:4px">${cat}</div>`;
+        html += `<div>Inc: <b style="color:${G.brand}">${p.value}</b></div>`;
+        if (detalhe.length) {
+          html += `<div style="margin-top:8px;border-top:1px solid rgba(128,128,128,.3);padding-top:6px;font-size:10.5px">`;
+          for (const d of detalhe) {
+            const pct = p.value ? Math.round((d.count / p.value) * 100) : 0;
+            html += `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px">`;
+            html += `<div style="flex:1;white-space:normal;line-height:1.35;opacity:.9">${d.pergunta}</div>`;
+            html += `<div style="flex-shrink:0;font-weight:700;color:${G.brand}">${d.count} <span style="font-weight:400;opacity:.6">(${pct}%)</span></div>`;
+            html += `</div>`;
+          }
+          if (detalhe.length === 8) html += `<div style="opacity:.5;font-size:9.5px;margin-top:2px">e outros…</div>`;
+          html += `</div>`;
+        }
+        html += `<div style="font-size:9.5px;margin-top:6px;opacity:.5">Clique para filtrar</div>`;
+        return html;
+      },
     },
     grid: { left: 6, right: 32, top: 6, bottom: 6, containLabel: true },
     xAxis: { type: "value" as const, show: false, max: Math.max(...cats.map(([, v]) => v), 1) * 1.3 },
