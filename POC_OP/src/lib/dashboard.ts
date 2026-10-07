@@ -253,52 +253,68 @@ function applySubmissionFilters(
   return q;
 }
 
-/** Submissions do período. `contarMeta` inclui pendentes (já registrados no PWA). */
-export async function fetchSubmissions(f: Filters, usarSemana = false): Promise<SubmissionRow[]> {
-  let q = supabase
-    .from("checklist_submissions")
-    .select("id,matricula,observador,auditagem,data,base,equipe,membros,resumo")
-    .order("data", { ascending: true });
-
-  q = f.contarMeta
-    ? q.in("status", ["aprovado", "pendente"])
-    : q.eq("status", "aprovado");
-
-  q = applySubmissionFilters(q, f, usarSemana);
-
-  const { data, error } = await q;
-  if (error) throw error;
-  return (data ?? []) as SubmissionRow[];
+// Supabase limita 1000 linhas por query; esta função pagina automaticamente.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function allPages<T>(buildQ: () => any): Promise<T[]> {
+  const PAGE = 1000;
+  const all: T[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await buildQ().range(from, from + PAGE - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as T[];
+    all.push(...rows);
+    if (rows.length < PAGE) break;
+    from += PAGE;
+  }
+  return all;
 }
 
-/** Respostas ligadas a um conjunto de submissions (chunked para suportar grandes períodos, ex: ano inteiro). */
+/** Submissions do período. `contarMeta` inclui pendentes (já registrados no PWA). */
+export async function fetchSubmissions(f: Filters, usarSemana = false): Promise<SubmissionRow[]> {
+  return allPages<SubmissionRow>(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let q: any = supabase
+      .from("checklist_submissions")
+      .select("id,matricula,observador,auditagem,data,base,equipe,membros,resumo")
+      .order("data", { ascending: true });
+    q = f.contarMeta
+      ? q.in("status", ["aprovado", "pendente"])
+      : q.eq("status", "aprovado");
+    return applySubmissionFilters(q, f, usarSemana);
+  });
+}
+
+/** Respostas ligadas a um conjunto de submissions (chunked + paginado para datasets grandes). */
 export async function fetchResponses(submissionIds: string[]): Promise<ResponseRow[]> {
   if (!submissionIds.length) return [];
   const CHUNK = 300;
   const all: ResponseRow[] = [];
   for (let i = 0; i < submissionIds.length; i += CHUNK) {
     const chunk = submissionIds.slice(i, i + CHUNK);
-    const { data, error } = await supabase
-      .from("checklist_responses")
-      .select("submission_id,pergunta_id,categoria,pergunta,gravidade,peso,resposta,observacao,foto_r2_key,resolvido,itens,atribuido_tipo,atribuido_nome,atribuido_matricula")
-      .in("submission_id", chunk);
-    if (error) throw error;
-    all.push(...((data ?? []) as ResponseRow[]));
+    const rows = await allPages<ResponseRow>(() =>
+      supabase
+        .from("checklist_responses")
+        .select("submission_id,pergunta_id,categoria,pergunta,gravidade,peso,resposta,observacao,foto_r2_key,resolvido,itens,atribuido_tipo,atribuido_nome,atribuido_matricula")
+        .in("submission_id", chunk)
+    );
+    all.push(...rows);
   }
   return all;
 }
 
 /** Contagem de não conformidades por mês, ao longo de um ano inteiro (para gráfico de tendência). */
 export async function fetchNaoConformesPorMes(ano: number, base?: string): Promise<Record<number, number>> {
-  let q = supabase.from("checklist_submissions").select("id,data").eq("status", "aprovado");
   const start = new Date(ano, 0, 1).toISOString();
   const end = new Date(ano + 1, 0, 1).toISOString();
-  q = q.gte("data", start).lt("data", end);
-  if (base && base !== "Todos") q = q.eq("base", base);
-
-  const { data: subs, error: subErr } = await q;
-  if (subErr) throw subErr;
-  if (!subs?.length) return {};
+  const subs = await allPages<{ id: string; data: string }>(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let q: any = supabase.from("checklist_submissions").select("id,data").eq("status", "aprovado")
+      .gte("data", start).lt("data", end);
+    if (base && base !== "Todos") q = q.eq("base", base);
+    return q;
+  });
+  if (!subs.length) return {};
 
   const mesPorSubmissao = new Map<string, number>();
   for (const s of subs) {
@@ -311,13 +327,11 @@ export async function fetchNaoConformesPorMes(ano: number, base?: string): Promi
   const map: Record<number, number> = {};
   for (let i = 0; i < ids.length; i += CHUNK) {
     const chunk = ids.slice(i, i + CHUNK);
-    const { data: resps, error: respErr } = await supabase
-      .from("checklist_responses")
-      .select("submission_id")
-      .eq("resposta", "nao_conforme")
-      .in("submission_id", chunk);
-    if (respErr) throw respErr;
-    for (const r of resps ?? []) {
+    const resps = await allPages<{ submission_id: string }>(() =>
+      supabase.from("checklist_responses").select("submission_id")
+        .eq("resposta", "nao_conforme").in("submission_id", chunk)
+    );
+    for (const r of resps) {
       const mes = mesPorSubmissao.get(r.submission_id);
       if (mes) map[mes] = (map[mes] ?? 0) + 1;
     }
@@ -335,28 +349,27 @@ export interface IcitPrefixo {
  * semNc = checklists sem nenhuma resposta "nao_conforme" (base do calculo de ICIT).
  */
 export async function fetchIcitPorPrefixo(startIso: string, endIso: string, base?: string): Promise<Map<string, IcitPrefixo>> {
-  let q = supabase.from("checklist_submissions").select("id,equipe").eq("status", "aprovado");
-  q = q.gte("data", startIso).lt("data", endIso);
-  if (base && base !== "Todos") q = q.eq("base", base);
-
-  const { data: subs, error: subErr } = await q;
-  if (subErr) throw subErr;
+  const subs = await allPages<{ id: string; equipe: string }>(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let q: any = supabase.from("checklist_submissions").select("id,equipe").eq("status", "aprovado")
+      .gte("data", startIso).lt("data", endIso);
+    if (base && base !== "Todos") q = q.eq("base", base);
+    return q;
+  });
 
   const map = new Map<string, IcitPrefixo>();
-  if (!subs?.length) return map;
+  if (!subs.length) return map;
 
   const ids = subs.map((s) => s.id);
   const CHUNK = 300;
   const ncSubIds = new Set<string>();
   for (let i = 0; i < ids.length; i += CHUNK) {
     const chunk = ids.slice(i, i + CHUNK);
-    const { data: resps, error: respErr } = await supabase
-      .from("checklist_responses")
-      .select("submission_id")
-      .eq("resposta", "nao_conforme")
-      .in("submission_id", chunk);
-    if (respErr) throw respErr;
-    for (const r of resps ?? []) ncSubIds.add(r.submission_id);
+    const resps = await allPages<{ submission_id: string }>(() =>
+      supabase.from("checklist_responses").select("submission_id")
+        .eq("resposta", "nao_conforme").in("submission_id", chunk)
+    );
+    for (const r of resps) ncSubIds.add(r.submission_id);
   }
 
   for (const s of subs) {
