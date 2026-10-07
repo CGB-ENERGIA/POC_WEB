@@ -74,7 +74,8 @@ export default defineRouter((/* { store, ssrContext } */) => {
       // Sem isso, member com troca pendente entra em loop "/" <-> "/alterar-senha"
       if (to.path === "/alterar-senha") return true;
 
-      if (to.meta.requiresAdmin) return "/";
+      // Usuários com role "admin" têm acesso às rotas administrativas
+      if (to.meta.requiresAdmin && profile.role !== "admin") return "/";
 
       if (profile.role === "member") {
         const relPath = to.path.replace(/^\/+/, "");
