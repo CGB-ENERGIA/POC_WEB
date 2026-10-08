@@ -513,9 +513,7 @@ const observerRows = computed(() => {
       const emp = matchSubmissionToEmployee(s, idx);
       fromSlice.add(normMatricula(emp?.matricula ?? s.matricula));
     }
-    roster = roster.filter(
-      (e) => e.base === viz.base || fromSlice.has(normMatricula(e.matricula)),
-    );
+    roster = roster.filter((e) => fromSlice.has(normMatricula(e.matricula)));
   }
   if (viz.processo) {
     const fromSlice = new Set<string>();
