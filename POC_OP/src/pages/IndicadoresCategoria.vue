@@ -278,6 +278,7 @@ async function recarregar() {
   await load({
     ano: Number(filters.ano),
     base: filters.base === "Todos" ? undefined : filters.base,
+    contarMeta: true,
   });
 }
 onMounted(recarregar);
