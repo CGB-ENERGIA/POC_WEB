@@ -697,7 +697,7 @@ $inactive-text:#475569;
 .legend-label { font-size: 12px; font-weight: 600; color: #475569; }
 
 // â"€â"€ Heat map card â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-.heat-card { border-radius: 12px; }
+.heat-card { border-radius: 12px; height: 100%; }
 .heat-card-title {
   font-size: 22px; font-weight: 800; color: $brand;
   text-align: center; padding: 8px 0 4px;
