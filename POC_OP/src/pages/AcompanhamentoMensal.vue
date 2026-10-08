@@ -554,12 +554,7 @@ const observerRows = computed(() => {
   const idx = indexEmployees(employees.value);
   const slice = subsNoObs.value;
   if (filters.base !== "Todos") {
-    const fromSlice = new Set<string>();
-    for (const s of slice) {
-      const emp = matchSubmissionToEmployee(s, idx);
-      fromSlice.add(normMatricula(emp?.matricula ?? s.matricula));
-    }
-    roster = roster.filter((e) => fromSlice.has(normMatricula(e.matricula)));
+    roster = roster.filter((e) => e.base === filters.base);
   }
   const { counts, extras } = tallyObserverRecords(roster, employees.value, slice);
   const list = extras.length ? [...roster, ...extras] : roster;

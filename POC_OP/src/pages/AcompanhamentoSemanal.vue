@@ -508,12 +508,7 @@ const observerRows = computed(() => {
   const idx = indexEmployees(employees.value);
   const slice = subsWeekNoObs.value;
   if (viz.base) {
-    const fromSlice = new Set<string>();
-    for (const s of slice) {
-      const emp = matchSubmissionToEmployee(s, idx);
-      fromSlice.add(normMatricula(emp?.matricula ?? s.matricula));
-    }
-    roster = roster.filter((e) => fromSlice.has(normMatricula(e.matricula)));
+    roster = roster.filter((e) => e.base === viz.base);
   }
   if (viz.processo) {
     const fromSlice = new Set<string>();
