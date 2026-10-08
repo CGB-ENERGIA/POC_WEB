@@ -343,7 +343,11 @@ const CAT_DEFS = [
   { label: "Regras de Ouro", match: "Regras de Ouro" },
   { label: "Trabalho em Altura", match: "Altura" },
   { label: "Veículos e Equipamentos", match: "Veículo" },
+  // Categorias do checklist de Alojamento: só aparecem quando há NC nelas
+  { label: "Repúblicas", match: "República" },
+  { label: "Estruturas e Instalações Prediais", match: "Estruturas" },
 ];
+const CAT_BASE_QTD = 7;
 
 const filters = reactive({
   semana: 0, mes: 0, ano: String(now.getFullYear()),
@@ -433,7 +437,7 @@ async function recarregar() {
   loading.value = true;
   try {
     const [subs, emps] = await Promise.all([
-      fetchSubmissions({ ano: Number(filters.ano) }),
+      fetchSubmissions({ ano: Number(filters.ano), contarMeta: true }),
       employees.value.length ? Promise.resolve(employees.value) : fetchEmployees(),
     ]);
     submissions.value = subs;
@@ -515,7 +519,7 @@ const catData = computed(() => {
     if (ci < 0) continue;
     rowMap[rows[ci].label][mes - 1]++;
   }
-  return rows;
+  return rows.filter((r, i) => i < CAT_BASE_QTD || r.values.some((v) => v > 0));
 });
 
 const baseData = computed(() => {

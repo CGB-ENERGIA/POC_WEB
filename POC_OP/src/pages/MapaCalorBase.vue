@@ -314,6 +314,7 @@ async function recarregar() {
     ano: Number(filters.ano),
     mes: mesNum,
     base: undefined,
+    contarMeta: true,
   });
 }
 onMounted(recarregar);
@@ -344,8 +345,24 @@ const CAT_DEFS = [
   { label: "Regras de Ouro", match: "Regras de Ouro" },
   { label: "Trabalho em Altura", match: "Altura" },
   { label: "Veículos e Equipamentos", match: "Veículo" },
+  // Categorias do checklist de Alojamento: só aparecem quando há NC nelas
+  { label: "Repúblicas", match: "República" },
+  { label: "Estruturas e Instalações Prediais", match: "Estruturas" },
 ];
-const categories = CAT_DEFS.map((c) => c.label);
+const CAT_BASE_QTD = 7;
+
+// Colunas fixas + categorias de Alojamento que tenham NC no recorte atual
+const catsAtivas = computed(() => {
+  const comNc = new Set<number>();
+  for (const r of responses.value) {
+    if (r.resposta !== "nao_conforme" || !subById.value[r.submission_id]) continue;
+    const ci = catIndex(r.categoria);
+    if (ci >= CAT_BASE_QTD) comNc.add(ci);
+  }
+  return CAT_DEFS.map((_, i) => i).filter((i) => i < CAT_BASE_QTD || comNc.has(i));
+});
+const categories = computed(() => catsAtivas.value.map((i) => CAT_DEFS[i]!.label));
+const colOf = (ci: number) => catsAtivas.value.indexOf(ci);
 
 function catIndex(categoria: string | undefined) {
   if (!categoria) return -1;
@@ -362,7 +379,7 @@ const subById = computed(() => {
 
 const matrixData = computed(() => {
   const basesInData = [...new Set(matrixSubs.value.map((s) => s.base).filter(Boolean))].sort();
-  const rows = basesInData.map((base) => ({ base, values: categories.map(() => 0) }));
+  const rows = basesInData.map((base) => ({ base, values: categories.value.map(() => 0) }));
   const rowMap: Record<string, number[]> = {};
   rows.forEach((r) => { rowMap[r.base] = r.values; });
 
@@ -370,10 +387,10 @@ const matrixData = computed(() => {
     if (r.resposta !== "nao_conforme") continue;
     const sub = subById.value[r.submission_id];
     if (!sub?.base) continue;
-    const ci = catIndex(r.categoria);
+    const ci = colOf(catIndex(r.categoria));
     if (ci < 0) continue;
     if (!rowMap[sub.base]) {
-      rowMap[sub.base] = categories.map(() => 0);
+      rowMap[sub.base] = categories.value.map(() => 0);
       rows.push({ base: sub.base, values: rowMap[sub.base] });
     }
     rowMap[sub.base][ci]++;
@@ -383,7 +400,7 @@ const matrixData = computed(() => {
 
 // â"€â"€â"€ Computed â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const colTotals = computed(() =>
-  categories.map((_, ci) => matrixData.value.reduce((s, r) => s + r.values[ci], 0))
+  categories.value.map((_, ci) => matrixData.value.reduce((s, r) => s + r.values[ci], 0))
 );
 
 const totalInc = computed(() => {
@@ -392,7 +409,7 @@ const totalInc = computed(() => {
   for (const r of responses.value) {
     if (r.resposta !== "nao_conforme") continue;
     if (!ids.has(r.submission_id)) continue;
-    if (viz.cat && catIndex(r.categoria) !== categories.indexOf(viz.cat)) continue;
+    if (viz.cat && catIndex(r.categoria) !== CAT_DEFS.findIndex((c) => c.label === viz.cat)) continue;
     n++;
   }
   return n;
@@ -402,8 +419,8 @@ const maxCell = computed(() => {
   let max = { value: 0, base: "", cat: "" };
   matrixData.value.forEach((row) => {
     row.values.forEach((v, ci) => {
-      if (isDim(row.base, categories[ci])) return;
-      if (v > max.value) max = { value: v, base: row.base, cat: categories[ci] };
+      if (isDim(row.base, categories.value[ci]!)) return;
+      if (v > max.value) max = { value: v, base: row.base, cat: categories.value[ci]! };
     });
   });
   return max;
