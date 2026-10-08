@@ -130,7 +130,7 @@
           <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
           <span v-if="filters.gerente !== 'Todos'" class="filter-chip">{{ filters.gerente }}</span>
           <span v-if="filters.coordenador !== 'Todos'" class="filter-chip">{{ filters.coordenador }}</span>
-          <span v-if="filters.tipoPoc !== 'Operacional'" class="filter-chip filter-chip--hit" @click="filters.tipoPoc = 'Operacional'">{{ filters.tipoPoc }}</span>
+          <span v-if="filters.tipoPoc !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.tipoPoc = 'Todos'">{{ filters.tipoPoc }}</span>
           <span v-if="filters.funcao !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.funcao = 'Todos'">{{ filters.funcao }}</span>
           <span v-if="filters.categoria !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.categoria = 'Todos'">{{ filters.categoria }}</span>
           <span v-if="filters.prefixo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.prefixo = 'Todos'">{{ filters.prefixo }}</span>
@@ -362,7 +362,7 @@ const categoriasOpts = ["Todos","Procedimento","Padrinho de Segurança","Veícul
 const basesOpts    = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
 const funcaoOpts   = ["Todos","Eletricista","Motorista","Operador","Técnico"];
-const tiposPoc     = ["Administrativo","Operacional","Alojamento"];
+const tiposPoc     = ["Todos","Administrativo","Operacional","Alojamento"];
 
 const curMesLabel = mesesOpts[now.getMonth()] ?? "jan/26";
 
@@ -370,7 +370,7 @@ const filters = reactive({
   mes: curMesLabel, ano: String(now.getFullYear()), categoria: "Todos",
   base: "Todos", prefixo: "Todos", gerencia: "Todos",
   gerente: "Todos", coordenador: "Todos", observador: "Todos", funcao: "Todos",
-  tipoPoc: "Operacional",
+  tipoPoc: "Todos",
 });
 
 // ─── ICIT (checklists sem NC) por prefixo: mês anterior + acumulado do ano ────
@@ -461,7 +461,7 @@ function resetSlice() {
   filters.gerencia = "Todos";
   filters.gerente = "Todos";
   filters.coordenador = "Todos";
-  filters.tipoPoc = "Operacional";
+  filters.tipoPoc = "Todos";
   filters.funcao = "Todos";
   filters.categoria = "Todos";
   filters.prefixo = "Todos";
@@ -473,7 +473,7 @@ const hasActiveFilters = computed(() =>
   || filters.gerencia !== "Todos"
   || filters.gerente !== "Todos"
   || filters.coordenador !== "Todos"
-  || filters.tipoPoc !== "Operacional"
+  || filters.tipoPoc !== "Todos"
   || filters.funcao !== "Todos"
   || filters.categoria !== "Todos"
   || filters.prefixo !== "Todos"

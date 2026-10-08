@@ -108,7 +108,7 @@
           <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ filters.gerente }}</span>
           <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ filters.coordenador }}</span>
           <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ filters.base }}</span>
-          <span v-if="filters.tipo !== 'Operacional'" class="filter-chip filter-chip--hit" @click="filters.tipo = 'Operacional'">{{ filters.tipo }}</span>
+          <span v-if="filters.tipo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.tipo = 'Todos'">{{ filters.tipo }}</span>
           <span v-if="viz.base && viz.base !== filters.base" class="filter-chip filter-chip--hit" @click="viz.base = null">{{ viz.base }}</span>
           <span v-if="viz.cat" class="filter-chip filter-chip--hit" @click="viz.cat = null">{{ viz.cat }}</span>
           <span v-if="viz.mes && viz.mes !== filters.mes" class="filter-chip filter-chip--hit" @click="viz.mes = null">{{ months[viz.mes - 1] }}</span>
@@ -327,7 +327,7 @@ const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SP
 const gerentesOpts = computed(() => uniqueHierarchyOpts(employees.value, "gerente"));
 const coordenadoresOpts = computed(() => uniqueHierarchyOpts(employees.value, "coordenador"));
 const basesOpts     = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
-const tiposOpts     = ["Operacional","Administrativo","Alojamento","Todos"];
+const tiposOpts     = ["Todos","Operacional","Administrativo","Alojamento"];
 
 const TIPO_AUDITAGEM: Record<string, string[]> = {
   Operacional: ["GOMAN", "GSTC"],
@@ -346,12 +346,14 @@ const CAT_DEFS = [
   // Categorias do checklist de Alojamento: só aparecem quando há NC nelas
   { label: "Repúblicas", match: "República" },
   { label: "Estruturas e Instalações Prediais", match: "Estruturas" },
+  // Fallback: qualquer categoria nova/vazia, para o total sempre fechar com o card
+  { label: "Outras categorias", match: "<<outras>>" },
 ];
 const CAT_BASE_QTD = 7;
 
 const filters = reactive({
   semana: 0, mes: 0, ano: String(now.getFullYear()),
-  gerencia: "Todos", gerente: "Todos", coordenador: "Todos", base: "Todos", tipo: "Operacional",
+  gerencia: "Todos", gerente: "Todos", coordenador: "Todos", base: "Todos", tipo: "Todos",
 });
 
 const viz = reactive({
@@ -401,7 +403,7 @@ function resetSlice() {
   filters.gerente = "Todos";
   filters.coordenador = "Todos";
   filters.base = "Todos";
-  filters.tipo = "Operacional";
+  filters.tipo = "Todos";
   viz.cat = null;
   viz.base = null;
   viz.mes = null;
@@ -413,7 +415,7 @@ const hasActiveFilters = computed(() =>
   || filters.gerente !== "Todos"
   || filters.coordenador !== "Todos"
   || filters.base !== "Todos"
-  || filters.tipo !== "Operacional"
+  || filters.tipo !== "Todos"
   || !!viz.cat
   || !!viz.base
   || !!viz.mes,
@@ -467,9 +469,9 @@ function mesDaData(data: string): number {
 }
 
 function catIndex(categoria: string | undefined) {
-  if (!categoria) return -1;
-  const cat = categoria.toLowerCase();
-  return CAT_DEFS.findIndex((c) => cat.includes(c.match.toLowerCase()) || cat === c.match.toLowerCase());
+  const cat = (categoria ?? "").toLowerCase();
+  const i = CAT_DEFS.findIndex((c) => cat.includes(c.match.toLowerCase()) || cat === c.match.toLowerCase());
+  return i >= 0 ? i : CAT_DEFS.length - 1;
 }
 
 function applySlice(omit: { base?: boolean; mes?: boolean } = {}) {

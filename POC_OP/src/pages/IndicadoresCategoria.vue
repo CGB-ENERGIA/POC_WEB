@@ -100,7 +100,7 @@
           <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ filters.gerente }}</span>
           <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ filters.coordenador }}</span>
           <span v-if="filters.prefixo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.prefixo = 'Todos'">{{ filters.prefixo }}</span>
-          <span v-if="filters.tipo !== 'Operacional'" class="filter-chip filter-chip--hit" @click="filters.tipo = 'Operacional'">{{ filters.tipo }}</span>
+          <span v-if="filters.tipo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.tipo = 'Todos'">{{ filters.tipo }}</span>
           <span v-if="viz.mes" class="filter-chip filter-chip--hit" @click="viz.mes = null">{{ months[viz.mes - 1] }}</span>
           <span v-if="viz.catKey" class="filter-chip filter-chip--hit" @click="viz.catKey = null">{{ catLabel(viz.catKey) }}</span>
           <button class="filter-clear" @click="resetSlice">
@@ -169,7 +169,7 @@
       </div>
 
       <!-- Section title -->
-      <div class="operacional-title">{{ filters.tipo.toUpperCase() }}</div>
+      <div class="operacional-title">{{ filters.tipo === 'Todos' ? 'TODOS OS TIPOS' : filters.tipo.toUpperCase() }}</div>
 
       <!-- Top row: APR · Regras de Ouro · Procedimento -->
       <div class="row q-col-gutter-md q-mb-md">
@@ -187,6 +187,19 @@
       <!-- Bottom row: 4 categories -->
       <div class="row q-col-gutter-md">
         <div v-for="cat in bottomCharts" :key="cat.id" class="col-12 col-md-3">
+          <q-card flat bordered class="cat-card chart-card" :class="{ 'cat-card--on': viz.catKey === cat.id }">
+            <q-card-section class="q-pa-sm">
+              <div class="cat-title cat-title--hit" @click="toggleCat(cat.id)">{{ cat.title }}</div>
+              <div class="cat-caption">Título filtra a categoria · barra filtra o mês</div>
+              <v-chart class="chart-hit" :option="cat.option" :update-options="{ notMerge: false }" autoresize style="height:230px" @click="onMesClick" />
+            </q-card-section>
+          </q-card>
+        </div>
+      </div>
+
+      <!-- Alojamento: categorias extras (só com dados) -->
+      <div v-if="extraCharts.length" class="row q-col-gutter-md q-mt-xs">
+        <div v-for="cat in extraCharts" :key="cat.id" class="col-12 col-md-4">
           <q-card flat bordered class="cat-card chart-card" :class="{ 'cat-card--on': viz.catKey === cat.id }">
             <q-card-section class="q-pa-sm">
               <div class="cat-title cat-title--hit" @click="toggleCat(cat.id)">{{ cat.title }}</div>
@@ -244,7 +257,7 @@ const now = new Date();
 const anosOpts     = ["2024","2025","2026"];
 const basesOpts    = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
-const tiposOpts     = ["Operacional","Administrativo","Alojamento"];
+const tiposOpts     = ["Todos","Operacional","Administrativo","Alojamento"];
 
 // Mapeia o "Tipo de POC" para os valores reais de auditagem gravados no checklist
 const TIPO_AUDITAGEM: Record<string, string[]> = {
@@ -270,7 +283,7 @@ function filterPrefixo(val: string, update: (fn: () => void) => void) {
 const filters = reactive({
   ano: String(now.getFullYear()), base: "Todos",
   gerencia: "Todos", gerente: "Todos", coordenador: "Todos",
-  prefixo: "Todos", tipo: "Operacional",
+  prefixo: "Todos", tipo: "Todos",
 });
 
 async function recarregar() {
@@ -311,7 +324,7 @@ function resetSlice() {
   filters.gerente = "Todos";
   filters.coordenador = "Todos";
   filters.prefixo = "Todos";
-  filters.tipo = "Operacional";
+  filters.tipo = "Todos";
   viz.mes = null;
   viz.catKey = null;
 }
@@ -322,7 +335,7 @@ const hasActiveFilters = computed(() =>
   || filters.gerente !== "Todos"
   || filters.coordenador !== "Todos"
   || filters.prefixo !== "Todos"
-  || filters.tipo !== "Operacional"
+  || filters.tipo !== "Todos"
   || viz.mes != null
   || !!viz.catKey,
 );
@@ -383,6 +396,8 @@ const CAT_DEFS = [
   { key: "alturas",  label: "Trabalho em Altura",       match: "Altura" },
   { key: "veiculos", label: "Veículos e Equipamentos",  match: "Veículo" },
   { key: "epi",      label: "Epi, Epc e Ferramentas",   match: "EPI" },
+  { key: "republicas", label: "Repúblicas",                       match: "República" },
+  { key: "estruturas", label: "Estruturas e Instalações Prediais", match: "Estruturas" },
 ];
 
 const subMonthMap = computed(() => {
@@ -510,6 +525,19 @@ const topCharts = computed(() => [
   { id: "regraOuro", title: "REGRAS DE OURO",option: makeCatChart(rawData.value.regraOuro, "regraOuro") },
   { id: "procedim",  title: "PROCEDIMENTO",  option: makeCatChart(rawData.value.procedim, "procedim") },
 ]);
+
+// Categorias do checklist de Alojamento: só aparecem quando há resposta nelas
+const extraCharts = computed(() =>
+  [
+    { id: "republicas", title: "REPÚBLICAS" },
+    { id: "estruturas", title: "ESTRUTURAS E INSTALAÇÕES PREDIAIS" },
+  ]
+    .filter((c) => {
+      const d = rawData.value[c.id]!;
+      return d.conf.some((v) => v > 0) || d.inc.some((v) => v > 0);
+    })
+    .map((c) => ({ ...c, option: makeCatChart(rawData.value[c.id]!, c.id) })),
+);
 
 const bottomCharts = computed(() => [
   { id: "padrinho", title: "PADRINHO DE SEGURANÇA",   option: makeCatChart(rawData.value.padrinho, "padrinho") },

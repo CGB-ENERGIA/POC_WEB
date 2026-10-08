@@ -348,6 +348,8 @@ const CAT_DEFS = [
   // Categorias do checklist de Alojamento: só aparecem quando há NC nelas
   { label: "Repúblicas", match: "República" },
   { label: "Estruturas e Instalações Prediais", match: "Estruturas" },
+  // Fallback: qualquer categoria nova/vazia, para o total sempre fechar com o card
+  { label: "Outras categorias", match: "<<outras>>" },
 ];
 const CAT_BASE_QTD = 7;
 
@@ -365,9 +367,9 @@ const categories = computed(() => catsAtivas.value.map((i) => CAT_DEFS[i]!.label
 const colOf = (ci: number) => catsAtivas.value.indexOf(ci);
 
 function catIndex(categoria: string | undefined) {
-  if (!categoria) return -1;
-  const cat = categoria.toLowerCase();
-  return CAT_DEFS.findIndex((c) => cat.includes(c.match.toLowerCase()) || cat === c.match.toLowerCase());
+  const cat = (categoria ?? "").toLowerCase();
+  const i = CAT_DEFS.findIndex((c) => cat.includes(c.match.toLowerCase()) || cat === c.match.toLowerCase());
+  return i >= 0 ? i : CAT_DEFS.length - 1;
 }
 
 // â"€â"€â"€ NC Matrix base Ã— category from real data â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€

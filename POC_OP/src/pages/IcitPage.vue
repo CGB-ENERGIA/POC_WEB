@@ -138,7 +138,7 @@
           <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
           <span v-if="filters.gerente !== 'Todos'" class="filter-chip">{{ filters.gerente }}</span>
           <span v-if="filters.coordenador !== 'Todos'" class="filter-chip">{{ filters.coordenador }}</span>
-          <span v-if="filters.tipoPoc !== 'Operacional'" class="filter-chip filter-chip--hit" @click="filters.tipoPoc = 'Operacional'">{{ filters.tipoPoc }}</span>
+          <span v-if="filters.tipoPoc !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.tipoPoc = 'Todos'">{{ filters.tipoPoc }}</span>
           <span v-if="filters.seguranca !== 'Segurança'" class="filter-chip filter-chip--hit" @click="filters.seguranca = 'Segurança'">{{ filters.seguranca }}</span>
           <span v-if="viz.equipe" class="filter-chip filter-chip--hit" @click="viz.equipe = null">{{ viz.equipe }}</span>
           <span v-if="viz.categoria" class="filter-chip filter-chip--hit" @click="viz.categoria = null">{{ viz.categoria }}</span>
@@ -351,7 +351,7 @@ const filters = reactive({
   gerencia:  "Todos",
   base:      "Todos",
   seguranca: "Segurança",
-  tipoPoc:   "Operacional",
+  tipoPoc:   "Todos",
   gerente:   "Todos", coordenador: "Todos",
 });
 
@@ -420,7 +420,7 @@ function resetSlice() {
   filters.semana = 0;
   filters.gerencia = "Todos";
   filters.base = "Todos";
-  filters.tipoPoc = "Operacional";
+  filters.tipoPoc = "Todos";
   filters.seguranca = "Segurança";
   filters.gerente = "Todos";
   filters.coordenador = "Todos";
@@ -485,7 +485,7 @@ const hasActiveFilters = computed(() =>
   || filters.gerencia !== "Todos"
   || filters.gerente !== "Todos"
   || filters.coordenador !== "Todos"
-  || filters.tipoPoc !== "Operacional"
+  || filters.tipoPoc !== "Todos"
   || filters.seguranca !== "Segurança"
   || !!viz.equipe
   || !!viz.categoria

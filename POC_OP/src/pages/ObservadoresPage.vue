@@ -117,7 +117,7 @@
           <span v-if="filters.semana !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.semana = 'Todos'">{{ filters.semana }}</span>
           <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ filters.base }}</span>
           <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
-          <span v-if="filters.tipo !== 'Operacional'" class="filter-chip filter-chip--hit" @click="filters.tipo = 'Operacional'">{{ filters.tipo }}</span>
+          <span v-if="filters.tipo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.tipo = 'Todos'">{{ filters.tipo }}</span>
           <span v-if="filters.funcao !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.funcao = 'Todos'">{{ filters.funcao }}</span>
           <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ filters.gerente }}</span>
           <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ filters.coordenador }}</span>
@@ -333,7 +333,7 @@ const semanasOpts   = ["Todos","Semana 1","Semana 2","Semana 3","Semana 4"];
 const funcoesOpts   = ["Todos","ENCARREGADO","SUPERVISOR","SESMT","FISCAL","COORDENADOR","GERENTE"];
 
 const filters = reactive({
-  ano: "2026", base: "Todos", gerencia: "Todos", tipo: "Operacional",
+  ano: "2026", base: "Todos", gerencia: "Todos", tipo: "Todos",
   mes: "Todos", semana: "Todos", funcao: "Todos",
   gerente: "Todos", coordenador: "Todos", observador: "Todos",
 });
@@ -391,7 +391,7 @@ function onCategoriaClick(p: EcClick) {
 
 function resetSlice() {
   filters.gerencia = "Todos";
-  filters.tipo = "Operacional";
+  filters.tipo = "Todos";
   filters.semana = "Todos";
   filters.funcao = "Todos";
   filters.gerente = "Todos";
@@ -404,7 +404,7 @@ function resetSlice() {
 const hasActiveFilters = computed(() =>
   filters.base !== "Todos"
   || filters.gerencia !== "Todos"
-  || filters.tipo !== "Operacional"
+  || filters.tipo !== "Todos"
   || filters.mes !== "Todos"
   || filters.semana !== "Todos"
   || filters.funcao !== "Todos"
