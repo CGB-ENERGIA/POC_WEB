@@ -7,11 +7,11 @@
     <div class="filter-bar">
       <div class="filter-fab-wrap">
         <button
-          v-draggable
           class="filter-fab"
           :class="{ 'filter-fab--active': showFilters }"
           @click="showFilters = !showFilters">
           <q-icon :name="showFilters ? `mdi-chevron-up` : `mdi-tune`" size="20px" />
+          <span class="filter-fab__label">{{ showFilters ? 'Ocultar filtros' : 'Filtros' }}</span>
         </button>
       </div>
       <div class="filter-collapsible" :class="{ 'is-hidden': !showFilters }">
