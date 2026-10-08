@@ -1,4 +1,7 @@
 import { supabase } from "./supabase";
+import { semanaDeIso, faixaDaSemana } from "./semanas";
+
+export { semanaDeData, rotuloSemana } from "./semanas";
 
 /**
  * Gerências válidas — exatamente como estão na tabela `employees`.
@@ -44,20 +47,6 @@ function mesRange(ano: number, mes: number) {
   return { start, end };
 }
 
-/**
- * Retorna o número da semana do mês (1-4) com base no cronograma padrão CGB:
- *   1ª Semana = dias 01–08
- *   2ª Semana = dias 09–15
- *   3ª Semana = dias 16–22
- *   4ª Semana = dias 23–31
- */
-export function semanaDoMes(dia: number): 1 | 2 | 3 | 4 {
-  if (dia <= 8)  return 1;
-  if (dia <= 15) return 2;
-  if (dia <= 22) return 3;
-  return 4;
-}
-
 /** Dia do mês a partir do campo `data`, sem deslocar fuso. */
 export function diaDoMes(data: string): number {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(data);
@@ -66,8 +55,9 @@ export function diaDoMes(data: string): number {
   return Number.isNaN(d.getTime()) ? 0 : d.getDate();
 }
 
+/** Semana (1–4) de uma data, conforme o cronograma do mês (configurável em Metas). */
 export function semanaDaData(data: string): 1 | 2 | 3 | 4 {
-  return semanaDoMes(diaDoMes(data));
+  return semanaDeIso(data);
 }
 
 export function normMatricula(m: string | undefined | null): string {
@@ -177,14 +167,11 @@ export function tallyObserverRecords(
   return { counts, extras };
 }
 
-/** Intervalo ISO para a semana do mês, conforme cronograma padrão CGB. */
+/** Intervalo ISO para a semana do mês, conforme o cronograma configurado. */
 function semanaRange(ano: number, mes: number, semana: number) {
-  const STARTS = [1, 9, 16, 23] as const;
-  const diaInicio = STARTS[semana - 1] ?? 1;
-  const start = new Date(ano, mes - 1, diaInicio).toISOString();
-  const end = semana >= 4
-    ? new Date(ano, mes, 1).toISOString()
-    : new Date(ano, mes - 1, STARTS[semana]!).toISOString();
+  const { ini, fim } = faixaDaSemana(ano, mes, semana);
+  const start = new Date(ano, mes - 1, ini).toISOString();
+  const end = new Date(ano, mes - 1, fim + 1).toISOString(); // dia 32 vira dia 1 do mês seguinte
   return { start, end };
 }
 

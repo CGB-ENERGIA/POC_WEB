@@ -311,7 +311,7 @@ import { GridComponent, TooltipComponent, LegendComponent } from "echarts/compon
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDoMes, indexEmployees, matchSubmissionToEmployee, filterByCoordenador } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDaData, indexEmployees, matchSubmissionToEmployee, filterByCoordenador } from "@/lib/dashboard";
 import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
 
 use([CanvasRenderer, BarChart, GaugeChart, PieChart, GridComponent, TooltipComponent, LegendComponent]);
@@ -435,7 +435,7 @@ function applySlice(
   if (!omit.tipo) s = s.filter((sub) => matchTipoPoc(sub.auditagem));
   if (!omit.week && filters.semana !== "Todos") {
     const semNum = Number(filters.semana.replace(/\D/g, "")) || 0;
-    if (semNum) s = s.filter((sub) => semanaDoMes(new Date(sub.data).getDate()) === semNum);
+    if (semNum) s = s.filter((sub) => semanaDaData(sub.data) === semNum);
   }
   if (!omit.funcao && filters.funcao !== "Todos") {
     s = s.filter((sub) => matchSubmissionToEmployee(sub, idx)?.funcao === filters.funcao);

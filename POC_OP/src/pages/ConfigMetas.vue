@@ -169,6 +169,76 @@
     <!-- ── Divisor ─────────────────────────────────────────────────────────────── -->
     <div class="cm-divider"></div>
 
+    <!-- ── Semanas de observação ───────────────────────────────────────────────── -->
+    <div class="cm-section">
+      <div class="cm-section-title">
+        <q-icon name="mdi-calendar-week" size="22px" class="text-primary" />
+        <div>
+          <div class="cm-section-title__main">Semanas de observação</div>
+          <div class="cm-section-title__sub">
+            Defina o último dia de cada semana de {{ mesAtualLabel }}/{{ selectedAno }}. O início de cada semana
+            acompanha o fim da anterior e a 4ª semana vai até o fim do mês.
+          </div>
+        </div>
+      </div>
+
+      <div class="cm-week-panel">
+        <div class="cm-week-rows">
+          <div v-for="row in semanasRows" :key="row.semana" class="cm-week-row">
+            <div class="cm-week-row__label">
+              <div class="cm-week-row__name">{{ row.semana }}ª Semana</div>
+              <div class="cm-week-row__periodo">{{ row.dias }} {{ row.dias === 1 ? "dia" : "dias" }}</div>
+            </div>
+            <div class="cm-week-row__ctrl">
+              <span class="cm-week-row__unit">de {{ dd(row.ini) }}/{{ dd(selectedMes) }} até</span>
+              <template v-if="row.editavel">
+                <button class="cm-stepper" @click="ajustarFim(row.semana - 1, -1)">−</button>
+                <input
+                  v-model.number="fimsInput[row.semana - 1]"
+                  type="number" min="1" max="30" step="1"
+                  class="cm-counter__input cm-counter__input--sm"
+                />
+                <button class="cm-stepper" @click="ajustarFim(row.semana - 1, 1)">+</button>
+                <span class="cm-week-row__unit">/{{ dd(selectedMes) }}</span>
+              </template>
+              <template v-else>
+                <strong>{{ dd(row.fim) }}/{{ dd(selectedMes) }}</strong>
+                <span class="cm-week-row__unit">(fim do mês)</span>
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="cm-period__status q-mb-md"
+        :class="erroSemanas ? 'cm-period__status--warn' : semanasPersonalizadas ? 'cm-period__status--ok' : ''"
+      >
+        <q-icon :name="erroSemanas ? 'mdi-alert-circle-outline' : 'mdi-information-outline'" size="15px" />
+        <span v-if="erroSemanas">{{ erroSemanas }}</span>
+        <span v-else-if="semanasPersonalizadas">Cronograma personalizado para este mês.</span>
+        <span v-else>Este mês usa o cronograma padrão (semanas terminando nos dias 8, 15 e 22).</span>
+      </div>
+
+      <div class="cm-actions">
+        <button
+          class="cm-btn cm-btn--save"
+          :class="{ 'cm-btn--loading': salvandoSemanas }"
+          :disabled="salvandoSemanas || !!erroSemanas || !semanasAlteradas"
+          @click="handleSaveSemanas"
+        >
+          <q-icon name="mdi-content-save" size="18px" />
+          <span>{{ salvandoSemanas ? 'Salvando…' : 'Salvar semanas' }}</span>
+        </button>
+        <button class="cm-btn cm-btn--reset" :disabled="salvandoSemanas || !semanasPersonalizadas" @click="handleResetSemanas">
+          <q-icon name="mdi-restore" size="18px" />
+          <span>Voltar ao padrão</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="cm-divider"></div>
+
     <!-- ── Exceções individuais ────────────────────────────────────────────────── -->
     <div class="cm-section">
       <div class="cm-section-title">
@@ -326,6 +396,10 @@ import { useQuasar } from "quasar";
 import { useGoals, type IndividualOverride } from "@/composables/useGoals";
 import { supabase } from "@/lib/supabase";
 import { allPages } from "@/lib/dashboard";
+import {
+  carregarSemanas, fimsDoMes, temCronogramaPersonalizado, validarFims, salvarSemanas, restaurarSemanas,
+  faixaDaSemana, ultimoDiaDoMes, FIMS_PADRAO, semanasVersao, type FimsSemanas,
+} from "@/lib/semanas";
 
 const $q = useQuasar();
 const { getMonthGoal, save, hasGoalDefined, goalForGerencia, getOverride, getOverridesForMonth, saveOverride, removeOverride } = useGoals();
@@ -364,12 +438,74 @@ const motivosComVazio = [
   { label: "Baixada",     value: "Baixada" },
 ];
 
-const semanaDefs = [
-  { value: 1, label: "1ª Semana", periodo: "01–08" },
-  { value: 2, label: "2ª Semana", periodo: "09–15" },
-  { value: 3, label: "3ª Semana", periodo: "16–22" },
-  { value: 4, label: "4ª Semana", periodo: "23–31" },
-];
+const dd = (n: number) => String(n).padStart(2, "0");
+
+const semanaDefs = computed(() =>
+  [1, 2, 3, 4].map((v) => {
+    const { ini, fim } = faixaDaSemana(selectedAno.value, selectedMes.value, v);
+    return { value: v, label: `${v}ª Semana`, periodo: `${dd(ini)}–${dd(fim)}` };
+  }),
+);
+
+// ── Cronograma das semanas do mês ─────────────────────────────────────────────
+void carregarSemanas();
+const fimsInput = ref<FimsSemanas>([...FIMS_PADRAO]);
+const salvandoSemanas = ref(false);
+const ultimoDia = computed(() => ultimoDiaDoMes(selectedAno.value, selectedMes.value));
+
+function sincronizarSemanas() {
+  fimsInput.value = [...fimsDoMes(selectedAno.value, selectedMes.value)] as FimsSemanas;
+}
+watch([selectedAno, selectedMes, semanasVersao], sincronizarSemanas, { immediate: true });
+
+const erroSemanas = computed(() => validarFims(selectedAno.value, selectedMes.value, fimsInput.value));
+const semanasPersonalizadas = computed(() => temCronogramaPersonalizado(selectedAno.value, selectedMes.value));
+const semanasAlteradas = computed(() => {
+  const salvo = fimsDoMes(selectedAno.value, selectedMes.value);
+  return fimsInput.value.some((v, i) => v !== salvo[i]);
+});
+const semanasRows = computed(() => {
+  const fins = [...fimsInput.value, ultimoDia.value];
+  return [1, 2, 3, 4].map((semana) => {
+    const ini = semana === 1 ? 1 : (Number(fins[semana - 2]) || 0) + 1;
+    const fim = Number(fins[semana - 1]) || 0;
+    return { semana, ini, fim, dias: Math.max(0, fim - ini + 1), editavel: semana < 4 };
+  });
+});
+
+function ajustarFim(i: number, delta: number) {
+  const v = [...fimsInput.value] as FimsSemanas;
+  v[i] = Math.min(30, Math.max(1, (Number(v[i]) || 0) + delta));
+  fimsInput.value = v;
+}
+
+async function handleSaveSemanas() {
+  salvandoSemanas.value = true;
+  try {
+    await salvarSemanas(selectedAno.value, selectedMes.value, [...fimsInput.value] as FimsSemanas);
+    $q.notify({
+      type: "positive", icon: "mdi-check-circle", position: "top-right", timeout: 3500,
+      message: `Semanas de ${mesAtualLabel.value}/${selectedAno.value} salvas!`,
+      caption: semanasRows.value.map((r) => `${r.semana}ª ${dd(r.ini)}–${dd(r.fim)}`).join(" · "),
+    });
+  } catch (e) {
+    $q.notify({ type: "negative", position: "top-right", message: `Não foi possível salvar: ${(e as Error).message}` });
+  } finally {
+    salvandoSemanas.value = false;
+  }
+}
+
+async function handleResetSemanas() {
+  salvandoSemanas.value = true;
+  try {
+    await restaurarSemanas(selectedAno.value, selectedMes.value);
+    $q.notify({ type: "info", position: "top-right", message: "Semanas voltaram ao cronograma padrão." });
+  } catch (e) {
+    $q.notify({ type: "negative", position: "top-right", message: `Não foi possível restaurar: ${(e as Error).message}` });
+  } finally {
+    salvandoSemanas.value = false;
+  }
+}
 
 interface WeekRow { semana: number; label: string; periodo: string; meta: number; motivo: string; }
 
@@ -426,7 +562,7 @@ function filterEmps(val: string, update: (fn: () => void) => void) {
 function openPanel(emp: EmpOption | null) {
   if (!emp) { panelVisible.value = false; weekRows.value = []; return; }
   const defaultMeta = goalForGerencia(emp.gerencia, selectedAno.value, selectedMes.value, emp.funcao).semanal;
-  weekRows.value = semanaDefs.map(s => {
+  weekRows.value = semanaDefs.value.map(s => {
     const weekOv  = getOverride(emp.matricula, selectedAno.value, selectedMes.value, s.value);
     const monthOv = getOverride(emp.matricula, selectedAno.value, selectedMes.value, 0);
     const ov = weekOv ?? monthOv;

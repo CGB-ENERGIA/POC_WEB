@@ -15,6 +15,7 @@ import {
   type ResponseRow,
   type EmployeeRow,
 } from "@/lib/dashboard";
+import { carregarSemanas } from "@/lib/semanas";
 
 export type { Filters, SubmissionRow, ResponseRow, EmployeeRow };
 
@@ -31,6 +32,7 @@ export function useChecklistData() {
     loading.value = true;
     error.value = null;
     try {
+      await carregarSemanas(); // consultas por semana dependem do cronograma do mês
       const [subs, emps] = await Promise.all([
         fetchSubmissions(filters, usarSemana),
         fetchEmployees(),

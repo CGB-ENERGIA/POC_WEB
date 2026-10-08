@@ -228,7 +228,7 @@ import { TooltipComponent, GridComponent, DataZoomComponent } from "echarts/comp
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDoMes, filterByCoordenador } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDaData, filterByCoordenador } from "@/lib/dashboard";
 
 use([CanvasRenderer, BarChart, TreemapChart, TooltipComponent, GridComponent, DataZoomComponent]);
 
@@ -398,7 +398,7 @@ function applySlice(
   if (!omit.gerencia) s = filterByGerencia(s, employees.value, filters.gerencia);
   if (!omit.week && filters.semana !== "Todos") {
     const semNum = Number(filters.semana.replace(/\D/g, "")) || 0;
-    if (semNum) s = s.filter(sub => semanaDoMes(new Date(sub.data).getDate()) === semNum);
+    if (semNum) s = s.filter(sub => semanaDaData(sub.data) === semNum);
   }
   if (!omit.observador && filters.observador !== "Todos") {
     s = s.filter(sub => sub.observador === filters.observador);

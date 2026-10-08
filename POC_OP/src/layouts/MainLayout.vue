@@ -117,6 +117,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
+import { carregarSemanas } from "@/lib/semanas";
 import { useQuasar } from "quasar";
 import { useRouter } from "vue-router";
 import BrandLogo from "@/components/BrandLogo.vue";
@@ -257,6 +258,7 @@ function toggleDarkMode() {
 }
 
 onMounted(() => {
+  void carregarSemanas();
   const saved = localStorage.getItem("darkMode");
   if (saved !== null) {
     $q.dark.set(saved === "true");

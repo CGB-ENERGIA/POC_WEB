@@ -197,7 +197,8 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useChecklistData, type SubmissionRow, type ResponseRow, type EmployeeRow } from "@/composables/useChecklistData";
-import { filterByGerente, semanaDoMes, uniqueHierarchyOpts, filterByCoordenador } from "@/lib/dashboard";
+import { filterByGerente, semanaDaData, uniqueHierarchyOpts, filterByCoordenador } from "@/lib/dashboard";
+import { rotuloSemana } from "@/lib/semanas";
 
 const R2_PUBLIC_BASE = (import.meta.env.VITE_R2_PUBLIC_BASE_URL as string ?? "").replace(/\/$/, "");
 function fotoUrl(key: string | null | undefined): string | null {
@@ -209,12 +210,9 @@ function fotoUrl(key: string | null | undefined): string | null {
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
-const semanas  = [
-  { value: 1, label: "1ª (01–08)" },
-  { value: 2, label: "2ª (09–15)" },
-  { value: 3, label: "3ª (16–22)" },
-  { value: 4, label: "4ª (23–31)" },
-];
+const semanas = computed(() =>
+  [1, 2, 3, 4].map((v) => ({ value: v, label: rotuloSemana(filters.ano, filters.mes ?? new Date().getMonth() + 1, v) })),
+);
 
 const meses = [
   { value: 1,  label: "jan" }, { value: 2,  label: "fev" },
@@ -359,7 +357,7 @@ const listaFiltrada = computed<NcRow[]>(() => {
   let rows = todasNcs.value;
 
   if (filters.semana) {
-    rows = rows.filter(r => semanaDoMes(new Date(r.data).getDate()) === filters.semana);
+    rows = rows.filter(r => semanaDaData(r.data) === filters.semana);
   }
 
   if (filters.base) {

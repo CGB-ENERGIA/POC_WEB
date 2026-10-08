@@ -359,7 +359,8 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDaData, semanaDoMes, filterObserverRoster, uniqueChartLabels, tallyObserverRecords, normMatricula, indexEmployees, matchSubmissionToEmployee, filterByCoordenador } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDaData, filterObserverRoster, uniqueChartLabels, tallyObserverRecords, normMatricula, indexEmployees, matchSubmissionToEmployee, filterByCoordenador } from "@/lib/dashboard";
+import { semanaDeData, rotuloSemana, carregarSemanas } from "@/lib/semanas";
 import { useGoals } from "@/composables/useGoals";
 import { gerarRankingPng, coordenadoresDe, SEM_COORDENADOR } from "@/lib/ranking-imagem";
 import { posicionarRotulos } from "@/lib/rotulos-barra";
@@ -373,12 +374,9 @@ use([
 ]);
 
 // ─── Filter options ──────────────────────────────────────────────────────────
-const semanas = [
-  { value: 1, label: "1ª (01–08)" },
-  { value: 2, label: "2ª (09–15)" },
-  { value: 3, label: "3ª (16–22)" },
-  { value: 4, label: "4ª (23–31)" },
-];
+const semanas = computed(() =>
+  [1, 2, 3, 4].map((v) => ({ value: v, label: rotuloSemana(filters.ano, filters.mes, v) })),
+);
 
 const showFilters = ref(false);
 
@@ -397,7 +395,7 @@ const gerencias = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT", 
 // ─── Filter state ────────────────────────────────────────────────────────────
 const now = new Date();
 const filters = reactive({
-  semana: semanaDoMes(now.getDate()),
+  semana: semanaDeData(now) as number,
   ano: now.getFullYear(),
   mes: now.getMonth() + 1,
   gerente: "Todos", coordenador: "Todos",
@@ -438,7 +436,7 @@ function resetViz() {
 }
 
 function resetFilters() {
-  filters.semana = semanaDoMes(now.getDate());
+  filters.semana = semanaDeData(now);
   filters.ano = now.getFullYear();
   filters.mes = now.getMonth() + 1;
   filters.gerente = "Todos";
@@ -497,7 +495,7 @@ function onWeekClick(p: EcClick) {
   if (n >= 1 && n <= 4) filters.semana = n;
 }
 
-const semanaLabel = computed(() => semanas.find(s => s.value === filters.semana)?.label ?? "");
+const semanaLabel = computed(() => semanas.value.find(s => s.value === filters.semana)?.label ?? "");
 const mesLabel = computed(() => meses.find(m => m.value === filters.mes)?.label ?? "");
 const hasActiveFilters = computed(() =>
   filters.gerente !== "Todos"
@@ -527,7 +525,11 @@ async function recarregar() {
   );
 }
 
-onMounted(recarregar);
+onMounted(async () => {
+  await carregarSemanas();
+  filters.semana = semanaDeData(now); // a semana de hoje depende do cronograma do mês
+  await recarregar();
+});
 watch(() => [filters.ano, filters.mes], recarregar);
 
 // Todos os subs do mês após filtros de gerência/gerente (sem filtro de semana)

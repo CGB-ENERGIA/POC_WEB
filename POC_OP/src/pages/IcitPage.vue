@@ -294,6 +294,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtPct, fmtN } from "@/composables/useChecklistData";
+import { rotuloSemana } from "@/lib/semanas";
 import { filterByGerencia, filterByGerente, semanaDaData, indexEmployees, matchSubmissionToEmployee, fetchSubmissions, fetchResponses, type ResponseRow, type SubmissionRow, filterByCoordenador } from "@/lib/dashboard";
 import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
 import { metaRoleFrom } from "@/composables/useGoals";
@@ -325,13 +326,10 @@ const showFilters = ref(false);
 
 const now = new Date();
 const anos     = [2024, 2025, 2026];
-const semanas  = [
-  { value: 0, label: "Todas"       },
-  { value: 1, label: "1ª (01–08)" },
-  { value: 2, label: "2ª (09–15)" },
-  { value: 3, label: "3ª (16–22)" },
-  { value: 4, label: "4ª (23–31)" },
-];
+const semanas = computed(() => [
+  { value: 0, label: "Todas" },
+  ...[1, 2, 3, 4].map((v) => ({ value: v, label: rotuloSemana(filters.ano, filters.mes, v) })),
+]);
 const meses = [
   { value: 1,  label: "jan" }, { value: 2,  label: "fev" },
   { value: 3,  label: "mar" }, { value: 4,  label: "abr" },
@@ -480,7 +478,7 @@ function onDonutClick(p: EcClick) {
 }
 
 const mesLabel = computed(() => meses.find((m) => m.value === filters.mes)?.label ?? "");
-const semanaLabel = computed(() => semanas.find((s) => s.value === filters.semana)?.label ?? "");
+const semanaLabel = computed(() => semanas.value.find((s) => s.value === filters.semana)?.label ?? "");
 const hasActiveFilters = computed(() =>
   filters.semana !== 0
   || filters.base !== "Todos"

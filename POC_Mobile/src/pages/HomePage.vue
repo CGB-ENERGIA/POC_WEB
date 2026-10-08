@@ -280,6 +280,7 @@ import { LocalStorage, Notify } from "quasar";
 import { useSessionStore } from "@/stores/session";
 import { useObservacoesStore, isChecklist } from "@/stores/observacoes";
 import { contaNaMeta } from "@/utils/checklist-meta";
+import { semanaDoDia, carregarSemanas } from "@/utils/semanas";
 import { useGaleriaStore } from "@/stores/galeria";
 import { totalPerguntasGoman } from "@/data/goman-checklist";
 import { totalPerguntasGstc } from "@/data/gstc-checklist";
@@ -351,6 +352,7 @@ onMounted(() => {
   window.addEventListener("offline", updateOnlineStatus);
 
   void ensureLoaded();
+  void carregarSemanas();
 
   if (session.matricula) {
     syncLoading.value = true;
@@ -417,7 +419,7 @@ const minhasObs  = computed(() =>
 );
 const totalGeral = computed(() => minhasObs.value.length);
 
-function semanaDoMes(d: Date) { const n = d.getDate(); return n <= 8 ? 1 : n <= 15 ? 2 : n <= 22 ? 3 : 4; }
+function semanaDoMes(d: Date) { return semanaDoDia(d.getFullYear(), d.getMonth() + 1, d.getDate()); }
 function isMesmoMes(d: Date, r: Date) { return d.getMonth() === r.getMonth() && d.getFullYear() === r.getFullYear(); }
 function isMesmaSemana(d: Date, r: Date) { return isMesmoMes(d, r) && semanaDoMes(d) === semanaDoMes(r); }
 
