@@ -8,8 +8,8 @@
  */
 import { getTrustedTime } from "@/utils/server-time";
 
-const MAX_LADO = 1600;
-const QUALIDADE = 0.8;
+const MAX_LADO = 1280;
+const QUALIDADE = 0.72;
 
 /**
  * Anti-fraude por "frescor": a foto precisa ter sido criada há poucos minutos, segundo o
@@ -243,6 +243,8 @@ export async function fotoNativaParaBase64(file: File, opcoes: OpcoesFotoNativa 
   }
 
   const { src, w, h, fechar } = await carregar(file);
+  let sourceReleased = false;
+  const releaseSource = () => { if (!sourceReleased) { sourceReleased = true; fechar(); } };
   try {
     const escala = Math.min(1, MAX_LADO / Math.max(w, h));
     const cw = Math.round(w * escala);
@@ -253,11 +255,13 @@ export async function fotoNativaParaBase64(file: File, opcoes: OpcoesFotoNativa 
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Canvas indisponível");
     ctx.drawImage(src, 0, 0, cw, ch);
+    // Libera o ImageBitmap/objectURL aqui, antes do toDataURL, para reduzir o pico de memória
+    releaseSource();
     if (frescor && !frescor.ok) {
       desenharFaixa(ctx, cw, ["ATENÇÃO: FOTO FORA DO HORÁRIO", descreverQuando(frescor)]);
     }
     return canvas.toDataURL("image/jpeg", QUALIDADE);
   } finally {
-    fechar();
+    releaseSource();
   }
 }
