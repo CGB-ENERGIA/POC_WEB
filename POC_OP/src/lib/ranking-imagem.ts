@@ -92,7 +92,8 @@ function ordenar(linhas: LinhaRanking[], ordem: OpcoesRanking["ordem"]) {
 }
 
 function resumir(linhas: LinhaRanking[]) {
-  const obs = linhas.reduce((s, l) => s + l.realizado, 0);
+  // Cada observador conta no máximo até a própria meta
+  const obs = linhas.reduce((s, l) => s + Math.min(l.realizado, l.meta), 0);
   const meta = linhas.reduce((s, l) => s + l.meta, 0);
   const naMeta = linhas.filter((l) => l.realizado >= l.meta).length;
   const pct = linhas.length ? Math.round((naMeta / linhas.length) * 100) : 0;

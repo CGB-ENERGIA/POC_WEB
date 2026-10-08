@@ -800,6 +800,14 @@ const metaTotal = computed(() => {
   return rows.reduce((total, r) => total + r.meta, 0);
 });
 
+// Observações contadas: cada observador conta no máximo até a sua meta (quem fez 5 com meta 2 conta 2)
+const totalContado = computed(() => {
+  const rows = viz.matricula
+    ? observerRows.value.filter((x) => x.matricula === viz.matricula)
+    : observerRows.value;
+  return rows.reduce((total, r) => total + Math.min(r.realizado, r.meta), 0);
+});
+
 const obsNoMeta = computed(() => {
   const rows = viz.matricula
     ? observerRows.value.filter((x) => x.matricula === viz.matricula)
@@ -818,7 +826,7 @@ const atingimento = computed(() => {
 
 // ─── KPI ────────────────────────────────────────────────────────────────────
 const kpis = computed(() => [
-  { label: "Total de Observações", value: loading.value ? "…" : fmtN(totalSubmissions.value), icon: "mdi-eye-check", color: "primary" },
+  { label: "Total de Observações", value: loading.value ? "…" : fmtN(totalContado.value), icon: "mdi-eye-check", color: "primary" },
   { label: "Meta da Semana", value: loading.value ? "…" : String(metaTotal.value), icon: "mdi-bullseye-arrow", color: "teal" },
   { label: "Bases Cobertas", value: loading.value ? "…" : String(basesCovertas.value), icon: "mdi-map-marker-radius", color: "orange" },
   { label: "Atingimento", value: loading.value ? "…" : atingimento.value, icon: "mdi-check-circle", color: "positive" }
