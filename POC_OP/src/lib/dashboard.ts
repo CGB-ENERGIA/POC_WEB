@@ -261,18 +261,45 @@ function applySubmissionFilters(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function allPages<T>(buildQ: () => any): Promise<T[]> {
   const PAGE = 1000;
+  const WAVE = 4; // páginas baixadas ao mesmo tempo
   const all: T[] = [];
-  let from = 0;
-  while (true) {
+  for (let page = 0; ; page += WAVE) {
     // ORDER BY id é obrigatório: sem ordem determinística o Postgres pode repetir/pular linhas entre páginas
-    const { data, error } = await buildQ().order("id", { ascending: true }).range(from, from + PAGE - 1);
-    if (error) throw error;
-    const rows = (data ?? []) as T[];
-    all.push(...rows);
-    if (rows.length < PAGE) break;
-    from += PAGE;
+    const wave = await Promise.all(
+      Array.from({ length: WAVE }, (_, i) =>
+        buildQ().order("id", { ascending: true }).range((page + i) * PAGE, (page + i + 1) * PAGE - 1),
+      ),
+    );
+    let fim = false;
+    for (const { data, error } of wave) {
+      if (error) throw error;
+      const rows = (data ?? []) as T[];
+      all.push(...rows);
+      if (rows.length < PAGE) { fim = true; break; }
+    }
+    if (fim) return all;
   }
-  return all;
+}
+
+/** Executa fn para cada item com no máximo `limit` chamadas simultâneas, mantendo a ordem dos resultados. */
+async function mapLimit<I, O>(items: I[], limit: number, fn: (item: I) => Promise<O>): Promise<O[]> {
+  const out: O[] = new Array(items.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, async () => {
+      while (next < items.length) {
+        const i = next++;
+        out[i] = await fn(items[i] as I);
+      }
+    }),
+  );
+  return out;
+}
+
+function chunked<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
 }
 
 /** Submissions do período. `contarMeta` inclui pendentes (já registrados no PWA). */
@@ -293,19 +320,15 @@ export async function fetchSubmissions(f: Filters, usarSemana = false): Promise<
 /** Respostas ligadas a um conjunto de submissions (chunked + paginado para datasets grandes). */
 export async function fetchResponses(submissionIds: string[]): Promise<ResponseRow[]> {
   if (!submissionIds.length) return [];
-  const CHUNK = 300;
-  const all: ResponseRow[] = [];
-  for (let i = 0; i < submissionIds.length; i += CHUNK) {
-    const chunk = submissionIds.slice(i, i + CHUNK);
-    const rows = await allPages<ResponseRow>(() =>
+  const lotes = await mapLimit(chunked(submissionIds, 300), 3, (chunk) =>
+    allPages<ResponseRow>(() =>
       supabase
         .from("checklist_responses")
         .select("submission_id,pergunta_id,categoria,pergunta,gravidade,peso,resposta,observacao,foto_r2_key,resolvido,itens,atribuido_tipo,atribuido_nome,atribuido_matricula")
         .in("submission_id", chunk)
-    );
-    all.push(...rows);
-  }
-  return all;
+    ),
+  );
+  return lotes.flat();
 }
 
 export interface NcPorMesOpts {
@@ -362,18 +385,16 @@ export async function fetchNaoConformesPorMes(
   }
 
   const ids = subs.map((s) => s.id);
-  const CHUNK = 300;
   const map: Record<number, number> = {};
-  for (let i = 0; i < ids.length; i += CHUNK) {
-    const chunk = ids.slice(i, i + CHUNK);
-    const resps = await allPages<{ submission_id: string }>(() =>
+  const lotes = await mapLimit(chunked(ids, 300), 3, (chunk) =>
+    allPages<{ submission_id: string }>(() =>
       supabase.from("checklist_responses").select("submission_id")
         .eq("resposta", "nao_conforme").in("submission_id", chunk)
-    );
-    for (const r of resps) {
-      const mes = mesPorSubmissao.get(r.submission_id);
-      if (mes) map[mes] = (map[mes] ?? 0) + 1;
-    }
+    ),
+  );
+  for (const r of lotes.flat()) {
+    const mes = mesPorSubmissao.get(r.submission_id);
+    if (mes) map[mes] = (map[mes] ?? 0) + 1;
   }
   return map;
 }
@@ -400,16 +421,14 @@ export async function fetchIcitPorPrefixo(startIso: string, endIso: string, base
   if (!subs.length) return map;
 
   const ids = subs.map((s) => s.id);
-  const CHUNK = 300;
   const ncSubIds = new Set<string>();
-  for (let i = 0; i < ids.length; i += CHUNK) {
-    const chunk = ids.slice(i, i + CHUNK);
-    const resps = await allPages<{ submission_id: string }>(() =>
+  const lotes = await mapLimit(chunked(ids, 300), 3, (chunk) =>
+    allPages<{ submission_id: string }>(() =>
       supabase.from("checklist_responses").select("submission_id")
         .eq("resposta", "nao_conforme").in("submission_id", chunk)
-    );
-    for (const r of resps) ncSubIds.add(r.submission_id);
-  }
+    ),
+  );
+  for (const r of lotes.flat()) ncSubIds.add(r.submission_id);
 
   for (const s of subs) {
     if (!s.equipe) continue;
@@ -429,20 +448,16 @@ export interface NcLightRow {
 /** Busca apenas NCs (submission_id + categoria) — versão leve para o mapa de calor. */
 export async function fetchNcLight(submissionIds: string[]): Promise<NcLightRow[]> {
   if (!submissionIds.length) return [];
-  const CHUNK = 300;
-  const all: NcLightRow[] = [];
-  for (let i = 0; i < submissionIds.length; i += CHUNK) {
-    const chunk = submissionIds.slice(i, i + CHUNK);
-    const rows = await allPages<NcLightRow>(() =>
+  const lotes = await mapLimit(chunked(submissionIds, 300), 3, (chunk) =>
+    allPages<NcLightRow>(() =>
       supabase
         .from("checklist_responses")
         .select("submission_id,categoria")
         .eq("resposta", "nao_conforme")
         .in("submission_id", chunk)
-    );
-    all.push(...rows);
-  }
-  return all;
+    ),
+  );
+  return lotes.flat();
 }
 
 /** Todos os funcionários ativos. */
