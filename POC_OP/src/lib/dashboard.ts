@@ -307,17 +307,51 @@ export async function fetchResponses(submissionIds: string[]): Promise<ResponseR
   return all;
 }
 
+export interface NcPorMesOpts {
+  contarMeta?: boolean;
+  allowedAuditagens?: string[];
+  employees?: EmployeeRow[];
+  gerencia?: string;
+  gerente?: string;
+  coordenador?: string;
+}
+
 /** Contagem de não conformidades por mês, ao longo de um ano inteiro (para gráfico de tendência). */
-export async function fetchNaoConformesPorMes(ano: number, base?: string): Promise<Record<number, number>> {
+export async function fetchNaoConformesPorMes(
+  ano: number,
+  base?: string,
+  opts?: NcPorMesOpts,
+): Promise<Record<number, number>> {
   const start = new Date(ano, 0, 1).toISOString();
   const end = new Date(ano + 1, 0, 1).toISOString();
-  const subs = await allPages<{ id: string; data: string }>(() => {
+  const { contarMeta, allowedAuditagens, employees = [], gerencia, gerente, coordenador } = opts ?? {};
+
+  type SubLight = Pick<SubmissionRow, "id" | "data" | "auditagem" | "matricula" | "observador">;
+  let subs = await allPages<SubLight>(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let q: any = supabase.from("checklist_submissions").select("id,data").eq("status", "aprovado")
+    let q: any = supabase.from("checklist_submissions")
+      .select("id,data,auditagem,matricula,observador")
       .gte("data", start).lt("data", end);
+    q = contarMeta ? q.in("status", ["aprovado", "pendente"]) : q.eq("status", "aprovado");
     if (base && base !== "Todos") q = q.eq("base", base);
     return q;
   });
+  if (!subs.length) return {};
+
+  if (allowedAuditagens?.length) {
+    subs = subs.filter((s) => allowedAuditagens.includes((s.auditagem ?? "").toUpperCase()));
+  }
+  if (employees.length) {
+    if (gerente && gerente !== "Todos") {
+      subs = filterByGerente(subs as SubmissionRow[], employees, gerente) as SubLight[];
+    }
+    if (coordenador && coordenador !== "Todos") {
+      subs = filterByCoordenador(subs as SubmissionRow[], employees, coordenador) as SubLight[];
+    }
+    if (gerencia && gerencia !== "Todos") {
+      subs = filterByGerencia(subs as SubmissionRow[], employees, gerencia) as SubLight[];
+    }
+  }
   if (!subs.length) return {};
 
   const mesPorSubmissao = new Map<string, number>();

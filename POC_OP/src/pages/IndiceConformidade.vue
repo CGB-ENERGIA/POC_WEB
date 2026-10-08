@@ -250,7 +250,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN, fmtPct } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, fetchNaoConformesPorMes, semanaDaData, indexEmployees, matchSubmissionToEmployee, filterByCoordenador } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, fetchNaoConformesPorMes, semanaDaData, indexEmployees, matchSubmissionToEmployee, filterByCoordenador, type NcPorMesOpts } from "@/lib/dashboard";
 
 use([
   CanvasRenderer, BarChart, LineChart,
@@ -430,19 +430,32 @@ async function recarregarMes() {
 }
 
 async function recarregarAno() {
+  const opts: NcPorMesOpts = {
+    contarMeta: true,
+    allowedAuditagens: filters.tipoPoc !== "Todos" ? TIPO_AUDITAGEM[filters.tipoPoc] : undefined,
+    employees: employees.value,
+    gerencia: filters.gerencia,
+    gerente: filters.gerente,
+    coordenador: filters.coordenador,
+  };
   ncPorMes.value = await fetchNaoConformesPorMes(
     filters.ano,
     filters.base !== "Todos" ? filters.base : undefined,
+    opts,
   );
 }
 
 async function recarregar() {
-  await Promise.all([recarregarMes(), recarregarAno()]);
+  await recarregarMes();
+  await recarregarAno();
 }
 
 onMounted(recarregar);
 watch(() => [filters.ano, filters.mes], recarregarMes);
-watch(() => [filters.ano, filters.base], recarregarAno);
+watch(
+  () => [filters.ano, filters.base, filters.tipoPoc, filters.gerencia, filters.gerente, filters.coordenador],
+  recarregarAno,
+);
 
 function applySlice(
   source: typeof submissions.value,
