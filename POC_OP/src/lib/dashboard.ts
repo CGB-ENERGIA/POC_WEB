@@ -919,6 +919,29 @@ export interface FotoChecklistRow {
   sort_order: number;
 }
 
+/** Quantas evidências obrigatórias o app exige: 2 em Administrativo/Alojamento/Logística/Oficina, 3 nos demais. */
+export function evidenciasExigidas(auditagem: string | undefined): number {
+  return ["ADMINISTRATIVO", "ALOJAMENTO", "LOGISTICA", "OFICINA"].includes((auditagem ?? "").toUpperCase()) ? 2 : 3;
+}
+
+/** Evidências obrigatórias já enviadas por checklist (id -> quantidade; ids sem foto entram com 0). */
+export async function fetchContagemEvidencias(
+  checklists: { id: string; auditagem: string }[],
+): Promise<Record<string, number>> {
+  const exigidas = new Map(checklists.map((c) => [c.id, evidenciasExigidas(c.auditagem)]));
+  const fotos = await fetchAllByIds<{ submission_id: string; tipo: string; sort_order: number }>(
+    "checklist_photos", "submission_id,tipo,sort_order", "submission_id", [...exigidas.keys()],
+  );
+  const out: Record<string, number> = {};
+  for (const id of exigidas.keys()) out[id] = 0;
+  for (const f of fotos) {
+    if (f.tipo === "local" && f.sort_order < (exigidas.get(f.submission_id) ?? 3)) {
+      out[f.submission_id] = (out[f.submission_id] ?? 0) + 1;
+    }
+  }
+  return out;
+}
+
 export async function fetchFotosChecklist(submissionId: string): Promise<FotoChecklistRow[]> {
   const { data, error } = await supabase
     .from("checklist_photos")

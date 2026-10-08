@@ -138,8 +138,9 @@ async function findSubmissionId(clientId: string): Promise<string | null> {
  * Envia checklist + fotos + respostas ao Supabase.
  * Retomável e idempotente (client_id = id local): se um envio anterior caiu no
  * meio, completa só o que faltou, sem duplicar submissão, respostas ou fotos.
- * Falha de foto aborta o envio (para tentar de novo com a foto ainda no aparelho),
- * a menos que allowPhotoLoss — usado após várias tentativas, para não travar a fila.
+ * Falha de foto aborta o envio (para tentar de novo com a foto ainda no aparelho).
+ * allowPhotoLoss (após várias tentativas, para não travar a fila) vale só para as fotos
+ * de não conformidade: as evidências obrigatórias NUNCA são descartadas.
  */
 export async function syncChecklistToRemote(
   entry: ObservacaoChecklist,
@@ -165,6 +166,7 @@ export async function syncChecklistToRemote(
 
   const r2Available = isR2Configured();
   let failedPhotos = 0;
+  let failedEvidencias = 0;
 
   const localPhotoResults = needLocalPhotos
     ? await Promise.all(
@@ -172,7 +174,10 @@ export async function syncChecklistToRemote(
           if (!foto) return null;
           const key = buildChecklistPhotoKey(entry.id, "local", String(i));
           const result = await uploadFoto(key, foto, r2Available);
-          if (!result) failedPhotos++;
+          if (!result) {
+            failedPhotos++;
+            failedEvidencias++;
+          }
           return result ? { key: result, sortOrder: i } : null;
         })
       )
@@ -206,6 +211,14 @@ export async function syncChecklistToRemote(
       };
     })
   );
+
+  if (failedEvidencias > 0) {
+    const n = failedEvidencias;
+    throw new ChecklistSyncError(
+      `${n} foto${n > 1 ? "s" : ""} obrigatória${n > 1 ? "s" : ""} não ${n > 1 ? "puderam" : "pôde"} ser enviada${n > 1 ? "s" : ""}. ` +
+        "O checklist continua salvo no aparelho e será reenviado; toque em Enviar agora com sinal melhor",
+    );
+  }
 
   if (failedPhotos > 0 && !opts.allowPhotoLoss) {
     throw new ChecklistSyncError(

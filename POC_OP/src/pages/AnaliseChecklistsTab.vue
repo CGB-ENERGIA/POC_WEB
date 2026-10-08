@@ -44,6 +44,14 @@
         {{ s.label }}
         <q-badge v-if="contagem(s.value) > 0" :color="s.badgeColor" :label="contagem(s.value)" class="q-ml-xs" />
       </button>
+      <button
+        :class="['pill', soSemEvidencias && 'pill--active']"
+        @click="soSemEvidencias = !soSemEvidencias"
+      >
+        <q-icon name="mdi-camera-off-outline" size="14px" class="q-mr-xs" />
+        Sem evidências
+        <q-badge v-if="totalSemEvidencias > 0" color="negative" :label="totalSemEvidencias" class="q-ml-xs" />
+      </button>
       <q-input v-model="search" dense outlined placeholder="Buscar..." class="search-input q-ml-auto" style="min-width:200px">
         <template #prepend><q-icon name="mdi-magnify" size="18px" color="grey-6" /></template>
       </q-input>
@@ -72,6 +80,14 @@
             <span class="aud-badge">{{ auditagemLabel(item.auditagem) }}</span>
             <span class="base-badge">{{ item.base }}</span>
             <span class="td-mono" style="font-size:11px;color:#94a3b8">{{ item.equipe }}</span>
+            <span
+              v-if="faltamEvidencias(item) > 0"
+              class="ev-badge"
+              :class="evidenciasDe(item) === 0 ? 'ev-badge--none' : 'ev-badge--part'"
+            >
+              <q-icon name="mdi-camera-off-outline" size="13px" class="q-mr-xs" />
+              {{ evidenciasDe(item) === 0 ? "Sem evidências" : `Evidências ${evidenciasDe(item)}/${exigidas(item)}` }}
+            </span>
           </div>
           <div class="analise-item__date">{{ fmtDate(item.data) }}</div>
         </div>
@@ -119,13 +135,13 @@
                   <div class="ac-evidencias__header">
                     <q-icon name="mdi-camera-outline" size="15px" class="q-mr-xs" />
                     EVIDÊNCIAS OBRIGATÓRIAS
-                    <span :class="['ac-evidencias__count', fotosExpand.length >= 3 ? 'ac-evidencias__count--ok' : 'ac-evidencias__count--warn']">
-                      {{ fotosExpand.length }}/3
+                    <span :class="['ac-evidencias__count', evidenciasDe(item) >= exigidas(item) ? 'ac-evidencias__count--ok' : 'ac-evidencias__count--warn']">
+                      {{ evidenciasDe(item) }}/{{ exigidas(item) }}
                     </span>
                   </div>
                   <div class="ac-evidencias__grid">
                     <div
-                      v-for="slot in [0, 1, 2]"
+                      v-for="slot in slotsDe(item)"
                       :key="slot"
                       class="ac-ev-card"
                       :class="fotosExpand.find(f => f.sort_order === slot) ? 'ac-ev-card--filled' : 'ac-ev-card--empty'"
@@ -439,6 +455,8 @@ import {
   editarChecklist,
   fetchResponses,
   fetchFotosChecklist,
+  fetchContagemEvidencias,
+  evidenciasExigidas,
   type ChecklistParaAnalise,
   type ResponseRow,
   type FotoChecklistRow,
@@ -477,12 +495,31 @@ function auditagemLabel(a: string) { return AUDITAGEM_LABELS[a] ?? a; }
 const loading = ref(false);
 const loadError = ref<string | null>(null);
 const itens = ref<ChecklistParaAnalise[]>([]);
+const evidenciasMap = ref<Record<string, number>>({});
+
+function exigidas(item: ChecklistParaAnalise) { return evidenciasExigidas(item.auditagem); }
+/** Evidências enviadas (do checklist expandido usa a lista completa; senão, a contagem em lote). */
+function evidenciasDe(item: ChecklistParaAnalise): number {
+  if (expandedId.value === item.id && !loadingResp.value) {
+    return fotosExpand.value.filter((f) => f.sort_order < exigidas(item)).length;
+  }
+  return evidenciasMap.value[item.id] ?? exigidas(item);
+}
+function faltamEvidencias(item: ChecklistParaAnalise): number {
+  if (!(item.id in evidenciasMap.value)) return 0;
+  return Math.max(0, exigidas(item) - evidenciasDe(item));
+}
+function slotsDe(item: ChecklistParaAnalise): number[] {
+  return Array.from({ length: exigidas(item) }, (_, i) => i);
+}
 
 async function recarregar() {
   loading.value = true;
   loadError.value = null;
   try {
     itens.value = await fetchChecklistsParaAnalise();
+    // Falha ao contar não bloqueia a tela: sem o número, nada é marcado nem travado
+    evidenciasMap.value = await fetchContagemEvidencias(itens.value).catch(() => ({}));
   } catch (e) {
     loadError.value = (e as Error).message;
   } finally {
@@ -495,6 +532,7 @@ onMounted(recarregar);
 // ── Filtros ───────────────────────────────────────────────────────────────────
 const filtroStatus = ref<"todos" | AnaliseStatus>("pendente");
 const search = ref("");
+const soSemEvidencias = ref(false);
 
 const statusOpts = [
   { value: "todos",    label: "Todos",     icon: "mdi-format-list-bulleted", badgeColor: "grey" },
@@ -518,8 +556,11 @@ function contagem(status: string): number {
   return itens.value.filter((i) => i.status === status).length;
 }
 
+const totalSemEvidencias = computed(() => itens.value.filter((i) => faltamEvidencias(i) > 0).length);
+
 const listaFiltrada = computed(() => {
   let lista = filtroStatus.value === "todos" ? itens.value : itens.value.filter((i) => i.status === filtroStatus.value);
+  if (soSemEvidencias.value) lista = lista.filter((i) => faltamEvidencias(i) > 0);
   const q = search.value.toLowerCase().trim();
   if (!q) return lista;
   return lista.filter((i) =>
@@ -574,6 +615,22 @@ async function abrirAcao(item: ChecklistParaAnalise, tipo: AnaliseStatus) {
     acaoDialog.comentario = "";
     acaoDialog.error = null;
     acaoDialog.open = true;
+    return;
+  }
+  // Sem as evidências obrigatórias não há aprovação: só reprovar (ou pedir novo envio)
+  if (tipo === "aprovado" && faltamEvidencias(item) > 0) {
+    $q.dialog({
+      title: "Não é possível aprovar",
+      message: `Este checklist tem ${evidenciasDe(item)} de ${exigidas(item)} fotos de evidência obrigatórias. `
+        + "Reprove e peça que o observador refaça o envio com as fotos.",
+      ok: { label: "Reprovar", color: "negative", unelevated: true, noCaps: true },
+      cancel: { label: "Fechar", flat: true, noCaps: true },
+    }).onOk(() => {
+      acaoDialog.item = item;
+      acaoDialog.comentario = "Não tem evidência fotográfica.";
+      acaoDialog.error = null;
+      acaoDialog.open = true;
+    });
     return;
   }
   // aprovado: executa direto
@@ -814,6 +871,13 @@ $inactive-text: #475569;
   flex-wrap: wrap; gap: 6px; margin-bottom: 10px;
 }
 .analise-item__meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ev-badge {
+  display: inline-flex; align-items: center;
+  font-size: 11px; font-weight: 700;
+  padding: 2px 8px; border-radius: 999px;
+  &--none { background: rgba(220,38,38,.14); color: #dc2626; }
+  &--part { background: rgba(217,119,6,.15); color: #d97706; }
+}
 .analise-item__date { font-size: 11px; color: #94a3b8; white-space: nowrap; }
 
 .analise-item__body { display: flex; flex-direction: column; gap: 10px; }
