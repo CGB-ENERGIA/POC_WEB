@@ -264,7 +264,8 @@ async function allPages<T>(buildQ: () => any): Promise<T[]> {
   const all: T[] = [];
   let from = 0;
   while (true) {
-    const { data, error } = await buildQ().range(from, from + PAGE - 1);
+    // ORDER BY id é obrigatório: sem ordem determinística o Postgres pode repetir/pular linhas entre páginas
+    const { data, error } = await buildQ().order("id", { ascending: true }).range(from, from + PAGE - 1);
     if (error) throw error;
     const rows = (data ?? []) as T[];
     all.push(...rows);
