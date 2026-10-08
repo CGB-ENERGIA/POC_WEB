@@ -134,7 +134,7 @@
               <div class="kpi-stat-value" style="color:#dc2626">
                 {{ maxCell.value }}
               </div>
-              <div class="kpi-stat-label">Pior Célula</div>
+              <div class="kpi-stat-label">Ponto mais quente</div>
               <div class="kpi-stat-sub">{{ maxCell.base }} · {{ maxCell.cat }}</div>
             </q-card-section>
           </q-card>

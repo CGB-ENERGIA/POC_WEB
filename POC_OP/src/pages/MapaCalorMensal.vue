@@ -303,6 +303,7 @@ import {
   filterByGerencia, filterByGerente, semanaDaData, uniqueHierarchyOpts, filterByCoordenador,
   type SubmissionRow, type EmployeeRow, type NcLightRow,
 } from "@/lib/dashboard";
+import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
 import KpiFlame from "@/components/KpiFlame.vue";
 
 const loading = ref(false);
@@ -353,8 +354,9 @@ const CAT_BASE_QTD = 7;
 
 const filters = reactive({
   semana: 0, mes: 0, ano: String(now.getFullYear()),
-  gerencia: "Todos", gerente: "Todos", coordenador: "Todos", base: "Todos", tipo: "Todos",
+  gerencia: "Todos", gerente: "Todos", coordenador: "Todos", base: "Todos", tipo: lerTipoPoc(tiposOpts),
 });
+watch(() => filters.tipo, salvarTipoPoc);
 
 const viz = reactive({
   cat: null as string | null,

@@ -251,6 +251,7 @@ import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN, fmtPct } from "@/composables/useChecklistData";
 import { filterByGerencia, filterByGerente, fetchNaoConformesPorMes, semanaDaData, indexEmployees, matchSubmissionToEmployee, filterByCoordenador, type NcPorMesOpts } from "@/lib/dashboard";
+import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
 
 use([
   CanvasRenderer, BarChart, LineChart,
@@ -299,9 +300,10 @@ const filters = reactive({
   mes:      now.getMonth() + 1,
   gerencia: "Todos",
   base:     "Todos",
-  tipoPoc:  "Todos",
+  tipoPoc:  lerTipoPoc(tiposPoc),
   gerente:  "Todos", coordenador: "Todos",
 });
+watch(() => filters.tipoPoc, salvarTipoPoc);
 
 // ─── Dados reais ──────────────────────────────────────────────────────────────
 const {

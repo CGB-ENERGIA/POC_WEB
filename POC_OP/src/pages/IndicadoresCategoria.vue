@@ -228,6 +228,7 @@ import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData } from "@/composables/useChecklistData";
 import { filterByGerencia, filterByGerente, filterByCoordenador } from "@/lib/dashboard";
+import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
 
 use([CanvasRenderer, BarChart, GaugeChart, GridComponent, TooltipComponent, LegendComponent]);
 
@@ -283,8 +284,9 @@ function filterPrefixo(val: string, update: (fn: () => void) => void) {
 const filters = reactive({
   ano: String(now.getFullYear()), base: "Todos",
   gerencia: "Todos", gerente: "Todos", coordenador: "Todos",
-  prefixo: "Todos", tipo: "Todos",
+  prefixo: "Todos", tipo: lerTipoPoc(tiposOpts),
 });
+watch(() => filters.tipo, salvarTipoPoc);
 
 async function recarregar() {
   // Sem "mes": load() busca o ano inteiro, necessário para a quebra mensal do gráfico

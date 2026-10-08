@@ -295,6 +295,7 @@ import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtPct, fmtN } from "@/composables/useChecklistData";
 import { filterByGerencia, filterByGerente, semanaDaData, indexEmployees, matchSubmissionToEmployee, fetchSubmissions, fetchResponses, type ResponseRow, type SubmissionRow, filterByCoordenador } from "@/lib/dashboard";
+import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
 import { metaRoleFrom } from "@/composables/useGoals";
 
 use([
@@ -351,9 +352,10 @@ const filters = reactive({
   gerencia:  "Todos",
   base:      "Todos",
   seguranca: "Segurança",
-  tipoPoc:   "Todos",
+  tipoPoc:   lerTipoPoc(tiposPoc),
   gerente:   "Todos", coordenador: "Todos",
 });
+watch(() => filters.tipoPoc, salvarTipoPoc);
 
 async function recarregarMes() {
   await load({

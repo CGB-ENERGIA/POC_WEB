@@ -333,6 +333,7 @@ import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData } from "@/composables/useChecklistData";
 import { filterByGerencia, filterByGerente, fetchIcitPorPrefixo, indexEmployees, matchSubmissionToEmployee, type IcitPrefixo, filterByCoordenador } from "@/lib/dashboard";
+import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
 
 use([CanvasRenderer, BarChart, GaugeChart, GridComponent, TooltipComponent, DataZoomComponent]);
 
@@ -370,8 +371,9 @@ const filters = reactive({
   mes: curMesLabel, ano: String(now.getFullYear()), categoria: "Todos",
   base: "Todos", prefixo: "Todos", gerencia: "Todos",
   gerente: "Todos", coordenador: "Todos", observador: "Todos", funcao: "Todos",
-  tipoPoc: "Todos",
+  tipoPoc: lerTipoPoc(tiposPoc),
 });
+watch(() => filters.tipoPoc, salvarTipoPoc);
 
 // ─── ICIT (checklists sem NC) por prefixo: mês anterior + acumulado do ano ────
 const icitMesAnterior = ref<Map<string, IcitPrefixo>>(new Map());

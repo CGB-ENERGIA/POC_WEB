@@ -312,6 +312,7 @@ import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 import { filterByGerencia, filterByGerente, semanaDoMes, indexEmployees, matchSubmissionToEmployee, filterByCoordenador } from "@/lib/dashboard";
+import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
 
 use([CanvasRenderer, BarChart, GaugeChart, PieChart, GridComponent, TooltipComponent, LegendComponent]);
 
@@ -333,10 +334,11 @@ const semanasOpts   = ["Todos","Semana 1","Semana 2","Semana 3","Semana 4"];
 const funcoesOpts   = ["Todos","ENCARREGADO","SUPERVISOR","SESMT","FISCAL","COORDENADOR","GERENTE"];
 
 const filters = reactive({
-  ano: "2026", base: "Todos", gerencia: "Todos", tipo: "Todos",
+  ano: "2026", base: "Todos", gerencia: "Todos", tipo: lerTipoPoc(tiposOpts),
   mes: "Todos", semana: "Todos", funcao: "Todos",
   gerente: "Todos", coordenador: "Todos", observador: "Todos",
 });
+watch(() => filters.tipo, salvarTipoPoc);
 
 // ─── Dados reais ─────────────────────────────────────────────────────────────
 const MONTH_MAP: Record<string, number> = {
