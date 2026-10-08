@@ -624,6 +624,8 @@ const observerRows = computed(() => {
       nome: emp.nome_completo || emp.nome,
       short: shorts[i]!,
       realizado: counts.get(key) ?? 0,
+      // Só conta até a meta: quem fez 5 com meta 2 aparece com 2
+      contado: Math.min(counts.get(key) ?? 0, g.semanal),
       meta: g.semanal,
       funcao: emp.funcao || "—",
       coordenador: emp.coordenador?.trim() || "",
@@ -637,7 +639,7 @@ const observerRowsOrd = computed(() => {
   const rows = observerRows.value;
   if (!ordemObs.value) return rows;
   const dir = ordemObs.value === "desc" ? -1 : 1;
-  return [...rows].sort((a, b) => dir * (a.realizado - b.realizado) || a.nome.localeCompare(b.nome, "pt-BR"));
+  return [...rows].sort((a, b) => dir * (a.contado - b.contado) || a.nome.localeCompare(b.nome, "pt-BR"));
 });
 
 // ─── Compartilhar imagem (WhatsApp) ──────────────────────────────────────────
@@ -650,7 +652,7 @@ const modoImg = ref<"unico" | "secoes" | "separadas">("unico");
 
 const linhasImg = computed(() =>
   observerRows.value.map((r) => ({
-    nome: r.nome, funcao: r.funcao, realizado: r.realizado, meta: r.meta, coordenador: r.coordenador,
+    nome: r.nome, funcao: r.funcao, realizado: r.contado, meta: r.meta, coordenador: r.coordenador,
   })),
 );
 const opcoesCoord = computed(() => ["Todos", ...coordenadoresDe(linhasImg.value)]);
@@ -952,7 +954,7 @@ onBeforeUnmount(() => roObs?.disconnect());
 
 const barObservadores = computed(() => {
   const rows = observerRowsOrd.value;
-  const maxY = Math.max(2, ...rows.map(r => Math.max(r.realizado, r.meta)), 0) + 1.8;
+  const maxY = Math.max(2, ...rows.map(r => Math.max(r.contado, r.meta)), 0) + 1.8;
   const okColor = chartInk.ok;
   const missColor = chartInk.miss;
   const metaTick = chartInk.metaTick;
@@ -969,7 +971,7 @@ const barObservadores = computed(() => {
   // nesse caso o número sobe acima do tracinho (e o número da meta sobe junto).
   const alturaPlot = multi ? ALTURA_LINHA_OBS - 104 : alturaObs.value - 40 - (todos ? 62 : 78);
   const pxPorUnidade = alturaPlot / maxY;
-  const pos = (r: { realizado: number; meta: number }) => posicionarRotulos(r.realizado, r.meta, pxPorUnidade);
+  const pos = (r: { contado: number; meta: number }) => posicionarRotulos(r.contado, r.meta, pxPorUnidade);
 
   // Cada "bloco" é uma linha do gráfico (ou o gráfico inteiro, se não precisar quebrar).
   const blocos = multi
@@ -983,7 +985,7 @@ const barObservadores = computed(() => {
       xAxisIndex: i,
       yAxisIndex: i,
       data: bl.rows.map(r => ({
-        value: r.realizado,
+        value: r.contado,
         itemStyle: {
           color: r.realizado >= r.meta
             ? grad(chartInk.okHi, okColor)
@@ -1042,7 +1044,7 @@ const barObservadores = computed(() => {
         ...labelHalo,
         formatter: (p: { value: [string, number]; dataIndex: number }) => {
           const r = bl.rows[p.dataIndex];
-          if (r && r.realizado === r.meta) return "";
+          if (r && r.contado === r.meta) return "";
           return String(p.value[1]);
         },
       },
@@ -1062,7 +1064,7 @@ const barObservadores = computed(() => {
         const falta = Math.max(0, r.meta - r.realizado);
         return tipHtml(r.nome, [
           { label: "Função", value: r.funcao },
-          { label: "Realizado", value: String(r.realizado), color: ok ? okColor : missColor },
+          { label: "Realizado", value: r.realizado > r.contado ? `${r.realizado} (conta ${r.contado})` : String(r.realizado), color: ok ? okColor : missColor },
           { label: "Meta da semana", value: String(r.meta), color: metaTick },
           { label: "Situação", value: ok ? "Meta atingida" : `Faltam ${falta}`, color: ok ? okColor : missColor },
         ], "Clique para filtrar este observador");
