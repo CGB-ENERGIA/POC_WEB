@@ -338,6 +338,7 @@ import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 import { filterByGerencia, filterByGerente, semanaDaData, semanaDoMes, filterObserverRoster, uniqueChartLabels, tallyObserverRecords, normMatricula, indexEmployees, matchSubmissionToEmployee, filterByCoordenador } from "@/lib/dashboard";
 import { useGoals } from "@/composables/useGoals";
 import { gerarRankingPng } from "@/lib/ranking-imagem";
+import { posicionarRotulos } from "@/lib/rotulos-barra";
 const { goalForColaborador } = useGoals();
 const $q = useQuasar();
 
@@ -907,8 +908,7 @@ const barObservadores = computed(() => {
   // nesse caso o número sobe acima do tracinho (e o número da meta sobe junto).
   const alturaPlot = multi ? ALTURA_LINHA_OBS - 104 : alturaObs.value - 40 - (todos ? 62 : 78);
   const pxPorUnidade = alturaPlot / maxY;
-  const colide = (r: { realizado: number; meta: number }) =>
-    r.meta >= r.realizado && (r.meta - r.realizado) * pxPorUnidade < 16;
+  const pos = (r: { realizado: number; meta: number }) => posicionarRotulos(r.realizado, r.meta, pxPorUnidade);
 
   // Cada "bloco" é uma linha do gráfico (ou o gráfico inteiro, se não precisar quebrar).
   const blocos = multi
@@ -935,7 +935,7 @@ const barObservadores = computed(() => {
         },
         label: {
           color: r.realizado >= r.meta ? okColor : missColor,
-          offset: colide(r) ? [0, -13] : [0, 0],
+          offset: [0, -pos(r).barUp],
         },
       })),
       barMaxWidth: 22,
@@ -958,7 +958,7 @@ const barObservadores = computed(() => {
       data: bl.rows.map(r => ({
         value: [r.short, r.meta],
         itemStyle: { opacity: !viz.matricula || r.matricula === viz.matricula ? 1 : 0.22 },
-        label: { distance: colide(r) ? 22 : 8 },
+        label: { position: pos(r).metaPos, distance: pos(r).metaDist },
       })),
       symbol: "rect",
       symbolSize: [20, 5],
