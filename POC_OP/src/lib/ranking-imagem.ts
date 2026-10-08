@@ -5,6 +5,7 @@ export interface LinhaRanking {
   funcao: string;
   realizado: number;
   meta: number;
+  coordenador?: string;
 }
 
 export interface OpcoesRanking {
@@ -15,14 +16,19 @@ export interface OpcoesRanking {
   filtros: string[];
   ordem: "desc" | "asc" | "az";
   linhas: LinhaRanking[];
+  /** Separa a lista em seções por coordenador (cada uma com seus totais). */
+  agrupar?: boolean;
 }
 
 const W = 1080;
 const PAD = 48;
 const GAP = 24;
 const ALTURA_LINHA = 62;
-const LINHAS_POR_COLUNA = 28;
+const ALTURA_SECAO = 64;
+const LINHAS_POR_PAGINA = 56;
+const LISTA_MAX = 1900;
 const FONTE = "Roboto, 'Segoe UI', system-ui, sans-serif";
+const SEM_COORDENADOR = "Sem coordenador";
 
 const COR = {
   fundo: "#0b1020",
@@ -85,6 +91,14 @@ function ordenar(linhas: LinhaRanking[], ordem: OpcoesRanking["ordem"]) {
   return l.sort(porNome);
 }
 
+function resumir(linhas: LinhaRanking[]) {
+  const obs = linhas.reduce((s, l) => s + l.realizado, 0);
+  const meta = linhas.reduce((s, l) => s + l.meta, 0);
+  const naMeta = linhas.filter((l) => l.realizado >= l.meta).length;
+  const pct = linhas.length ? Math.round((naMeta / linhas.length) * 100) : 0;
+  return { obs, meta, naMeta, pct, n: linhas.length };
+}
+
 /** Quebra os chips em linhas que caibam na largura. */
 function quebrarChips(ctx: CanvasRenderingContext2D, chips: string[], largura: number) {
   const linhas: string[][] = [[]];
@@ -101,34 +115,209 @@ function quebrarChips(ctx: CanvasRenderingContext2D, chips: string[], largura: n
   return linhas;
 }
 
-interface Pagina {
+// ─── Paginação em blocos ─────────────────────────────────────────────────────
+
+interface Bloco {
+  /** Cabeçalho de seção (coordenador). Sem título = lista corrida. */
+  titulo?: string;
+  resumo?: ReturnType<typeof resumir>;
   linhas: LinhaRanking[];
-  inicio: number;
+  /** Posição do 1º item no ranking (a numeração segue a ordem escolhida). */
+  numInicio: number;
+}
+interface Pagina {
+  blocos: Bloco[];
+}
+
+function alturaBloco(b: Bloco, colunas: number) {
+  return (b.titulo ? ALTURA_SECAO + 8 : 0) + Math.ceil(b.linhas.length / colunas) * ALTURA_LINHA;
+}
+
+function paginarCorrido(todas: LinhaRanking[]): Pagina[] {
+  const paginas: Pagina[] = [];
+  for (let i = 0; i < todas.length; i += LINHAS_POR_PAGINA) {
+    paginas.push({ blocos: [{ linhas: todas.slice(i, i + LINHAS_POR_PAGINA), numInicio: i }] });
+  }
+  return paginas.length ? paginas : [{ blocos: [{ linhas: [], numInicio: 0 }] }];
+}
+
+function paginarPorCoordenador(todas: LinhaRanking[], ordem: OpcoesRanking["ordem"], colunas: number): Pagina[] {
+  const grupos = new Map<string, LinhaRanking[]>();
+  for (const l of todas) {
+    const c = l.coordenador?.trim() || SEM_COORDENADOR;
+    if (!grupos.has(c)) grupos.set(c, []);
+    grupos.get(c)!.push(l);
+  }
+  const nomes = [...grupos.keys()].sort((a, b) => {
+    if (a === SEM_COORDENADOR) return 1;
+    if (b === SEM_COORDENADOR) return -1;
+    return a.localeCompare(b, "pt-BR");
+  });
+
+  const maxLinhasBloco = Math.max(colunas, Math.floor((LISTA_MAX - ALTURA_SECAO - 8) / ALTURA_LINHA) * colunas);
+  const paginas: Pagina[] = [{ blocos: [] }];
+  let usado = 0;
+
+  for (const nome of nomes) {
+    const linhasGrupo = ordenar(grupos.get(nome)!, ordem);
+    const resumo = resumir(linhasGrupo);
+    for (let ini = 0; ini < linhasGrupo.length; ini += maxLinhasBloco) {
+      const parte = linhasGrupo.slice(ini, ini + maxLinhasBloco);
+      const bloco: Bloco = {
+        titulo: ini === 0 ? nome : `${nome} (continuação)`,
+        resumo,
+        linhas: parte,
+        numInicio: ini,
+      };
+      const h = alturaBloco(bloco, colunas) + 14;
+      const atual = paginas[paginas.length - 1]!;
+      if (usado + h > LISTA_MAX && atual.blocos.length) {
+        paginas.push({ blocos: [bloco] });
+        usado = h;
+      } else {
+        atual.blocos.push(bloco);
+        usado += h;
+      }
+    }
+  }
+  return paginas;
+}
+
+// ─── Desenho ─────────────────────────────────────────────────────────────────
+
+function desenharLinha(
+  ctx: CanvasRenderingContext2D,
+  l: LinhaRanking,
+  pos: number,
+  x: number,
+  y: number,
+  colW: number,
+  duasColunas: boolean,
+  zebra: boolean,
+  escalaMax: number,
+) {
+  const ok = l.realizado >= l.meta;
+
+  ctx.fillStyle = zebra ? COR.card : COR.cardAlt;
+  rr(ctx, x, y + 4, colW, ALTURA_LINHA - 8, 12);
+  ctx.fill();
+
+  // posição
+  const rx = x + 14;
+  ctx.fillStyle = ok ? "rgba(74,222,128,.16)" : "rgba(251,113,133,.16)";
+  rr(ctx, rx, y + 15, 38, 32, 10);
+  ctx.fill();
+  ctx.fillStyle = ok ? COR.ok : COR.falta;
+  ctx.font = `800 17px ${FONTE}`;
+  ctx.textAlign = "center";
+  ctx.fillText(String(pos), rx + 19, y + 37);
+  ctx.textAlign = "left";
+
+  // nome + função
+  const nomeW = Math.round(colW * (duasColunas ? 0.36 : 0.34));
+  const nx = rx + 38 + 14;
+  ctx.fillStyle = COR.texto;
+  ctx.font = `700 21px ${FONTE}`;
+  ctx.fillText(cortar(ctx, nomeCurto(l.nome), nomeW), nx, y + 31);
+  ctx.fillStyle = COR.muted;
+  ctx.font = `500 14px ${FONTE}`;
+  ctx.fillText(cortar(ctx, l.funcao, nomeW), nx, y + 50);
+
+  // valor
+  const valW = 86;
+  const vx = x + colW - 14 - valW;
+  ctx.textAlign = "right";
+  const metaTxt = `/${l.meta}`;
+  ctx.font = `600 17px ${FONTE}`;
+  const wMeta = ctx.measureText(metaTxt).width;
+  ctx.fillStyle = COR.muted;
+  ctx.fillText(metaTxt, vx + valW, y + 40);
+  ctx.fillStyle = ok ? COR.ok : COR.falta;
+  ctx.font = `800 26px ${FONTE}`;
+  ctx.fillText(String(l.realizado), vx + valW - wMeta - 2, y + 40);
+  ctx.textAlign = "left";
+
+  // barra
+  const bx = nx + nomeW + 14;
+  const bw = vx - 12 - bx;
+  const by = y + 24;
+  const bh = 14;
+  ctx.fillStyle = "rgba(148,163,184,.16)";
+  rr(ctx, bx, by, bw, bh, 7);
+  ctx.fill();
+  const fw = Math.max(l.realizado > 0 ? 8 : 0, (l.realizado / escalaMax) * bw);
+  if (fw > 0) {
+    const g = ctx.createLinearGradient(bx, 0, bx + bw, 0);
+    g.addColorStop(0, ok ? COR.okEscuro : COR.faltaEscuro);
+    g.addColorStop(1, ok ? COR.ok : COR.falta);
+    ctx.fillStyle = g;
+    rr(ctx, bx, by, Math.min(fw, bw), bh, 7);
+    ctx.fill();
+  }
+  if (l.meta > 0) {
+    const mx = bx + Math.min(1, l.meta / escalaMax) * bw;
+    ctx.fillStyle = COR.meta;
+    rr(ctx, mx - 2, by - 5, 4, bh + 10, 2);
+    ctx.fill();
+  }
+}
+
+function desenharSecao(ctx: CanvasRenderingContext2D, b: Bloco, y: number) {
+  const x = PAD;
+  const w = W - PAD * 2;
+  const g = ctx.createLinearGradient(x, 0, x + w, 0);
+  g.addColorStop(0, "rgba(139,28,43,.55)");
+  g.addColorStop(1, "rgba(139,28,43,.10)");
+  ctx.fillStyle = g;
+  rr(ctx, x, y, w, ALTURA_SECAO - 8, 14);
+  ctx.fill();
+  ctx.fillStyle = COR.vinho2;
+  rr(ctx, x, y, 8, ALTURA_SECAO - 8, 4);
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(255,255,255,.65)";
+  ctx.font = `700 13px ${FONTE}`;
+  ctx.letterSpacing = "2px";
+  ctx.fillText("COORDENADOR", x + 26, y + 20);
+  ctx.letterSpacing = "0px";
+  ctx.fillStyle = "#fff";
+  ctx.font = `800 26px ${FONTE}`;
+  ctx.fillText(cortar(ctx, b.titulo ?? "", w * 0.5), x + 26, y + 46);
+
+  if (b.resumo) {
+    const r = b.resumo;
+    const cor = r.pct >= 100 ? COR.ok : r.pct >= 60 ? COR.meta : COR.falta;
+    ctx.textAlign = "right";
+    ctx.fillStyle = cor;
+    ctx.font = `800 28px ${FONTE}`;
+    ctx.fillText(`${r.pct}%`, x + w - 20, y + 30);
+    ctx.fillStyle = "rgba(255,255,255,.75)";
+    ctx.font = `500 15px ${FONTE}`;
+    ctx.fillText(`${r.n} observadores · ${r.obs} obs · ${r.naMeta} na meta`, x + w - 20, y + 48);
+    ctx.textAlign = "left";
+  }
 }
 
 function desenharPagina(
   logo: HTMLImageElement | null,
   op: OpcoesRanking,
   todas: LinhaRanking[],
-  pag: Pagina,
+  pagina: Pagina,
   idx: number,
   total: number,
   escalaMax: number,
+  colunas: number,
 ): Promise<Blob> {
   const medidor = document.createElement("canvas").getContext("2d")!;
   medidor.font = `600 22px ${FONTE}`;
   const chipsLinhas = quebrarChips(medidor, op.filtros, W - PAD * 2);
 
-  const duasColunas = todas.length > 16;
-  const colunas = duasColunas ? 2 : 1;
-  const porColuna = duasColunas ? Math.ceil(pag.linhas.length / 2) : pag.linhas.length;
-
   const alturaCab = op.filtros.length ? 164 + chipsLinhas.length * 46 + 8 : 176;
   const alturaResumo = 132;
-  const alturaSecao = 64;
-  const alturaLista = porColuna * ALTURA_LINHA + 24;
+  const alturaSecaoTitulo = 64;
+  const alturaLista = pagina.blocos.reduce((s, b) => s + alturaBloco(b, colunas) + (b.titulo ? 14 : 0), 0) + 24;
   const alturaRodape = 96;
-  const H = alturaCab + alturaResumo + alturaSecao + alturaLista + alturaRodape;
+  const H = alturaCab + alturaResumo + alturaSecaoTitulo + alturaLista + alturaRodape;
 
   const canvas = document.createElement("canvas");
   canvas.width = W;
@@ -173,7 +362,6 @@ function desenharPagina(
   ctx.font = `500 25px ${FONTE}`;
   ctx.fillText(op.periodo, xTexto, 146);
 
-  // chips de filtro
   if (op.filtros.length) {
     ctx.font = `600 22px ${FONTE}`;
     chipsLinhas.forEach((linha, li) => {
@@ -191,15 +379,12 @@ function desenharPagina(
     });
   }
 
-  // resumo
-  const totalObs = todas.reduce((s, l) => s + l.realizado, 0);
-  const metaTotal = todas.reduce((s, l) => s + l.meta, 0);
-  const naMeta = todas.filter((l) => l.realizado >= l.meta).length;
-  const pct = todas.length ? Math.round((naMeta / todas.length) * 100) : 0;
+  // resumo geral
+  const geral = resumir(todas);
   const tiles = [
-    { label: "OBSERVAÇÕES", valor: String(totalObs), cor: COR.texto },
-    { label: "META DA SEMANA", valor: String(metaTotal), cor: COR.meta },
-    { label: "ATINGIMENTO", valor: `${pct}%`, sub: `${naMeta} de ${todas.length} na meta`, cor: pct >= 100 ? COR.ok : COR.falta },
+    { label: "OBSERVAÇÕES", valor: String(geral.obs), cor: COR.texto },
+    { label: "META DA SEMANA", valor: String(geral.meta), cor: COR.meta },
+    { label: "ATINGIMENTO", valor: `${geral.pct}%`, sub: `${geral.naMeta} de ${geral.n} na meta`, cor: geral.pct >= 100 ? COR.ok : COR.falta },
   ];
   const tw = (W - PAD * 2 - GAP * 2) / 3;
   tiles.forEach((t, i) => {
@@ -235,87 +420,32 @@ function desenharPagina(
   ctx.fillStyle = COR.muted;
   ctx.font = `500 19px ${FONTE}`;
   const parte = total > 1 ? ` · Parte ${idx + 1}/${total}` : "";
-  const dir = `${ORDEM_TXT[op.ordem]} · ${todas.length} observadores${parte}`;
+  const agrup = op.agrupar ? "Por coordenador · " : "";
   ctx.textAlign = "right";
-  ctx.fillText(dir, W - PAD, ySecao + 30);
+  ctx.fillText(`${agrup}${ORDEM_TXT[op.ordem]} · ${todas.length} observadores${parte}`, W - PAD, ySecao + 30);
   ctx.textAlign = "left";
 
-  // lista
+  // blocos
+  const duasColunas = colunas === 2;
   const colW = (W - PAD * 2 - GAP * (colunas - 1)) / colunas;
-  const yLista = ySecao + 52;
-  pag.linhas.forEach((l, i) => {
-    const col = duasColunas ? Math.floor(i / porColuna) : 0;
-    const linhaNaCol = duasColunas ? i % porColuna : i;
-    const x = PAD + col * (colW + GAP);
-    const y = yLista + linhaNaCol * ALTURA_LINHA;
-    const pos = pag.inicio + i + 1;
-    const ok = l.realizado >= l.meta;
-
-    ctx.fillStyle = linhaNaCol % 2 === 0 ? COR.card : COR.cardAlt;
-    rr(ctx, x, y + 4, colW, ALTURA_LINHA - 8, 12);
-    ctx.fill();
-
-    // posição
-    const rx = x + 14;
-    ctx.fillStyle = ok ? "rgba(74,222,128,.16)" : "rgba(251,113,133,.16)";
-    rr(ctx, rx, y + 15, 38, 32, 10);
-    ctx.fill();
-    ctx.fillStyle = ok ? COR.ok : COR.falta;
-    ctx.font = `800 17px ${FONTE}`;
-    ctx.textAlign = "center";
-    ctx.fillText(String(pos), rx + 19, y + 37);
-    ctx.textAlign = "left";
-
-    // nome + função
-    const nomeW = Math.round(colW * (duasColunas ? 0.36 : 0.34));
-    const nx = rx + 38 + 14;
-    ctx.fillStyle = COR.texto;
-    ctx.font = `700 21px ${FONTE}`;
-    ctx.fillText(cortar(ctx, nomeCurto(l.nome), nomeW), nx, y + 31);
-    ctx.fillStyle = COR.muted;
-    ctx.font = `500 14px ${FONTE}`;
-    ctx.fillText(cortar(ctx, l.funcao, nomeW), nx, y + 50);
-
-    // valor
-    const valW = 86;
-    const vx = x + colW - 14 - valW;
-    ctx.textAlign = "right";
-    const real = String(l.realizado);
-    const metaTxt = `/${l.meta}`;
-    ctx.font = `600 17px ${FONTE}`;
-    const wMeta = ctx.measureText(metaTxt).width;
-    ctx.fillStyle = COR.muted;
-    ctx.fillText(metaTxt, vx + valW, y + 40);
-    ctx.fillStyle = ok ? COR.ok : COR.falta;
-    ctx.font = `800 26px ${FONTE}`;
-    ctx.fillText(real, vx + valW - wMeta - 2, y + 40);
-    ctx.textAlign = "left";
-
-    // barra
-    const bx = nx + nomeW + 14;
-    const bw = vx - 12 - bx;
-    const by = y + 24;
-    const bh = 14;
-    ctx.fillStyle = "rgba(148,163,184,.16)";
-    rr(ctx, bx, by, bw, bh, 7);
-    ctx.fill();
-    const fw = Math.max(l.realizado > 0 ? 8 : 0, (l.realizado / escalaMax) * bw);
-    if (fw > 0) {
-      const g = ctx.createLinearGradient(bx, 0, bx + bw, 0);
-      g.addColorStop(0, ok ? COR.okEscuro : COR.faltaEscuro);
-      g.addColorStop(1, ok ? COR.ok : COR.falta);
-      ctx.fillStyle = g;
-      rr(ctx, bx, by, Math.min(fw, bw), bh, 7);
-      ctx.fill();
+  let y = ySecao + 52;
+  for (const b of pagina.blocos) {
+    if (b.titulo) {
+      desenharSecao(ctx, b, y);
+      y += ALTURA_SECAO + 8;
     }
-    // traço da meta
-    if (l.meta > 0) {
-      const mx = bx + Math.min(1, l.meta / escalaMax) * bw;
-      ctx.fillStyle = COR.meta;
-      rr(ctx, mx - 2, by - 5, 4, bh + 10, 2);
-      ctx.fill();
-    }
-  });
+    const porColuna = Math.ceil(b.linhas.length / colunas);
+    b.linhas.forEach((l, i) => {
+      const col = duasColunas ? Math.floor(i / porColuna) : 0;
+      const linhaNaCol = duasColunas ? i % porColuna : i;
+      desenharLinha(
+        ctx, l, b.numInicio + i + 1,
+        PAD + col * (colW + GAP), y + linhaNaCol * ALTURA_LINHA,
+        colW, duasColunas, linhaNaCol % 2 === 0, escalaMax,
+      );
+    });
+    y += porColuna * ALTURA_LINHA + (b.titulo ? 14 : 0);
+  }
 
   // rodapé
   const yRod = H - alturaRodape + 18;
@@ -347,19 +477,29 @@ function desenharPagina(
   });
 }
 
-/** Gera uma ou mais imagens PNG (56 observadores por imagem) prontas para compartilhar. */
+/** Gera uma ou mais imagens PNG prontas para compartilhar (várias se a lista for grande). */
 export async function gerarRankingPng(op: OpcoesRanking): Promise<Blob[]> {
   if (document.fonts?.ready) await document.fonts.ready;
   const logo = await carregarImagem(LOGO_URL);
   const todas = ordenar(op.linhas, op.ordem);
   const escalaMax = Math.max(1, ...todas.map((l) => Math.max(l.realizado, l.meta)));
-  const porPagina = LINHAS_POR_COLUNA * 2;
-  const paginas: Pagina[] = [];
-  for (let i = 0; i < todas.length; i += porPagina) paginas.push({ inicio: i, linhas: todas.slice(i, i + porPagina) });
-  if (!paginas.length) paginas.push({ inicio: 0, linhas: [] });
+  const colunas = todas.length > 16 ? 2 : 1;
+  const paginas = op.agrupar ? paginarPorCoordenador(todas, op.ordem, colunas) : paginarCorrido(todas);
   const blobs: Blob[] = [];
   for (let i = 0; i < paginas.length; i++) {
-    blobs.push(await desenharPagina(logo, { ...op, linhas: todas }, todas, paginas[i]!, i, paginas.length, escalaMax));
+    blobs.push(await desenharPagina(logo, { ...op, linhas: todas }, todas, paginas[i]!, i, paginas.length, escalaMax, colunas));
   }
   return blobs;
 }
+
+/** Coordenadores presentes na lista (ordem alfabética; "Sem coordenador" por último). */
+export function coordenadoresDe(linhas: LinhaRanking[]): string[] {
+  const set = new Set(linhas.map((l) => l.coordenador?.trim() || SEM_COORDENADOR));
+  return [...set].sort((a, b) => {
+    if (a === SEM_COORDENADOR) return 1;
+    if (b === SEM_COORDENADOR) return -1;
+    return a.localeCompare(b, "pt-BR");
+  });
+}
+
+export { SEM_COORDENADOR };

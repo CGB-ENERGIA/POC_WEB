@@ -254,6 +254,30 @@
               ]"
               @update:model-value="gerarImagens"
             />
+            <div class="text-caption text-grey-6 q-mt-sm q-mb-xs">Coordenador</div>
+            <q-select
+              v-model="coordImg"
+              :options="opcoesCoord"
+              dense outlined options-dense
+              @update:model-value="gerarImagens"
+            />
+            <div class="text-caption text-grey-6 q-mt-sm q-mb-xs">Separar por coordenador</div>
+            <q-btn-toggle
+              v-model="modoImg"
+              spread dense no-caps unelevated
+              toggle-color="primary"
+              size="sm"
+              :disable="coordImg !== 'Todos'"
+              :options="[
+                { label: 'Lista única', value: 'unico' },
+                { label: 'Em seções', value: 'secoes' },
+                { label: 'Uma imagem cada', value: 'separadas' },
+              ]"
+              @update:model-value="gerarImagens"
+            />
+            <div v-if="coordImg !== 'Todos'" class="text-caption text-grey-6 q-mt-xs">
+              Mostrando só a equipe de {{ coordImg }}.
+            </div>
           </q-card-section>
           <q-card-section class="share-preview">
             <div v-if="gerandoImg" class="text-center q-pa-xl"><q-spinner size="32px" color="primary" /></div>
@@ -337,7 +361,7 @@ import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 import { filterByGerencia, filterByGerente, semanaDaData, semanaDoMes, filterObserverRoster, uniqueChartLabels, tallyObserverRecords, normMatricula, indexEmployees, matchSubmissionToEmployee, filterByCoordenador } from "@/lib/dashboard";
 import { useGoals } from "@/composables/useGoals";
-import { gerarRankingPng } from "@/lib/ranking-imagem";
+import { gerarRankingPng, coordenadoresDe, SEM_COORDENADOR } from "@/lib/ranking-imagem";
 import { posicionarRotulos } from "@/lib/rotulos-barra";
 const { goalForColaborador } = useGoals();
 const $q = useQuasar();
@@ -602,6 +626,7 @@ const observerRows = computed(() => {
       realizado: counts.get(key) ?? 0,
       meta: g.semanal,
       funcao: emp.funcao || "—",
+      coordenador: emp.coordenador?.trim() || "",
     };
   });
 });
@@ -619,7 +644,16 @@ const observerRowsOrd = computed(() => {
 const compartilharAberto = ref(false);
 const gerandoImg = ref(false);
 const ordemImg = ref<"desc" | "asc" | "az">("desc");
-const imagens = ref<{ url: string; blob: Blob }[]>([]);
+const imagens = ref<{ url: string; blob: Blob; nome: string }[]>([]);
+const coordImg = ref("Todos");
+const modoImg = ref<"unico" | "secoes" | "separadas">("unico");
+
+const linhasImg = computed(() =>
+  observerRows.value.map((r) => ({
+    nome: r.nome, funcao: r.funcao, realizado: r.realizado, meta: r.meta, coordenador: r.coordenador,
+  })),
+);
+const opcoesCoord = computed(() => ["Todos", ...coordenadoresDe(linhasImg.value)]);
 
 function limparImagens() {
   imagens.value.forEach((i) => URL.revokeObjectURL(i.url));
@@ -641,18 +675,41 @@ function filtrosTexto() {
   return f;
 }
 
+function slug(txt: string) {
+  return txt.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
 async function gerarImagens() {
   gerandoImg.value = true;
   try {
-    const blobs = await gerarRankingPng({
-      titulo: "Observações da Semana",
-      periodo: periodoTexto(),
-      filtros: filtrosTexto(),
-      ordem: ordemImg.value,
-      linhas: observerRows.value.map((r) => ({ nome: r.nome, funcao: r.funcao, realizado: r.realizado, meta: r.meta })),
-    });
+    const filtros = filtrosTexto();
+    const base = { titulo: "Observações da Semana", periodo: periodoTexto(), ordem: ordemImg.value };
+    const mes = String(filters.mes).padStart(2, "0");
+    const prefixo = `observacoes-${filters.ano}-${mes}-sem${filters.semana}`;
+    const chipCoord = (c: string) => (filtros.includes(`Coord. ${c}`) ? filtros : [...filtros, `Coord. ${c}`]);
+    const nova: { blob: Blob; nome: string }[] = [];
+    const empilhar = (blobs: Blob[], sufixo: string) =>
+      blobs.forEach((blob, i) =>
+        nova.push({ blob, nome: `${prefixo}${sufixo}${blobs.length > 1 ? `-parte${i + 1}` : ""}.png` }),
+      );
+    const doCoord = (c: string) =>
+      linhasImg.value.filter((l) => (l.coordenador?.trim() || SEM_COORDENADOR) === c);
+
+    if (coordImg.value !== "Todos") {
+      const c = coordImg.value;
+      empilhar(await gerarRankingPng({ ...base, filtros: chipCoord(c), linhas: doCoord(c) }), `-${slug(c)}`);
+    } else if (modoImg.value === "separadas") {
+      for (const c of coordenadoresDe(linhasImg.value)) {
+        empilhar(await gerarRankingPng({ ...base, filtros: chipCoord(c), linhas: doCoord(c) }), `-${slug(c)}`);
+      }
+    } else {
+      empilhar(
+        await gerarRankingPng({ ...base, filtros, linhas: linhasImg.value, agrupar: modoImg.value === "secoes" }),
+        modoImg.value === "secoes" ? "-por-coordenador" : "",
+      );
+    }
     limparImagens();
-    imagens.value = blobs.map((blob) => ({ blob, url: URL.createObjectURL(blob) }));
+    imagens.value = nova.map((n) => ({ ...n, url: URL.createObjectURL(n.blob) }));
   } catch {
     $q.notify({ type: "negative", message: "Não foi possível gerar a imagem.", position: "top" });
   } finally {
@@ -663,21 +720,17 @@ async function gerarImagens() {
 async function abrirCompartilhar() {
   // Segue a ordem escolhida no gráfico; sem escolha, o ranking (maior → menor)
   ordemImg.value = ordemObs.value ?? "desc";
+  coordImg.value = "Todos";
+  modoImg.value = "unico";
   compartilharAberto.value = true;
   await gerarImagens();
 }
 
-function nomeArquivo(i: number) {
-  const mes = String(filters.mes).padStart(2, "0");
-  const parte = imagens.value.length > 1 ? `-parte${i + 1}` : "";
-  return `observacoes-${filters.ano}-${mes}-sem${filters.semana}${parte}.png`;
-}
-
 function baixarImagens() {
-  imagens.value.forEach((im, i) => {
+  imagens.value.forEach((im) => {
     const a = document.createElement("a");
     a.href = im.url;
-    a.download = nomeArquivo(i);
+    a.download = im.nome;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -685,7 +738,7 @@ function baixarImagens() {
 }
 
 async function compartilharImagens() {
-  const arquivos = imagens.value.map((im, i) => new File([im.blob], nomeArquivo(i), { type: "image/png" }));
+  const arquivos = imagens.value.map((im) => new File([im.blob], im.nome, { type: "image/png" }));
   if (navigator.canShare?.({ files: arquivos })) {
     try {
       await navigator.share({ files: arquivos, title: "Observações da Semana" });
