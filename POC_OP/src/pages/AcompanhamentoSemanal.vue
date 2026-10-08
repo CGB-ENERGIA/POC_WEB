@@ -175,24 +175,40 @@
       <div class="row q-col-gutter-md q-mb-md">
         <div :class="verTodosObs ? 'col-12' : 'col-12 col-md-8'">
           <q-card flat bordered class="chart-card">
-            <q-card-section class="q-pb-none row items-start no-wrap">
-              <div class="col">
+            <q-card-section class="q-pb-none row items-start">
+              <div class="col-12 col-sm">
                 <div class="text-subtitle1 text-weight-bold">Observações Realizadas na Semana</div>
                 <div class="text-caption text-grey-6">Clique numa vela, base, processo ou semana para filtrar a página · clique de novo para limpar</div>
               </div>
-              <q-btn
-                flat round dense
-                :icon="verTodosObs ? 'mdi-magnify-minus-outline' : 'mdi-magnify-plus-outline'"
-                :color="verTodosObs ? 'primary' : 'grey-7'"
-                @click="verTodosObs = !verTodosObs"
-              >
-                <q-tooltip>{{ verTodosObs ? 'Voltar à visão com rolagem' : `Mostrar todos os ${observerRows.length} observadores de uma vez` }}</q-tooltip>
-              </q-btn>
+              <div class="col-12 col-sm-auto row items-center no-wrap q-gutter-x-xs obs-tools">
+                <q-btn-toggle
+                  v-model="ordemObs"
+                  dense no-caps flat clearable
+                  toggle-color="primary"
+                  toggle-text-color="white"
+                  size="sm"
+                  :options="[
+                    { label: 'Maior → menor', value: 'desc', icon: 'mdi-sort-descending' },
+                    { label: 'Menor → maior', value: 'asc', icon: 'mdi-sort-ascending' },
+                  ]"
+                />
+                <q-btn flat round dense icon="mdi-whatsapp" color="positive" @click="abrirCompartilhar">
+                  <q-tooltip>Gerar imagem para compartilhar no WhatsApp</q-tooltip>
+                </q-btn>
+                <q-btn
+                  flat round dense
+                  :icon="verTodosObs ? 'mdi-magnify-minus-outline' : 'mdi-magnify-plus-outline'"
+                  :color="verTodosObs ? 'primary' : 'grey-7'"
+                  @click="verTodosObs = !verTodosObs"
+                >
+                  <q-tooltip>{{ verTodosObs ? 'Voltar à visão com rolagem' : `Mostrar todos os ${observerRows.length} observadores de uma vez` }}</q-tooltip>
+                </q-btn>
+              </div>
             </q-card-section>
             <q-card-section>
               <div ref="obsWrap">
                 <v-chart
-                  :key="`obs-${verTodosObs}-${linhasObs}`"
+                  :key="`obs-${verTodosObs}-${linhasObs}-${ordemObs}`"
                   class="chart-hit"
                   :option="barObservadores"
                   autoresize
@@ -215,6 +231,53 @@
           </q-card>
         </div>
       </div>
+
+      <!-- Compartilhar imagem (WhatsApp) -->
+      <q-dialog v-model="compartilharAberto" @hide="limparImagens">
+        <q-card class="share-card">
+          <q-card-section class="row items-center q-pb-sm">
+            <q-icon name="mdi-whatsapp" color="positive" size="26px" class="q-mr-sm" />
+            <div class="text-h6 col">Compartilhar no WhatsApp</div>
+            <q-btn icon="mdi-close" flat round dense v-close-popup />
+          </q-card-section>
+          <q-card-section class="q-pt-none q-pb-sm">
+            <div class="text-caption text-grey-6 q-mb-xs">Ordem da lista na imagem</div>
+            <q-btn-toggle
+              v-model="ordemImg"
+              dense no-caps unelevated
+              toggle-color="primary"
+              size="sm"
+              :options="[
+                { label: 'Maior → menor', value: 'desc' },
+                { label: 'Menor → maior', value: 'asc' },
+                { label: 'A–Z', value: 'az' },
+              ]"
+              @update:model-value="gerarImagens"
+            />
+          </q-card-section>
+          <q-card-section class="share-preview">
+            <div v-if="gerandoImg" class="text-center q-pa-xl"><q-spinner size="32px" color="primary" /></div>
+            <div v-for="(im, i) in imagens" v-else :key="im.url" class="share-img-wrap">
+              <img :src="im.url" class="share-img" :alt="`Prévia da imagem ${i + 1}`" />
+              <q-btn
+                dense unelevated no-caps size="sm" color="dark" text-color="white"
+                icon="mdi-content-copy" label="Copiar"
+                class="share-copy"
+                @click="copiarImagem(im.blob)"
+              />
+            </div>
+          </q-card-section>
+          <q-card-actions align="right" class="q-pa-md">
+            <q-btn flat no-caps icon="mdi-download" label="Baixar" :disable="!imagens.length" @click="baixarImagens" />
+            <q-btn
+              unelevated no-caps color="positive" icon="mdi-share-variant"
+              :label="imagens.length > 1 ? `Compartilhar (${imagens.length} imagens)` : 'Compartilhar'"
+              :disable="!imagens.length"
+              @click="compartilharImagens"
+            />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
 
       <!-- Charts Row 2 -->
       <div class="row q-col-gutter-md">
@@ -256,6 +319,7 @@
 
 <script setup lang="ts">
 import { reactive, computed, ref, watch, onMounted, onBeforeUnmount } from "vue";
+import { useQuasar } from "quasar";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, LineChart, PieChart, ScatterChart } from "echarts/charts";
@@ -273,7 +337,9 @@ import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 import { filterByGerencia, filterByGerente, semanaDaData, semanaDoMes, filterObserverRoster, uniqueChartLabels, tallyObserverRecords, normMatricula, indexEmployees, matchSubmissionToEmployee, filterByCoordenador } from "@/lib/dashboard";
 import { useGoals } from "@/composables/useGoals";
+import { gerarRankingPng } from "@/lib/ranking-imagem";
 const { goalForColaborador } = useGoals();
+const $q = useQuasar();
 
 use([
   CanvasRenderer, BarChart, LineChart, PieChart, ScatterChart,
@@ -373,7 +439,7 @@ function onObsClick(p: EcClick) {
   if (p.componentType !== "series") return;
   // Na lupa com várias linhas, cada linha tem suas séries (2 por linha): converte para o índice global
   const idxGlobal = (p.dataIndex ?? -1) + Math.floor((p.seriesIndex ?? 0) / 2) * porLinhaObs.value;
-  const row = observerRows.value[idxGlobal];
+  const row = observerRowsOrd.value[idxGlobal];
   if (!row) return;
   const mat = row.matricula;
   if (viz.matricula === mat) {
@@ -538,6 +604,115 @@ const observerRows = computed(() => {
     };
   });
 });
+
+// Ordenação do gráfico "Observações Realizadas na Semana" (null = ordem do cadastro)
+const ordemObs = ref<"desc" | "asc" | null>(null);
+const observerRowsOrd = computed(() => {
+  const rows = observerRows.value;
+  if (!ordemObs.value) return rows;
+  const dir = ordemObs.value === "desc" ? -1 : 1;
+  return [...rows].sort((a, b) => dir * (a.realizado - b.realizado) || a.nome.localeCompare(b.nome, "pt-BR"));
+});
+
+// ─── Compartilhar imagem (WhatsApp) ──────────────────────────────────────────
+const compartilharAberto = ref(false);
+const gerandoImg = ref(false);
+const ordemImg = ref<"desc" | "asc" | "az">("desc");
+const imagens = ref<{ url: string; blob: Blob }[]>([]);
+
+function limparImagens() {
+  imagens.value.forEach((i) => URL.revokeObjectURL(i.url));
+  imagens.value = [];
+}
+
+function periodoTexto() {
+  const mes = meses.find((m) => m.value === filters.mes)?.label ?? "";
+  return `${filters.semana}ª semana · ${mes}/${filters.ano}`;
+}
+
+function filtrosTexto() {
+  const f: string[] = [];
+  if (filters.gerencia !== "Todos") f.push(`Gerência ${filters.gerencia}`);
+  if (filters.gerente !== "Todos") f.push(`Gerente ${filters.gerente}`);
+  if (filters.coordenador !== "Todos") f.push(`Coord. ${filters.coordenador}`);
+  if (viz.base) f.push(`Base ${viz.base}`);
+  if (viz.processo) f.push(labelProcesso(viz.processo));
+  return f;
+}
+
+async function gerarImagens() {
+  gerandoImg.value = true;
+  try {
+    const blobs = await gerarRankingPng({
+      titulo: "Observações da Semana",
+      periodo: periodoTexto(),
+      filtros: filtrosTexto(),
+      ordem: ordemImg.value,
+      linhas: observerRows.value.map((r) => ({ nome: r.nome, funcao: r.funcao, realizado: r.realizado, meta: r.meta })),
+    });
+    limparImagens();
+    imagens.value = blobs.map((blob) => ({ blob, url: URL.createObjectURL(blob) }));
+  } catch {
+    $q.notify({ type: "negative", message: "Não foi possível gerar a imagem.", position: "top" });
+  } finally {
+    gerandoImg.value = false;
+  }
+}
+
+async function abrirCompartilhar() {
+  // Segue a ordem escolhida no gráfico; sem escolha, o ranking (maior → menor)
+  ordemImg.value = ordemObs.value ?? "desc";
+  compartilharAberto.value = true;
+  await gerarImagens();
+}
+
+function nomeArquivo(i: number) {
+  const mes = String(filters.mes).padStart(2, "0");
+  const parte = imagens.value.length > 1 ? `-parte${i + 1}` : "";
+  return `observacoes-${filters.ano}-${mes}-sem${filters.semana}${parte}.png`;
+}
+
+function baixarImagens() {
+  imagens.value.forEach((im, i) => {
+    const a = document.createElement("a");
+    a.href = im.url;
+    a.download = nomeArquivo(i);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
+}
+
+async function compartilharImagens() {
+  const arquivos = imagens.value.map((im, i) => new File([im.blob], nomeArquivo(i), { type: "image/png" }));
+  if (navigator.canShare?.({ files: arquivos })) {
+    try {
+      await navigator.share({ files: arquivos, title: "Observações da Semana" });
+    } catch (e) {
+      if ((e as DOMException).name !== "AbortError") {
+        $q.notify({ type: "negative", message: "Não foi possível compartilhar.", position: "top" });
+      }
+    }
+    return;
+  }
+  // Navegador sem compartilhamento de arquivos (comum no computador): baixa para anexar no WhatsApp
+  baixarImagens();
+  $q.notify({
+    type: "info",
+    message: "Imagem baixada. Anexe no WhatsApp (ou use Copiar e cole na conversa).",
+    position: "top",
+    timeout: 5000,
+  });
+}
+
+async function copiarImagem(blob: Blob) {
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+    $q.notify({ type: "positive", message: "Imagem copiada. Cole na conversa do WhatsApp.", position: "top", timeout: 2500 });
+  } catch {
+    $q.notify({ type: "warning", message: "Este navegador não permite copiar a imagem. Use Baixar.", position: "top" });
+  }
+}
 
 const conformidadePorObservador = computed(() => {
   const filteredIds = new Set(filteredSubs.value.map(s => s.id));
@@ -714,7 +889,7 @@ onMounted(() => {
 onBeforeUnmount(() => roObs?.disconnect());
 
 const barObservadores = computed(() => {
-  const rows = observerRows.value;
+  const rows = observerRowsOrd.value;
   const maxY = Math.max(2, ...rows.map(r => Math.max(r.realizado, r.meta)), 0) + 1.8;
   const okColor = chartInk.ok;
   const missColor = chartInk.miss;
@@ -1365,4 +1540,16 @@ $label-color: #94a3b8;
 // ── Transition ───────────────────────────────────────────────────────────────
 .fade-enter-active, .fade-leave-active { transition: opacity .2s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+.obs-tools { flex-shrink: 0; }
+.share-card {
+  width: min(560px, 94vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+.share-preview { overflow-y: auto; flex: 1 1 auto; min-height: 120px; }
+.share-img-wrap { position: relative; margin-bottom: 12px; }
+.share-img { width: 100%; display: block; border-radius: 10px; }
+.share-copy { position: absolute; top: 8px; right: 8px; opacity: .92; }
 </style>
