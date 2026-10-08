@@ -445,7 +445,7 @@ const observBarOption = computed(() => {
   return {
     backgroundColor: "transparent",
     tooltip: { trigger: "axis", axisPointer: { type: "shadow" as const } },
-    grid: { top: 8, right: 56, bottom: 8, left: 80 },
+    grid: { top: 8, right: 56, bottom: 8, left: 110 },
     xAxis: {
       type: "value",
       max: 100,
@@ -456,8 +456,8 @@ const observBarOption = computed(() => {
     },
     yAxis: {
       type: "category",
-      data: top.map(o => o.nome.split(" ")[0]),
-      axisLabel: { color: chartInk.muted, fontSize: 10 },
+      data: top.map(o => o.nome.split(" ").slice(0, 2).join(" ")),
+      axisLabel: { color: chartInk.muted, fontSize: 10, width: 100, overflow: "truncate" as const },
       axisTick: { show: false },
       axisLine: { show: false },
     },
