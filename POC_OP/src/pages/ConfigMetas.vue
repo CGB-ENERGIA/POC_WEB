@@ -325,6 +325,7 @@ import { ref, computed, watch } from "vue";
 import { useQuasar } from "quasar";
 import { useGoals, type IndividualOverride } from "@/composables/useGoals";
 import { supabase } from "@/lib/supabase";
+import { allPages } from "@/lib/dashboard";
 
 const $q = useQuasar();
 const { getMonthGoal, save, hasGoalDefined, goalForGerencia, getOverride, getOverridesForMonth, saveOverride, removeOverride } = useGoals();
@@ -389,11 +390,14 @@ const mesAtualLabel = computed(() => meses.find(m => m.value === selectedMes.val
 const monthOverrides = computed(() => getOverridesForMonth(selectedAno.value, selectedMes.value));
 
 async function loadEmployees() {
-  const { data } = await supabase
-    .from("employees")
-    .select("matricula, nome_completo, gerencia, funcao")
-    .eq("ativo", true)
-    .order("nome_completo");
+  const data = await allPages<{ matricula: string; nome_completo: string; gerencia: string; funcao: string }>(
+    () => supabase
+      .from("employees")
+      .select("matricula, nome_completo, gerencia, funcao")
+      .eq("ativo", true)
+      .order("nome_completo"),
+    "matricula",
+  ).catch(() => null);
   if (data) {
     allEmps.value = data.map(e => ({
       matricula:    e.matricula,

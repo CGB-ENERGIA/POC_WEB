@@ -535,7 +535,7 @@ import { useQuasar } from "quasar";
 import { supabase } from "@/lib/supabase";
 import * as XLSX from "xlsx";
 import { FUNCIONARIOS } from "@/data/funcionarios";
-import { uniqueHierarchyOpts } from "@/lib/dashboard";
+import { allPages, uniqueHierarchyOpts } from "@/lib/dashboard";
 
 const $q      = useQuasar();
 const loading     = ref(false);
@@ -949,23 +949,28 @@ async function fetchColaboradores() {
 }
 
 async function fetchEmployees() {
-  const { data } = await supabase
-    .from("employees")
-    .select("matricula, nome, nome_completo, gerencia, base, funcao, ativo, coordenador, gerente, processo")
-    .order("nome_completo");
-  if (data) employees.value = data as Employee[];
+  try {
+    employees.value = await allPages<Employee>(
+      () => supabase
+        .from("employees")
+        .select("matricula, nome, nome_completo, gerencia, base, funcao, ativo, coordenador, gerente, processo")
+        .order("nome_completo"),
+      "matricula",
+    );
+  } catch { /* mantém a lista anterior */ }
 }
 
 async function fetchEquipes() {
-  const { data, error } = await supabase
-    .from("pwa_equipes")
-    .select("id,prefixo,base,gerencia,coordenador,gerente")
-    .order("prefixo");
-  if (error) {
-    $q.notify({ type: "negative", message: "Não foi possível carregar equipes: " + error.message });
-    return;
+  try {
+    equipes.value = await allPages<Equipe>(() =>
+      supabase
+        .from("pwa_equipes")
+        .select("id,prefixo,base,gerencia,coordenador,gerente")
+        .order("prefixo"),
+    );
+  } catch (e) {
+    $q.notify({ type: "negative", message: "Não foi possível carregar equipes: " + (e as Error).message });
   }
-  if (data) equipes.value = data as Equipe[];
 }
 
 async function fetchAll() {

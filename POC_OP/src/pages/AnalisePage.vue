@@ -301,6 +301,7 @@
 import { ref, computed, onMounted, reactive } from "vue";
 import { useQuasar } from "quasar";
 import {
+  fetchAllByIds,
   fetchAnalisePendentes,
   atualizarStatusAnalise,
   editarAnalise,
@@ -352,20 +353,17 @@ async function recarregar() {
     const subIds = [...new Set(rows.map((r) => r.submission_id))];
 
     // Buscar submissions e respostas em paralelo
-    const [subsResult, respsResult] = await Promise.all([
-      subIds.length
-        ? supabase.from("checklist_submissions").select("id,data,base,equipe,observador,auditagem").in("id", subIds)
-        : Promise.resolve({ data: [], error: null }),
-      subIds.length
-        ? supabase.from("checklist_responses").select("submission_id,pergunta_id,pergunta,categoria,observacao,foto_r2_key").in("submission_id", subIds)
-        : Promise.resolve({ data: [], error: null }),
+    type SubLeve = { id: string; data: string; base: string; equipe: string; observador: string; auditagem: string };
+    const [subsData, respsData] = await Promise.all([
+      fetchAllByIds<SubLeve>("checklist_submissions", "id,data,base,equipe,observador,auditagem", "id", subIds),
+      fetchAllByIds<ResponseRow>("checklist_responses", "submission_id,pergunta_id,pergunta,categoria,observacao,foto_r2_key", "submission_id", subIds),
     ]);
 
-    const subMap = new Map<string, { id: string; data: string; base: string; equipe: string; observador: string; auditagem: string }>();
-    for (const s of (subsResult.data ?? [])) subMap.set(s.id, s);
+    const subMap = new Map<string, SubLeve>();
+    for (const s of subsData) subMap.set(s.id, s);
 
     const respMap = new Map<string, ResponseRow>();
-    for (const r of ((respsResult.data ?? []) as ResponseRow[])) respMap.set(`${r.submission_id}:${r.pergunta_id}`, r);
+    for (const r of respsData) respMap.set(`${r.submission_id}:${r.pergunta_id}`, r);
 
     itens.value = rows.map((row) => {
       const sub = subMap.get(row.submission_id);

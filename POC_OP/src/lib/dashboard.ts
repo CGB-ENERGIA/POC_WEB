@@ -259,15 +259,15 @@ function applySubmissionFilters(
 
 // Supabase limita 1000 linhas por query; esta função pagina automaticamente.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function allPages<T>(buildQ: () => any): Promise<T[]> {
+export async function allPages<T>(buildQ: () => any, desempate = "id"): Promise<T[]> {
   const PAGE = 1000;
   const WAVE = 4; // páginas baixadas ao mesmo tempo
   const all: T[] = [];
   for (let page = 0; ; page += WAVE) {
-    // ORDER BY id é obrigatório: sem ordem determinística o Postgres pode repetir/pular linhas entre páginas
+    // Desempate por coluna única é obrigatório: sem ordem determinística o Postgres pode repetir/pular linhas entre páginas
     const wave = await Promise.all(
       Array.from({ length: WAVE }, (_, i) =>
-        buildQ().order("id", { ascending: true }).range((page + i) * PAGE, (page + i + 1) * PAGE - 1),
+        buildQ().order(desempate, { ascending: true }).range((page + i) * PAGE, (page + i + 1) * PAGE - 1),
       ),
     );
     let fim = false;
@@ -300,6 +300,16 @@ function chunked<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
   return out;
+}
+
+/** Todas as linhas de `table` cujo `coluna` está em `ids` (lotes de 300 para não estourar a URL + paginação sem limite de 1000). */
+export async function fetchAllByIds<T>(table: string, select: string, coluna: string, ids: string[]): Promise<T[]> {
+  if (!ids.length) return [];
+  const lotes = await mapLimit(chunked(ids, 300), 3, (chunk) =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    allPages<T>(() => (supabase.from(table) as any).select(select).in(coluna, chunk)),
+  );
+  return lotes.flat();
 }
 
 /** Submissions do período. `contarMeta` inclui pendentes (já registrados no PWA). */
@@ -462,13 +472,14 @@ export async function fetchNcLight(submissionIds: string[]): Promise<NcLightRow[
 
 /** Todos os funcionários ativos. */
 export async function fetchEmployees(): Promise<EmployeeRow[]> {
-  const { data, error } = await supabase
-    .from("employees")
-    .select("matricula,nome,nome_completo,gerencia,base,funcao,coordenador,gerente,processo")
-    .eq("ativo", true)
-    .order("nome_completo");
-  if (error) throw error;
-  return (data ?? []) as EmployeeRow[];
+  return allPages<EmployeeRow>(
+    () => supabase
+      .from("employees")
+      .select("matricula,nome,nome_completo,gerencia,base,funcao,coordenador,gerente,processo")
+      .eq("ativo", true)
+      .order("nome_completo"),
+    "matricula",
+  );
 }
 
 // ─── Helpers de agregação ─────────────────────────────────────────────────────
@@ -638,13 +649,7 @@ export interface ResolucaoRow {
 const RESOLUCAO_FIELDS = "id,submission_id,pergunta_id,resolvido_por,observacao,data_resolucao,foto_r2_key,status,comentario_analise,analisado_por,data_analise";
 
 export async function fetchResolucoes(submissionIds: string[]): Promise<ResolucaoRow[]> {
-  if (!submissionIds.length) return [];
-  const { data, error } = await supabase
-    .from("nc_resolucoes")
-    .select(RESOLUCAO_FIELDS)
-    .in("submission_id", submissionIds);
-  if (error) throw error;
-  return (data ?? []) as ResolucaoRow[];
+  return fetchAllByIds<ResolucaoRow>("nc_resolucoes", RESOLUCAO_FIELDS, "submission_id", submissionIds);
 }
 
 export async function inserirResolucao(
@@ -660,12 +665,9 @@ export async function inserirResolucao(
 }
 
 export async function fetchAnalisePendentes(): Promise<ResolucaoRow[]> {
-  const { data, error } = await supabase
-    .from("nc_resolucoes")
-    .select(RESOLUCAO_FIELDS)
-    .order("data_resolucao", { ascending: false });
-  if (error) throw error;
-  return (data ?? []) as ResolucaoRow[];
+  return allPages<ResolucaoRow>(() =>
+    supabase.from("nc_resolucoes").select(RESOLUCAO_FIELDS).order("data_resolucao", { ascending: false }),
+  );
 }
 
 export async function atualizarStatusAnalise(
@@ -768,12 +770,9 @@ const CHECKLIST_ANALISE_FIELDS =
 
 /** Todos os checklists enviados (qualquer status), para a aba de validação. */
 export async function fetchChecklistsParaAnalise(): Promise<ChecklistParaAnalise[]> {
-  const { data, error } = await supabase
-    .from("checklist_submissions")
-    .select(CHECKLIST_ANALISE_FIELDS)
-    .order("data", { ascending: false });
-  if (error) throw error;
-  return (data ?? []) as ChecklistParaAnalise[];
+  return allPages<ChecklistParaAnalise>(() =>
+    supabase.from("checklist_submissions").select(CHECKLIST_ANALISE_FIELDS).order("data", { ascending: false }),
+  );
 }
 
 /**
