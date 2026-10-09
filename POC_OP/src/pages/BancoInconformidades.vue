@@ -1,6 +1,9 @@
 <template>
   <q-page class="banco-nc">
 
+    <!-- ── Faixa fixa: cabeçalho + filtros (só a lista rola) ───────────────────── -->
+    <div class="banco-sticky">
+
     <!-- ── Cabeçalho ─────────────────────────────────────────────────────────── -->
     <div class="banco-header">
       <div class="banco-header__info">
@@ -126,6 +129,8 @@
         </div>
       </q-slide-transition>
     </div>
+
+    </div><!-- /banco-sticky -->
 
     <!-- ── Tabela ──────────────────────────────────────────────────────────────── -->
     <div class="banco-table-wrap">
@@ -257,7 +262,7 @@ const filters = reactive({
   equipe:     null as string | null,
 });
 
-const filtrosAbertos = ref(true);
+const filtrosAbertos = ref(false);
 const filtrosAtivosCount = computed(() =>
   [filters.semana, filters.base, filters.gerencia, filters.gerente, filters.coordenador, filters.observador, filters.equipe]
     .filter(v => v !== null).length
@@ -438,39 +443,47 @@ $brand: #8B1C2E;
   min-height: 100vh;
 }
 
+// ── Faixa fixa (cabeçalho + filtros) ──────────────────────────────────────────
+.banco-sticky {
+  position: sticky;
+  top: var(--app-header-h);
+  z-index: 95;
+  box-shadow: 0 8px 14px -10px rgba(15, 23, 42, 0.35);
+}
+
 // ── Cabeçalho ─────────────────────────────────────────────────────────────────
 .banco-header {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 1rem;
   background: #fff;
-  padding: 16px 24px;
+  padding: 8px 24px;
   border-bottom: 2px solid #eee;
 
   &__info { flex: 1; min-width: 0; }
 
   &__title {
-    font-size: 1.15rem;
+    font-size: .95rem;
     font-weight: 700;
     color: $brand;
     letter-spacing: .03em;
   }
 
   &__datetime {
-    font-size: .72rem;
+    font-size: .68rem;
     color: #888;
-    margin-top: 2px;
+    margin-top: 0;
   }
 
   &__counter {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-width: 80px;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
   }
 
   &__num {
-    font-size: 2.6rem;
+    font-size: 1.7rem;
     font-weight: 900;
     color: $brand;
     line-height: 1;
@@ -489,10 +502,13 @@ $brand: #8B1C2E;
 .banco-filters {
   background: #fff;
   border-bottom: 1px solid #eee;
-  padding: 12px 24px;
+  padding: 4px 24px 6px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  // Aberto, o painel nunca passa da altura da tela: rola por dentro
+  max-height: calc(100vh - var(--app-header-h) - 70px);
+  overflow-y: auto;
 }
 
 .filters-toggle {

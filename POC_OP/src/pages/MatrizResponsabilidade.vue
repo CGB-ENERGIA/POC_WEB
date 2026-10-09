@@ -113,7 +113,8 @@
     <div class="q-pa-md">
 
       <!-- KPI row -->
-      <div class="row q-col-gutter-md q-mb-md">
+      <div class="kpi-sticky">
+      <div class="row q-col-gutter-sm q-mb-none">
         <div class="col-6 col-md-3">
           <q-card flat bordered class="kpi-card kpi-stat-card">
             <div class="kpi-stat-accent" style="background:#dc2626" />
@@ -154,6 +155,7 @@
             </q-card-section>
           </q-card>
         </div>
+      </div>
       </div>
 
       <!-- Table card -->

@@ -140,7 +140,8 @@
     <div class="q-pa-md">
 
       <!-- KPI Row -->
-      <div class="row q-col-gutter-md q-mb-md">
+      <div class="kpi-sticky">
+      <div class="row q-col-gutter-sm q-mb-none">
         <div class="col-6 col-md-3" v-for="kpi in kpis" :key="kpi.label">
           <q-card flat bordered class="kpi-card">
             <q-card-section class="q-pa-md">
@@ -154,6 +155,7 @@
             </q-card-section>
           </q-card>
         </div>
+      </div>
       </div>
 
       <!-- Charts main grid -->

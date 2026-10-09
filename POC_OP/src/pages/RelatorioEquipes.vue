@@ -149,7 +149,8 @@
     <div class="q-pa-md">
 
       <!-- KPI Row -->
-      <div class="row q-col-gutter-md q-mb-md items-stretch">
+      <div class="kpi-sticky">
+      <div class="row q-col-gutter-sm q-mb-none items-stretch">
         <div class="col-6 col-md-3">
           <q-card flat bordered class="kpi-card kpi-stat-card">
             <div class="kpi-stat-accent" style="background:#0284c7" />
@@ -191,16 +192,17 @@
         </div>
         <!-- Taxa de Contato gauge -->
         <div class="col-6 col-md-3">
-          <q-card flat bordered class="kpi-card kpi-gauge-card">
-            <q-card-section class="q-pa-md kpi-gauge-section">
-              <div class="kpi-gauge-label">Taxa de Contato</div>
-              <div class="kpi-gauge-wrap">
-                <v-chart :option="gaugeOpt" autoresize class="kpi-gauge-chart" />
-                <div class="kpi-gauge-sub">{{ visitadasSorted.length }} de {{ rosterPrefixes.length }} equipes</div>
-              </div>
+          <q-card flat bordered class="kpi-card kpi-stat-card">
+            <div class="kpi-stat-accent" style="background:#16a34a" />
+            <q-card-section class="q-pa-md kpi-stat-section">
+              <div class="kpi-ring" :style="{ '--p': taxaContato + '%' }" />
+              <div class="kpi-stat-value" style="color:#8B1C2B">{{ taxaContato }}%</div>
+              <div class="kpi-stat-label">Taxa de Contato</div>
+              <div class="kpi-stat-sub">{{ visitadasSorted.length }} de {{ rosterPrefixes.length }} equipes</div>
             </q-card-section>
           </q-card>
         </div>
+      </div>
       </div>
 
       <!-- CHARTS GRID (4 cols) -->
@@ -323,7 +325,7 @@
 import { reactive, computed, ref, watch, onMounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
-import { BarChart, GaugeChart } from "echarts/charts";
+import { BarChart } from "echarts/charts";
 import {
   GridComponent,
   TooltipComponent,
@@ -335,7 +337,7 @@ import { useChecklistData } from "@/composables/useChecklistData";
 import { filterByGerencia, filterByGerente, fetchIcitPorPrefixo, indexEmployees, matchSubmissionToEmployee, type IcitPrefixo, filterByCoordenador } from "@/lib/dashboard";
 import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
 
-use([CanvasRenderer, BarChart, GaugeChart, GridComponent, TooltipComponent, DataZoomComponent]);
+use([CanvasRenderer, BarChart, GridComponent, TooltipComponent, DataZoomComponent]);
 
 const {
   loading,
@@ -758,38 +760,12 @@ function tipHtml(title: string, rows: { label: string; value: string; color?: st
 }
 
 // â"€â"€â"€ Gauge â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-const gaugeOpt = computed(() => ({
-  series: [{
-    type: "gauge" as const,
-    startAngle: 210, endAngle: -30,
-    min: 0, max: 100,
-    radius: "100%",
-    center: ["50%", "50%"],
-    pointer: { show: false },
-    progress: {
-      show: true, width: 12, roundCap: true,
-      itemStyle: { color: "#16a34a" },
-    },
-    axisLine: {
-      lineStyle: { width: 12, color: [[1, "#dcfce7"]] },
-    },
-    splitLine: { show: false }, axisTick: { show: false }, axisLabel: { show: false },
-    title: { show: false },
-    detail: {
-      valueAnimation: true,
-      fontSize: 26,
-      fontWeight: "bold" as const,
-      formatter: "{value}%",
-      color: G.brand,
-      offsetCenter: [0, "8%"],
-    },
-    data: [{
-      value: rosterPrefixes.value.length
-        ? Math.round((visitadasSorted.value.length / rosterPrefixes.value.length) * 100)
-        : 0,
-    }],
-  }],
-}));
+const taxaContato = computed(() =>
+  rosterPrefixes.value.length
+    ? Math.round((visitadasSorted.value.length / rosterPrefixes.value.length) * 100)
+    : 0,
+);
+
 
 // â"€â"€â"€ Equipes Visitadas chart â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 function hBarGrid() {

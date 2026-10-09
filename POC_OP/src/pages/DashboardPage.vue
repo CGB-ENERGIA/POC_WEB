@@ -47,7 +47,8 @@
     <div class="q-pa-md dash-content">
 
       <!-- KPI CARDS ─────────────────────────────────────────────── -->
-      <div class="row q-col-gutter-md q-mb-lg">
+      <div class="kpi-sticky">
+      <div class="row q-col-gutter-sm q-mb-none">
         <div
           class="col-12 col-sm-6 col-md"
           v-for="kpi in kpis" :key="kpi.label"
@@ -71,6 +72,7 @@
             </div>
           </div>
         </div>
+      </div>
       </div>
 
       <!-- CHARTS ROW 1 ────────────────────────────────────────────── -->

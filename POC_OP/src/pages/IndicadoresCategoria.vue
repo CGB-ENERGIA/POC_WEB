@@ -117,7 +117,8 @@
     <div class="q-pa-md">
 
       <!-- KPI Row -->
-      <div class="row q-col-gutter-md q-mb-md items-stretch">
+      <div class="kpi-sticky">
+      <div class="row q-col-gutter-sm q-mb-none items-stretch">
 
         <div class="col-6 col-md-4">
           <q-card flat bordered class="kpi-card kpi-stat-card">
@@ -152,20 +153,20 @@
         </div>
 
         <div class="col-12 col-md-4">
-          <q-card flat bordered class="kpi-card kpi-gauge-card">
-            <q-card-section class="q-pa-md kpi-gauge-section">
-              <div class="kpi-gauge-label">% conformidade</div>
-              <div class="kpi-gauge-wrap">
-                <v-chart :option="gaugeOpt" autoresize class="kpi-gauge-chart" />
-                <div class="kpi-gauge-sub">
-                  {{ totalConf.toLocaleString('pt-BR') }} de
-                  {{ (totalConf + totalInc).toLocaleString('pt-BR') }} observações
-                </div>
+          <q-card flat bordered class="kpi-card kpi-stat-card">
+            <div class="kpi-stat-accent" style="background:#16a34a" />
+            <q-card-section class="q-pa-md kpi-stat-section">
+              <div class="kpi-ring" :style="{ '--p': pctGlobal + '%' }" />
+              <div class="kpi-stat-value" style="color:#8B1C2B">{{ pctGlobal }}%</div>
+              <div class="kpi-stat-label">% conformidade</div>
+              <div class="kpi-stat-sub">
+                {{ totalConf.toLocaleString('pt-BR') }} de {{ (totalConf + totalInc).toLocaleString('pt-BR') }} observações
               </div>
             </q-card-section>
           </q-card>
         </div>
 
+      </div>
       </div>
 
       <!-- Section title -->
@@ -218,7 +219,7 @@
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
-import { BarChart, GaugeChart } from "echarts/charts";
+import { BarChart } from "echarts/charts";
 import {
   GridComponent,
   TooltipComponent,
@@ -230,7 +231,7 @@ import { useChecklistData } from "@/composables/useChecklistData";
 import { filterByGerencia, filterByGerente, filterByCoordenador } from "@/lib/dashboard";
 import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
 
-use([CanvasRenderer, BarChart, GaugeChart, GridComponent, TooltipComponent, LegendComponent]);
+use([CanvasRenderer, BarChart, GridComponent, TooltipComponent, LegendComponent]);
 
 const { loading, error, submissions, responses, employees, load, gerentesOpts, coordenadoresOpts } = useChecklistData();
 
@@ -560,34 +561,6 @@ const totalConf = totalConformes;
 const totalInc  = totalNaoConformes;
 const pctGlobal = computed(() => Math.round(conformidadeIndex.value * 100));
 
-// â"€â"€â"€ Gauge â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-const gaugeOpt = computed(() => ({
-  ...chartMotion,
-  series: [{
-    type: "gauge" as const,
-    startAngle: 210, endAngle: -30,
-    min: 0, max: 100,
-    radius: "100%",
-    center: ["50%", "50%"],
-    pointer: { show: false },
-    progress: {
-      show: true, width: 12, roundCap: false,
-      itemStyle: { color: G.green },
-    },
-    axisLine: { lineStyle: { width: 12, color: [[1, "#dcfce7"]] } },
-    splitLine: { show: false }, axisTick: { show: false }, axisLabel: { show: false },
-    title: { show: false },
-    detail: {
-      valueAnimation: !reduceMotion,
-      fontSize: 26,
-      fontWeight: "bold" as const,
-      formatter: "{value}%",
-      color: G.brand,
-      offsetCenter: [0, "8%"],
-    },
-    data: [{ value: pctGlobal.value }],
-  }],
-}));
 </script>
 
 <style scoped lang="scss">

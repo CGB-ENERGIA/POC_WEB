@@ -110,7 +110,8 @@
     <div class="q-pa-md">
 
       <!-- KPI -->
-      <div class="row q-col-gutter-md q-mb-md">
+      <div class="kpi-sticky">
+      <div class="row q-col-gutter-sm q-mb-none">
         <div class="col-12 col-md-3">
           <q-card flat bordered class="kpi-card kpi-stat-card">
             <div class="kpi-stat-accent" style="background:#8B1C2B" />
@@ -152,6 +153,7 @@
             </q-card-section>
           </q-card>
         </div>
+      </div>
       </div>
 
       <!-- Heat map table -->

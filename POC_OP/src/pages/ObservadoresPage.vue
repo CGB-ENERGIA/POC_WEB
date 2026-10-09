@@ -135,58 +135,72 @@
     <!-- ═══════════════════════════ CONTENT ═══════════════════════════ -->
     <div class="q-pa-md">
 
-      <!-- KPI Row -->
-      <div class="row q-col-gutter-md q-mb-md items-stretch">
+      <!-- KPI Row (compacto) -->
+      <div class="kpi-sticky">
+      <div class="row q-col-gutter-sm q-mb-sm items-stretch">
         <div class="col-6 col-md-3">
-          <q-card flat bordered class="kpi-card kpi-stat-card">
-            <div class="kpi-stat-accent" style="background:#0284c7" />
-            <q-card-section class="q-pa-md kpi-stat-section">
-              <div class="kpi-stat-icon-wrap" style="background:rgba(2,132,199,.1)">
-                <q-icon name="mdi-eye" size="24px" style="color:#0284c7" />
+          <q-card flat bordered class="kpi-card kpi-compact" style="--kc:#0284c7">
+            <q-card-section class="row items-center no-wrap kpi-compact__body">
+              <div class="kpi-compact__icon" style="background:rgba(2,132,199,.12)">
+                <q-icon name="mdi-eye" size="22px" style="color:#0284c7" />
               </div>
-              <div class="kpi-stat-value" style="color:#0284c7">{{ totalObs.toLocaleString('pt-BR') }}</div>
-              <div class="kpi-stat-label">Total de Obs</div>
-              <div class="kpi-stat-sub">observações realizadas</div>
-            </q-card-section>
-          </q-card>
-        </div>
-        <div class="col-6 col-md-3">
-          <q-card flat bordered class="kpi-card kpi-stat-card">
-            <div class="kpi-stat-accent" style="background:#16a34a" />
-            <q-card-section class="q-pa-md kpi-stat-section">
-              <div class="kpi-stat-icon-wrap" style="background:rgba(22,163,74,.1)">
-                <q-icon name="mdi-check-all" size="24px" style="color:#16a34a" />
-              </div>
-              <div class="kpi-stat-value" style="color:#16a34a">{{ totalObs100.toLocaleString('pt-BR') }}</div>
-              <div class="kpi-stat-label">Obs 100%</div>
-              <div class="kpi-stat-sub">sem nenhum desvio</div>
-            </q-card-section>
-          </q-card>
-        </div>
-        <div class="col-6 col-md-3">
-          <q-card flat bordered class="kpi-card kpi-stat-card">
-            <div class="kpi-stat-accent" style="background:#8B1C2B" />
-            <q-card-section class="q-pa-md kpi-stat-section">
-              <div class="kpi-stat-icon-wrap" style="background:rgba(139,28,43,.1)">
-                <q-icon name="mdi-alert-circle" size="24px" style="color:#8B1C2B" />
-              </div>
-              <div class="kpi-stat-value" style="color:#8B1C2B">{{ obsDesvio.toLocaleString('pt-BR') }}</div>
-              <div class="kpi-stat-label">Obs c/ Desvio</div>
-              <div class="kpi-stat-sub">com não conformidade</div>
-            </q-card-section>
-          </q-card>
-        </div>
-        <div class="col-6 col-md-3">
-          <q-card flat bordered class="kpi-card kpi-gauge-card">
-            <q-card-section class="q-pa-md kpi-gauge-section">
-              <div class="kpi-gauge-label">% Obs 100%</div>
-              <div class="kpi-gauge-wrap">
-                <v-chart :option="gaugeOpt" autoresize class="kpi-gauge-chart" />
-                <div class="kpi-gauge-sub">{{ totalObs100.toLocaleString('pt-BR') }} de {{ totalObs.toLocaleString('pt-BR') }}</div>
+              <div class="kpi-compact__txt">
+                <div class="kpi-compact__label">Total de Obs</div>
+                <div class="kpi-compact__line">
+                  <span class="kpi-compact__value" style="color:#0284c7">{{ totalObs.toLocaleString('pt-BR') }}</span>
+                  <span class="kpi-compact__sub">observações realizadas</span>
+                </div>
               </div>
             </q-card-section>
           </q-card>
         </div>
+        <div class="col-6 col-md-3">
+          <q-card flat bordered class="kpi-card kpi-compact" style="--kc:#16a34a">
+            <q-card-section class="row items-center no-wrap kpi-compact__body">
+              <div class="kpi-compact__icon" style="background:rgba(22,163,74,.12)">
+                <q-icon name="mdi-check-all" size="22px" style="color:#16a34a" />
+              </div>
+              <div class="kpi-compact__txt">
+                <div class="kpi-compact__label">Obs 100%</div>
+                <div class="kpi-compact__line">
+                  <span class="kpi-compact__value" style="color:#16a34a">{{ totalObs100.toLocaleString('pt-BR') }}</span>
+                  <span class="kpi-compact__sub">sem nenhum desvio</span>
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+        <div class="col-6 col-md-3">
+          <q-card flat bordered class="kpi-card kpi-compact" style="--kc:#8B1C2B">
+            <q-card-section class="row items-center no-wrap kpi-compact__body">
+              <div class="kpi-compact__icon" style="background:rgba(139,28,43,.12)">
+                <q-icon name="mdi-alert-circle" size="22px" style="color:#8B1C2B" />
+              </div>
+              <div class="kpi-compact__txt">
+                <div class="kpi-compact__label">Obs c/ Desvio</div>
+                <div class="kpi-compact__line">
+                  <span class="kpi-compact__value" style="color:#8B1C2B">{{ obsDesvio.toLocaleString('pt-BR') }}</span>
+                  <span class="kpi-compact__sub">com não conformidade</span>
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+        <div class="col-6 col-md-3">
+          <q-card flat bordered class="kpi-card kpi-compact" style="--kc:#16a34a">
+            <q-card-section class="row items-center no-wrap kpi-compact__body">
+              <div class="kpi-ring" :style="{ '--p': pctObs100 + '%' }" />
+              <div class="kpi-compact__txt">
+                <div class="kpi-compact__label">% Obs 100%</div>
+                <div class="kpi-compact__line">
+                  <span class="kpi-compact__value" style="color:#8B1C2B">{{ pctObs100 }}%</span>
+                  <span class="kpi-compact__sub">{{ totalObs100.toLocaleString('pt-BR') }} de {{ totalObs.toLocaleString('pt-BR') }}</span>
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+      </div>
       </div>
 
       <!-- Main row: table left, charts right -->
@@ -259,7 +273,7 @@
                 <q-card-section class="q-pa-xs">
                   <div class="chart-card-title">Obs 100% por Função</div>
                   <div class="chart-caption">Clique para filtrar</div>
-                  <v-chart class="chart-hit" :option="chartFuncao" autoresize style="height:190px" @click="onFuncaoClick" />
+                  <v-chart class="chart-hit" :option="chartFuncao" autoresize :style="{ height: alturaGraficos }" @click="onFuncaoClick" />
                 </q-card-section>
               </q-card>
             </div>
@@ -269,7 +283,7 @@
                 <q-card-section class="q-pa-xs">
                   <div class="chart-card-title">Obs 100% por Gerência</div>
                   <div class="chart-caption">Clique para filtrar</div>
-                  <v-chart class="chart-hit" :option="chartGerencia" autoresize style="height:190px" @click="onGerenciaClick" />
+                  <v-chart class="chart-hit" :option="chartGerencia" autoresize :style="{ height: alturaGraficos }" @click="onGerenciaClick" />
                 </q-card-section>
               </q-card>
             </div>
@@ -279,7 +293,7 @@
                 <q-card-section class="q-pa-xs">
                   <div class="chart-card-title">Equipes Visitadas</div>
                   <div class="chart-caption">Clique para filtrar o prefixo</div>
-                  <v-chart class="chart-hit" :option="chartEquipes" autoresize style="height:190px" @click="onPrefixoClick" />
+                  <v-chart class="chart-hit" :option="chartEquipes" autoresize :style="{ height: alturaGraficos }" @click="onPrefixoClick" />
                 </q-card-section>
               </q-card>
             </div>
@@ -289,7 +303,7 @@
                 <q-card-section class="q-pa-xs">
                   <div class="chart-card-title">Inconformidades por Categoria</div>
                   <div class="chart-caption">Clique para filtrar</div>
-                  <v-chart class="chart-hit" :option="chartIncCat" autoresize style="height:190px" @click="onCategoriaClick" />
+                  <v-chart class="chart-hit" :option="chartIncCat" autoresize :style="{ height: alturaGraficos }" @click="onCategoriaClick" />
                 </q-card-section>
               </q-card>
             </div>
@@ -306,7 +320,7 @@
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
-import { BarChart, GaugeChart, PieChart } from "echarts/charts";
+import { BarChart, PieChart } from "echarts/charts";
 import { GridComponent, TooltipComponent, LegendComponent } from "echarts/components";
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
@@ -314,7 +328,7 @@ import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 import { filterByGerencia, filterByGerente, semanaDaData, indexEmployees, matchSubmissionToEmployee, filterByCoordenador } from "@/lib/dashboard";
 import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
 
-use([CanvasRenderer, BarChart, GaugeChart, PieChart, GridComponent, TooltipComponent, LegendComponent]);
+use([CanvasRenderer, BarChart, PieChart, GridComponent, TooltipComponent, LegendComponent]);
 
 const G = { green: "#16a34a", brand: "#8B1C2B" };
 
@@ -562,33 +576,8 @@ const globalPct   = computed(() => {
 });
 const pctObs100   = computed(() => totalObs.value ? Math.round((totalObs100.value / totalObs.value) * 100) : 0);
 
-// ─── Gauge ────────────────────────────────────────────────────────────────────
-const gaugeOpt = computed(() => ({
-  series: [{
-    type: "gauge" as const,
-    startAngle: 210, endAngle: -30,
-    min: 0, max: 100,
-    radius: "100%",
-    center: ["50%", "50%"],
-    pointer: { show: false },
-    progress: {
-      show: true, width: 12, roundCap: false,
-      itemStyle: { color: G.green },
-    },
-    axisLine: { lineStyle: { width: 12, color: [[1, "#dcfce7"]] } },
-    splitLine: { show: false }, axisTick: { show: false }, axisLabel: { show: false },
-    title: { show: false },
-    detail: {
-      valueAnimation: true,
-      fontSize: 26,
-      fontWeight: "bold" as const,
-      formatter: "{value}%",
-      color: G.brand,
-      offsetCenter: [0, "8%"],
-    },
-    data: [{ value: pctObs100.value }],
-  }],
-}));
+// Gráficos laterais: acompanham a altura da tela para tabela e gráficos caberem sem rolar a página
+const alturaGraficos = "clamp(150px, calc(50vh - 166px), 280px)";
 
 // ─── Donut palette ────────────────────────────────────────────────────────────
 const donPalette = ["#6b1321","#8B1C2B","#c43d52","#e06070","#f3b8c0","#fde2e6"];
@@ -904,47 +893,29 @@ $inactive-text:#475569;
 .chart-hit { cursor: pointer; }
 .chart-caption { font-size: 10px; color: $label-color; text-align: center; margin: 0 0 2px; }
 
-// ── KPI cards ─────────────────────────────────────────────────────────────────
+// ── KPI cards (compactos) ─────────────────────────────────────────────────────
 .kpi-card {
   border-radius: 12px; height: 100%;
   transition: box-shadow .2s;
   &:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); }
 }
-.kpi-stat-card { position: relative; overflow: hidden; }
-.kpi-stat-accent {
-  position: absolute; top: 0; left: 0; right: 0;
-  height: 3px; border-radius: 12px 12px 0 0;
+.kpi-compact {
+  position: relative; overflow: hidden;
+  border-left: 3px solid var(--kc, #94a3b8);
 }
-.kpi-stat-section {
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; text-align: center; height: 100%;
-  padding-top: 18px !important;
-}
-.kpi-stat-icon-wrap {
+.kpi-compact__body { padding: 8px 14px !important; gap: 12px; }
+.kpi-compact__icon {
+  width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  width: 44px; height: 44px; border-radius: 12px; margin-bottom: 8px;
 }
-.kpi-stat-value { font-size: 32px; font-weight: 800; line-height: 1.1; letter-spacing: -.5px; }
-.kpi-stat-label {
-  font-size: 11px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .6px; color: #64748b; margin-top: 4px;
+.kpi-compact__txt { min-width: 0; }
+.kpi-compact__label {
+  font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .6px; color: #64748b; line-height: 1.2;
 }
-.kpi-stat-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; font-weight: 500; }
-.kpi-gauge-card { overflow: hidden; }
-.kpi-gauge-section {
-  display: flex; flex-direction: column; align-items: center; height: 100%;
-}
-.kpi-gauge-label {
-  font-size: 12px; font-weight: 500; color: #64748b;
-  text-align: center; margin-bottom: 2px;
-}
-.kpi-gauge-wrap {
-  flex: 1; display: flex; flex-direction: column; align-items: center; width: 100%;
-}
-.kpi-gauge-chart { width: 100%; height: 148px; }
-.kpi-gauge-sub {
-  font-size: 11px; font-weight: 600; color: #64748b; margin-top: 0;
-}
+.kpi-compact__line { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.kpi-compact__value { font-size: 24px; font-weight: 800; line-height: 1.15; letter-spacing: -.4px; }
+.kpi-compact__sub { font-size: 11px; color: #94a3b8; font-weight: 500; }
 
 // ── Table ─────────────────────────────────────────────────────────────────────
 .obs-table-card { border-radius: 12px; }
@@ -953,7 +924,7 @@ $inactive-text:#475569;
   text-transform: uppercase; letter-spacing: .6px; padding: 6px 8px 4px;
 }
 .obs-table-wrap {
-  max-height: 520px; overflow-y: auto;
+  max-height: max(320px, calc(100vh - 290px)); overflow-y: auto;
   border: 1px solid $border; border-radius: 8px;
 }
 .obs-table {
@@ -1022,8 +993,9 @@ $inactive-text:#475569;
     :deep(.q-field__control) { background: #1e293b; border-color: #334155; }
     :deep(.q-field__native) { color: #94a3b8; }
   }
-  .kpi-stat-label { color: #94a3b8; }
-  .kpi-stat-sub { color: #64748b; }
+  .kpi-compact__label { color: #94a3b8; }
+  .kpi-compact__sub { color: #64748b; }
+  .kpi-ring { background: conic-gradient(#16a34a var(--p), rgba(148,163,184,.22) 0); }
   .obs-table-card { background: #1e293b; }
   .obs-table {
     tbody tr {
