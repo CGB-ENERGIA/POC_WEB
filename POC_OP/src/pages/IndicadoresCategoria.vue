@@ -172,40 +172,14 @@
       <!-- Section title -->
       <div class="operacional-title">{{ filters.tipo === 'Todos' ? 'TODOS OS TIPOS' : filters.tipo.toUpperCase() }}</div>
 
-      <!-- Top row: APR · Regras de Ouro · Procedimento -->
-      <div class="row q-col-gutter-md q-mb-md">
-        <div v-for="cat in topCharts" :key="cat.id" class="col-12 col-md-4">
-          <q-card flat bordered class="cat-card chart-card" :class="{ 'cat-card--on': viz.catKey === cat.id }">
-            <q-card-section class="q-pa-sm">
-              <div class="cat-title cat-title--hit" @click="toggleCat(cat.id)">{{ cat.title }}</div>
-              <div class="cat-caption">Título filtra a categoria · barra filtra o mês</div>
-              <v-chart class="chart-hit" :option="cat.option" :update-options="{ notMerge: false }" autoresize style="height:230px" @click="onMesClick" />
-            </q-card-section>
-          </q-card>
-        </div>
-      </div>
-
-      <!-- Bottom row: 4 categories -->
+      <!-- Todas as categorias numa grade única: 3 gráficos por linha, mesma altura -->
       <div class="row q-col-gutter-md">
-        <div v-for="cat in bottomCharts" :key="cat.id" class="col-12 col-md-3">
+        <div v-for="cat in todosGraficos" :key="cat.id" class="col-12 col-sm-6 col-md-4">
           <q-card flat bordered class="cat-card chart-card" :class="{ 'cat-card--on': viz.catKey === cat.id }">
             <q-card-section class="q-pa-sm">
               <div class="cat-title cat-title--hit" @click="toggleCat(cat.id)">{{ cat.title }}</div>
               <div class="cat-caption">Título filtra a categoria · barra filtra o mês</div>
-              <v-chart class="chart-hit" :option="cat.option" :update-options="{ notMerge: false }" autoresize style="height:230px" @click="onMesClick" />
-            </q-card-section>
-          </q-card>
-        </div>
-      </div>
-
-      <!-- Alojamento: categorias extras (só com dados) -->
-      <div v-if="extraCharts.length" class="row q-col-gutter-md q-mt-xs">
-        <div v-for="cat in extraCharts" :key="cat.id" class="col-12 col-md-4">
-          <q-card flat bordered class="cat-card chart-card" :class="{ 'cat-card--on': viz.catKey === cat.id }">
-            <q-card-section class="q-pa-sm">
-              <div class="cat-title cat-title--hit" @click="toggleCat(cat.id)">{{ cat.title }}</div>
-              <div class="cat-caption">Título filtra a categoria · barra filtra o mês</div>
-              <v-chart class="chart-hit" :option="cat.option" :update-options="{ notMerge: false }" autoresize style="height:230px" @click="onMesClick" />
+              <v-chart class="chart-hit" :option="cat.option" :update-options="{ notMerge: false }" autoresize style="height:220px" @click="onMesClick" />
             </q-card-section>
           </q-card>
         </div>
@@ -548,6 +522,8 @@ const bottomCharts = computed(() => [
   { id: "veiculos", title: "VEÍCULOS E EQUIPAMENTOS", option: makeCatChart(rawData.value.veiculos, "veiculos") },
   { id: "epi",      title: "EPI, EPC E FERRAMENTA",   option: makeCatChart(rawData.value.epi, "epi") },
 ]);
+
+const todosGraficos = computed(() => [...topCharts.value, ...bottomCharts.value, ...extraCharts.value]);
 
 // â"€â"€â"€ KPI totals â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const totalConformes    = computed(() => filteredResps.value.filter(r => r.resposta === "conforme").length);
