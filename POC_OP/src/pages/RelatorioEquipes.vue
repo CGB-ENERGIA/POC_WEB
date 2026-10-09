@@ -635,14 +635,26 @@ function filterPrefixo(val: string, update: (fn: () => void) => void) {
   });
 }
 
+const alojamentosDaBase = () =>
+  ALOJ_ROSTER
+    .filter(a => filters.base === "Todos" || a.base === filters.base)
+    .map(a => a.prefixo);
+
+const rosterListado = computed(() => {
+  if (filters.tipoPoc === "Alojamento") return alojamentosDaBase();
+  const equipes = filters.base === "Todos"
+    ? allPrefixes
+    : allPrefixes.filter((p) => prefixBase(p) === filters.base);
+  // "Todos" também abrange os alojamentos
+  return filters.tipoPoc === "Todos" ? [...equipes, ...alojamentosDaBase()] : equipes;
+});
+
+/** Equipes monitoradas: as da lista + qualquer equipe com visita que não esteja nela (assim visitadas + não visitadas = total). */
 const rosterPrefixes = computed(() => {
-  if (filters.tipoPoc === "Alojamento") {
-    return ALOJ_ROSTER
-      .filter(a => filters.base === "Todos" || a.base === filters.base)
-      .map(a => a.prefixo);
-  }
-  if (filters.base === "Todos") return allPrefixes;
-  return allPrefixes.filter((p) => prefixBase(p) === filters.base);
+  const lista = rosterListado.value;
+  const conhecidas = new Set(lista);
+  const extras = visitadasSorted.value.map(e => e.nome).filter(n => !conhecidas.has(n));
+  return extras.length ? [...lista, ...extras] : lista;
 });
 
 // â"€â"€â"€ Visit count from real data â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
