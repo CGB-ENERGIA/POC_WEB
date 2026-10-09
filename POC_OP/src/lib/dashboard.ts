@@ -93,6 +93,10 @@ export function indexEmployees(employees: EmployeeRow[]): ObserverIndex {
   for (const e of employees) {
     const mat = normMatricula(e.matricula);
     if (mat) byMat.set(mat, e);
+    for (const alias of e.aliasMatriculas ?? []) {
+      const am = normMatricula(alias);
+      if (am && !byMat.has(am)) byMat.set(am, e);
+    }
     addName(e.nome, e);
     addName(e.nome_completo, e);
   }
@@ -219,6 +223,57 @@ export interface EmployeeRow {
   coordenador?: string | null;
   gerente?: string | null;
   processo?: string | null;
+  /** Outras matrículas da mesma pessoa (cadastro duplicado unificado por dedupeEmployees). */
+  aliasMatriculas?: string[];
+}
+
+/**
+ * Junta cadastros duplicados da mesma pessoa em um só: mesma matrícula escrita com/sem zeros à esquerda
+ * ("04745" e "4745") ou mesmo nome curto + gerência + base + função (ex.: matrícula antiga e nova).
+ * Fica o cadastro com o nome mais completo; campos vazios são preenchidos pelos demais e as outras
+ * matrículas viram `aliasMatriculas`, para os checklists delas continuarem sendo atribuídos à pessoa.
+ */
+export function dedupeEmployees(list: EmployeeRow[]): EmployeeRow[] {
+  const grupos: EmployeeRow[][] = [];
+  const porMat = new Map<string, number>();
+  const porIdentidade = new Map<string, number>();
+  const identidade = (e: EmployeeRow) => {
+    const nome = foldName(e.nome);
+    return nome ? `${nome}|${e.gerencia}|${e.base}|${foldName(e.funcao)}` : "";
+  };
+  for (const e of list) {
+    const km = normMatricula(e.matricula);
+    const ki = identidade(e);
+    const g = (km ? porMat.get(km) : undefined) ?? (ki ? porIdentidade.get(ki) : undefined);
+    if (g === undefined) {
+      grupos.push([e]);
+      if (km) porMat.set(km, grupos.length - 1);
+      if (ki) porIdentidade.set(ki, grupos.length - 1);
+    } else {
+      grupos[g]!.push(e);
+      if (km) porMat.set(km, g);
+      if (ki) porIdentidade.set(ki, g);
+    }
+  }
+  return grupos.map((g) => {
+    if (g.length === 1) return g[0]!;
+    const ordenado = [...g].sort(
+      (a, b) =>
+        (b.nome_completo?.length ?? 0) - (a.nome_completo?.length ?? 0) ||
+        (a.matricula.startsWith("0") ? 1 : 0) - (b.matricula.startsWith("0") ? 1 : 0),
+    );
+    const principal = { ...ordenado[0]! };
+    for (const outro of ordenado.slice(1)) {
+      for (const campo of ["coordenador", "gerente", "processo", "gerencia", "base", "funcao"] as const) {
+        if (!principal[campo] && outro[campo]) principal[campo] = outro[campo] as never;
+      }
+    }
+    const meu = normMatricula(principal.matricula);
+    principal.aliasMatriculas = [...new Set(ordenado.slice(1).map((o) => o.matricula))].filter(
+      (m) => normMatricula(m) !== meu || m !== principal.matricula,
+    );
+    return principal;
+  });
 }
 
 // ─── Queries ─────────────────────────────────────────────────────────────────
@@ -459,7 +514,7 @@ export async function fetchNcLight(submissionIds: string[]): Promise<NcLightRow[
 
 /** Todos os funcionários ativos. */
 export async function fetchEmployees(): Promise<EmployeeRow[]> {
-  return allPages<EmployeeRow>(
+  const lista = await allPages<EmployeeRow>(
     () => supabase
       .from("employees")
       .select("matricula,nome,nome_completo,gerencia,base,funcao,coordenador,gerente,processo")
@@ -467,6 +522,7 @@ export async function fetchEmployees(): Promise<EmployeeRow[]> {
       .order("nome_completo"),
     "matricula",
   );
+  return dedupeEmployees(lista);
 }
 
 // ─── Helpers de agregação ─────────────────────────────────────────────────────
