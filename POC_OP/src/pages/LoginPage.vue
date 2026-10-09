@@ -248,6 +248,25 @@ async function enviarRecuperacao() {
   forgotSent.value = true;
 }
 
+/** Traduz o erro do Supabase Auth: só "credenciais inválidas" vira "e-mail ou senha incorretos". */
+function mensagemDeErro(e: { message?: string | undefined; status?: number | undefined; code?: string | undefined; name?: string | undefined }): string {
+  const msg = e.message ?? "";
+  const code = e.code ?? "";
+  if (code === "email_not_confirmed" || /email not confirmed/i.test(msg)) {
+    return "E-mail ainda não confirmado. Peça ao administrador para liberar o seu acesso.";
+  }
+  if (code === "user_banned" || /banned/i.test(msg)) {
+    return "Acesso bloqueado. Fale com o administrador.";
+  }
+  if (e.status === 429 || /rate limit|too many/i.test(code + " " + msg)) {
+    return "Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.";
+  }
+  if (e.status === 0 || e.name === "AuthRetryableFetchError" || /fetch|network|timeout/i.test(msg)) {
+    return "Sem conexão com o servidor. Verifique a internet e tente de novo.";
+  }
+  return "E-mail ou senha incorretos.";
+}
+
 async function entrar() {
   if (!email.value.trim() || !senha.value || loading.value) return;
   loading.value   = true;
@@ -259,7 +278,7 @@ async function entrar() {
   });
 
   loading.value = false;
-  if (error) { loginErro.value = "E-mail ou senha incorretos."; return; }
+  if (error) { loginErro.value = mensagemDeErro(error); return; }
 
   try { localStorage.setItem(LAST_EMAIL_KEY, email.value.trim()); } catch { /* ok */ }
 
