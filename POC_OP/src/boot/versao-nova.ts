@@ -1,4 +1,6 @@
 import { Notify } from "quasar";
+import { carregarSemanas } from "@/lib/semanas";
+import { atualizarMetas } from "@/composables/useGoals";
 
 /**
  * Depois de cada publicação, os arquivos antigos do site (ex.: ConfigMetas-C60gD9d1.js) deixam de existir.
@@ -67,6 +69,16 @@ export default () => {
   window.addEventListener("vite:preloadError", (e) => {
     e.preventDefault();
     recarregarPorVersaoNova();
+  });
+
+  // Configurações editadas em Metas (semanas, metas por perfil/função/pessoa) chegam às abas já abertas
+  const atualizarConfiguracoes = () => {
+    void carregarSemanas(true);
+    void atualizarMetas();
+  };
+  window.setInterval(atualizarConfiguracoes, INTERVALO_MS);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") atualizarConfiguracoes();
   });
 
   if (!import.meta.env.PROD) return;

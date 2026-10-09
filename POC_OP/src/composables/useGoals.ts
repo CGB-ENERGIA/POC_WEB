@@ -156,6 +156,9 @@ async function syncFromSupabase(): Promise<void> {
 
 syncFromSupabase();
 
+/** Relê metas (perfil, função e exceções) do banco: mudanças feitas em Metas chegam às abas já abertas. */
+export const atualizarMetas = syncFromSupabase;
+
 // ─── Composable público ───────────────────────────────────────────────────────
 export function useGoals() {
 

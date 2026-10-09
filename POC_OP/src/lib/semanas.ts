@@ -12,7 +12,10 @@ export const FIMS_PADRAO: FimsSemanas = [8, 15, 22];
 const config = new Map<string, FimsSemanas>();
 /** Muda a cada recarga/gravação; ler dentro de um computed faz a tela recalcular. */
 export const semanasVersao = ref(0);
-let carregando: Promise<void> | null = null;
+let emAndamento: Promise<void> | null = null;
+let ultimaCarga = 0;
+/** Dentro desse prazo, chamadas repetidas reaproveitam o que já foi carregado. */
+const VALIDADE_MS = 60_000;
 
 const chave = (ano: number, mes: number) => `${ano}-${mes}`;
 
@@ -79,10 +82,15 @@ export function validarFims(ano: number, mes: number, fims: number[]): string | 
   return null;
 }
 
-/** Carrega o cronograma do banco (uma vez; force recarrega). Sem rede, mantém o que já tinha. */
+/**
+ * Carrega o cronograma do banco. Reaproveita a última carga por 1 minuto (force ignora o prazo), então
+ * mudanças feitas em Metas chegam a quem está com o painel aberto assim que ele muda de tela/filtro.
+ * Sem rede, mantém o que já tinha.
+ */
 export function carregarSemanas(force = false): Promise<void> {
-  if (carregando && !force) return carregando;
-  carregando = (async () => {
+  if (emAndamento) return emAndamento;
+  if (!force && ultimaCarga && Date.now() - ultimaCarga < VALIDADE_MS) return Promise.resolve();
+  emAndamento = (async () => {
     try {
       const { data, error } = await supabase.from("semanas_config" as never).select("ano,mes,fim_s1,fim_s2,fim_s3");
       if (error) throw error;
@@ -90,12 +98,15 @@ export function carregarSemanas(force = false): Promise<void> {
       for (const r of (data ?? []) as { ano: number; mes: number; fim_s1: number; fim_s2: number; fim_s3: number }[]) {
         config.set(chave(r.ano, r.mes), [r.fim_s1, r.fim_s2, r.fim_s3]);
       }
+      ultimaCarga = Date.now();
       semanasVersao.value++;
     } catch {
-      carregando = null; // tenta de novo na próxima chamada
+      /* mantém o que já tinha; tenta de novo na próxima chamada */
+    } finally {
+      emAndamento = null;
     }
   })();
-  return carregando;
+  return emAndamento;
 }
 
 export async function salvarSemanas(ano: number, mes: number, fims: FimsSemanas): Promise<void> {
