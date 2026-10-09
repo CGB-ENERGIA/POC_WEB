@@ -642,11 +642,9 @@ const alojamentosDaBase = () =>
 
 const rosterListado = computed(() => {
   if (filters.tipoPoc === "Alojamento") return alojamentosDaBase();
-  const equipes = filters.base === "Todos"
+  return filters.base === "Todos"
     ? allPrefixes
     : allPrefixes.filter((p) => prefixBase(p) === filters.base);
-  // "Todos" também abrange os alojamentos
-  return filters.tipoPoc === "Todos" ? [...equipes, ...alojamentosDaBase()] : equipes;
 });
 
 /** Equipes monitoradas: as da lista + qualquer equipe com visita que não esteja nela (assim visitadas + não visitadas = total). */
@@ -662,7 +660,10 @@ const visitadasSorted = computed(() => {
   const counts: Record<string, number> = {};
   for (const sub of subsNoPrefixo.value) {
     const pref = extractPrefixo(sub.equipe);
-    if (pref) counts[pref] = (counts[pref] ?? 0) + 1;
+    if (!pref) continue;
+    // Alojamentos só entram quando o tipo escolhido é Alojamento
+    if (filters.tipoPoc !== "Alojamento" && /^ALOJ/i.test(pref)) continue;
+    counts[pref] = (counts[pref] ?? 0) + 1;
   }
   return Object.entries(counts)
     .map(([nome, v]) => ({ nome, v }))
