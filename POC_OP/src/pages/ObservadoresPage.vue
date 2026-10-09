@@ -901,7 +901,6 @@ $inactive-text:#475569;
 }
 .kpi-compact {
   position: relative; overflow: hidden;
-  border-left: 3px solid var(--kc, #94a3b8);
 }
 .kpi-compact__body { padding: 8px 14px !important; gap: 12px; }
 .kpi-compact__icon {
