@@ -92,6 +92,7 @@ export function isLiderancaOperacional(
     funcao.includes("supervisor") ||
     funcao.includes("coordenador") ||
     funcao.includes("fiscal") ||
+    funcao.includes("planejamento") ||
     funcao.includes("gerente") ||
     funcao.includes("lideranca") ||
     /\blider\b/.test(funcao)

@@ -24,6 +24,7 @@ function metaRole(gerencia?: string, funcao?: string): "encarregado" | "lideranc
     f.includes("supervisor") ||
     f.includes("coordenador") ||
     f.includes("fiscal") ||
+    f.includes("planejamento") ||
     f.includes("gerente") ||
     f.includes("lideranca") ||
     /\blider\b/.test(f)

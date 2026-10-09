@@ -55,6 +55,7 @@ export function metaRoleFrom(gerencia?: string, funcao?: string): MetaRole {
     f.includes("supervisor") ||
     f.includes("coordenador") ||
     f.includes("fiscal") ||
+    f.includes("planejamento") ||
     f.includes("gerente") ||
     f.includes("lideranca") ||
     /\blider\b/.test(f)
