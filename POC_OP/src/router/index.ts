@@ -9,6 +9,7 @@ import {
 import routes from "./routes";
 import { supabase } from "@/lib/supabase";
 import { getProfile } from "@/lib/role";
+import { ehErroDeArquivo, recarregarPorVersaoNova } from "@/boot/versao-nova";
 
 // Páginas de gráficos/visões liberadas para o papel "member" (somente
 // leitura). Qualquer outra rota autenticada é bloqueada para esse papel.
@@ -93,6 +94,13 @@ export default defineRouter((/* { store, ssrContext } */) => {
     if (event === "PASSWORD_RECOVERY") {
       Router.replace("/reset-password");
     }
+  });
+
+  // Arquivo da tela inexistente (publicação nova com o painel aberto): recarrega na tela pedida
+  Router.onError((err, to) => {
+    if (!ehErroDeArquivo(err)) return;
+    window.location.hash = to.fullPath;
+    recarregarPorVersaoNova();
   });
 
   return Router;
