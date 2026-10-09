@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 
 const STORAGE_KEY      = "cgb_metas_v2";
 const OVERRIDES_KEY    = "cgb_metas_overrides_v1";
+const FUNC_KEY         = "cgb_metas_funcao_v1";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface MonthGoal {
@@ -24,6 +25,7 @@ export interface IndividualOverride {
 
 type GoalStore     = Record<string, MonthGoal>;          // "YYYY-MM"
 type OverrideStore = Record<string, IndividualOverride>; // "YYYY-MM-matricula"
+type FuncStore     = Record<string, { meta: number; rotulo: string }>; // "YYYY-MM|chave da função"
 
 // ─── Defaults ────────────────────────────────────────────────────────────────
 const DEFAULTS: MonthGoal = { normais_semanal: 2, lideranca_semanal: 4, seguranca_semanal: 8 };
@@ -37,6 +39,11 @@ function foldRole(s: string): string {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
+}
+
+/** Chave da função: minúsculas, sem acento e sem pontuação ("Tec. De Planejamento" -> "tec de planejamento"). */
+export function chaveFuncao(funcao: string | undefined | null): string {
+  return foldRole(funcao ?? "").replace(/[^a-z0-9]+/g, " ").trim();
 }
 
 export function metaRoleFrom(gerencia?: string, funcao?: string): MetaRole {
@@ -88,16 +95,24 @@ function loadOverrides(): OverrideStore {
 function writeStore(s: GoalStore)        { try { localStorage.setItem(STORAGE_KEY,   JSON.stringify(s)); } catch { /* noop */ } }
 function writeOverrides(s: OverrideStore){ try { localStorage.setItem(OVERRIDES_KEY, JSON.stringify(s)); } catch { /* noop */ } }
 
+function loadFunc(): FuncStore {
+  try { return JSON.parse(localStorage.getItem(FUNC_KEY) ?? "{}") as FuncStore; }
+  catch { return {}; }
+}
+function writeFunc(s: FuncStore) { try { localStorage.setItem(FUNC_KEY, JSON.stringify(s)); } catch { /* noop */ } }
+
 // ─── Estado global ────────────────────────────────────────────────────────────
 const store     = ref<GoalStore>(loadStore());
 const overrides = ref<OverrideStore>(loadOverrides());
+const funcStore = ref<FuncStore>(loadFunc());
 
 // ─── Sync Supabase ────────────────────────────────────────────────────────────
 async function syncFromSupabase(): Promise<void> {
   try {
-    const [metasRes, ovRes] = await Promise.all([
+    const [metasRes, ovRes, fnRes] = await Promise.all([
       supabase.from("metas").select("ano, mes, normais_semanal, lideranca_semanal, seguranca_semanal"),
       supabase.from("individual_goal_overrides").select("*"),
+      supabase.from("metas_funcao" as never).select("ano, mes, funcao, rotulo, meta_semanal"),
     ]);
 
     if (!metasRes.error && metasRes.data) {
@@ -126,6 +141,15 @@ async function syncFromSupabase(): Promise<void> {
       }
       overrides.value = merged;
       writeOverrides(merged);
+    }
+
+    if (!fnRes.error && fnRes.data) {
+      const merged: FuncStore = {};
+      for (const row of fnRes.data as unknown as { ano: number; mes: number; funcao: string; rotulo: string; meta_semanal: number }[]) {
+        merged[`${monthKey(row.ano, row.mes)}|${row.funcao}`] = { meta: Number(row.meta_semanal), rotulo: row.rotulo ?? "" };
+      }
+      funcStore.value = merged;
+      writeFunc(merged);
     }
   } catch { /* sem rede: usa cache local */ }
 }
@@ -184,11 +208,55 @@ export function useGoals() {
   ): { semanal: number; mensal: number } {
     const g = getMonthGoal(ano, mes);
     const role = metaRoleFrom(gerencia, funcao);
+    // Meta própria da função (Técnico de Segurança segue sempre o perfil de Segurança)
+    if (role !== "tecnico") {
+      const f = funcStore.value[`${monthKey(ano, mes)}|${chaveFuncao(funcao)}`];
+      if (f) return { semanal: f.meta, mensal: f.meta * 4 };
+    }
     const semanal =
       role === "tecnico" ? g.seguranca_semanal
       : role === "lideranca" ? g.lideranca_semanal
       : g.normais_semanal;
     return { semanal, mensal: semanal * 4 };
+  }
+
+  // Metas próprias por função, no mês (chave da função -> meta)
+  function getFunctionGoals(ano: number, mes: number): Record<string, { meta: number; rotulo: string }> {
+    const prefix = `${monthKey(ano, mes)}|`;
+    const out: Record<string, { meta: number; rotulo: string }> = {};
+    for (const [k, v] of Object.entries(funcStore.value)) {
+      if (k.startsWith(prefix)) out[k.slice(prefix.length)] = v;
+    }
+    return out;
+  }
+
+  /** Grava (upsert) as metas de função informadas e remove as listadas; falha se o banco recusar. */
+  async function saveFunctionGoals(
+    ano: number,
+    mes: number,
+    salvar: { chave: string; rotulo: string; meta: number }[],
+    remover: string[],
+  ): Promise<void> {
+    if (salvar.length) {
+      const { error } = await supabase.from("metas_funcao" as never).upsert(
+        salvar.map((r) => ({
+          ano, mes, funcao: r.chave, rotulo: r.rotulo, meta_semanal: r.meta, updated_at: new Date().toISOString(),
+        })) as never,
+        { onConflict: "ano,mes,funcao" },
+      );
+      if (error) throw new Error(error.message);
+    }
+    if (remover.length) {
+      const { error } = await supabase.from("metas_funcao" as never)
+        .delete().eq("ano", ano).eq("mes", mes).in("funcao", remover);
+      if (error) throw new Error(error.message);
+    }
+    const prefix = `${monthKey(ano, mes)}|`;
+    const next = { ...funcStore.value };
+    for (const r of salvar) next[`${prefix}${r.chave}`] = { meta: r.meta, rotulo: r.rotulo };
+    for (const c of remover) delete next[`${prefix}${c}`];
+    funcStore.value = next;
+    writeFunc(next);
   }
 
   // Meta com override individual — use este nas páginas de acompanhamento
@@ -279,6 +347,7 @@ export function useGoals() {
   return {
     getMonthGoal, save,
     goalForGerencia, goalForColaborador,
+    getFunctionGoals, saveFunctionGoals,
     hasGoalDefined,
     getOverridesForMonth, getOverride, saveOverride, removeOverride,
   };

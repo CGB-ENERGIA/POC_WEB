@@ -169,6 +169,69 @@
     <!-- ── Divisor ─────────────────────────────────────────────────────────────── -->
     <div class="cm-divider"></div>
 
+    <!-- ── Metas por função ────────────────────────────────────────────────────── -->
+    <div class="cm-section">
+      <div class="cm-section-title">
+        <q-icon name="mdi-account-hard-hat-outline" size="22px" class="text-primary" />
+        <div>
+          <div class="cm-section-title__main">Metas por função</div>
+          <div class="cm-section-title__sub">
+            Meta semanal de cada função em {{ mesAtualLabel }}/{{ selectedAno }}. Função sem meta própria segue o padrão
+            do perfil acima (Encarregados ou Lideranças). Técnico de Segurança e SESMT seguem sempre o perfil de Segurança.
+          </div>
+        </div>
+      </div>
+
+      <div v-if="!funcRows.length" class="cm-empty">Carregando as funções do cadastro…</div>
+      <div v-else class="cm-week-panel">
+        <div class="cm-week-rows">
+          <div v-for="f in funcRows" :key="f.chave" class="cm-week-row" :class="f.custom ? 'cm-week-row--active' : ''">
+            <div class="cm-func__label">
+              <div class="cm-week-row__name">{{ f.rotulo }}</div>
+              <div class="cm-week-row__periodo">
+                {{ f.pessoas }} {{ f.pessoas === 1 ? "pessoa" : "pessoas" }} · padrão do perfil: {{ f.padrao }}/sem
+              </div>
+            </div>
+            <div class="cm-week-row__ctrl">
+              <button class="cm-stepper" @click="ajustarFunc(f.chave, -1)">−</button>
+              <input
+                v-model.number="funcInputs[f.chave]"
+                type="number" min="0" max="99" step="1"
+                class="cm-counter__input cm-counter__input--sm"
+              />
+              <button class="cm-stepper" @click="ajustarFunc(f.chave, 1)">+</button>
+              <span class="cm-week-row__unit">/sem · {{ f.valor * 4 }}/mês</span>
+            </div>
+            <button
+              v-if="f.custom" class="cm-func__reset" title="Voltar ao padrão do perfil"
+              @click="funcInputs[f.chave] = f.padrao"
+            >
+              <q-icon name="mdi-restore" size="16px" />
+            </button>
+            <span v-else class="cm-func__reset-slot" />
+          </div>
+        </div>
+      </div>
+
+      <div class="cm-actions q-mt-md">
+        <button
+          class="cm-btn cm-btn--save"
+          :class="{ 'cm-btn--loading': salvandoFunc }"
+          :disabled="salvandoFunc || !funcAlteradas"
+          @click="handleSaveFunc"
+        >
+          <q-icon name="mdi-content-save" size="18px" />
+          <span>{{ salvandoFunc ? 'Salvando…' : 'Salvar metas por função' }}</span>
+        </button>
+        <button class="cm-btn cm-btn--reset" :disabled="salvandoFunc || !temFuncGuardada" @click="handleResetFunc">
+          <q-icon name="mdi-restore" size="18px" />
+          <span>Voltar tudo ao padrão do perfil</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="cm-divider"></div>
+
     <!-- ── Semanas de observação ───────────────────────────────────────────────── -->
     <div class="cm-section">
       <div class="cm-section-title">
@@ -393,7 +456,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
 import { useQuasar } from "quasar";
-import { useGoals, type IndividualOverride } from "@/composables/useGoals";
+import { useGoals, chaveFuncao, metaRoleFrom, type IndividualOverride } from "@/composables/useGoals";
 import { supabase } from "@/lib/supabase";
 import { allPages, fetchEmployees } from "@/lib/dashboard";
 import {
@@ -402,7 +465,10 @@ import {
 } from "@/lib/semanas";
 
 const $q = useQuasar();
-const { getMonthGoal, save, hasGoalDefined, goalForGerencia, getOverride, getOverridesForMonth, saveOverride, removeOverride } = useGoals();
+const {
+  getMonthGoal, save, hasGoalDefined, goalForGerencia, getOverride, getOverridesForMonth, saveOverride, removeOverride,
+  getFunctionGoals, saveFunctionGoals,
+} = useGoals();
 
 const now = new Date();
 const anos = [2024, 2025, 2026];
@@ -539,6 +605,100 @@ async function loadEmployees() {
   }
 }
 loadEmployees();
+
+// ── Metas por função ──────────────────────────────────────────────────────────
+interface FuncDef { chave: string; rotulo: string; pessoas: number; padrao: number }
+
+const funcGuardadas = computed(() => getFunctionGoals(selectedAno.value, selectedMes.value));
+
+/** Funções do cadastro (sem Técnico de Segurança/SESMT), com quantas pessoas e o padrão do perfil. */
+const funcoes = computed<FuncDef[]>(() => {
+  const mg = getMonthGoal(selectedAno.value, selectedMes.value);
+  const grupos = new Map<string, { rotulos: Map<string, number>; pessoas: number; role: string }>();
+  for (const e of allEmps.value) {
+    const role = metaRoleFrom(e.gerencia, e.funcao);
+    const chave = chaveFuncao(e.funcao);
+    if (role === "tecnico" || !chave) continue;
+    const g = grupos.get(chave) ?? { rotulos: new Map<string, number>(), pessoas: 0, role };
+    g.pessoas++;
+    g.rotulos.set(e.funcao, (g.rotulos.get(e.funcao) ?? 0) + 1);
+    grupos.set(chave, g);
+  }
+  return [...grupos.entries()]
+    .map(([chave, g]) => ({
+      chave,
+      rotulo: [...g.rotulos.entries()].sort((a, b) => b[1] - a[1])[0]![0],
+      pessoas: g.pessoas,
+      padrao: g.role === "lideranca" ? mg.lideranca_semanal : mg.normais_semanal,
+    }))
+    .sort((a, b) => b.pessoas - a.pessoas || a.rotulo.localeCompare(b.rotulo, "pt-BR"));
+});
+
+const funcInputs = ref<Record<string, number>>({});
+const salvandoFunc = ref(false);
+
+function sincronizarFuncoes() {
+  const out: Record<string, number> = {};
+  for (const f of funcoes.value) out[f.chave] = funcGuardadas.value[f.chave]?.meta ?? f.padrao;
+  funcInputs.value = out;
+}
+watch([funcoes, funcGuardadas], sincronizarFuncoes, { immediate: true });
+
+const funcRows = computed(() =>
+  funcoes.value.map((f) => {
+    const bruto = Number(funcInputs.value[f.chave]);
+    const valor = Number.isFinite(bruto) ? Math.min(99, Math.max(0, Math.round(bruto))) : f.padrao;
+    return { ...f, valor, custom: valor !== f.padrao };
+  }),
+);
+
+const temFuncGuardada = computed(() => Object.keys(funcGuardadas.value).length > 0);
+const funcAlteradas = computed(() =>
+  funcRows.value.some((f) => (f.custom ? f.valor : undefined) !== funcGuardadas.value[f.chave]?.meta),
+);
+
+function ajustarFunc(chave: string, delta: number) {
+  const atual = Number(funcInputs.value[chave]) || 0;
+  funcInputs.value = { ...funcInputs.value, [chave]: Math.min(99, Math.max(0, atual + delta)) };
+}
+
+async function handleSaveFunc() {
+  const salvar: { chave: string; rotulo: string; meta: number }[] = [];
+  const remover: string[] = [];
+  for (const f of funcRows.value) {
+    const guardada = funcGuardadas.value[f.chave];
+    if (f.custom) {
+      if (guardada?.meta !== f.valor) salvar.push({ chave: f.chave, rotulo: f.rotulo, meta: f.valor });
+    } else if (guardada) {
+      remover.push(f.chave);
+    }
+  }
+  salvandoFunc.value = true;
+  try {
+    await saveFunctionGoals(selectedAno.value, selectedMes.value, salvar, remover);
+    $q.notify({
+      type: "positive", icon: "mdi-check-circle", position: "top-right", timeout: 3500,
+      message: `Metas por função de ${mesAtualLabel.value}/${selectedAno.value} salvas!`,
+      caption: `${funcRows.value.filter((f) => f.custom).length} função(ões) com meta própria`,
+    });
+  } catch (e) {
+    $q.notify({ type: "negative", position: "top-right", message: `Não foi possível salvar: ${(e as Error).message}` });
+  } finally {
+    salvandoFunc.value = false;
+  }
+}
+
+async function handleResetFunc() {
+  salvandoFunc.value = true;
+  try {
+    await saveFunctionGoals(selectedAno.value, selectedMes.value, [], Object.keys(funcGuardadas.value));
+    $q.notify({ type: "info", position: "top-right", message: "Todas as funções voltaram ao padrão do perfil." });
+  } catch (e) {
+    $q.notify({ type: "negative", position: "top-right", message: `Não foi possível restaurar: ${(e as Error).message}` });
+  } finally {
+    salvandoFunc.value = false;
+  }
+}
 
 function filterEmps(val: string, update: (fn: () => void) => void) {
   const needle = val.toLowerCase().trim();
@@ -964,6 +1124,17 @@ $border:  #e2e8f0;
 
 // ── Linhas de semana ───────────────────────────────────────────────────────────
 .cm-week-rows { padding: 0; }
+
+.cm-func__label { flex: 1; min-width: 0; }
+.cm-func__reset, .cm-func__reset-slot {
+  width: 30px; height: 30px; flex-shrink: 0;
+}
+.cm-func__reset {
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid $border; border-radius: 8px; background: transparent;
+  color: #64748b; cursor: pointer;
+  &:hover { border-color: $brand; color: $brand; }
+}
 
 .cm-week-row {
   display: flex;
