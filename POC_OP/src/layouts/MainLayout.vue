@@ -119,7 +119,6 @@
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { carregarSemanas } from "@/lib/semanas";
 import { useQuasar } from "quasar";
-import { useRouter } from "vue-router";
 import BrandLogo from "@/components/BrandLogo.vue";
 import { BRAND } from "@/constants/brand";
 import EssentialLink, {
@@ -133,7 +132,6 @@ const ADMIN_EMAIL = "italo.fontes@cgbengenharia.com.br";
 
 const $q = useQuasar();
 watch(() => $q.dark.isActive, (dark) => applyChartInk(dark), { immediate: true });
-const router = useRouter();
 const { user, signOut } = useAuth();
 const isAdmin = computed(() => user.value?.email === ADMIN_EMAIL);
 
@@ -150,8 +148,14 @@ const isMember = computed(() => role.value === "member");
 const isFullAdmin = computed(() => isAdmin.value || role.value === "admin");
 
 async function logout() {
-  await signOut();
-  await router.push("/login");
+  try {
+    await signOut();
+  } catch {
+    /* mesmo sem resposta do servidor, segue para o login */
+  }
+  // Recarrega na tela de login: zera o estado em memória e não depende de arquivos antigos do site
+  window.location.hash = "#/login";
+  window.location.reload();
 }
 
 const linksList: EssentialLinkProps[] = [
