@@ -565,7 +565,11 @@ export function filterObserverRoster(
       if (foldName(e.coordenador) === c) return true;
       const nome = foldName(e.nome);
       const full = foldName(e.nome_completo);
-      return nome === c || full === c || full.startsWith(`${c} `) || nome.startsWith(`${c} `);
+      if (nome === c || full === c) return true; // o próprio coordenador
+      // Pelo primeiro nome só quando a pessoa não tem coordenador cadastrado:
+      // quem já tem outro coordenador (ex.: Paulo Cesar -> Luis C.) não vira do "Paulo"
+      if (foldName(e.coordenador)) return false;
+      return full.startsWith(`${c} `) || nome.startsWith(`${c} `);
     });
   }
   if (opts.gerente && opts.gerente !== "Todos") {
@@ -574,7 +578,9 @@ export function filterObserverRoster(
       if (foldName(e.coordenador) === g || foldName(e.gerente) === g) return true;
       const nome = foldName(e.nome);
       const full = foldName(e.nome_completo);
-      return nome === g || full === g || full.startsWith(`${g} `) || nome.startsWith(`${g} `);
+      if (nome === g || full === g) return true; // o próprio gerente
+      if (foldName(e.coordenador) || foldName(e.gerente)) return false;
+      return full.startsWith(`${g} `) || nome.startsWith(`${g} `);
     });
   }
   return list;

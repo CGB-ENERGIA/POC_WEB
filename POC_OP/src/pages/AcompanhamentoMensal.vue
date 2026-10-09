@@ -245,6 +245,18 @@
                 <div class="text-subtitle1 text-weight-bold">Observações Realizadas no Mês</div>
                 <div class="text-caption text-grey-6">Clique numa vela para filtrar o observador · arraste para ver a lista</div>
               </div>
+              <q-btn-toggle
+                v-model="ordemObs"
+                dense no-caps flat clearable
+                toggle-color="primary"
+                toggle-text-color="white"
+                size="sm"
+                class="q-mr-xs"
+                :options="[
+                  { label: 'Maior → menor', value: 'desc', icon: 'mdi-sort-descending' },
+                  { label: 'Menor → maior', value: 'asc', icon: 'mdi-sort-ascending' },
+                ]"
+              />
               <q-btn
                 flat round dense
                 :icon="verTodosObs ? 'mdi-magnify-minus-outline' : 'mdi-magnify-plus-outline'"
@@ -257,7 +269,7 @@
             <q-card-section>
               <div ref="obsWrap">
                 <v-chart
-                  :key="`obs-${verTodosObs}-${linhasObs}`"
+                  :key="`obs-${verTodosObs}-${linhasObs}-${ordemObs}`"
                   class="chart-hit"
                   :option="chartObservador"
                   autoresize
@@ -450,7 +462,7 @@ function onObsClick(p: EcClick) {
   if (p.componentType !== "series") return;
   // Na lupa com várias linhas, cada linha tem suas séries (2 por linha): converte para o índice global
   const idxGlobal = (p.dataIndex ?? -1) + Math.floor((p.seriesIndex ?? 0) / 2) * porLinhaObs.value;
-  const row = observerRows.value[idxGlobal];
+  const row = observerRowsOrd.value[idxGlobal];
   if (!row) return;
   if (viz.matricula === row.matricula) {
     clearObs();
@@ -577,6 +589,15 @@ const observerRows = computed(() => {
       funcao: emp.funcao || "—",
     };
   });
+});
+
+// Ordenação do gráfico "Observações Realizadas no Mês" (null = ordem do cadastro)
+const ordemObs = ref<"desc" | "asc" | null>("desc");
+const observerRowsOrd = computed(() => {
+  const rows = observerRows.value;
+  if (!ordemObs.value) return rows;
+  const dir = ordemObs.value === "desc" ? -1 : 1;
+  return [...rows].sort((a, b) => dir * (a.realizado - b.realizado) || a.nome.localeCompare(b.nome, "pt-BR"));
 });
 
 const byGerencia = computed(() => {
@@ -867,7 +888,7 @@ onMounted(() => {
 onBeforeUnmount(() => roObs?.disconnect());
 
 const chartObservador = computed(() => {
-  const rows = observerRows.value;
+  const rows = observerRowsOrd.value;
   const maxY = Math.max(4, ...rows.map(r => Math.max(r.realizado, r.meta)), 0) + 2;
   const okColor = chartInk.ok;
   const missColor = chartInk.miss;

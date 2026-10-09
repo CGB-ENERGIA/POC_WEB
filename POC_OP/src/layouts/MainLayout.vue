@@ -25,7 +25,15 @@
           {{ BRAND.name }}
         </q-toolbar-title>
 
-        <q-space class="gt-xs" />
+        <q-space />
+
+        <div v-if="validacaoTexto" class="header-validacao" title="Última validação feita em Validação">
+          <q-icon name="mdi-check-decagram" size="16px" />
+          <span class="header-validacao__rotulo gt-xs">Última validação:</span>
+          <strong>{{ validacaoTexto }}</strong>
+        </div>
+
+        <q-space />
 
         <q-btn
           flat
@@ -127,6 +135,7 @@ import EssentialLink, {
 import { useAuth } from "@/composables/useAuth";
 import { getRole, type Role } from "@/lib/role";
 import { applyChartInk } from "@/lib/chart-ink";
+import { ultimaValidacao, carregarUltimaValidacao, formatarValidacao } from "@/lib/ultima-validacao";
 
 const ADMIN_EMAIL = "italo.fontes@cgbengenharia.com.br";
 
@@ -143,6 +152,11 @@ watch(
   },
   { immediate: true }
 );
+const validacaoTexto = computed(() => (ultimaValidacao.value ? formatarValidacao(ultimaValidacao.value) : ""));
+let timerValidacao: number | undefined;
+const aoVoltarParaAba = () => {
+  if (document.visibilityState === "visible") void carregarUltimaValidacao();
+};
 const isMember = computed(() => role.value === "member");
 // Usuários com role "admin" no banco também têm acesso às seções administrativas
 const isFullAdmin = computed(() => isAdmin.value || role.value === "admin");
@@ -263,14 +277,41 @@ function toggleDarkMode() {
 
 onMounted(() => {
   void carregarSemanas();
+  void carregarUltimaValidacao();
+  timerValidacao = window.setInterval(() => void carregarUltimaValidacao(), 120_000);
+  document.addEventListener("visibilitychange", aoVoltarParaAba);
   const saved = localStorage.getItem("darkMode");
   if (saved !== null) {
     $q.dark.set(saved === "true");
   }
 });
+
+onUnmounted(() => {
+  window.clearInterval(timerValidacao);
+  document.removeEventListener("visibilitychange", aoVoltarParaAba);
+});
 </script>
 
 <style scoped>
+.header-validacao {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+  min-width: 0;
+}
+.header-validacao__rotulo { opacity: 0.8; }
+.header-validacao strong { font-weight: 700; font-variant-numeric: tabular-nums; }
+@media (max-width: 599px) {
+  .header-validacao { font-size: 11px; padding: 3px 8px; }
+}
+
 .sidebar-section-label {
   font-size: 11px;
   letter-spacing: 0.08em;
