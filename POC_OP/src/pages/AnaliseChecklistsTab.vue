@@ -80,6 +80,25 @@
             <span class="aud-badge">{{ auditagemLabel(item.auditagem) }}</span>
             <span class="base-badge">{{ item.base }}</span>
             <span class="td-mono" style="font-size:11px;color:#94a3b8">{{ item.equipe }}</span>
+
+            <!-- Badges de frequência: observador visitou a mesma equipe múltiplas vezes -->
+            <span
+              v-if="freqDe(item).semana >= 2"
+              class="freq-badge freq-badge--semana"
+              :title="`${item.observador} visitou ${item.equipe} ${freqDe(item).semana}× nesta semana`"
+            >
+              <q-icon name="mdi-calendar-week" size="12px" />
+              {{ freqDe(item).semana }}× semana
+            </span>
+            <span
+              v-if="freqDe(item).mes >= 2"
+              class="freq-badge freq-badge--mes"
+              :title="`${item.observador} visitou ${item.equipe} ${freqDe(item).mes}× neste mês`"
+            >
+              <q-icon name="mdi-calendar-month" size="12px" />
+              {{ freqDe(item).mes }}× mês
+            </span>
+
             <span
               v-if="faltamEvidencias(item) > 0"
               class="ev-badge"
@@ -770,6 +789,42 @@ async function salvarEdicao() {
   }
 }
 
+// ── Frequência: mesmo observador + mesma equipe na semana / no mês ────────────
+function weekKey(iso: string): string {
+  const d = new Date(iso.slice(0, 10));
+  const day = d.getDay();
+  // recua até segunda-feira (day 1); domingo (0) recua 6
+  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+  return d.toISOString().slice(0, 10);
+}
+function monthKey(iso: string): string { return iso.slice(0, 7); }
+
+const frequenciaMap = computed<Record<string, { semana: number; mes: number }>>(() => {
+  const sc: Record<string, number> = {};
+  const mc: Record<string, number> = {};
+  for (const it of itens.value) {
+    const obs = (it.observador ?? "").trim();
+    const eq  = (it.equipe ?? "").trim();
+    const sk  = `${obs}§${eq}§${weekKey(it.data)}`;
+    const mk  = `${obs}§${eq}§${monthKey(it.data)}`;
+    sc[sk] = (sc[sk] ?? 0) + 1;
+    mc[mk] = (mc[mk] ?? 0) + 1;
+  }
+  const out: Record<string, { semana: number; mes: number }> = {};
+  for (const it of itens.value) {
+    const obs = (it.observador ?? "").trim();
+    const eq  = (it.equipe ?? "").trim();
+    const sk  = `${obs}§${eq}§${weekKey(it.data)}`;
+    const mk  = `${obs}§${eq}§${monthKey(it.data)}`;
+    out[it.id] = { semana: sc[sk] ?? 1, mes: mc[mk] ?? 1 };
+  }
+  return out;
+});
+
+function freqDe(item: ChecklistParaAnalise) {
+  return frequenciaMap.value[item.id] ?? { semana: 1, mes: 1 };
+}
+
 // ── Lightbox ──────────────────────────────────────────────────────────────────
 const fotoDialog = reactive({ open: false, url: "" });
 function abrirFoto(url: string) { fotoDialog.url = url; fotoDialog.open = true; }
@@ -949,6 +1004,29 @@ $inactive-text: #475569;
   font-size: 11px; font-weight: 700; letter-spacing: .5px;
 }
 .td-mono { font-variant-numeric: tabular-nums; }
+
+// ── Badges de frequência ──────────────────────────────────────────────────────
+.freq-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; white-space: nowrap;
+  cursor: default;
+
+  &--semana {
+    background: rgba(234,179,8,.18);
+    color: #854d0e;
+    border: 1px solid rgba(234,179,8,.4);
+  }
+  &--mes {
+    background: rgba(59,130,246,.14);
+    color: #1d4ed8;
+    border: 1px solid rgba(59,130,246,.3);
+  }
+}
+.body--dark {
+  .freq-badge--semana { background: rgba(234,179,8,.18); color: #fbbf24; border-color: rgba(234,179,8,.35); }
+  .freq-badge--mes    { background: rgba(59,130,246,.18); color: #60a5fa; border-color: rgba(59,130,246,.35); }
+}
 
 // ── Evidências Obrigatórias ───────────────────────────────────────────────────
 .ac-evidencias {
