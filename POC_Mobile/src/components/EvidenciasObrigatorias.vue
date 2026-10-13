@@ -85,7 +85,11 @@ const props = defineProps<{
 }>();
 
 const SLOTS = computed(() => props.slots ?? SLOTS_PADRAO);
-const emit = defineEmits<{ (e: "update:modelValue", v: (string | null)[]): void }>();
+const emit = defineEmits<{
+  (e: "update:modelValue", v: (string | null)[]): void;
+  /** Emitido quando uma foto da galeria é importada: ISO da data/hora em que foi tirada. */
+  (e: "dataFoto", iso: string): void;
+}>();
 
 const $q = useQuasar();
 const cameraAberta = ref(false);
@@ -156,6 +160,8 @@ async function onGaleriaImportada(blob: Blob, dataHora?: string) {
     const next = [...props.modelValue];
     next[idx] = foto;
     emit("update:modelValue", next);
+    // Propaga a data da foto para a página poder usar como data da observação
+    if (dataHora) emit("dataFoto", dataHora);
   } catch (err) {
     const message = err instanceof FotoGaleriaAntigaError ? err.message : "Erro ao processar foto";
     $q.notify({ type: "warning", message, position: "top", timeout: 5000 });

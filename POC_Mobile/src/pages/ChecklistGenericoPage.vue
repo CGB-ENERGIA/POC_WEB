@@ -87,6 +87,7 @@
             :observador="session.employee?.nomeCompleto ?? session.employee?.nome ?? ''"
             :matricula="session.employee?.matricula"
             :slots="isAdministrativo ? SLOTS_ADM : undefined"
+            @data-foto="onDataFoto"
           />
         </div>
 
@@ -1060,6 +1061,12 @@ function avisarSeIncompleto(): boolean {
   return false;
 }
 
+/** Data mais antiga dentre as fotos da galeria usadas nas evidências. */
+const dataFotoGaleria = ref<string | null>(null);
+function onDataFoto(iso: string) {
+  if (!dataFotoGaleria.value || iso < dataFotoGaleria.value) dataFotoGaleria.value = iso;
+}
+
 async function onSubmit() {
   if (!session.employee) return;
   if (avisarSeIncompleto()) return;
@@ -1069,7 +1076,10 @@ async function onSubmit() {
   let dataRegistro: string;
   try {
     const { date } = await getTrustedTime();
-    dataRegistro = date.toISOString();
+    // Usa a data da foto mais antiga se for anterior ao envio (observação com fotos da galeria)
+    dataRegistro = dataFotoGaleria.value && dataFotoGaleria.value < date.toISOString()
+      ? dataFotoGaleria.value
+      : date.toISOString();
   } catch (err) {
     saving.value = false;
     const message = err instanceof ServerTimeError ? err.message : "Não foi possível obter o horário do servidor.";

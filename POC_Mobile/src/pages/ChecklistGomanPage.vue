@@ -89,6 +89,7 @@
             :equipe="equipe"
             :observador="session.employee?.nomeCompleto ?? session.employee?.nome ?? ''"
             :matricula="session.employee?.matricula"
+            @data-foto="onDataFoto"
           />
         </div>
 
@@ -1136,6 +1137,11 @@ function avisarSeIncompleto(): boolean {
   return false;
 }
 
+const dataFotoGaleria = ref<string | null>(null);
+function onDataFoto(iso: string) {
+  if (!dataFotoGaleria.value || iso < dataFotoGaleria.value) dataFotoGaleria.value = iso;
+}
+
 async function onSubmit() {
   if (!session.employee) return;
   if (avisarSeIncompleto()) return;
@@ -1145,7 +1151,9 @@ async function onSubmit() {
   let dataRegistro: string;
   try {
     const { date } = await getTrustedTime();
-    dataRegistro = date.toISOString();
+    dataRegistro = dataFotoGaleria.value && dataFotoGaleria.value < date.toISOString()
+      ? dataFotoGaleria.value
+      : date.toISOString();
   } catch (err) {
     saving.value = false;
     const message =
