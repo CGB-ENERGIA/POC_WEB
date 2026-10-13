@@ -67,7 +67,7 @@ import { useQuasar } from "quasar";
 import CameraModal from "@/components/CameraModal.vue";
 import GaleriaPicker from "@/components/GaleriaPicker.vue";
 import { getTrustedTime, ServerTimeError } from "@/utils/server-time";
-import { stampAuditPhoto } from "@/utils/photo-stamp";
+import { processarFotoComCarimbo } from "@/utils/native-camera";
 import { prepararFotoDaGaleria, FotoGaleriaAntigaError } from "@/utils/galeria-import";
 
 const SLOTS_PADRAO = [
@@ -124,19 +124,26 @@ function escolher(opcao: "camera" | "galeria") {
   else galeriaAberta.value = true;
 }
 
-async function processarFoto(base64: string) {
+async function processarFoto(blob: Blob) {
   const idx = idxAtivo.value;
   if (idx === null) return;
   carregandoIdx.value = idx;
   try {
     const { date } = await getTrustedTime();
-    const carimbrada = await stampAuditPhoto(base64, {
+    const resultBlob = await processarFotoComCarimbo(blob, {
       time: date,
       observer: props.observador || "—",
       equipe: props.equipe.trim(),
     });
+    // Converte para base64 para manter compatibilidade com o upload existente
+    const base64 = await new Promise<string>((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result as string);
+      r.onerror = () => rej(r.error);
+      r.readAsDataURL(resultBlob);
+    });
     const next = [...props.modelValue];
-    next[idx] = carimbrada;
+    next[idx] = base64;
     emit("update:modelValue", next);
   } catch (err) {
     const message = err instanceof ServerTimeError ? err.message : "Erro ao processar foto";
@@ -146,8 +153,8 @@ async function processarFoto(base64: string) {
   }
 }
 
-async function onCaptured(base64: string) {
-  await processarFoto(base64);
+async function onCaptured(blob: Blob) {
+  await processarFoto(blob);
 }
 
 async function onGaleriaImportada(blob: Blob, dataHora?: string) {

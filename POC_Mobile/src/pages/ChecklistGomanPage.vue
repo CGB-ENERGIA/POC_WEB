@@ -542,7 +542,7 @@ import {
 import type { RespostaSalva } from "@/types/checklist";
 import { compressBase64 } from "@/utils/image";
 import { getTrustedTime, ServerTimeError } from "@/utils/server-time";
-import { stampAuditPhoto } from "@/utils/photo-stamp";
+import { processarFotoComCarimbo } from "@/utils/native-camera";
 import { prepararFotoDaGaleria, FotoGaleriaAntigaError } from "@/utils/galeria-import";
 import { extrairItensPergunta } from "@/utils/pergunta-itens";
 import { contarRespondidas, gruposPendentes } from "@/utils/checklist-meta";
@@ -909,14 +909,20 @@ function usarFotoLocal(foto: string) {
   modalFotoPreview.value = foto;
 }
 
-async function onFotoNcCapturada(base64: string) {
+async function onFotoNcCapturada(blob: Blob) {
   modalPhotoLoading.value = true;
   try {
     const { date } = await getTrustedTime();
-    modalFotoPreview.value = await stampAuditPhoto(base64, {
+    const resultBlob = await processarFotoComCarimbo(blob, {
       time: date,
       observer: session.employee?.nomeCompleto ?? session.employee?.nome ?? "—",
       equipe: equipe.value.trim(),
+    });
+    modalFotoPreview.value = await new Promise<string>((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result as string);
+      r.onerror = () => rej(r.error);
+      r.readAsDataURL(resultBlob);
     });
   } catch (err) {
     const message =

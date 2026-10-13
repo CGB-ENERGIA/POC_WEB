@@ -45,14 +45,14 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick } from "vue";
-import { abrirCameraNativa, fotoNativaParaBase64, FotoAntigaError } from "@/utils/native-camera";
+import { abrirCameraNativa, redimensionarParaBlob } from "@/utils/native-camera";
 
 /**
  * Abre a câmera nativa do celular (zoom, foco, flash, rotação e selfie do próprio
  * aparelho) e devolve a foto já em pé e reduzida via evento "captured".
  */
 const isOpen = defineModel<boolean>({ required: true });
-const emit = defineEmits<{ (e: "captured", base64: string): void }>();
+const emit = defineEmits<{ (e: "captured", blob: Blob): void }>();
 /**
  * Quantas fotos ainda cabem. Com 1 (padrão) fecha após a foto; com mais de 1 mostra
  * "Tirar outra foto" / "Concluir" e fecha sozinho ao completar o limite.
@@ -92,12 +92,12 @@ async function onArquivo(e: Event) {
   if (!file) return;
   processando.value = true;
   try {
-    const base64 = await fotoNativaParaBase64(file);
-    emit("captured", base64);
+    const blob = await redimensionarParaBlob(file);
+    emit("captured", blob);
     tiradas.value++;
     if (tiradas.value >= limiteSessao.value) isOpen.value = false;
-  } catch (err) {
-    erro.value = err instanceof FotoAntigaError ? err.message : "Não foi possível ler a foto. Tente novamente.";
+  } catch {
+    erro.value = "Não foi possível ler a foto. Tente novamente.";
   } finally {
     processando.value = false;
   }

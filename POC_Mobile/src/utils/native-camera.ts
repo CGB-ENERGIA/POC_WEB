@@ -183,7 +183,7 @@ function descreverQuando(f: Frescor): string {
 
 // ─── Leitura da foto ─────────────────────────────────────────────────────────
 
-async function carregar(file: File): Promise<{ src: CanvasImageSource; w: number; h: number; fechar: () => void }> {
+async function carregar(file: Blob): Promise<{ src: CanvasImageSource; w: number; h: number; fechar: () => void }> {
   // createImageBitmap com "from-image" aplica a rotação EXIF da câmera.
   if (typeof createImageBitmap === "function") {
     try {
@@ -227,19 +227,47 @@ export interface OpcoesFotoNativa {
  * alerta (se houver) e desenha o carimbo de auditoria. Retorna Blob diretamente,
  * sem passar por base64 intermediária, para minimizar o pico de memória no celular.
  */
+/**
+ * Redimensiona a foto para MAX_LADO sem carimbo, retornando Blob.
+ * Usado pelo CameraModal para evitar a string base64 intermediária.
+ */
+export function redimensionarParaBlob(file: File): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    void (async () => {
+      try {
+        const { src, w, h, fechar } = await carregar(file);
+        const escala = Math.min(1, MAX_LADO / Math.max(w, h));
+        const cw = Math.round(w * escala);
+        const ch = Math.round(h * escala);
+        const canvas = document.createElement("canvas");
+        canvas.width = cw;
+        canvas.height = ch;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { fechar(); reject(new Error("Canvas indisponível")); return; }
+        ctx.drawImage(src, 0, 0, cw, ch);
+        fechar();
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("Falha ao gerar Blob"));
+        }, "image/jpeg", QUALIDADE);
+      } catch (err) {
+        reject(err);
+      }
+    })();
+  });
+}
+
 export function processarFotoComCarimbo(
-  file: File,
+  file: File | Blob,
   stamp: PhotoStampMeta,
   opcoes: OpcoesFotoNativa = {},
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     void (async () => {
       try {
-        if (!file.type.startsWith("image/") && !/\.(jpe?g|png|heic|heif|webp)$/i.test(file.name)) {
-          throw new Error("O arquivo não é uma imagem.");
-        }
         const bloquear = opcoes.bloquear ?? BLOQUEAR_FOTO_ANTIGA;
-        const frescor = await avaliarFrescor(file);
+        // Frescor só disponível quando recebemos File (câmera direta); Blob pré-processado ignora.
+        const frescor = file instanceof File ? await avaliarFrescor(file) : null;
         if (frescor && !frescor.ok && bloquear) {
           throw new FotoAntigaError(
             frescor.motivo === "relogio"
