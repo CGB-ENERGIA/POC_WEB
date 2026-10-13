@@ -189,9 +189,8 @@ import { useSessionStore } from "@/stores/session";
 import { useQuasar } from "quasar";
 import { equipesAtivas } from "@/data/equipes";
 import { todosAlojamentos } from "@/data/alojamentos";
-import { stampAuditPhoto } from "@/utils/photo-stamp";
 import { getTrustedTime, ServerTimeError } from "@/utils/server-time";
-import { abrirCameraNativa, fotoNativaParaBase64, FotoAntigaError } from "@/utils/native-camera";
+import { abrirCameraNativa, processarFotoComCarimbo, FotoAntigaError } from "@/utils/native-camera";
 
 const props = defineProps<{
   modelValue: boolean;
@@ -290,21 +289,15 @@ async function onArquivo(e: Event) {
   erroMsg.value = null;
 
   try {
-    // Foto já em pé (orientação do aparelho) e reduzida
-    const foto = await fotoNativaParaBase64(file);
-
-    // Aplicar carimbo igual ao dos checklists
     const { date } = await getTrustedTime();
-    const carimbada = await stampAuditPhoto(foto, {
+    // Processa num único canvas: redimensiona + aplica faixa de alerta + carimbo
+    const blob = await processarFotoComCarimbo(file, {
       time:     date,
       observer: session.employee?.nomeCompleto ?? session.employee?.nome ?? "—",
       equipe:   equipeSelecionada.value.prefixo,
     });
-
-    // Converter base64 → blob
-    const resp = await fetch(carimbada);
-    fotoBlob.value    = await resp.blob();
-    fotoDataUrl.value = URL.createObjectURL(fotoBlob.value);
+    fotoBlob.value    = blob;
+    fotoDataUrl.value = URL.createObjectURL(blob);
   } catch (err) {
     // Mensagens com orientação: foto antiga/relógio errado, ou horário do servidor vencido (precisa de internet 1x)
     erroMsg.value = err instanceof FotoAntigaError || err instanceof ServerTimeError

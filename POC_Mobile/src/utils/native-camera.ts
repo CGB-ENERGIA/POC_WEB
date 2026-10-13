@@ -7,6 +7,7 @@
  * conferimos se a foto é recente (anti-fraude).
  */
 import { getTrustedTime } from "@/utils/server-time";
+import { type PhotoStampMeta, desenharCarimboNoCanvas } from "@/utils/photo-stamp";
 
 const MAX_LADO = 1280;
 const QUALIDADE = 0.72;
@@ -219,6 +220,67 @@ function desenharFaixa(ctx: CanvasRenderingContext2D, largura: number, linhas: s
 export interface OpcoesFotoNativa {
   /** Recusa foto antiga (padrão: BLOQUEAR_FOTO_ANTIGA). */
   bloquear?: boolean;
+}
+
+/**
+ * Processa a foto da câmera nativa num único canvas: redimensiona, aplica faixa de
+ * alerta (se houver) e desenha o carimbo de auditoria. Retorna Blob diretamente,
+ * sem passar por base64 intermediária, para minimizar o pico de memória no celular.
+ */
+export function processarFotoComCarimbo(
+  file: File,
+  stamp: PhotoStampMeta,
+  opcoes: OpcoesFotoNativa = {},
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    void (async () => {
+      try {
+        if (!file.type.startsWith("image/") && !/\.(jpe?g|png|heic|heif|webp)$/i.test(file.name)) {
+          throw new Error("O arquivo não é uma imagem.");
+        }
+        const bloquear = opcoes.bloquear ?? BLOQUEAR_FOTO_ANTIGA;
+        const frescor = await avaliarFrescor(file);
+        if (frescor && !frescor.ok && bloquear) {
+          throw new FotoAntigaError(
+            frescor.motivo === "relogio"
+              ? `O ${descreverQuando(frescor)} em relação à hora real. Ative "Data e hora automáticas" nas configurações do celular e tente de novo.`
+              : `Esta foto foi ${frescor.motivo === "futura" ? "gravada com horário inconsistente" : descreverQuando(frescor)}. ` +
+                "Tire uma nova foto agora, direto pela câmera.",
+          );
+        }
+
+        const { src, w, h, fechar } = await carregar(file);
+        let released = false;
+        const release = () => { if (!released) { released = true; fechar(); } };
+        try {
+          const escala = Math.min(1, MAX_LADO / Math.max(w, h));
+          const cw = Math.round(w * escala);
+          const ch = Math.round(h * escala);
+          const canvas = document.createElement("canvas");
+          canvas.width  = cw;
+          canvas.height = ch;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) throw new Error("Canvas indisponível");
+          ctx.drawImage(src, 0, 0, cw, ch);
+          // Libera a fonte antes de desenhar o texto, para reduzir o pico de memória
+          release();
+          if (frescor && !frescor.ok) {
+            desenharFaixa(ctx, cw, ["ATENÇÃO: FOTO FORA DO HORÁRIO", descreverQuando(frescor)]);
+          }
+          // Carimbo de auditoria no mesmo canvas (sem segunda alocação)
+          desenharCarimboNoCanvas(ctx, cw, ch, stamp);
+          canvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error("Falha ao gerar Blob da imagem"));
+          }, "image/jpeg", QUALIDADE);
+        } finally {
+          release();
+        }
+      } catch (err) {
+        reject(err);
+      }
+    })();
+  });
 }
 
 /**

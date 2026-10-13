@@ -4,6 +4,33 @@ export interface PhotoStampMeta {
   time: Date;
 }
 
+/** Desenha o carimbo de auditoria num canvas já existente (sem criar canvas extra). */
+export function desenharCarimboNoCanvas(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  meta: PhotoStampMeta,
+): void {
+  const fs = Math.max(18, Math.round(w * 0.038));
+  const pad = Math.round(fs * 0.7);
+  const lh = Math.round(fs * 1.45);
+  const dateStr = meta.time.toLocaleDateString("pt-BR", { timeZone: "America/Fortaleza" });
+  const timeStr = meta.time.toLocaleTimeString("pt-BR", { timeZone: "America/Fortaleza" });
+  const lines = [
+    `${dateStr}  |  ${timeStr}`,
+    `Obs: ${meta.observer}`,
+    `Eq.: ${meta.equipe || "—"}`,
+  ];
+  const boxH = pad * 2 + lines.length * lh;
+  const y0 = h - boxH;
+  ctx.fillStyle = "rgba(0,0,0,0.62)";
+  ctx.fillRect(0, y0, w, boxH);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `bold ${fs}px sans-serif`;
+  ctx.textBaseline = "top";
+  lines.forEach((line, i) => ctx.fillText(line, pad, y0 + pad + i * lh));
+}
+
 export function stampAuditPhoto(base64: string, meta: PhotoStampMeta): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
