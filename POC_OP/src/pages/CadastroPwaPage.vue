@@ -705,8 +705,9 @@ async function deleteColaborador(colab: { chapa: string; nome: string }) {
   }).onOk(async () => {
     const { error } = await supabase.from("pwa_colaboradores").delete().eq("chapa", colab.chapa);
     if (error) { $q.notify({ type: "negative", message: error.message }); return; }
+    // Atualiza localmente para evitar que seedColaboradoresSeVazio re-insira o registro deletado
+    colaboradores.value = colaboradores.value.filter(c => c.chapa !== colab.chapa);
     $q.notify({ type: "positive", message: "Colaborador removido." });
-    await fetchColaboradores();
   });
 }
 
