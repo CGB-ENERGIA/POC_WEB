@@ -392,7 +392,7 @@
 
           <div v-show="geralListOpen" class="dbp-records">
             <transition-group name="rec" appear>
-              <div v-for="(f, i) in filteredFuncionarios" :key="i" class="dbp-record">
+              <div v-for="f in filteredFuncionarios" :key="f.chapa" class="dbp-record">
                 <div class="dbp-record__av dbp-record__av--geral" :data-base="f.base">
                   <q-icon name="mdi-account-hard-hat-outline" size="16px" />
                 </div>
@@ -407,6 +407,14 @@
                 <div class="dbp-record__chips">
                   <span class="dbp-chip dbp-chip--base-colored" :data-base="f.base">{{ f.base }}</span>
                   <span class="dbp-chip dbp-chip--rateio">{{ f.rateio }}</span>
+                </div>
+                <div class="dbp-record__acts">
+                  <button class="dbp-act-btn" title="Editar" @click="openColabDialog(f)">
+                    <q-icon name="mdi-pencil-outline" size="15px" />
+                  </button>
+                  <button class="dbp-act-btn dbp-act-btn--del" title="Remover" @click="deleteColaborador(f)">
+                    <q-icon name="mdi-trash-can-outline" size="15px" />
+                  </button>
                 </div>
               </div>
             </transition-group>
@@ -472,13 +480,13 @@
         <div class="dbp-dlg__bar" data-g="GOMAN" />
         <div class="dbp-dlg__head">
           <div>
-            <p class="dbp-dlg__title">Novo Colaborador</p>
-            <p class="dbp-dlg__sub">Membro que aparece na busca de equipes do PWA</p>
+            <p class="dbp-dlg__title">{{ colabIsEditing ? 'Editar Colaborador' : 'Novo Colaborador' }}</p>
+            <p class="dbp-dlg__sub">{{ colabIsEditing ? `Chapa ${colabForm.chapa}` : 'Membro que aparece na busca de equipes do PWA' }}</p>
           </div>
           <button class="dbp-dlg__x" v-close-popup><q-icon name="mdi-close" size="18px" /></button>
         </div>
         <div class="dbp-dlg__body">
-          <q-input v-model="colabForm.chapa" label="Chapa *" dense outlined inputmode="numeric" />
+          <q-input v-model="colabForm.chapa" label="Chapa *" dense outlined inputmode="numeric" :disable="colabIsEditing" />
           <q-input v-model="colabForm.nome" label="Nome completo *" dense outlined />
           <div class="row q-gutter-sm">
             <q-input v-model="colabForm.funcao" label="Função *" dense outlined class="col" />
@@ -673,20 +681,39 @@ const geralListOpen   = ref(true);
 
 const colaboradores = ref([...FUNCIONARIOS]);
 
-const colabDialog = ref(false);
-const colabError  = ref("");
-const colabForm   = ref({ chapa: "", nome: "", funcao: "", base: "BCB", rateio: "" });
+const colabDialog     = ref(false);
+const colabError      = ref("");
+const colabIsEditing  = ref(false);
+const colabForm       = ref({ chapa: "", nome: "", funcao: "", base: "BCB", rateio: "" });
 
-function openColabDialog() {
-  colabError.value = "";
-  colabForm.value  = { chapa: "", nome: "", funcao: "", base: "BCB", rateio: "" };
-  colabDialog.value = true;
+function openColabDialog(colab?: { chapa: string; nome: string; funcao: string; base: string; rateio: string }) {
+  colabError.value    = "";
+  colabIsEditing.value = !!colab;
+  colabForm.value     = colab
+    ? { ...colab }
+    : { chapa: "", nome: "", funcao: "", base: "BCB", rateio: "" };
+  colabDialog.value   = true;
+}
+
+async function deleteColaborador(colab: { chapa: string; nome: string }) {
+  $q.dialog({
+    title: "Remover colaborador",
+    message: `Remover <b>${colab.nome}</b> (chapa ${colab.chapa})?`,
+    html: true,
+    ok: { label: "Remover", color: "negative", unelevated: true },
+    cancel: { label: "Cancelar", flat: true },
+  }).onOk(async () => {
+    const { error } = await supabase.from("pwa_colaboradores").delete().eq("chapa", colab.chapa);
+    if (error) { $q.notify({ type: "negative", message: error.message }); return; }
+    $q.notify({ type: "positive", message: "Colaborador removido." });
+    await fetchColaboradores();
+  });
 }
 
 async function saveColaborador() {
   const f = colabForm.value;
-  const chapa = f.chapa.trim();
-  const nome  = f.nome.trim();
+  const chapa  = f.chapa.trim();
+  const nome   = f.nome.trim();
   const funcao = f.funcao.trim();
   if (!chapa || !nome || !funcao || !f.base) {
     colabError.value = "Preencha chapa, nome, função e base.";
@@ -696,19 +723,22 @@ async function saveColaborador() {
     colabError.value = "A chapa deve conter apenas números.";
     return;
   }
-  if (colaboradores.value.some((c) => c.chapa.replace(/^0+/, "") === chapa.replace(/^0+/, ""))) {
+  if (!colabIsEditing.value && colaboradores.value.some((c) => c.chapa.replace(/^0+/, "") === chapa.replace(/^0+/, ""))) {
     colabError.value = "Já existe um colaborador com essa chapa.";
     return;
   }
   saving.value = true;
   colabError.value = "";
-  const { error } = await supabase
-    .from("pwa_colaboradores")
-    .insert({ chapa, nome, funcao, base: f.base, rateio: f.rateio.trim() });
+
+  const payload = { chapa, nome, funcao, base: f.base, rateio: f.rateio.trim() };
+  const { error } = colabIsEditing.value
+    ? await supabase.from("pwa_colaboradores").update(payload).eq("chapa", chapa)
+    : await supabase.from("pwa_colaboradores").insert(payload);
+
   saving.value = false;
   if (error) { colabError.value = error.message; return; }
 
-  $q.notify({ type: "positive", message: "Colaborador adicionado." });
+  $q.notify({ type: "positive", message: colabIsEditing.value ? "Colaborador atualizado." : "Colaborador adicionado." });
   colabDialog.value = false;
   await fetchColaboradores();
 }
