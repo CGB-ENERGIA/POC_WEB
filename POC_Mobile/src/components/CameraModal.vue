@@ -41,11 +41,20 @@
       </template>
     </div>
   </q-dialog>
+
+  <CameraInterna
+    v-model="internaAberta"
+    :tiradas="tiradas"
+    @captured="onCapturaInterna"
+    @usar-nativa="abrir"
+  />
 </template>
 
 <script setup lang="ts">
 import { ref, watch, nextTick } from "vue";
+import CameraInterna from "@/components/CameraInterna.vue";
 import { abrirCameraNativa, redimensionarParaBlob } from "@/utils/native-camera";
+import { cameraNoApp, cameraNoAppDisponivel, cameraNativaRetornou } from "@/utils/camera-mode";
 
 /**
  * Abre a câmera nativa do celular (zoom, foco, flash, rotação e selfie do próprio
@@ -64,16 +73,38 @@ const limiteSessao = ref(1);
 const inputEl = ref<HTMLInputElement | null>(null);
 const processando = ref(false);
 const erro = ref("");
+const internaAberta = ref(false);
 
 function abrir() {
   erro.value = "";
+  if (cameraNoApp.value && cameraNoAppDisponivel()) {
+    internaAberta.value = true;
+    return;
+  }
   abrirCameraNativa(inputEl.value);
+}
+
+watch(internaAberta, (aberta) => {
+  // Fechou a câmera interna sem trocar para a nativa: encerra a sessão de fotos.
+  if (!aberta && cameraNoApp.value) isOpen.value = false;
+});
+
+function onCapturaInterna(blob: Blob) {
+  emit("captured", blob);
+  tiradas.value++;
+  if (tiradas.value >= limiteSessao.value) {
+    internaAberta.value = false;
+    isOpen.value = false;
+  }
 }
 
 // Ao abrir, já chama a câmera (o toque que abriu o modal ainda vale como gesto do usuário).
 // Se o aparelho bloquear, o botão "Abrir câmera" continua na tela.
 watch(isOpen, async (aberto) => {
-  if (!aberto) return;
+  if (!aberto) {
+    internaAberta.value = false;
+    return;
+  }
   erro.value = "";
   processando.value = false;
   tiradas.value = 0;
@@ -83,11 +114,13 @@ watch(isOpen, async (aberto) => {
 });
 
 function onCancelar() {
+  cameraNativaRetornou();
   // Já tirou alguma: fica no resumo para o usuário escolher "Tirar outra" ou "Concluir".
   if (!processando.value && tiradas.value === 0) isOpen.value = false;
 }
 
 async function onArquivo(e: Event) {
+  cameraNativaRetornou();
   const file = (e.target as HTMLInputElement).files?.[0];
   if (!file) return;
   processando.value = true;

@@ -180,6 +180,13 @@
       </div>
     </transition>
   </teleport>
+
+  <CameraInterna
+    v-model="internaAberta"
+    :titulo="equipeSelecionada?.prefixo ?? 'Tirar foto'"
+    @captured="onCapturaInterna"
+    @usar-nativa="abrirCamera"
+  />
 </template>
 
 <script setup lang="ts">
@@ -191,6 +198,8 @@ import { equipesAtivas } from "@/data/equipes";
 import { todosAlojamentos } from "@/data/alojamentos";
 import { getTrustedTime, ServerTimeError } from "@/utils/server-time";
 import { abrirCameraNativa, processarFotoComCarimbo, FotoAntigaError } from "@/utils/native-camera";
+import { cameraNoApp, cameraNoAppDisponivel, cameraNativaRetornou } from "@/utils/camera-mode";
+import CameraInterna from "@/components/CameraInterna.vue";
 
 const props = defineProps<{
   modelValue: boolean;
@@ -267,8 +276,14 @@ function voltarParaEquipe() {
 const inputEl = ref<HTMLInputElement | null>(null);
 const erroMsg = ref<string | null>(null);
 
+const internaAberta = ref(false);
+
 function abrirCamera() {
   erroMsg.value = null;
+  if (cameraNoApp.value && cameraNoAppDisponivel()) {
+    internaAberta.value = true;
+    return;
+  }
   // O input só existe no passo 2; quando vem do botão do passo 1, espera o render.
   if (inputEl.value) abrirCameraNativa(inputEl.value);
   else void nextTick(() => abrirCameraNativa(inputEl.value));
@@ -282,8 +297,18 @@ const salvando    = ref(false);
 const processando = ref(false);
 
 async function onArquivo(e: Event) {
+  cameraNativaRetornou();
   const file = (e.target as HTMLInputElement).files?.[0];
-  if (!file || !equipeSelecionada.value) return;
+  if (file) await processarCaptura(file);
+}
+
+function onCapturaInterna(blob: Blob) {
+  internaAberta.value = false;
+  void processarCaptura(blob);
+}
+
+async function processarCaptura(file: File | Blob) {
+  if (!equipeSelecionada.value) return;
 
   processando.value = true;
   erroMsg.value = null;
@@ -341,6 +366,7 @@ function limparMiniaturas() {
 }
 
 function fechar() {
+  internaAberta.value = false;
   descartar();
   limparMiniaturas();
   passo.value = "equipe";
@@ -358,6 +384,7 @@ watch(
       busca.value = "";
       nextTick(() => searchInput.value?.focus());
     } else {
+      internaAberta.value = false;
       descartar();
       limparMiniaturas();
       passo.value = "equipe";

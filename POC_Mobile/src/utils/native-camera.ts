@@ -8,6 +8,7 @@
  */
 import { getTrustedTime } from "@/utils/server-time";
 import { type PhotoStampMeta, desenharCarimboNoCanvas } from "@/utils/photo-stamp";
+import { marcarCameraNativaAberta } from "@/utils/camera-mode";
 
 const MAX_LADO = 1280;
 const QUALIDADE = 0.72;
@@ -48,6 +49,7 @@ export function abrirCameraNativa(
 ): void {
   if (!input) return;
   input.value = ""; // permite escolher/tirar de novo
+  marcarCameraNativaAberta();
   input.click();
 }
 
