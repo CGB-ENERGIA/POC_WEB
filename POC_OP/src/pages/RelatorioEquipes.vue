@@ -334,7 +334,8 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, fetchIcitPorPrefixo, indexEmployees, matchSubmissionToEmployee, type IcitPrefixo, filterByCoordenador } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, fetchIcitPorPrefixo, indexEmployees, matchSubmissionToEmployee, type IcitPrefixo, filterByCoordenador, foldName, allPages } from "@/lib/dashboard";
+import { supabase } from "@/lib/supabase";
 import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
 
 use([CanvasRenderer, BarChart, GridComponent, TooltipComponent, DataZoomComponent]);
@@ -402,6 +403,46 @@ async function recarregar() {
 }
 onMounted(recarregar);
 watch(() => [filters.ano, filters.mes], recarregar);
+
+// ─── Hierarquia das equipes (prefixo → gerência/coordenador/gerente, do cadastro) ──
+interface EquipeHier { gerencia: string; coordenador: string; gerente: string }
+const equipesHier = ref<Map<string, EquipeHier>>(new Map());
+
+async function carregarEquipesHier() {
+  try {
+    const rows = await allPages<{ prefixo: string; gerencia: string | null; coordenador: string | null; gerente: string | null }>(
+      () => supabase.from("pwa_equipes").select("id,prefixo,gerencia,coordenador,gerente"),
+    );
+    const m = new Map<string, EquipeHier>();
+    for (const r of rows) {
+      const p = (r.prefixo ?? "").trim();
+      if (!p) continue;
+      m.set(p, { gerencia: r.gerencia ?? "", coordenador: r.coordenador ?? "", gerente: r.gerente ?? "" });
+    }
+    equipesHier.value = m;
+  } catch { /* sem o cadastro, a lista de equipes só não é recortada por hierarquia */ }
+}
+onMounted(carregarEquipesHier);
+
+/** Nome do filtro bate com o do cadastro (igual, ou o cadastro traz o nome completo). */
+function mesmoNome(cadastro: string, filtro: string): boolean {
+  const a = foldName(cadastro);
+  const b = foldName(filtro);
+  if (!a || !b) return false;
+  return a === b || a.startsWith(`${b} `) || b.startsWith(`${a} `);
+}
+
+/** A equipe pertence aos filtros de gerência / gerente / coordenador ativos? */
+function equipeNaHierarquia(prefixo: string): boolean {
+  const { gerencia, gerente, coordenador } = filters;
+  if (gerencia === "Todos" && gerente === "Todos" && coordenador === "Todos") return true;
+  const h = equipesHier.value.get(prefixo);
+  if (!h) return false;
+  if (gerencia !== "Todos" && h.gerencia !== gerencia) return false;
+  if (coordenador !== "Todos" && !mesmoNome(h.coordenador, coordenador)) return false;
+  if (gerente !== "Todos" && !mesmoNome(h.gerente, gerente) && !mesmoNome(h.coordenador, gerente)) return false;
+  return true;
+}
 
 const BASE_NOME: Record<string, string> = {
   BCB: "Bacabal", BDC: "Barra do Corda", ITM: "Imperatriz",
@@ -641,10 +682,11 @@ const alojamentosDaBase = () =>
     .map(a => a.prefixo);
 
 const rosterListado = computed(() => {
-  if (filters.tipoPoc === "Alojamento") return alojamentosDaBase();
-  return filters.base === "Todos"
+  if (filters.tipoPoc === "Alojamento") return alojamentosDaBase().filter(equipeNaHierarquia);
+  const daBase = filters.base === "Todos"
     ? allPrefixes
     : allPrefixes.filter((p) => prefixBase(p) === filters.base);
+  return daBase.filter(equipeNaHierarquia);
 });
 
 /** Equipes monitoradas: as da lista + qualquer equipe com visita que não esteja nela (assim visitadas + não visitadas = total). */
