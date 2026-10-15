@@ -362,7 +362,7 @@
             <div
               v-for="row in weekRows" :key="row.semana"
               class="cm-week-row"
-              :class="row.motivo ? 'cm-week-row--active' : ''"
+              :class="row.motivo || row.meta !== panelDefaultMeta ? 'cm-week-row--active' : ''"
             >
               <div class="cm-week-row__label">
                 <div class="cm-week-row__name">{{ row.label }}</div>
@@ -415,7 +415,7 @@
               <div class="cm-override-item__meta">
                 {{ ov.matricula }} ·
                 <span class="cm-override-item__sem">{{ semanaDefs.find(s => s.value === ov.semana)?.label ?? "Todo o mês" }}</span>
-                · {{ ov.motivo }}
+                · {{ ov.motivo || "Meta ajustada" }}
               </div>
             </div>
             <div class="cm-override-item__badge">
@@ -733,38 +733,50 @@ function cancelPanel() {
 async function savePanel() {
   if (!selectedEmp.value) return;
   panelSaving.value = true;
+  const emp = selectedEmp.value;
   try {
-    // Remove override mensal genérico se existir
-    const monthOv = getOverride(selectedEmp.value.matricula, selectedAno.value, selectedMes.value, 0);
-    if (monthOv) await removeOverride(selectedEmp.value.matricula, selectedAno.value, selectedMes.value, 0);
-
     for (const row of weekRows.value) {
-      if (row.motivo) {
+      const bruto = Number(row.meta);
+      const meta  = Number.isFinite(bruto) ? Math.min(99, Math.max(0, Math.round(bruto))) : panelDefaultMeta.value;
+      // Vale como exceção quando há motivo OU a meta foi alterada em relação ao padrão.
+      if (row.motivo || meta !== panelDefaultMeta.value) {
         await saveOverride({
-          matricula:    selectedEmp.value.matricula,
-          nome:         selectedEmp.value.nomeCompleto,
+          matricula:    emp.matricula,
+          nome:         emp.nomeCompleto,
           ano:          selectedAno.value,
           mes:          selectedMes.value,
           semana:       row.semana,
-          meta_semanal: row.meta,
+          meta_semanal: meta,
           motivo:       row.motivo,
         });
-      } else {
-        const existing = getOverride(selectedEmp.value.matricula, selectedAno.value, selectedMes.value, row.semana);
-        if (existing) await removeOverride(selectedEmp.value.matricula, selectedAno.value, selectedMes.value, row.semana);
+      } else if (getOverride(emp.matricula, selectedAno.value, selectedMes.value, row.semana)) {
+        await removeOverride(emp.matricula, selectedAno.value, selectedMes.value, row.semana);
       }
     }
-    $q.notify({ type: "positive", message: `Metas de ${selectedEmp.value.nomeCompleto} salvas!`, icon: "mdi-check-circle", position: "top-right", timeout: 2500 });
+    // Só depois de gravar as semanas: o override mensal genérico já foi expandido nelas.
+    if (getOverride(emp.matricula, selectedAno.value, selectedMes.value, 0)) {
+      await removeOverride(emp.matricula, selectedAno.value, selectedMes.value, 0);
+    }
+    $q.notify({ type: "positive", message: `Metas de ${emp.nomeCompleto} salvas!`, icon: "mdi-check-circle", position: "top-right", timeout: 2500 });
     cancelPanel();
-  } catch {
-    $q.notify({ type: "negative", message: "Erro ao salvar exceções.", position: "top-right" });
+  } catch (e) {
+    $q.notify({
+      type: "negative", position: "top-right", timeout: 6000,
+      message: "Não foi possível salvar as metas do colaborador.",
+      caption: (e as Error).message,
+    });
   } finally {
     panelSaving.value = false;
   }
 }
 
 async function handleRemoveOverride(ov: IndividualOverride) {
-  await removeOverride(ov.matricula, ov.ano, ov.mes, ov.semana ?? 0);
+  try {
+    await removeOverride(ov.matricula, ov.ano, ov.mes, ov.semana ?? 0);
+  } catch (e) {
+    $q.notify({ type: "negative", position: "top-right", message: `Não foi possível remover: ${(e as Error).message}` });
+    return;
+  }
   $q.notify({ type: "info", message: `Exceção de ${ov.nome} removida.`, position: "top-right", timeout: 2000 });
   // Reabre o painel se for o colaborador selecionado (atualiza view)
   if (selectedEmp.value?.matricula === ov.matricula && panelVisible.value) openPanel(selectedEmp.value);

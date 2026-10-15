@@ -311,10 +311,9 @@ export function useGoals() {
   async function saveOverride(ov: IndividualOverride): Promise<void> {
     const sem = ov.semana ?? 0;
     const key = overrideKey(ov.matricula, ov.ano, ov.mes, sem);
-    overrides.value = { ...overrides.value, [key]: { ...ov, semana: sem } };
-    writeOverrides(overrides.value);
+    const anterior = overrides.value[key];
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("individual_goal_overrides")
       .upsert(
         { matricula: ov.matricula, nome: ov.nome, ano: ov.ano, mes: ov.mes,
@@ -325,10 +324,17 @@ export function useGoals() {
       .select("id")
       .single();
 
-    if (data?.id) {
-      overrides.value[key] = { ...ov, semana: sem, id: data.id };
-      writeOverrides(overrides.value);
+    if (error) {
+      // Sem o banco a meta sumiria no próximo sync: não deixa o valor só no cache local.
+      const copy = { ...overrides.value };
+      if (anterior) copy[key] = anterior; else delete copy[key];
+      overrides.value = copy;
+      writeOverrides(copy);
+      throw new Error(error.message);
     }
+
+    overrides.value = { ...overrides.value, [key]: { ...ov, semana: sem, id: data?.id ?? anterior?.id } };
+    writeOverrides(overrides.value);
   }
 
   async function removeOverride(matricula: string, ano: number, mes: number, semana = 0): Promise<void> {
@@ -339,11 +345,14 @@ export function useGoals() {
     overrides.value = copy;
     writeOverrides(copy);
 
-    if (ov?.id) {
-      await supabase.from("individual_goal_overrides").delete().eq("id", ov.id);
-    } else {
-      await supabase.from("individual_goal_overrides")
-        .delete().eq("matricula", matricula).eq("ano", ano).eq("mes", mes).eq("semana", semana);
+    const { error } = ov?.id
+      ? await supabase.from("individual_goal_overrides").delete().eq("id", ov.id)
+      : await supabase.from("individual_goal_overrides")
+          .delete().eq("matricula", matricula).eq("ano", ano).eq("mes", mes).eq("semana", semana);
+
+    if (error) {
+      if (ov) { overrides.value = { ...overrides.value, [key]: ov }; writeOverrides(overrides.value); }
+      throw new Error(error.message);
     }
   }
 
