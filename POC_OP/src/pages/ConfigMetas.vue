@@ -357,6 +357,46 @@
             </div>
           </div>
 
+          <!-- Meta semanal fixa (todos os meses) -->
+          <div class="cm-fixed" :class="panelFixa ? 'cm-fixed--on' : ''">
+            <div class="cm-fixed__text">
+              <div class="cm-fixed__title">
+                <q-icon name="mdi-pin" size="16px" /> Meta semanal fixa
+                <span v-if="panelFixa" class="cm-fixed__tag">ativa</span>
+              </div>
+              <div class="cm-fixed__sub">
+                Vale em todos os meses e semanas, até ser removida. Exceções do mês ou da semana (abaixo) têm prioridade.
+                Meta do perfil: <strong>{{ panelPerfilMeta }}/sem</strong>.
+              </div>
+            </div>
+            <div class="cm-week-row__ctrl">
+              <button class="cm-stepper" @click="fixedInput = Math.max(0, Number(fixedInput) - 1)">−</button>
+              <input v-model.number="fixedInput" type="number" min="0" max="99" step="1" class="cm-counter__input cm-counter__input--sm" />
+              <button class="cm-stepper" @click="fixedInput = Math.min(99, Number(fixedInput) + 1)">+</button>
+              <span class="cm-week-row__unit">obs/sem</span>
+            </div>
+            <div class="cm-week-row__motivo">
+              <q-select
+                v-model="fixedMotivo"
+                :options="motivosComVazio"
+                outlined dense emit-value map-options
+                placeholder="Sem motivo"
+              />
+            </div>
+            <div class="cm-fixed__actions">
+              <button class="cm-btn cm-btn--save" :disabled="fixedSaving" @click="handleSaveFixa">
+                <q-icon name="mdi-pin" size="16px" />
+                {{ panelFixa ? "Atualizar fixa" : "Definir fixa" }}
+              </button>
+              <button
+                v-if="panelFixa" class="cm-btn cm-btn--reset" :disabled="fixedSaving"
+                @click="handleRemoveFixa(panelFixa.matricula, panelFixa.nome)"
+              >
+                Remover
+              </button>
+            </div>
+          </div>
+
           <!-- Linhas das semanas -->
           <div class="cm-week-rows">
             <div
@@ -433,6 +473,33 @@
       </div>
     </div>
 
+    <!-- ── Metas fixas (todos os meses) ────────────────────────────────────────── -->
+    <div v-if="fixedGoals.length" class="cm-section">
+      <div class="cm-override-list">
+        <div class="cm-flabel" style="margin-bottom:8px">METAS SEMANAIS FIXAS · TODOS OS MESES</div>
+        <div class="cm-override-items">
+          <div v-for="fg in fixedGoals" :key="fg.matricula" class="cm-override-item">
+            <div class="cm-override-item__avatar">
+              {{ fg.nome.split(" ").slice(0,2).map(p => p[0]).join("") }}
+            </div>
+            <div class="cm-override-item__info">
+              <div class="cm-override-item__name">{{ fg.nome }}</div>
+              <div class="cm-override-item__meta">
+                {{ fg.matricula }} · <span class="cm-override-item__sem">Fixa</span> · {{ fg.motivo || "Meta definida" }}
+              </div>
+            </div>
+            <div class="cm-override-item__badge">
+              <span class="cm-override-item__num">{{ fg.meta_semanal }}</span>
+              <span class="cm-override-item__unit">/sem</span>
+            </div>
+            <button class="cm-override-item__del" :disabled="fixedSaving" @click="handleRemoveFixa(fg.matricula, fg.nome)">
+              <q-icon name="mdi-delete-outline" size="18px" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── Info ────────────────────────────────────────────────────────────────── -->
     <div class="cm-section">
       <div class="cm-info">
@@ -443,6 +510,7 @@
             <li>As metas são aplicadas automaticamente nas páginas de Acompanhamento Semanal e Mensal.</li>
             <li>Encarregados usam a meta operacional; supervisor/coordenador/fiscal usam a de lideranças; SESMT/técnico de segurança usam a de Segurança.</li>
             <li>Exceções individuais têm prioridade sobre a meta do perfil.</li>
+            <li>A meta semanal fixa vale em todos os meses; exceções do mês ou da semana a substituem naquele período.</li>
             <li>Cada mês pode ter uma meta diferente — selecione o mês e salve.</li>
           </ul>
         </div>
@@ -468,6 +536,7 @@ const $q = useQuasar();
 const {
   getMonthGoal, save, hasGoalDefined, goalForGerencia, getOverride, getOverridesForMonth, saveOverride, removeOverride,
   getFunctionGoals, saveFunctionGoals,
+  getFixedGoals, getFixedGoal, saveFixedGoal, removeFixedGoal,
 } = useGoals();
 
 const now = new Date();
@@ -582,11 +651,24 @@ const panelVisible  = ref(false);
 const weekRows      = ref<WeekRow[]>([]);
 const panelSaving   = ref(false);
 
-const panelDefaultMeta = computed(() =>
-  selectedEmp.value
-    ? goalForGerencia(selectedEmp.value.gerencia, selectedAno.value, selectedMes.value, selectedEmp.value.funcao).semanal
-    : 0
-);
+/** Meta do perfil/função do colaborador, sem a meta fixa. */
+function perfilMeta(emp: EmpOption): number {
+  return goalForGerencia(emp.gerencia, selectedAno.value, selectedMes.value, emp.funcao).semanal;
+}
+
+/** Meta de partida do colaborador: a fixa (se houver) ou a do perfil/função. */
+function baseMeta(emp: EmpOption): number {
+  return getFixedGoal(emp.matricula)?.meta_semanal ?? perfilMeta(emp);
+}
+
+const panelDefaultMeta = computed(() => (selectedEmp.value ? baseMeta(selectedEmp.value) : 0));
+const panelPerfilMeta  = computed(() => (selectedEmp.value ? perfilMeta(selectedEmp.value) : 0));
+const panelFixa        = computed(() => (selectedEmp.value ? getFixedGoal(selectedEmp.value.matricula) : undefined));
+const fixedGoals       = computed(() => getFixedGoals());
+
+const fixedInput  = ref(0);
+const fixedMotivo = ref("");
+const fixedSaving = ref(false);
 
 const mesAtualLabel = computed(() => meses.find(m => m.value === selectedMes.value)?.label ?? "");
 const monthOverrides = computed(() => getOverridesForMonth(selectedAno.value, selectedMes.value));
@@ -714,7 +796,10 @@ function filterEmps(val: string, update: (fn: () => void) => void) {
 
 function openPanel(emp: EmpOption | null) {
   if (!emp) { panelVisible.value = false; weekRows.value = []; return; }
-  const defaultMeta = goalForGerencia(emp.gerencia, selectedAno.value, selectedMes.value, emp.funcao).semanal;
+  const defaultMeta = baseMeta(emp);
+  const fixa = getFixedGoal(emp.matricula);
+  fixedInput.value  = fixa?.meta_semanal ?? perfilMeta(emp);
+  fixedMotivo.value = fixa?.motivo ?? "";
   weekRows.value = semanaDefs.value.map(s => {
     const weekOv  = getOverride(emp.matricula, selectedAno.value, selectedMes.value, s.value);
     const monthOv = getOverride(emp.matricula, selectedAno.value, selectedMes.value, 0);
@@ -722,6 +807,40 @@ function openPanel(emp: EmpOption | null) {
     return { semana: s.value, label: s.label, periodo: s.periodo, meta: ov?.meta_semanal ?? defaultMeta, motivo: ov?.motivo ?? "" };
   });
   panelVisible.value = true;
+}
+
+async function handleSaveFixa() {
+  if (!selectedEmp.value) return;
+  const emp = selectedEmp.value;
+  const bruto = Number(fixedInput.value);
+  const meta = Number.isFinite(bruto) ? Math.min(99, Math.max(0, Math.round(bruto))) : perfilMeta(emp);
+  fixedSaving.value = true;
+  try {
+    await saveFixedGoal({ matricula: emp.matricula, nome: emp.nomeCompleto, meta_semanal: meta, motivo: fixedMotivo.value });
+    $q.notify({
+      type: "positive", icon: "mdi-pin", position: "top-right", timeout: 3500,
+      message: `Meta fixa de ${emp.nomeCompleto}: ${meta}/sem`,
+      caption: "Vale em todos os meses até ser removida.",
+    });
+    openPanel(emp);
+  } catch (e) {
+    $q.notify({ type: "negative", position: "top-right", timeout: 6000, message: "Não foi possível salvar a meta fixa.", caption: (e as Error).message });
+  } finally {
+    fixedSaving.value = false;
+  }
+}
+
+async function handleRemoveFixa(matricula: string, nome: string) {
+  fixedSaving.value = true;
+  try {
+    await removeFixedGoal(matricula);
+    $q.notify({ type: "info", position: "top-right", timeout: 2500, message: `Meta fixa de ${nome} removida.` });
+    if (selectedEmp.value?.matricula === matricula) openPanel(selectedEmp.value);
+  } catch (e) {
+    $q.notify({ type: "negative", position: "top-right", message: `Não foi possível remover: ${(e as Error).message}` });
+  } finally {
+    fixedSaving.value = false;
+  }
 }
 
 function cancelPanel() {
@@ -1184,6 +1303,25 @@ $border:  #e2e8f0;
   display: flex; align-items: center; gap: 6px;
 }
 
+// ── Meta semanal fixa ──────────────────────────────────────────────────────────
+.cm-fixed {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 14px 16px;
+  padding: 14px 20px;
+  background: #f8fafc;
+  border-bottom: 1px solid $border;
+
+  &--on { background: #fff7ed; }
+
+  &__text { flex: 1 1 240px; min-width: 0; }
+  &__title { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #1e293b; }
+  &__tag {
+    font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    color: $orange; background: rgba($orange, .12); border-radius: 999px; padding: 1px 8px;
+  }
+  &__sub { font-size: 11.5px; color: #64748b; margin-top: 3px; line-height: 1.45; }
+  &__actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+}
+
 // ── Override list ──────────────────────────────────────────────────────────────
 .cm-override-list { width: 100%; }
 
@@ -1284,6 +1422,10 @@ $border:  #e2e8f0;
   .cm-week-panel__header { background: linear-gradient(135deg, #1e293b, #0f172a); border-color: #334155; }
   .cm-week-panel__emp-name { color: #e2e8f0; }
   .cm-week-panel__actions { background: #0f172a; border-color: #334155; }
+  .cm-fixed { background: #0f172a; border-bottom-color: #334155; }
+  .cm-fixed--on { background: #1c1a0a; }
+  .cm-fixed__title { color: #e2e8f0; }
+  .cm-fixed__sub { color: #94a3b8; }
   .cm-week-row { border-bottom-color: #334155; }
   .cm-week-row--active { background: #1c1a0a; }
   .cm-week-row__name { color: #e2e8f0; }

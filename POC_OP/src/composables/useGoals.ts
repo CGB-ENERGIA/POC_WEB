@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 const STORAGE_KEY      = "cgb_metas_v2";
 const OVERRIDES_KEY    = "cgb_metas_overrides_v1";
 const FUNC_KEY         = "cgb_metas_funcao_v1";
+const FIXA_KEY         = "cgb_metas_fixa_v1";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface MonthGoal {
@@ -23,6 +24,15 @@ export interface IndividualOverride {
   motivo: string;
 }
 
+/** Meta semanal fixa de um colaborador: vale em todos os meses até ser removida. */
+export interface FixedGoal {
+  matricula: string;
+  nome: string;
+  meta_semanal: number;
+  motivo: string;
+}
+
+type FixaStore     = Record<string, FixedGoal>;          // matrícula
 type GoalStore     = Record<string, MonthGoal>;          // "YYYY-MM"
 type OverrideStore = Record<string, IndividualOverride>; // "YYYY-MM-matricula"
 type FuncStore     = Record<string, { meta: number; rotulo: string }>; // "YYYY-MM|chave da função"
@@ -101,18 +111,26 @@ function loadFunc(): FuncStore {
 }
 function writeFunc(s: FuncStore) { try { localStorage.setItem(FUNC_KEY, JSON.stringify(s)); } catch { /* noop */ } }
 
+function loadFixa(): FixaStore {
+  try { return JSON.parse(localStorage.getItem(FIXA_KEY) ?? "{}") as FixaStore; }
+  catch { return {}; }
+}
+function writeFixa(s: FixaStore) { try { localStorage.setItem(FIXA_KEY, JSON.stringify(s)); } catch { /* noop */ } }
+
 // ─── Estado global ────────────────────────────────────────────────────────────
 const store     = ref<GoalStore>(loadStore());
 const overrides = ref<OverrideStore>(loadOverrides());
 const funcStore = ref<FuncStore>(loadFunc());
+const fixaStore = ref<FixaStore>(loadFixa());
 
 // ─── Sync Supabase ────────────────────────────────────────────────────────────
 async function syncFromSupabase(): Promise<void> {
   try {
-    const [metasRes, ovRes, fnRes] = await Promise.all([
+    const [metasRes, ovRes, fnRes, fixaRes] = await Promise.all([
       supabase.from("metas").select("ano, mes, normais_semanal, lideranca_semanal, seguranca_semanal"),
       supabase.from("individual_goal_overrides").select("*"),
       supabase.from("metas_funcao" as never).select("ano, mes, funcao, rotulo, meta_semanal"),
+      supabase.from("metas_individual_fixa" as never).select("matricula, nome, meta_semanal, motivo"),
     ]);
 
     if (!metasRes.error && metasRes.data) {
@@ -150,6 +168,17 @@ async function syncFromSupabase(): Promise<void> {
       }
       funcStore.value = merged;
       writeFunc(merged);
+    }
+
+    if (!fixaRes.error && fixaRes.data) {
+      const merged: FixaStore = {};
+      for (const row of fixaRes.data as unknown as { matricula: string; nome: string; meta_semanal: number; motivo: string }[]) {
+        merged[row.matricula] = {
+          matricula: row.matricula, nome: row.nome, meta_semanal: Number(row.meta_semanal), motivo: row.motivo ?? "",
+        };
+      }
+      fixaStore.value = merged;
+      writeFixa(merged);
     }
   } catch { /* sem rede: usa cache local */ }
 }
@@ -284,6 +313,11 @@ export function useGoals() {
       if (monthOv !== undefined) {
         return { semanal: monthOv.meta_semanal, mensal: monthOv.meta_semanal * 4, isOverride: true };
       }
+      // Meta fixa do colaborador (todos os meses)
+      const fixa = fixaStore.value[matricula];
+      if (fixa !== undefined) {
+        return { semanal: fixa.meta_semanal, mensal: fixa.meta_semanal * 4, isOverride: true };
+      }
     }
     return { ...goalForGerencia(gerencia, ano, mes, funcao), isOverride: false };
   }
@@ -356,7 +390,36 @@ export function useGoals() {
     }
   }
 
+  // ─── Meta fixa do colaborador ───────────────────────────────────────────────
+  function getFixedGoals(): FixedGoal[] {
+    return Object.values(fixaStore.value).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  }
+
+  function getFixedGoal(matricula: string): FixedGoal | undefined {
+    return fixaStore.value[matricula];
+  }
+
+  async function saveFixedGoal(g: FixedGoal): Promise<void> {
+    const { error } = await supabase.from("metas_individual_fixa" as never).upsert(
+      { matricula: g.matricula, nome: g.nome, meta_semanal: g.meta_semanal, motivo: g.motivo, updated_at: new Date().toISOString() } as never,
+      { onConflict: "matricula" },
+    );
+    if (error) throw new Error(error.message);
+    fixaStore.value = { ...fixaStore.value, [g.matricula]: { ...g } };
+    writeFixa(fixaStore.value);
+  }
+
+  async function removeFixedGoal(matricula: string): Promise<void> {
+    const { error } = await supabase.from("metas_individual_fixa" as never).delete().eq("matricula", matricula);
+    if (error) throw new Error(error.message);
+    const copy = { ...fixaStore.value };
+    delete copy[matricula];
+    fixaStore.value = copy;
+    writeFixa(copy);
+  }
+
   return {
+    getFixedGoals, getFixedGoal, saveFixedGoal, removeFixedGoal,
     getMonthGoal, save,
     goalForGerencia, goalForColaborador,
     getFunctionGoals, saveFunctionGoals,
