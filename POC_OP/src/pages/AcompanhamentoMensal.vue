@@ -958,17 +958,6 @@ const chartObservador = computed(() => {
       symbol: "rect",
       symbolSize: [20, 5],
       itemStyle: { color: "transparent", borderWidth: 0 },
-      markLine: {
-        silent: true,
-        symbol: "none",
-        animation: false,
-        label: { show: false },
-        lineStyle: { color: metaTick, type: "dashed" as const, width: 2 },
-        data: bl.rows.map((r, idx) => [
-          { coord: [idx - 0.42, r.meta], lineStyle: { opacity: !viz.matricula || r.matricula === viz.matricula ? 1 : 0.22 } },
-          { coord: [idx + 0.42, r.meta] },
-        ]),
-      },
       z: 10,
       label: {
         show: true,
@@ -987,6 +976,24 @@ const chartObservador = computed(() => {
       },
       emphasis: { scale: false },
     },
+    {
+      name: "Meta traço",
+      type: "custom" as const,
+      xAxisIndex: i,
+      yAxisIndex: i,
+      silent: true,
+      animation: false,
+      z: 11,
+      data: bl.rows.map((r, idx) => [idx, r.meta, !viz.matricula || r.matricula === viz.matricula ? 1 : 0.22]),
+      renderItem: (_p: unknown, api: { value: (d: number) => number; coord: (v: number[]) => number[] }) => {
+        const [cx, cy] = api.coord([api.value(0), api.value(1)]) as [number, number];
+        return {
+          type: "line",
+          shape: { x1: cx - 11, y1: cy, x2: cx + 11, y2: cy },
+          style: { stroke: metaTick, lineWidth: 2, lineDash: [4, 3], opacity: api.value(2) },
+        };
+      },
+    },
   ]);
 
   return {
@@ -995,7 +1002,7 @@ const chartObservador = computed(() => {
       formatter: (params: { seriesIndex: number; dataIndex: number }[]) => {
         const first = params[0];
         if (!first) return "";
-        const r = rows[Math.floor(first.seriesIndex / 2) * (multi ? porLinha : rows.length) + first.dataIndex];
+        const r = rows[Math.floor(first.seriesIndex / 3) * (multi ? porLinha : rows.length) + first.dataIndex];
         if (!r) return "";
         const ok = r.realizado >= r.meta;
         return tipHtml(r.nome, [
