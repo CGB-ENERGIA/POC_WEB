@@ -405,22 +405,29 @@ onMounted(recarregar);
 watch(() => [filters.ano, filters.mes], recarregar);
 
 // ─── Hierarquia das equipes (prefixo → gerência/coordenador/gerente, do cadastro) ──
-interface EquipeHier { gerencia: string; coordenador: string; gerente: string }
+interface EquipeHier { base: string; gerencia: string; coordenador: string; gerente: string }
 const equipesHier = ref<Map<string, EquipeHier>>(new Map());
+/** Cadastro carregado: base/gerência/coordenador/gerente passam a ser decididos pela equipe. */
+const hierCarregada = computed(() => equipesHier.value.size > 0);
 
 async function carregarEquipesHier() {
   try {
-    const rows = await allPages<{ prefixo: string; gerencia: string | null; coordenador: string | null; gerente: string | null }>(
-      () => supabase.from("pwa_equipes").select("id,prefixo,gerencia,coordenador,gerente"),
+    const rows = await allPages<{ prefixo: string; base: string | null; gerencia: string | null; coordenador: string | null; gerente: string | null }>(
+      () => supabase.from("pwa_equipes").select("id,prefixo,base,gerencia,coordenador,gerente"),
     );
     const m = new Map<string, EquipeHier>();
     for (const r of rows) {
       const p = (r.prefixo ?? "").trim();
       if (!p) continue;
-      m.set(p, { gerencia: r.gerencia ?? "", coordenador: r.coordenador ?? "", gerente: r.gerente ?? "" });
+      m.set(p, {
+        base: (r.base ?? "").trim().toUpperCase(),
+        gerencia: r.gerencia ?? "",
+        coordenador: r.coordenador ?? "",
+        gerente: r.gerente ?? "",
+      });
     }
     equipesHier.value = m;
-  } catch { /* sem o cadastro, a lista de equipes só não é recortada por hierarquia */ }
+  } catch { /* sem o cadastro, usa a lista fixa e o vínculo pelo observador */ }
 }
 onMounted(carregarEquipesHier);
 
@@ -433,8 +440,8 @@ function mesmoNome(cadastro: string, filtro: string): boolean {
 }
 
 /** A equipe pertence aos filtros de gerência / gerente / coordenador ativos? */
-function equipeNaHierarquia(prefixo: string): boolean {
-  const { gerencia, gerente, coordenador } = filters;
+function equipeNaHierarquia(prefixo: string, gerencia = filters.gerencia): boolean {
+  const { gerente, coordenador } = filters;
   if (gerencia === "Todos" && gerente === "Todos" && coordenador === "Todos") return true;
   const h = equipesHier.value.get(prefixo);
   if (!h) return false;
@@ -464,6 +471,14 @@ function prefixBase(code: string) {
   return m?.[1] ?? "";
 }
 
+/** Base da equipe: a do cadastro; sem cadastro, a do prefixo. */
+function baseDaEquipe(prefixo: string): string {
+  const doCadastro = equipesHier.value.get(prefixo)?.base;
+  if (doCadastro) return doCadastro;
+  if (/^ALOJ/i.test(prefixo)) return ALOJ_ROSTER.find((a) => a.prefixo === prefixo)?.base ?? "";
+  return prefixBase(prefixo);
+}
+
 function matchTipoPoc(auditagem: string | undefined) {
   const allowed = TIPO_AUDITAGEM[filters.tipoPoc];
   if (!allowed) return true;
@@ -472,7 +487,7 @@ function matchTipoPoc(auditagem: string | undefined) {
 
 function extractPrefixo(equipe: string | undefined): string {
   if (!equipe) return "";
-  return equipe.split(" - ")[0].trim();
+  return (equipe.split(" - ")[0] ?? "").trim();
 }
 
 function togglePrefixo(code: string) {
@@ -530,10 +545,21 @@ function applySlice(
   omit: { base?: boolean; gerencia?: boolean; prefixo?: boolean; tipo?: boolean; funcao?: boolean; observador?: boolean } = {},
 ) {
   const idx = indexEmployees(employees.value);
-  let s = filterByGerente(source, employees.value, filters.gerente);
-  s = filterByCoordenador(s, employees.value, filters.coordenador);
-  if (!omit.gerencia) s = filterByGerencia(s, employees.value, filters.gerencia);
-  if (!omit.base && filters.base !== "Todos") s = s.filter((sub) => sub.base === filters.base);
+  let s = source;
+  if (hierCarregada.value) {
+    // Gerente/coordenador/gerência: só as equipes vinculadas a ele no cadastro, independente de quem visitou.
+    const gerenciaAtiva = omit.gerencia ? "Todos" : filters.gerencia;
+    if (filters.gerente !== "Todos" || filters.coordenador !== "Todos" || gerenciaAtiva !== "Todos") {
+      s = s.filter((sub) => equipeNaHierarquia(extractPrefixo(sub.equipe), gerenciaAtiva));
+    }
+  } else {
+    s = filterByGerente(s, employees.value, filters.gerente);
+    s = filterByCoordenador(s, employees.value, filters.coordenador);
+    if (!omit.gerencia) s = filterByGerencia(s, employees.value, filters.gerencia);
+  }
+  if (!omit.base && filters.base !== "Todos") {
+    s = s.filter((sub) => (baseDaEquipe(extractPrefixo(sub.equipe)) || sub.base) === filters.base);
+  }
   if (!omit.tipo) s = s.filter((sub) => matchTipoPoc(sub.auditagem));
   if (!omit.funcao && filters.funcao !== "Todos") {
     s = s.filter((sub) => matchSubmissionToEmployee(sub, idx)?.funcao === filters.funcao);
@@ -659,15 +685,25 @@ const allPrefixes: string[] = [
   "MA-BDC-H001M","MA-PDT-H001M","MA-ITM-H001M",
 ];
 
+/** Equipes operacionais: as do cadastro (pwa_equipes); sem ele, a lista fixa. */
+const rosterOperacional = computed<string[]>(() =>
+  hierCarregada.value
+    ? [...equipesHier.value.keys()].filter((p) => !/^ALOJ/i.test(p)).sort()
+    : allPrefixes,
+);
+
 const prefixoBaseList = computed(() =>
   filters.tipoPoc === "Alojamento"
     ? ALOJ_ROSTER.map(a => a.prefixo)
-    : allPrefixes
+    : rosterOperacional.value
 );
 const prefixoOpts = ref<string[]>(["Todos", ...allPrefixes]);
 watch(() => filters.tipoPoc, () => {
   filters.prefixo = "Todos";
   prefixoOpts.value = ["Todos", ...prefixoBaseList.value];
+});
+watch(rosterOperacional, () => {
+  if (filters.tipoPoc !== "Alojamento") prefixoOpts.value = ["Todos", ...rosterOperacional.value];
 });
 function filterPrefixo(val: string, update: (fn: () => void) => void) {
   update(() => {
@@ -682,11 +718,10 @@ const alojamentosDaBase = () =>
     .map(a => a.prefixo);
 
 const rosterListado = computed(() => {
-  if (filters.tipoPoc === "Alojamento") return alojamentosDaBase().filter(equipeNaHierarquia);
-  const daBase = filters.base === "Todos"
-    ? allPrefixes
-    : allPrefixes.filter((p) => prefixBase(p) === filters.base);
-  return daBase.filter(equipeNaHierarquia);
+  if (filters.tipoPoc === "Alojamento") return alojamentosDaBase().filter((p) => equipeNaHierarquia(p));
+  return rosterOperacional.value
+    .filter((p) => filters.base === "Todos" || baseDaEquipe(p) === filters.base)
+    .filter((p) => equipeNaHierarquia(p));
 });
 
 /** Equipes monitoradas: as da lista + qualquer equipe com visita que não esteja nela (assim visitadas + não visitadas = total). */
