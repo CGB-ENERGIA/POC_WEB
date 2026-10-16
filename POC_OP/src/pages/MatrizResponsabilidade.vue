@@ -541,7 +541,7 @@ import { reactive, ref, computed, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
 import {
   fetchResolucoes, inserirResolucao, reabrirResolucao, filterByGerencia, filterByGerente, semanaDaData,
-  type ResolucaoRow, filterByCoordenador, indexEmployees, matchSubmissionToEmployee,
+  type ResolucaoRow, fetchCoordenadorPorEquipe, coordenadorDaEquipe, foldName,
 } from "@/lib/dashboard";
 import { useAuth } from "@/composables/useAuth";
 
@@ -721,6 +721,10 @@ type SubRow = {
   naoResolvidos: number;
 };
 
+// ─── Coordenador de cada equipe ──────────────────────────────────────────────
+const coordPorEquipe = ref(new Map<string, string>());
+fetchCoordenadorPorEquipe().then((mapa) => { coordPorEquipe.value = mapa; });
+
 // ─── Dados agrupados por checklist ───────────────────────────────────────────
 const allData = computed<SubRow[]>(() => {
   const resolucaoMap = new Map<string, ResolucaoRow>();
@@ -730,14 +734,16 @@ const allData = computed<SubRow[]>(() => {
 
   const sliced = (() => {
     let s = filterByGerente(submissions.value, employees.value, filters.gerente);
-    s = filterByCoordenador(s, employees.value, filters.coordenador);
+    if (filters.coordenador !== "Todos") {
+      const alvo = foldName(filters.coordenador);
+      s = s.filter((sub) => foldName(coordenadorDaEquipe(coordPorEquipe.value, sub.equipe)) === alvo);
+    }
     s = filterByGerencia(s, employees.value, filters.gerencia);
     if (filters.semana) s = s.filter((sub) => semanaDaData(sub.data) === filters.semana);
     return s;
   })();
 
   const empMap = new Map(employees.value.map((e) => [e.matricula, e]));
-  const empIdx = indexEmployees(employees.value);
 
   const subMap = new Map<string, SubRow>();
   for (const sub of sliced) {
@@ -750,7 +756,7 @@ const allData = computed<SubRow[]>(() => {
       base: sub.base,
       gerencia: emp?.gerencia ?? sub.auditagem ?? "",
       observador: sub.observador,
-      coordenador: matchSubmissionToEmployee(sub, empIdx)?.coordenador?.trim() ?? "",
+      coordenador: coordenadorDaEquipe(coordPorEquipe.value, sub.equipe),
       equipe: sub.equipe,
       ncs: [],
       totalNc: 0,

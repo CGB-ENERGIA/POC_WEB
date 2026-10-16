@@ -1070,6 +1070,38 @@ export function filterByGerencia(
   });
 }
 
+/**
+ * Coordenador de cada equipe (chave = prefixo em MAIÚSCULAS). O cadastro pwa_equipes tem prioridade;
+ * equipes que não estão nele usam o coordenador registrado nas planilhas históricas.
+ */
+export async function fetchCoordenadorPorEquipe(): Promise<Map<string, string>> {
+  const mapa = new Map<string, string>();
+  const [hist, cadastro] = await Promise.all([
+    allPages<{ prefixo: string | null; coordenador: string | null }>(
+      () => supabase.from("equipes_coordenacao_historico" as never).select("prefixo,coordenador"),
+      "prefixo",
+    ).catch(() => []),
+    allPages<{ prefixo: string | null; coordenador: string | null }>(
+      () => supabase.from("pwa_equipes").select("id,prefixo,coordenador"),
+    ).catch(() => []),
+  ]);
+  for (const lista of [hist, cadastro]) {
+    for (const r of lista) {
+      const chave = (r.prefixo ?? "").trim().toUpperCase();
+      const coord = (r.coordenador ?? "").trim();
+      if (chave && coord) mapa.set(chave, coord);
+    }
+  }
+  return mapa;
+}
+
+/** Coordenador da equipe pelo prefixo; aceita nomes com cidade ("ALOJ43 – MIRANDA"). Vazio se não houver. */
+export function coordenadorDaEquipe(mapa: Map<string, string>, equipe: string | null | undefined): string {
+  const chave = (equipe ?? "").trim().toUpperCase();
+  if (!chave) return "";
+  return mapa.get(chave) ?? mapa.get((chave.split(/\s+[–-]\s+/)[0] ?? "").trim()) ?? "";
+}
+
 export function filterByCoordenador(
   subs: SubmissionRow[],
   employees: EmployeeRow[],
