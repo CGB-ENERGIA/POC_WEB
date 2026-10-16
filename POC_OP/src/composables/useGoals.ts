@@ -24,12 +24,20 @@ export interface IndividualOverride {
   motivo: string;
 }
 
-/** Meta semanal fixa de um colaborador: vale em todos os meses até ser removida. */
+/** Meta semanal fixa de um colaborador: vale a partir de `desde_*` (ou em todos os meses, se vazio) até ser removida. */
 export interface FixedGoal {
   matricula: string;
   nome: string;
   meta_semanal: number;
   motivo: string;
+  desde_ano: number | null;
+  desde_mes: number | null;
+}
+
+/** A meta fixa já está em vigor no mês informado? */
+export function fixaVigente(f: Pick<FixedGoal, "desde_ano" | "desde_mes">, ano: number, mes: number): boolean {
+  if (f.desde_ano == null || f.desde_mes == null) return true;
+  return ano * 12 + mes >= f.desde_ano * 12 + f.desde_mes;
 }
 
 type FixaStore     = Record<string, FixedGoal>;          // matrícula
@@ -130,7 +138,7 @@ async function syncFromSupabase(): Promise<void> {
       supabase.from("metas").select("ano, mes, normais_semanal, lideranca_semanal, seguranca_semanal"),
       supabase.from("individual_goal_overrides").select("*"),
       supabase.from("metas_funcao" as never).select("ano, mes, funcao, rotulo, meta_semanal"),
-      supabase.from("metas_individual_fixa" as never).select("matricula, nome, meta_semanal, motivo"),
+      supabase.from("metas_individual_fixa" as never).select("matricula, nome, meta_semanal, motivo, desde_ano, desde_mes"),
     ]);
 
     if (!metasRes.error && metasRes.data) {
@@ -172,9 +180,12 @@ async function syncFromSupabase(): Promise<void> {
 
     if (!fixaRes.error && fixaRes.data) {
       const merged: FixaStore = {};
-      for (const row of fixaRes.data as unknown as { matricula: string; nome: string; meta_semanal: number; motivo: string }[]) {
+      for (const row of fixaRes.data as unknown as {
+        matricula: string; nome: string; meta_semanal: number; motivo: string; desde_ano: number | null; desde_mes: number | null;
+      }[]) {
         merged[row.matricula] = {
           matricula: row.matricula, nome: row.nome, meta_semanal: Number(row.meta_semanal), motivo: row.motivo ?? "",
+          desde_ano: row.desde_ano ?? null, desde_mes: row.desde_mes ?? null,
         };
       }
       fixaStore.value = merged;
@@ -313,9 +324,9 @@ export function useGoals() {
       if (monthOv !== undefined) {
         return { semanal: monthOv.meta_semanal, mensal: monthOv.meta_semanal * 4, isOverride: true };
       }
-      // Meta fixa do colaborador (todos os meses)
+      // Meta fixa do colaborador (a partir do mês de início)
       const fixa = fixaStore.value[matricula];
-      if (fixa !== undefined) {
+      if (fixa !== undefined && fixaVigente(fixa, ano, mes)) {
         return { semanal: fixa.meta_semanal, mensal: fixa.meta_semanal * 4, isOverride: true };
       }
     }
@@ -399,9 +410,18 @@ export function useGoals() {
     return fixaStore.value[matricula];
   }
 
+  /** A meta fixa do colaborador, só se estiver em vigor no mês informado. */
+  function getFixedGoalFor(matricula: string, ano: number, mes: number): FixedGoal | undefined {
+    const f = fixaStore.value[matricula];
+    return f && fixaVigente(f, ano, mes) ? f : undefined;
+  }
+
   async function saveFixedGoal(g: FixedGoal): Promise<void> {
     const { error } = await supabase.from("metas_individual_fixa" as never).upsert(
-      { matricula: g.matricula, nome: g.nome, meta_semanal: g.meta_semanal, motivo: g.motivo, updated_at: new Date().toISOString() } as never,
+      {
+        matricula: g.matricula, nome: g.nome, meta_semanal: g.meta_semanal, motivo: g.motivo,
+        desde_ano: g.desde_ano, desde_mes: g.desde_mes, updated_at: new Date().toISOString(),
+      } as never,
       { onConflict: "matricula" },
     );
     if (error) throw new Error(error.message);
@@ -419,7 +439,7 @@ export function useGoals() {
   }
 
   return {
-    getFixedGoals, getFixedGoal, saveFixedGoal, removeFixedGoal,
+    getFixedGoals, getFixedGoal, getFixedGoalFor, saveFixedGoal, removeFixedGoal,
     getMonthGoal, save,
     goalForGerencia, goalForColaborador,
     getFunctionGoals, saveFunctionGoals,

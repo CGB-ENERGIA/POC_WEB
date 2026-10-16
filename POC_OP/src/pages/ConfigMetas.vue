@@ -365,8 +365,8 @@
                 <span v-if="panelFixa" class="cm-fixed__tag">ativa</span>
               </div>
               <div class="cm-fixed__sub">
-                Vale em todos os meses e semanas, até ser removida. Exceções do mês ou da semana (abaixo) têm prioridade.
-                Meta do perfil: <strong>{{ panelPerfilMeta }}/sem</strong>.
+                Vale a partir do mês escolhido, em todas as semanas, até ser removida. Exceções do mês ou da semana (abaixo) têm prioridade.
+                Meta do perfil em {{ mesAtualLabel }}/{{ selectedAno }}: <strong>{{ panelPerfilMeta }}/sem</strong>.
               </div>
             </div>
             <div class="cm-week-row__ctrl">
@@ -374,6 +374,14 @@
               <input v-model.number="fixedInput" type="number" min="0" max="99" step="1" class="cm-counter__input cm-counter__input--sm" />
               <button class="cm-stepper" @click="fixedInput = Math.min(99, Number(fixedInput) + 1)">+</button>
               <span class="cm-week-row__unit">obs/sem</span>
+            </div>
+            <div class="cm-fixed__desde">
+              <span class="cm-week-row__unit">a partir de</span>
+              <q-select
+                v-model="fixedDesdeMes" :options="meses" option-label="label" option-value="value"
+                emit-value map-options outlined dense style="width:84px"
+              />
+              <q-select v-model="fixedDesdeAno" :options="anos" outlined dense style="width:96px" />
             </div>
             <div class="cm-week-row__motivo">
               <q-select
@@ -476,7 +484,7 @@
     <!-- ── Metas fixas (todos os meses) ────────────────────────────────────────── -->
     <div v-if="fixedGoals.length" class="cm-section">
       <div class="cm-override-list">
-        <div class="cm-flabel" style="margin-bottom:8px">METAS SEMANAIS FIXAS · TODOS OS MESES</div>
+        <div class="cm-flabel" style="margin-bottom:8px">METAS SEMANAIS FIXAS</div>
         <div class="cm-override-items">
           <div
             v-for="fg in fixedGoals" :key="fg.matricula" class="cm-override-item"
@@ -488,7 +496,7 @@
             <div class="cm-override-item__info">
               <div class="cm-override-item__name">{{ fg.nome }}</div>
               <div class="cm-override-item__meta">
-                {{ fg.matricula }} · <span class="cm-override-item__sem">Fixa</span> · {{ fg.motivo || "Meta definida" }}
+                {{ fg.matricula }} · <span class="cm-override-item__sem">Fixa</span> {{ desdeLabel(fg) }} · {{ fg.motivo || "Meta definida" }}
               </div>
             </div>
 
@@ -542,7 +550,7 @@
             <li>As metas são aplicadas automaticamente nas páginas de Acompanhamento Semanal e Mensal.</li>
             <li>Encarregados usam a meta operacional; supervisor/coordenador/fiscal usam a de lideranças; SESMT/técnico de segurança usam a de Segurança.</li>
             <li>Exceções individuais têm prioridade sobre a meta do perfil.</li>
-            <li>A meta semanal fixa vale em todos os meses; exceções do mês ou da semana a substituem naquele período.</li>
+            <li>A meta semanal fixa vale a partir do mês escolhido; exceções do mês ou da semana a substituem naquele período.</li>
             <li>Cada mês pode ter uma meta diferente — selecione o mês e salve.</li>
           </ul>
         </div>
@@ -568,7 +576,7 @@ const $q = useQuasar();
 const {
   getMonthGoal, save, hasGoalDefined, goalForGerencia, getOverride, getOverridesForMonth, saveOverride, removeOverride,
   getFunctionGoals, saveFunctionGoals,
-  getFixedGoals, getFixedGoal, saveFixedGoal, removeFixedGoal,
+  getFixedGoals, getFixedGoal, getFixedGoalFor, saveFixedGoal, removeFixedGoal,
 } = useGoals();
 
 const now = new Date();
@@ -688,9 +696,14 @@ function perfilMeta(emp: EmpOption): number {
   return goalForGerencia(emp.gerencia, selectedAno.value, selectedMes.value, emp.funcao).semanal;
 }
 
-/** Meta de partida do colaborador: a fixa (se houver) ou a do perfil/função. */
+/** Meta de partida do colaborador no mês selecionado: a fixa (se já em vigor) ou a do perfil/função. */
 function baseMeta(emp: EmpOption): number {
-  return getFixedGoal(emp.matricula)?.meta_semanal ?? perfilMeta(emp);
+  return getFixedGoalFor(emp.matricula, selectedAno.value, selectedMes.value)?.meta_semanal ?? perfilMeta(emp);
+}
+
+function desdeLabel(f: { desde_ano: number | null; desde_mes: number | null }): string {
+  if (f.desde_ano == null || f.desde_mes == null) return "todos os meses";
+  return `desde ${meses.find((m) => m.value === f.desde_mes)?.label ?? f.desde_mes}/${f.desde_ano}`;
 }
 
 const panelDefaultMeta = computed(() => (selectedEmp.value ? baseMeta(selectedEmp.value) : 0));
@@ -698,8 +711,10 @@ const panelPerfilMeta  = computed(() => (selectedEmp.value ? perfilMeta(selected
 const panelFixa        = computed(() => (selectedEmp.value ? getFixedGoal(selectedEmp.value.matricula) : undefined));
 const fixedGoals       = computed(() => getFixedGoals());
 
-const fixedInput  = ref(0);
-const fixedMotivo = ref("");
+const fixedInput    = ref(0);
+const fixedMotivo   = ref("");
+const fixedDesdeMes = ref(0);
+const fixedDesdeAno = ref(0);
 const fixedSaving = ref(false);
 
 const mesAtualLabel = computed(() => meses.find(m => m.value === selectedMes.value)?.label ?? "");
@@ -830,8 +845,10 @@ function openPanel(emp: EmpOption | null) {
   if (!emp) { panelVisible.value = false; weekRows.value = []; return; }
   const defaultMeta = baseMeta(emp);
   const fixa = getFixedGoal(emp.matricula);
-  fixedInput.value  = fixa?.meta_semanal ?? perfilMeta(emp);
-  fixedMotivo.value = fixa?.motivo ?? "";
+  fixedInput.value    = fixa?.meta_semanal ?? perfilMeta(emp);
+  fixedMotivo.value   = fixa?.motivo ?? "";
+  fixedDesdeMes.value = fixa?.desde_mes ?? selectedMes.value;
+  fixedDesdeAno.value = fixa?.desde_ano ?? selectedAno.value;
   weekRows.value = semanaDefs.value.map(s => {
     const weekOv  = getOverride(emp.matricula, selectedAno.value, selectedMes.value, s.value);
     const monthOv = getOverride(emp.matricula, selectedAno.value, selectedMes.value, 0);
@@ -848,11 +865,14 @@ async function handleSaveFixa() {
   const meta = Number.isFinite(bruto) ? Math.min(99, Math.max(0, Math.round(bruto))) : perfilMeta(emp);
   fixedSaving.value = true;
   try {
-    await saveFixedGoal({ matricula: emp.matricula, nome: emp.nomeCompleto, meta_semanal: meta, motivo: fixedMotivo.value });
+    await saveFixedGoal({
+      matricula: emp.matricula, nome: emp.nomeCompleto, meta_semanal: meta, motivo: fixedMotivo.value,
+      desde_ano: fixedDesdeAno.value, desde_mes: fixedDesdeMes.value,
+    });
     $q.notify({
       type: "positive", icon: "mdi-pin", position: "top-right", timeout: 3500,
       message: `Meta fixa de ${emp.nomeCompleto}: ${meta}/sem`,
-      caption: "Vale em todos os meses até ser removida.",
+      caption: `Vale ${desdeLabel({ desde_ano: fixedDesdeAno.value, desde_mes: fixedDesdeMes.value })} até ser removida.`,
     });
     openPanel(emp);
   } catch (e) {
@@ -869,14 +889,17 @@ function editarFixa(fg: { matricula: string; meta_semanal: number; motivo: strin
   editFixa.value = { matricula: fg.matricula, meta: fg.meta_semanal, motivo: fg.motivo };
 }
 
-async function salvarEdicaoFixa(fg: { matricula: string; nome: string }) {
+async function salvarEdicaoFixa(fg: { matricula: string; nome: string; desde_ano: number | null; desde_mes: number | null }) {
   const ed = editFixa.value;
   if (!ed) return;
   const bruto = Number(ed.meta);
   const meta = Number.isFinite(bruto) ? Math.min(99, Math.max(0, Math.round(bruto))) : 0;
   fixedSaving.value = true;
   try {
-    await saveFixedGoal({ matricula: fg.matricula, nome: fg.nome, meta_semanal: meta, motivo: ed.motivo });
+    await saveFixedGoal({
+      matricula: fg.matricula, nome: fg.nome, meta_semanal: meta, motivo: ed.motivo,
+      desde_ano: fg.desde_ano, desde_mes: fg.desde_mes,
+    });
     $q.notify({ type: "positive", icon: "mdi-pin", position: "top-right", timeout: 3000, message: `Meta fixa de ${fg.nome}: ${meta}/sem` });
     editFixa.value = null;
     if (selectedEmp.value?.matricula === fg.matricula && panelVisible.value) openPanel(selectedEmp.value);
@@ -1377,6 +1400,7 @@ $border:  #e2e8f0;
   }
   &__sub { font-size: 11.5px; color: #64748b; margin-top: 3px; line-height: 1.45; }
   &__actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  &__desde { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 }
 
 // ── Override list ──────────────────────────────────────────────────────────────
