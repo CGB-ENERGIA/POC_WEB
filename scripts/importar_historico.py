@@ -23,7 +23,8 @@ CATALOG_DIR = r"C:\POC\POC_Mobile\src\data"
 ENV_FILE = r"C:\POC\POC_OP\.env"
 SUPABASE_URL = "https://uqjabgsxzeekxznybhns.supabase.co/rest/v1"
 NS = uuid.UUID("6f1d2c3a-0000-4000-8000-00000000cafe")
-OFFSET = "-03:00"
+# Horário de parede da planilha gravado como UTC: o painel conta mês/dia/semana pela data UTC gravada.
+OFFSET = "+00:00"
 ROUO_ITENS = ["Desligar", "Bloquear", "Sinalizar", "Testar", "Aterrar", "Proteger"]
 MOJIBAKE_CONFORME = "N\ufffdo Conforme"
 
@@ -218,6 +219,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true", help="grava no banco (padrão: dry-run)")
     ap.add_argument("--lote", type=int, default=1000)
+    ap.add_argument("--max-lotes", type=int, default=0, help="processa no máximo N lotes de 100 checklists (teste)")
     args = ap.parse_args()
 
     catalogos = carregar_catalogos()
@@ -260,25 +262,34 @@ def main():
         print("\nDry-run: nada foi gravado. Use --apply após aprovar as decisões pendentes.")
         return
 
-    for i in range(0, len(novos), 200):
-        lote = novos[i:i + 200]
-        http("POST", "checklist_submissions", key, body=lote, prefer="return=minimal")
-        print(f"submissões {i + len(lote)}/{len(novos)}")
-    ids = {}
-    for i in range(0, len(novos), 300):
-        lote = [s["client_id"] for s in novos[i:i + 300]]
-        rows = http("GET", "checklist_submissions", key, query={"select": "id,client_id", "client_id": f"in.({','.join(lote)})"})
-        ids.update({r["client_id"]: r["id"] for r in rows})
-
-    linhas = []
-    for s in novos:
-        sid = ids[s["client_id"]]
-        for r in resp_por_sub[s["client_id"]]:
-            linhas.append({"submission_id": sid, **r})
-    for i in range(0, len(linhas), args.lote):
-        http("POST", "checklist_responses", key, body=linhas[i:i + args.lote], prefer="return=minimal")
-        if (i // args.lote) % 50 == 0:
-            print(f"respostas {min(i + args.lote, len(linhas))}/{len(linhas)}")
+    import os
+    ck_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".importar_historico.checkpoint.json")
+    feitos = set(json.load(open(ck_path))) if os.path.exists(ck_path) else set()
+    TAM = 100
+    lotes = [subs[i:i + TAM] for i in range(0, len(subs), TAM)]
+    processados = 0
+    for ci, lote in enumerate(lotes):
+        if ci in feitos:
+            continue
+        if args.max_lotes and processados >= args.max_lotes:
+            break
+        cids = [s["client_id"] for s in lote]
+        ja = {r["client_id"] for r in http("GET", "checklist_submissions", key,
+              query={"select": "client_id", "client_id": f"in.({','.join(cids)})"})}
+        faltam = [s for s in lote if s["client_id"] not in ja]
+        if faltam:
+            http("POST", "checklist_submissions", key, body=faltam, prefer="return=minimal")
+        ids = {r["client_id"]: r["id"] for r in http("GET", "checklist_submissions", key,
+               query={"select": "id,client_id", "client_id": f"in.({','.join(cids)})"})}
+        linhas = [{"submission_id": ids[s["client_id"]], **r} for s in lote for r in resp_por_sub[s["client_id"]]]
+        for i in range(0, len(linhas), args.lote):
+            http("POST", "checklist_responses", key, body=linhas[i:i + args.lote],
+                 prefer="resolution=ignore-duplicates,return=minimal", query={"on_conflict": "submission_id,pergunta_id"})
+        feitos.add(ci)
+        json.dump(sorted(feitos), open(ck_path, "w"))
+        processados += 1
+        if processados % 10 == 0 or processados == 1:
+            print(f"lotes concluídos: {len(feitos)}/{len(lotes)} ({len(feitos) * TAM} checklists)", flush=True)
     print("concluído.")
 
 
