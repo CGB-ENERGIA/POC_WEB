@@ -134,7 +134,12 @@
             <td v-for="(cell, mi) in row.months" :key="mi"
               :class="['td-cell',
                 mi + 1 === filters.mes && 'td-cell--current',
-                cell ? `td-icit--${icitClass(cell.pct)}` : 'td-empty']">
+                cell ? `td-icit--${icitClass(cell.pct)} td-cell--click` : 'td-empty']"
+              :tabindex="cell ? 0 : undefined"
+              :role="cell ? 'button' : undefined"
+              :aria-label="cell ? `Ver detalhes de ${row.prefixo} em ${monthNames[mi]}` : undefined"
+              @click="cell && abrirDetalhe(row.prefixo, mi + 1)"
+              @keydown.enter="cell && abrirDetalhe(row.prefixo, mi + 1)">
               <template v-if="cell">
                 <div v-if="cell.reinc" class="cell-inner">
                   <span class="cell-reinc">Reincidência: {{ cell.reinc }}</span>
@@ -143,7 +148,10 @@
                 <div v-else class="cell-inner cell-inner--single">{{ fmtPct(cell.pct) }}</div>
               </template>
             </td>
-            <td class="td-total">
+            <td class="td-total td-cell--click" tabindex="0" role="button"
+              :aria-label="`Ver detalhes de ${row.prefixo} em ${filters.ano}`"
+              @click="abrirDetalhe(row.prefixo, null)"
+              @keydown.enter="abrirDetalhe(row.prefixo, null)">
               <div class="cell-inner">
                 <span class="total-reinc">Reincidência: {{ row.total.reinc }}</span>
                 <span class="total-pct" :class="`total-pct--${icitClass(row.total.pct)}`">
@@ -163,13 +171,78 @@
       <div class="empty-hint">Verifique se há dados carregados para {{ filters.ano }}</div>
     </div>
 
+    <!-- Detalhes da célula (prefixo × mês) -->
+    <q-dialog v-model="detalheAberto">
+      <q-card class="icit-det">
+        <div class="icit-det__head">
+          <div>
+            <div class="icit-det__prefixo">{{ detalhe?.prefixo }}</div>
+            <div class="icit-det__periodo">{{ detalheTitulo }}</div>
+          </div>
+          <q-btn flat round dense icon="mdi-close" v-close-popup aria-label="Fechar" />
+        </div>
+
+        <div v-if="detalheDados" class="icit-det__body">
+          <div class="icit-det__cards">
+            <div class="icit-det__card icit-det__card--inc">
+              <div class="icit-det__card-label">Inconformidade</div>
+              <div class="icit-det__card-num">{{ detalheDados.inconformes }}</div>
+            </div>
+            <div class="icit-det__card icit-det__card--conf">
+              <div class="icit-det__card-label">Conformidade</div>
+              <div class="icit-det__card-num">{{ detalheDados.conformes }}</div>
+            </div>
+          </div>
+          <div class="icit-det__icit">
+            ICIT do período: <strong>{{ fmtPct(detalheDados.icit) }}</strong>
+            · {{ detalheDados.visitas }} {{ detalheDados.visitas === 1 ? "visita" : "visitas" }}
+          </div>
+
+          <div class="icit-det__scroll">
+            <table class="icit-det__table">
+              <thead>
+                <tr>
+                  <th class="icit-det__th-obs">Observador</th>
+                  <th class="num">Visitas</th>
+                  <th>Gerência</th>
+                  <th class="num">Conforme</th>
+                  <th class="num">Inconforme</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="l in detalheDados.linhas" :key="l.matricula">
+                  <td class="icit-det__th-obs">{{ l.observador }}</td>
+                  <td class="num">{{ l.visitas }}</td>
+                  <td>{{ l.gerencia }}</td>
+                  <td class="num icit-det__conf">{{ l.conforme }}</td>
+                  <td class="num icit-det__inc">{{ l.inconforme }}</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td class="icit-det__th-obs">Total de Visitas</td>
+                  <td class="num">{{ detalheDados.visitas }}</td>
+                  <td></td>
+                  <td class="num">{{ detalheDados.conformes }}</td>
+                  <td class="num">{{ detalheDados.inconformes }}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </q-card>
+    </q-dialog>
+
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { reactive, computed, ref, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, uniqueHierarchyOpts, filterByCoordenador } from "@/lib/dashboard";
+import {
+  filterByGerencia, filterByGerente, uniqueHierarchyOpts, filterByCoordenador,
+  indexEmployees, matchSubmissionToEmployee,
+} from "@/lib/dashboard";
 
 const { loading, submissions, responses, employees, load } = useChecklistData();
 
@@ -249,21 +322,27 @@ function filterPrefixo(val: string, update: (fn: () => void) => void) {
 }
 
 // ─── ICIT per equipe per month (submission-level: checklists sem NC / total) ──
-const rawRows = computed<Row[]>(() => {
+/** Checklists do ano depois dos filtros de gerente, coordenador e gerência. */
+const subsFiltrados = computed(() => {
   let subs = filterByGerente(submissions.value,  employees.value, filters.gerente    || "Todos");
   subs     = filterByCoordenador(subs,            employees.value, filters.coordenador || "Todos");
-  subs     = filterByGerencia(subs,               employees.value, filters.gerencia   || "Todos");
+  return     filterByGerencia(subs,               employees.value, filters.gerencia   || "Todos");
+});
 
-  if (!subs.length) return [];
-
-  // Build set of submission IDs that have at least one NC response
-  const subIdSet = new Set(subs.map(s => s.id));
-  const ncSubIds = new Set<string>();
+/** IDs dos checklists que têm pelo menos uma resposta não conforme. */
+const ncIds = computed(() => {
+  const subIdSet = new Set(subsFiltrados.value.map(s => s.id));
+  const out = new Set<string>();
   for (const r of responses.value) {
-    if (subIdSet.has(r.submission_id) && r.resposta === "nao_conforme") {
-      ncSubIds.add(r.submission_id);
-    }
+    if (subIdSet.has(r.submission_id) && r.resposta === "nao_conforme") out.add(r.submission_id);
   }
+  return out;
+});
+
+const rawRows = computed<Row[]>(() => {
+  const subs = subsFiltrados.value;
+  if (!subs.length) return [];
+  const ncSubIds = ncIds.value;
 
   // Group submissions by equipe × month
   type MonthStats = { total: number; semNc: number };
@@ -318,6 +397,59 @@ const filteredRows = computed<Row[]>(() => {
   });
 });
 
+// ─── Detalhes da célula (prefixo × mês) ───────────────────────────────────────
+const detalhe = ref<{ prefixo: string; mes: number | null } | null>(null);
+const detalheAberto = computed({
+  get: () => detalhe.value !== null,
+  set: (v: boolean) => { if (!v) detalhe.value = null; },
+});
+
+function abrirDetalhe(prefixo: string, mes: number | null) {
+  detalhe.value = { prefixo, mes };
+}
+
+const detalheTitulo = computed(() => {
+  const d = detalhe.value;
+  if (!d) return "";
+  if (d.mes === null) return `Ano de ${filters.ano} (total)`;
+  const nome = monthNames[d.mes - 1] ?? "";
+  return `${nome.charAt(0).toUpperCase()}${nome.slice(1)} de ${filters.ano}`;
+});
+
+const detalheDados = computed(() => {
+  const d = detalhe.value;
+  if (!d) return null;
+  const idx = indexEmployees(employees.value);
+  const porObs = new Map<string, { matricula: string; observador: string; gerencia: string; visitas: number; conforme: number; inconforme: number }>();
+  let conformes = 0;
+  let inconformes = 0;
+
+  for (const s of subsFiltrados.value) {
+    if ((s.equipe || "Sem equipe") !== d.prefixo) continue;
+    const dt = new Date(s.data ?? "");
+    if (isNaN(dt.getTime())) continue;
+    if (d.mes !== null && dt.getMonth() + 1 !== d.mes) continue;
+
+    const comNc = ncIds.value.has(s.id);
+    const emp = matchSubmissionToEmployee(s, idx);
+    const linha = porObs.get(s.matricula) ?? {
+      matricula: s.matricula, observador: s.observador, gerencia: emp?.gerencia ?? s.auditagem,
+      visitas: 0, conforme: 0, inconforme: 0,
+    };
+    linha.visitas++;
+    if (comNc) { linha.inconforme++; inconformes++; } else { linha.conforme++; conformes++; }
+    porObs.set(s.matricula, linha);
+  }
+
+  const visitas = conformes + inconformes;
+  const linhas = [...porObs.values()]
+    .sort((a, b) => b.visitas - a.visitas || a.observador.localeCompare(b.observador, "pt-BR"));
+  return {
+    linhas, conformes, inconformes, visitas,
+    icit: visitas ? Math.round((conformes / visitas) * 10000) / 100 : 0,
+  };
+});
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmtPct(v: number) {
   return v.toFixed(2).replace(".", ",") + "%";
@@ -331,6 +463,12 @@ function icitClass(pct: number): "green" | "yellow" | "red" {
 </script>
 
 <style scoped lang="scss">
+.td-cell--click {
+  cursor: pointer;
+  &:hover { filter: brightness(1.12); outline: 2px solid rgba(255, 255, 255, .55); outline-offset: -2px; }
+  &:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+}
+
 $brand:       #8B1C2B;
 $border:      #e2e8f0;
 $label-color: #94a3b8;
@@ -677,5 +815,65 @@ $icit-red:    #dc2626;
 
   .empty-label { color: #64748b; }
   .empty-hint  { color: #475569; }
+}
+</style>
+
+<style lang="scss">
+// Popup de detalhes (o q-dialog é montado fora do componente, por isso o bloco não é scoped)
+.icit-det {
+  width: 760px; max-width: 94vw; max-height: 88vh;
+  display: flex; flex-direction: column;
+  border-radius: 14px; overflow: hidden;
+
+  &__head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    padding: 16px 20px; border-bottom: 1px solid #e2e8f0;
+  }
+  &__prefixo { font-size: 1.05rem; font-weight: 800; color: #1e293b; letter-spacing: .01em; }
+  &__periodo { font-size: .8rem; color: #64748b; margin-top: 2px; }
+
+  &__body { padding: 16px 20px 20px; overflow-y: auto; }
+
+  &__cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  &__card {
+    border-radius: 12px; overflow: hidden; text-align: center;
+    background: #fff; border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+  }
+  &__card-label { padding: 8px 6px; font-size: 1.05rem; font-weight: 700; color: #fff; }
+  &__card-num { padding: 8px 6px 10px; font-size: 2.2rem; font-weight: 800; color: #1e293b; line-height: 1.1; }
+  &__card--inc &__card-label { background: #b4143a; }
+  &__card--conf &__card-label { background: #2f9e1f; }
+
+  &__icit { margin: 12px 0 14px; font-size: .85rem; color: #475569; }
+
+  &__scroll { overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 10px; }
+  &__table {
+    width: 100%; border-collapse: collapse; font-size: .85rem;
+    th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #eef2f6; white-space: nowrap; }
+    th { background: #f1f5f9; color: #334155; font-weight: 700; position: sticky; top: 0; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    tfoot td { font-weight: 800; border-top: 2px solid #cbd5e1; border-bottom: none; background: #f8fafc; }
+  }
+  &__th-obs { min-width: 150px; }
+  &__conf { background: rgba(47, 158, 31, .18); color: #166534; font-weight: 700; }
+  &__inc  { background: rgba(180, 20, 58, .14); color: #9f1239; font-weight: 700; }
+}
+
+.body--dark .icit-det {
+  background: #1e293b;
+  &__head { border-bottom-color: #334155; }
+  &__prefixo { color: #e2e8f0; }
+  &__periodo, &__icit { color: #94a3b8; }
+  &__card { background: #0f172a; border-color: #334155; }
+  &__card-num { color: #e2e8f0; }
+  &__scroll { border-color: #334155; }
+  &__table {
+    th, td { border-bottom-color: #334155; color: #cbd5e1; }
+    th { background: #0f172a; color: #e2e8f0; }
+    tfoot td { background: #0f172a; border-top-color: #475569; color: #e2e8f0; }
+  }
+  &__conf { background: rgba(74, 222, 128, .16); color: #86efac; }
+  &__inc  { background: rgba(251, 113, 133, .16); color: #fda4af; }
 }
 </style>
