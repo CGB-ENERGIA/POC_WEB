@@ -5,6 +5,7 @@ Idempotente: cada checklist recebe client_id determinístico (uuid5) e linhas j�
 """
 import argparse
 import collections
+import os
 import datetime as dt
 import json
 import re
@@ -19,6 +20,7 @@ import urllib.request
 import pandas as pd
 
 XLSX = r"C:\Users\Italo\Downloads\Base POC 4.0.xlsx"
+ABAS_PADRAO = [("Operacional", "Operacional"), ("Administrativo", "Administrativo")]
 CATALOG_DIR = r"C:\POC\POC_Mobile\src\data"
 ENV_FILE = r"C:\POC\POC_OP\.env"
 SUPABASE_URL = "https://uqjabgsxzeekxznybhns.supabase.co/rest/v1"
@@ -105,10 +107,12 @@ def mat(v):
         return None
 
 
-def ler_planilha(catalogos):
+def ler_planilha(catalogos, xlsx=XLSX, abas=None):
+    """`abas`: lista de (nome da aba no arquivo, tipo lógico: "Operacional" ou "Administrativo")."""
     checklists, cache = [], {}
-    for sheet in ["Operacional", "Administrativo"]:
-        df = pd.read_excel(XLSX, sheet_name=sheet).reset_index(drop=True)
+    fonte = os.path.basename(xlsx)
+    for aba, sheet in (abas or ABAS_PADRAO):
+        df = pd.read_excel(xlsx, sheet_name=aba).reset_index(drop=True)
         i_res = col_idx(df, "Todos as inconformidades foram resolvidas?")
         i_obs = col_idx(df, "Observador")
         i_coord = col_idx(df, "Coordenador do Obs")
@@ -147,7 +151,7 @@ def ler_planilha(catalogos):
             if i_res is not None and pd.notna(row.iloc[i_res]):
                 resolvido_geral = str(row.iloc[i_res]).strip().lower() == "sim"
             checklists.append({
-                "sheet": sheet, "row": idx, "carimbo": ts.to_pydatetime(),
+                "sheet": sheet, "fonte": fonte, "row": idx, "carimbo": ts.to_pydatetime(),
                 "matricula": mat(row.iloc[1]), "observador": str(row.iloc[i_obs]).strip(),
                 "coordenador": str(row.iloc[i_coord]).strip() if pd.notna(row.iloc[i_coord]) else "",
                 "base_obs": str(row.iloc[i_basobs]).strip().upper() if pd.notna(row.iloc[i_basobs]) else None,
@@ -163,7 +167,9 @@ def ler_planilha(catalogos):
 
 
 def payload(ch):
-    client_id = str(uuid.uuid5(NS, f"{ch['sheet']}|{ch['row']}|{ch['carimbo'].isoformat()}|{ch['matricula']}|{ch['equipe']}"))
+    # Arquivos extras entram na chave; a Base POC 4.0 mantém a chave original (ids já gravados não mudam).
+    tag = "" if ch["fonte"] == os.path.basename(XLSX) else f"{ch['fonte']}|"
+    client_id = str(uuid.uuid5(NS, f"{tag}{ch['sheet']}|{ch['row']}|{ch['carimbo'].isoformat()}|{ch['matricula']}|{ch['equipe']}"))
     respostas = []
     n_conf = n_nc = 0
     for r in ch["respostas"]:
@@ -178,7 +184,7 @@ def payload(ch):
             "itens": r.get("itens"),
         })
     resumo = {"total": len(respostas), "conformes": n_conf, "naoConformes": n_nc,
-              "legado": {"origem": "Base POC 4.0", "planilha": ch["sheet"]}}
+              "legado": {"origem": "Base POC 4.0", "planilha": ch["sheet"], "fonte": ch["fonte"]}}
     return client_id, {
         "client_id": client_id,
         "matricula": ch["matricula"],
@@ -220,10 +226,14 @@ def main():
     ap.add_argument("--apply", action="store_true", help="grava no banco (padrão: dry-run)")
     ap.add_argument("--lote", type=int, default=1000)
     ap.add_argument("--max-lotes", type=int, default=0, help="processa no máximo N lotes de 100 checklists (teste)")
+    ap.add_argument("--arquivo", default=XLSX, help="planilha de origem (padrão: Base POC 4.0)")
+    ap.add_argument("--aba", action="append", default=[], metavar="NOME=TIPO",
+                    help='aba do arquivo e seu tipo lógico, ex.: --aba "Planilha1=Operacional" (repetível)')
     args = ap.parse_args()
+    abas = [tuple(a.split("=", 1)) for a in args.aba] or None
 
     catalogos = carregar_catalogos()
-    checklists = ler_planilha(catalogos)
+    checklists = ler_planilha(catalogos, args.arquivo, abas)
     key = chave_env()
 
     pares = [payload(c) for c in checklists]
@@ -263,7 +273,8 @@ def main():
         return
 
     import os
-    ck_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".importar_historico.checkpoint.json")
+    slug = "" if args.arquivo == XLSX else "." + "".join(c if c.isalnum() else "_" for c in os.path.splitext(os.path.basename(args.arquivo))[0])
+    ck_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f".importar_historico{slug}.checkpoint.json")
     feitos = set(json.load(open(ck_path))) if os.path.exists(ck_path) else set()
     TAM = 100
     lotes = [subs[i:i + TAM] for i in range(0, len(subs), TAM)]
