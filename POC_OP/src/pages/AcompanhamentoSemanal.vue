@@ -348,7 +348,7 @@ import { reactive, computed, ref, watch, onMounted, onBeforeUnmount } from "vue"
 import { useQuasar } from "quasar";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
-import { BarChart, LineChart, PieChart, ScatterChart } from "echarts/charts";
+import { BarChart, LineChart, PieChart, ScatterChart, CustomChart } from "echarts/charts";
 import {
   GridComponent,
   TooltipComponent,
@@ -370,7 +370,7 @@ const { goalForColaborador } = useGoals();
 const $q = useQuasar();
 
 use([
-  CanvasRenderer, BarChart, LineChart, PieChart, ScatterChart,
+  CanvasRenderer, BarChart, LineChart, PieChart, ScatterChart, CustomChart,
   GridComponent, TooltipComponent, LegendComponent, TitleComponent,
   MarkLineComponent, GraphicComponent, DataZoomComponent,
 ]);
