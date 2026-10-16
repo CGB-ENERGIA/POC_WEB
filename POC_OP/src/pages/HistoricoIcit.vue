@@ -464,6 +464,7 @@ $icit-red:    #dc2626;
   :deep(.q-field__control) {
     height: 28px; min-height: 28px; border-radius: 999px;
     background: $inactive-bg; padding: 0 10px;
+    display: flex; align-items: center;
   }
   // Quasar outlined usa ::before para a borda
   :deep(.q-field__control::before) {
@@ -473,8 +474,13 @@ $icit-red:    #dc2626;
   }
   :deep(.q-field__control:hover::before) { border-color: $brand; }
   :deep(.q-field--focused .q-field__control::before) { border-color: $brand; }
-  :deep(.q-field__native) { font-size: 11px; font-weight: 500; color: $inactive-txt; min-height: unset; line-height: 28px; }
-  :deep(.q-field__append) { height: 28px; }
+  :deep(.q-field__control-container) { padding-top: 0 !important; }
+  :deep(.q-field__native) {
+    font-size: 11px; font-weight: 500; color: $inactive-txt;
+    min-height: unset; height: 28px; line-height: 28px;
+    padding: 0; margin: 0; align-self: center;
+  }
+  :deep(.q-field__append) { height: 28px; align-self: center; }
   :deep(.q-field__append .q-icon) { font-size: 16px; color: $label-color; }
 }
 :global(.prefixo-popup .q-item) { font-size: 11px; min-height: 28px; padding: 2px 10px; }
