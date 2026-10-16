@@ -89,15 +89,6 @@
             </div>
           </div>
           <div class="filter-divider" />
-          <div class="fgroup">
-            <span class="fgroup__label">Função</span>
-            <div class="pill-group">
-              <button v-for="f in funcaoOpts" :key="f"
-                :class="['pill', filters.funcao === f && 'pill--active']"
-                @click="filters.funcao = f">{{ f }}</button>
-            </div>
-          </div>
-          <div class="filter-divider" />
           <div class="fgroup fgroup--gerente" style="min-width:220px">
             <span class="fgroup__label">Categoria</span>
             <q-select v-model="filters.categoria" :options="categoriasOpts"
@@ -131,7 +122,6 @@
           <span v-if="filters.gerente !== 'Todos'" class="filter-chip">{{ filters.gerente }}</span>
           <span v-if="filters.coordenador !== 'Todos'" class="filter-chip">{{ filters.coordenador }}</span>
           <span v-if="filters.tipoPoc !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.tipoPoc = 'Todos'">{{ filters.tipoPoc }}</span>
-          <span v-if="filters.funcao !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.funcao = 'Todos'">{{ filters.funcao }}</span>
           <span v-if="filters.categoria !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.categoria = 'Todos'">{{ filters.categoria }}</span>
           <span v-if="filters.prefixo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.prefixo = 'Todos'">{{ filters.prefixo }}</span>
           <span v-if="filters.observador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.observador = 'Todos'">{{ filters.observador }}</span>
@@ -334,7 +324,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, fetchIcitPorPrefixo, indexEmployees, matchSubmissionToEmployee, type IcitPrefixo, filterByCoordenador, foldName, allPages } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, fetchIcitPorPrefixo, type IcitPrefixo, filterByCoordenador, foldName, allPages } from "@/lib/dashboard";
 import { supabase } from "@/lib/supabase";
 import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
 
@@ -362,10 +352,8 @@ const MONTH_MAP: Record<string, number> = {
 
 const mesesOpts    = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26","jul/26","ago/26","set/26","out/26","nov/26","dez/26"];
 const anosOpts     = ["2024","2025","2026"];
-const categoriasOpts = ["Todos","Procedimento","Padrinho de Segurança","Veículos e Equipamentos","EPI/EPC","APR","Trabalho em Altura","Regras de Ouro"];
 const basesOpts    = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
-const funcaoOpts   = ["Todos","Eletricista","Motorista","Operador","Técnico"];
 const tiposPoc     = ["Todos","Administrativo","Operacional","Alojamento"];
 
 const curMesLabel = mesesOpts[now.getMonth()] ?? "jan/26";
@@ -373,7 +361,7 @@ const curMesLabel = mesesOpts[now.getMonth()] ?? "jan/26";
 const filters = reactive({
   mes: curMesLabel, ano: String(now.getFullYear()), categoria: "Todos",
   base: "Todos", prefixo: "Todos", gerencia: "Todos",
-  gerente: "Todos", coordenador: "Todos", observador: "Todos", funcao: "Todos",
+  gerente: "Todos", coordenador: "Todos", observador: "Todos",
   tipoPoc: lerTipoPoc(tiposPoc),
 });
 watch(() => filters.tipoPoc, salvarTipoPoc);
@@ -549,7 +537,6 @@ function resetSlice() {
   filters.gerente = "Todos";
   filters.coordenador = "Todos";
   filters.tipoPoc = "Todos";
-  filters.funcao = "Todos";
   filters.categoria = "Todos";
   filters.prefixo = "Todos";
   filters.observador = "Todos";
@@ -561,7 +548,6 @@ const hasActiveFilters = computed(() =>
   || filters.gerente !== "Todos"
   || filters.coordenador !== "Todos"
   || filters.tipoPoc !== "Todos"
-  || filters.funcao !== "Todos"
   || filters.categoria !== "Todos"
   || filters.prefixo !== "Todos"
   || filters.observador !== "Todos",
@@ -569,9 +555,8 @@ const hasActiveFilters = computed(() =>
 
 function applySlice(
   source: typeof submissions.value,
-  omit: { base?: boolean; gerencia?: boolean; prefixo?: boolean; tipo?: boolean; funcao?: boolean; observador?: boolean } = {},
+  omit: { base?: boolean; gerencia?: boolean; prefixo?: boolean; tipo?: boolean; observador?: boolean } = {},
 ) {
-  const idx = indexEmployees(employees.value);
   let s = source;
   if (hierCarregada.value) {
     // Gerente/coordenador/gerência: só as equipes vinculadas a ele no cadastro, independente de quem visitou.
@@ -588,9 +573,6 @@ function applySlice(
     s = s.filter((sub) => (baseDaEquipe(extractPrefixo(sub.equipe)) || sub.base) === filters.base);
   }
   if (!omit.tipo) s = s.filter((sub) => matchTipoPoc(sub.auditagem));
-  if (!omit.funcao && filters.funcao !== "Todos") {
-    s = s.filter((sub) => matchSubmissionToEmployee(sub, idx)?.funcao === filters.funcao);
-  }
   if (!omit.observador && filters.observador !== "Todos") {
     s = s.filter((sub) => sub.observador === filters.observador);
   }
@@ -606,6 +588,11 @@ const subsNoPrefixo = computed(() => applySlice(submissions.value, { prefixo: tr
 const observadorOpts = computed(() => {
   const names = [...new Set(submissions.value.map((s) => s.observador).filter(Boolean))].sort();
   return ["Todos", ...names];
+});
+
+const categoriasOpts = computed(() => {
+  const cats = [...new Set(responses.value.map((r) => r.categoria).filter(Boolean))].sort() as string[];
+  return ["Todos", ...cats];
 });
 
 const filteredResps = computed(() => {

@@ -28,31 +28,40 @@ export function useChecklistData() {
   // Submissions for full year (line chart / heatmap without month filter)
   const submissionsAno = ref<SubmissionRow[]>([]);
 
+  // Protege contra respostas obsoletas: se load() for chamado duas vezes,
+  // apenas a mais recente atualiza o estado.
+  let loadSeq = 0;
+
   async function load(filters: Filters, loadYear = false, usarSemana = false) {
+    const seq = ++loadSeq;
     loading.value = true;
     error.value = null;
     try {
       await carregarSemanas(); // consultas por semana dependem do cronograma do mês
+      if (seq !== loadSeq) return;
       const [subs, emps] = await Promise.all([
         fetchSubmissions(filters, usarSemana),
         fetchEmployees(),
       ]);
+      if (seq !== loadSeq) return;
       submissions.value = subs;
       employees.value = emps as EmployeeRow[];
 
       const resp = await fetchResponses(subs.map((s) => s.id));
+      if (seq !== loadSeq) return;
       responses.value = resp;
 
       if (loadYear && filters.mes) {
         const yearSubs = await fetchSubmissions({ ano: filters.ano });
+        if (seq !== loadSeq) return;
         submissionsAno.value = yearSubs;
       } else if (loadYear) {
         submissionsAno.value = subs;
       }
     } catch (e) {
-      error.value = (e as Error).message;
+      if (seq === loadSeq) error.value = (e as Error).message;
     } finally {
-      loading.value = false;
+      if (seq === loadSeq) loading.value = false;
     }
   }
 

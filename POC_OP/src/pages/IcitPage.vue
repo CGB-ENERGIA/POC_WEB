@@ -1041,6 +1041,14 @@ $label-color:  #94a3b8;
     border-color: rgba(139,28,43,.4);
   }
 }
+.body--dark .historico-card {
+  background: linear-gradient(135deg, rgba(139,28,43,.15) 0%, rgba(30,41,59,.8) 100%);
+  border-color: rgba(139,28,43,.4);
+  &:hover {
+    box-shadow: 0 4px 20px rgba(139,28,43,.3);
+    border-color: rgba(139,28,43,.6);
+  }
+}
 
 .equipe-col { display: flex; flex-direction: column; }
 .equipe-card { height: 100%; }
