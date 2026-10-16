@@ -300,8 +300,11 @@ function applySubmissionFilters(
 }
 
 // Supabase limita 1000 linhas por query; esta função pagina automaticamente.
+// Em checklist_responses (>1 mi de linhas) ordene por submission_id,pergunta_id: order by id varre o índice
+// inteiro e estoura o statement_timeout (erro 500).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function allPages<T>(buildQ: () => any, desempate = "id"): Promise<T[]> {
+export async function allPages<T>(buildQ: () => any, desempate: string | string[] = "id"): Promise<T[]> {
+  const colunas = Array.isArray(desempate) ? desempate : [desempate];
   const PAGE = 1000;
   const WAVE = 4; // páginas baixadas ao mesmo tempo
   const all: T[] = [];
@@ -309,7 +312,9 @@ export async function allPages<T>(buildQ: () => any, desempate = "id"): Promise<
     // Desempate por coluna única é obrigatório: sem ordem determinística o Postgres pode repetir/pular linhas entre páginas
     const wave = await Promise.all(
       Array.from({ length: WAVE }, (_, i) =>
-        buildQ().order(desempate, { ascending: true }).range((page + i) * PAGE, (page + i + 1) * PAGE - 1),
+        colunas
+          .reduce((q, col) => q.order(col, { ascending: true }), buildQ())
+          .range((page + i) * PAGE, (page + i + 1) * PAGE - 1),
       ),
     );
     let fim = false;
@@ -349,7 +354,10 @@ export async function fetchAllByIds<T>(table: string, select: string, coluna: st
   if (!ids.length) return [];
   const lotes = await mapLimit(chunked(ids, 300), 3, (chunk) =>
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    allPages<T>(() => (supabase.from(table) as any).select(select).in(coluna, chunk)),
+    allPages<T>(
+      () => (supabase.from(table) as any).select(select).in(coluna, chunk),
+      table === "checklist_responses" ? ORD_RESP : coluna === "id" ? "id" : [coluna, "id"],
+    ),
   );
   return lotes.flat();
 }
@@ -370,6 +378,9 @@ export async function fetchSubmissions(f: Filters, usarSemana = false): Promise<
 }
 
 /** Respostas ligadas a um conjunto de submissions (chunked + paginado para datasets grandes). */
+/** Ordenação que usa o índice único de checklist_responses (ver allPages). */
+const ORD_RESP = ["submission_id", "pergunta_id"];
+
 export async function fetchResponses(submissionIds: string[], opts: { soNc?: boolean } = {}): Promise<ResponseRow[]> {
   if (!submissionIds.length) return [];
   const lotes = await mapLimit(chunked(submissionIds, 300), 3, (chunk) =>
@@ -380,7 +391,7 @@ export async function fetchResponses(submissionIds: string[], opts: { soNc?: boo
         .in("submission_id", chunk);
       if (opts.soNc) q = q.eq("resposta", "nao_conforme");
       return q;
-    }),
+    }, ORD_RESP),
   );
   return lotes.flat();
 }
@@ -456,9 +467,10 @@ export async function fetchNaoConformesPorMes(
   const ids = subs.map((s) => s.id);
   const map: Record<number, number> = {};
   const lotes = await mapLimit(chunked(ids, 300), 3, (chunk) =>
-    allPages<{ submission_id: string }>(() =>
-      supabase.from("checklist_responses").select("submission_id")
-        .eq("resposta", "nao_conforme").in("submission_id", chunk)
+    allPages<{ submission_id: string }>(
+      () => supabase.from("checklist_responses").select("submission_id")
+        .eq("resposta", "nao_conforme").in("submission_id", chunk),
+      ORD_RESP,
     ),
   );
   for (const r of lotes.flat()) {
@@ -492,9 +504,10 @@ export async function fetchIcitPorPrefixo(startIso: string, endIso: string, base
   const ids = subs.map((s) => s.id);
   const ncSubIds = new Set<string>();
   const lotes = await mapLimit(chunked(ids, 300), 3, (chunk) =>
-    allPages<{ submission_id: string }>(() =>
-      supabase.from("checklist_responses").select("submission_id")
-        .eq("resposta", "nao_conforme").in("submission_id", chunk)
+    allPages<{ submission_id: string }>(
+      () => supabase.from("checklist_responses").select("submission_id")
+        .eq("resposta", "nao_conforme").in("submission_id", chunk),
+      ORD_RESP,
     ),
   );
   for (const r of lotes.flat()) ncSubIds.add(r.submission_id);
@@ -518,12 +531,13 @@ export interface NcLightRow {
 export async function fetchNcLight(submissionIds: string[]): Promise<NcLightRow[]> {
   if (!submissionIds.length) return [];
   const lotes = await mapLimit(chunked(submissionIds, 300), 3, (chunk) =>
-    allPages<NcLightRow>(() =>
-      supabase
+    allPages<NcLightRow>(
+      () => supabase
         .from("checklist_responses")
         .select("submission_id,categoria")
         .eq("resposta", "nao_conforme")
-        .in("submission_id", chunk)
+        .in("submission_id", chunk),
+      ORD_RESP,
     ),
   );
   return lotes.flat();
