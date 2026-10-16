@@ -184,6 +184,7 @@
                   <th class="col-data">Data</th>
                   <th class="col-base">Base</th>
                   <th class="col-obs">Observador</th>
+                  <th class="col-coord">Coordenador</th>
                   <th class="col-equipe">Equipe</th>
                   <th class="col-nc">Não Conformidades</th>
                   <th class="col-status">Status</th>
@@ -210,6 +211,10 @@
                     <td class="col-obs" @click.stop="toggleObs(sub.observador)">
                       <span :class="{ 'hit-text--on': viz.observador === sub.observador }">{{ sub.observador }}</span>
                     </td>
+                    <td class="col-coord" :class="{ 'td-click': sub.coordenador }" @click.stop="toggleCoord(sub.coordenador)">
+                      <span v-if="sub.coordenador" :class="{ 'hit-text--on': filters.coordenador === sub.coordenador }">{{ sub.coordenador }}</span>
+                      <span v-else class="td-vazio">—</span>
+                    </td>
                     <td class="col-equipe td-mono" @click.stop="toggleEquipe(sub.equipe)">
                       <span :class="{ 'hit-text--on': viz.equipe === sub.equipe }">{{ sub.equipe }}</span>
                     </td>
@@ -226,7 +231,7 @@
 
                   <!-- NCs expandidas -->
                   <tr v-if="isExpanded(sub.submissionId)" class="tr-nc-container">
-                    <td colspan="7" class="td-nc-container">
+                    <td colspan="8" class="td-nc-container">
                       <div class="nc-list">
                         <div
                           v-for="(nc, i) in sub.ncs"
@@ -271,7 +276,7 @@
                 </template>
 
                 <tr v-if="filteredData.length === 0">
-                  <td colspan="7" class="td-empty">
+                  <td colspan="8" class="td-empty">
                     <template v-if="loading">Carregando…</template>
                     <template v-else-if="submissions.length === 0">
                       Nenhum checklist aprovado no período selecionado.
@@ -534,7 +539,10 @@
 <script setup lang="ts">
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { fetchResolucoes, inserirResolucao, reabrirResolucao, filterByGerencia, filterByGerente, semanaDaData, type ResolucaoRow, filterByCoordenador } from "@/lib/dashboard";
+import {
+  fetchResolucoes, inserirResolucao, reabrirResolucao, filterByGerencia, filterByGerente, semanaDaData,
+  type ResolucaoRow, filterByCoordenador, indexEmployees, matchSubmissionToEmployee,
+} from "@/lib/dashboard";
 import { useAuth } from "@/composables/useAuth";
 
 // ─── R2 upload ────────────────────────────────────────────────────────────────
@@ -602,6 +610,10 @@ function toggleBase(base: string) {
 }
 function toggleObs(nome: string) {
   viz.observador = viz.observador === nome ? null : nome;
+}
+function toggleCoord(nome: string) {
+  if (!nome) return;
+  filters.coordenador = filters.coordenador === nome ? "Todos" : nome;
 }
 function toggleEquipe(eq: string) {
   viz.equipe = viz.equipe === eq ? null : eq;
@@ -702,6 +714,7 @@ type SubRow = {
   base: string;
   gerencia: string;
   observador: string;
+  coordenador: string;
   equipe: string;
   ncs: NcRow[];
   totalNc: number;
@@ -724,6 +737,7 @@ const allData = computed<SubRow[]>(() => {
   })();
 
   const empMap = new Map(employees.value.map((e) => [e.matricula, e]));
+  const empIdx = indexEmployees(employees.value);
 
   const subMap = new Map<string, SubRow>();
   for (const sub of sliced) {
@@ -736,6 +750,7 @@ const allData = computed<SubRow[]>(() => {
       base: sub.base,
       gerencia: emp?.gerencia ?? sub.auditagem ?? "",
       observador: sub.observador,
+      coordenador: matchSubmissionToEmployee(sub, empIdx)?.coordenador?.trim() ?? "",
       equipe: sub.equipe,
       ncs: [],
       totalNc: 0,
@@ -802,7 +817,7 @@ const filteredData = computed<SubRow[]>(() => {
   const q = search.value.toLowerCase();
   if (!q) return data;
   return data.filter((s) => {
-    const baseTxt = `${s.data} ${s.base} ${s.observador} ${s.equipe}`.toLowerCase();
+    const baseTxt = `${s.data} ${s.base} ${s.observador} ${s.coordenador} ${s.equipe}`.toLowerCase();
     if (baseTxt.includes(q)) return true;
     return s.ncs.some((nc) =>
       `${nc.categoria} ${nc.inconformidade} ${nc.pergunta} ${nc.responsavel ?? ""}`.toLowerCase().includes(q)
@@ -1128,6 +1143,9 @@ $header-bg:    #fce4e8;
   .col-data    { min-width: 140px; font-size: 11px; }
   .col-base    { min-width: 60px; }
   .col-obs     { min-width: 110px; font-weight: 600; color: #1e293b; }
+  .col-coord   { min-width: 100px; font-size: 12px; }
+  .td-click    { cursor: pointer; }
+  .td-vazio    { color: #94a3b8; }
   .col-equipe  { min-width: 140px; font-size: 11px; }
   .col-nc      { min-width: 80px; }
   .col-status  { min-width: 110px; }
