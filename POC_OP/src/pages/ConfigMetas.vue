@@ -478,7 +478,10 @@
       <div class="cm-override-list">
         <div class="cm-flabel" style="margin-bottom:8px">METAS SEMANAIS FIXAS · TODOS OS MESES</div>
         <div class="cm-override-items">
-          <div v-for="fg in fixedGoals" :key="fg.matricula" class="cm-override-item">
+          <div
+            v-for="fg in fixedGoals" :key="fg.matricula" class="cm-override-item"
+            :class="editFixa && editFixa.matricula === fg.matricula ? 'cm-override-item--edit' : ''"
+          >
             <div class="cm-override-item__avatar">
               {{ fg.nome.split(" ").slice(0,2).map(p => p[0]).join("") }}
             </div>
@@ -488,16 +491,42 @@
                 {{ fg.matricula }} · <span class="cm-override-item__sem">Fixa</span> · {{ fg.motivo || "Meta definida" }}
               </div>
             </div>
-            <div class="cm-override-item__badge">
-              <span class="cm-override-item__num">{{ fg.meta_semanal }}</span>
-              <span class="cm-override-item__unit">/sem</span>
-            </div>
-            <button class="cm-override-item__edit" title="Editar meta fixa" @click="editarFixa(fg)">
-              <q-icon name="mdi-pencil-outline" size="18px" />
-            </button>
-            <button class="cm-override-item__del" title="Remover meta fixa" :disabled="fixedSaving" @click="handleRemoveFixa(fg.matricula, fg.nome)">
-              <q-icon name="mdi-delete-outline" size="18px" />
-            </button>
+
+            <template v-if="editFixa && editFixa.matricula === fg.matricula">
+              <div class="cm-week-row__ctrl">
+                <button class="cm-stepper" @click="editFixa.meta = Math.max(0, Number(editFixa.meta) - 1)">−</button>
+                <input v-model.number="editFixa.meta" type="number" min="0" max="99" step="1" class="cm-counter__input cm-counter__input--sm" />
+                <button class="cm-stepper" @click="editFixa.meta = Math.min(99, Number(editFixa.meta) + 1)">+</button>
+                <span class="cm-week-row__unit">/sem</span>
+              </div>
+              <div class="cm-override-item__motivo">
+                <q-select
+                  v-model="editFixa.motivo"
+                  :options="motivosComVazio"
+                  outlined dense emit-value map-options
+                  placeholder="Sem motivo"
+                />
+              </div>
+              <button class="cm-override-item__edit cm-override-item__edit--ok" title="Salvar" :disabled="fixedSaving" @click="salvarEdicaoFixa(fg)">
+                <q-icon name="mdi-check" size="20px" />
+              </button>
+              <button class="cm-override-item__edit" title="Cancelar" @click="editFixa = null">
+                <q-icon name="mdi-close" size="20px" />
+              </button>
+            </template>
+
+            <template v-else>
+              <div class="cm-override-item__badge">
+                <span class="cm-override-item__num">{{ fg.meta_semanal }}</span>
+                <span class="cm-override-item__unit">/sem</span>
+              </div>
+              <button class="cm-override-item__edit" title="Editar meta fixa" @click="editarFixa(fg)">
+                <q-icon name="mdi-pencil-outline" size="18px" />
+              </button>
+              <button class="cm-override-item__del" title="Remover meta fixa" :disabled="fixedSaving" @click="handleRemoveFixa(fg.matricula, fg.nome)">
+                <q-icon name="mdi-delete-outline" size="18px" />
+              </button>
+            </template>
           </div>
         </div>
       </div>
@@ -525,7 +554,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from "vue";
+import { ref, computed, watch } from "vue";
 import { useQuasar } from "quasar";
 import { useGoals, chaveFuncao, metaRoleFrom, type IndividualOverride } from "@/composables/useGoals";
 import { supabase } from "@/lib/supabase";
@@ -833,15 +862,29 @@ async function handleSaveFixa() {
   }
 }
 
-/** Abre o colaborador no painel acima com a meta fixa atual para editar. */
-async function editarFixa(fg: { matricula: string; nome: string }) {
-  const emp = allEmps.value.find((e) => e.matricula === fg.matricula) ?? {
-    matricula: fg.matricula, nomeCompleto: fg.nome, gerencia: "", funcao: "", label: `${fg.nome} (${fg.matricula})`,
-  };
-  selectedEmp.value = emp;
-  openPanel(emp);
-  await nextTick();
-  document.querySelector(".cm-week-panel")?.scrollIntoView({ behavior: "smooth", block: "center" });
+/** Edição da meta fixa na própria linha da lista. */
+const editFixa = ref<{ matricula: string; meta: number; motivo: string } | null>(null);
+
+function editarFixa(fg: { matricula: string; meta_semanal: number; motivo: string }) {
+  editFixa.value = { matricula: fg.matricula, meta: fg.meta_semanal, motivo: fg.motivo };
+}
+
+async function salvarEdicaoFixa(fg: { matricula: string; nome: string }) {
+  const ed = editFixa.value;
+  if (!ed) return;
+  const bruto = Number(ed.meta);
+  const meta = Number.isFinite(bruto) ? Math.min(99, Math.max(0, Math.round(bruto))) : 0;
+  fixedSaving.value = true;
+  try {
+    await saveFixedGoal({ matricula: fg.matricula, nome: fg.nome, meta_semanal: meta, motivo: ed.motivo });
+    $q.notify({ type: "positive", icon: "mdi-pin", position: "top-right", timeout: 3000, message: `Meta fixa de ${fg.nome}: ${meta}/sem` });
+    editFixa.value = null;
+    if (selectedEmp.value?.matricula === fg.matricula && panelVisible.value) openPanel(selectedEmp.value);
+  } catch (e) {
+    $q.notify({ type: "negative", position: "top-right", timeout: 6000, message: "Não foi possível salvar a meta fixa.", caption: (e as Error).message });
+  } finally {
+    fixedSaving.value = false;
+  }
 }
 
 async function handleRemoveFixa(matricula: string, nome: string) {
@@ -1371,12 +1414,16 @@ $border:  #e2e8f0;
   &__mensal{ font-size: 11px; color: #94a3b8; }
   &__sem   { color: $brand; font-weight: 600; }
 
+  &--edit { flex-wrap: wrap; background: #fff7ed; }
+  &__motivo { width: 170px; flex-shrink: 0; }
+
   &__edit {
     background: none; border: none; cursor: pointer;
     color: #64748b; padding: 4px;
     border-radius: 6px; transition: background .12s, color .12s;
     display: flex; align-items: center;
     &:hover { background: #e2e8f0; color: #1e293b; }
+    &--ok { color: #16a34a; &:hover { background: #dcfce7; color: #15803d; } }
   }
 
   &__del {
@@ -1436,7 +1483,10 @@ $border:  #e2e8f0;
   .cm-derived { border-top-color: #334155; color: #94a3b8; }
   .cm-override-item { border-bottom-color: #334155; }
   .cm-override-item__name { color: #e2e8f0; }
+  .cm-override-item--edit { background: #1c1a0a; }
   .cm-override-item__edit { color: #94a3b8; }
+  .cm-override-item__edit--ok { color: #4ade80; }
+  .cm-override-item__edit--ok:hover { background: #14532d; color: #86efac; }
   .cm-override-item__edit:hover { background: #334155; color: #e2e8f0; }
   .cm-info__title { color: #e2e8f0; }
   .cm-info__list { color: #94a3b8; }
