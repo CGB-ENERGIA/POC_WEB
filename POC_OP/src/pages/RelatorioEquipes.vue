@@ -933,7 +933,7 @@ const LABEL_CHARS = 24;
 const LABEL_W = 150;
 const LABEL_LINE_H = 13;
 
-function yCats(data: string[], inverse = false) {
+function yCats(data: string[], inverse = false, labelW = LABEL_W, maxChars = LABEL_CHARS) {
   return {
     type: "category" as const,
     data,
@@ -947,9 +947,9 @@ function yCats(data: string[], inverse = false) {
       fontSize: 10,
       lineHeight: LABEL_LINE_H,
       interval: 0,
-      width: LABEL_W,
+      width: labelW,
       overflow: "none" as const,
-      formatter: (v: string) => wrapAxisName(v, LABEL_CHARS),
+      formatter: (v: string) => wrapAxisName(v, maxChars),
     },
   };
 }
@@ -1019,9 +1019,10 @@ const chartVisitadas = computed(() => {
           { label: "Visitas", value: String(p.value), color: G.green },
         ], "Clique para filtrar esta equipe"),
     },
-    grid: lay.grid,
-    xAxis: xPad(Math.max(...data.map((e) => e.v), 1)),
-    yAxis: yCats(cats, true),
+    // Prefixos são curtos (~13 chars): label estreita libera mais espaço para as barras
+    grid: { ...lay.grid, left: 6, right: 24 },
+    xAxis: { type: "value" as const, show: false, splitLine: { show: false }, max: Math.max(1, Math.max(...data.map((e) => e.v), 1)) * 1.14 },
+    yAxis: yCats(cats, true, 100, 14),
     dataZoom: vZoom(data.length, lay.visible, true),
     series: [{
       type: "bar" as const,
@@ -1031,7 +1032,7 @@ const chartVisitadas = computed(() => {
         itemStyle: {
           color: G.green,
           opacity: !selected || selected === e.nome ? 1 : 0.22,
-          borderRadius: [0, 5, 5, 0],
+          borderRadius: [0, 6, 6, 0],
         },
       })),
       barMaxWidth: lay.barWidth,
