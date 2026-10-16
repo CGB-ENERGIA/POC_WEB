@@ -236,6 +236,11 @@ import {
 const { loading, submissions, responses, employees, load } = useChecklistData();
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+/** Prefixo da equipe sem diferenciar maiúsculas ("Aloj69" e "ALOJ69" são a mesma equipe). */
+function normPrefixo(equipe: string | null | undefined): string {
+  return (equipe ?? "").trim().toUpperCase() || "Sem equipe";
+}
+
 /** Meta de ICIT (%): meses abaixo dela contam como reincidência. */
 const ICIT_META = 80;
 
@@ -289,7 +294,7 @@ watch(() => [filters.ano, filters.base], recarregar);
 
 // ─── Prefixo options from real submissions ────────────────────────────────────
 const allEquipes = computed<string[]>(() =>
-  [...new Set(submissions.value.map(s => s.equipe).filter(Boolean) as string[])].sort()
+  [...new Set(submissions.value.map(s => (s.equipe ?? "").trim().toUpperCase()).filter(Boolean))].sort()
 );
 const prefixoDisplayOpts = ref<string[]>(["Todos"]);
 watch(allEquipes, equipes => {
@@ -332,7 +337,7 @@ const rawRows = computed<Row[]>(() => {
   const equipeData: Record<string, Record<number, MonthStats>> = {};
 
   for (const s of subs) {
-    const eq = s.equipe || "Sem equipe";
+    const eq = normPrefixo(s.equipe);
     const d  = new Date(s.data ?? s.created_at ?? "");
     if (isNaN(d.getTime())) continue;
     const month = d.getMonth() + 1;
@@ -411,7 +416,7 @@ const detalheDados = computed(() => {
   let inconformes = 0;
 
   for (const s of subsFiltrados.value) {
-    if ((s.equipe || "Sem equipe") !== d.prefixo) continue;
+    if (normPrefixo(s.equipe) !== d.prefixo) continue;
     const dt = new Date(s.data ?? "");
     if (isNaN(dt.getTime())) continue;
     if (d.mes !== null && dt.getMonth() + 1 !== d.mes) continue;
