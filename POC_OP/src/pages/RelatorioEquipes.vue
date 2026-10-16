@@ -5,7 +5,7 @@
     <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
          FILTER BAR
     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
-    <div class="filter-bar">
+    <div ref="filterBarEl" class="filter-bar">
       <div class="filter-fab-wrap">
         <button
           class="filter-fab"
@@ -149,7 +149,7 @@
     <div class="q-pa-md">
 
       <!-- KPI Row -->
-      <div class="kpi-sticky">
+      <div ref="kpiEl" class="kpi-sticky">
       <div class="row q-col-gutter-sm q-mb-none items-stretch">
         <div class="col-6 col-md-3">
           <q-card flat bordered class="kpi-card kpi-stat-card">
@@ -206,7 +206,7 @@
       </div>
 
       <!-- CHARTS GRID (4 cols) -->
-      <div class="row q-col-gutter-md items-stretch rel-grid">
+      <div ref="gridEl" class="row q-col-gutter-md items-stretch rel-grid" :style="{ '--rel-h': relH + 'px' }">
 
         <!-- Col 1: Equipes Visitadas -->
         <div class="col-12 col-md-3 rel-col">
@@ -322,7 +322,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, ref, watch, onMounted } from "vue";
+import { reactive, computed, ref, watch, onMounted, onBeforeUnmount } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart } from "echarts/charts";
@@ -377,6 +377,33 @@ const filters = reactive({
   tipoPoc: lerTipoPoc(tiposPoc),
 });
 watch(() => filters.tipoPoc, salvarTipoPoc);
+
+// ─── Altura do grid: ocupa o que sobra da janela (mín. 420px) ────────────────
+const filterBarEl = ref<HTMLElement | null>(null);
+const kpiEl = ref<HTMLElement | null>(null);
+const gridEl = ref<HTMLElement | null>(null);
+const relH = ref(420);
+
+function medirGrid() {
+  const el = gridEl.value;
+  if (!el) return;
+  const topo = el.getBoundingClientRect().top + window.scrollY;
+  relH.value = Math.max(420, Math.round(window.innerHeight - topo - 20));
+}
+
+let roGrid: ResizeObserver | null = null;
+onMounted(() => {
+  medirGrid();
+  window.addEventListener("resize", medirGrid);
+  // Filtros abrindo/fechando ou chips de filtros ativos mudam onde o grid começa
+  roGrid = new ResizeObserver(medirGrid);
+  if (filterBarEl.value) roGrid.observe(filterBarEl.value);
+  if (kpiEl.value) roGrid.observe(kpiEl.value);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", medirGrid);
+  roGrid?.disconnect();
+});
 
 // ─── ICIT (checklists sem NC) por prefixo: mês anterior + acumulado do ano ────
 const icitMesAnterior = ref<Map<string, IcitPrefixo>>(new Map());
@@ -858,8 +885,22 @@ const taxaContato = computed(() =>
 
 
 // â"€â"€â"€ Equipes Visitadas chart â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-function hBarGrid() {
-  return { left: 10, right: 36, top: 10, bottom: 24, containLabel: true };
+// Linhas de barra: poucas equipes ficam grossas e juntas no topo; muitas rolam (dataZoom).
+const ROW_MIN = 26;
+const ROW_MAX = 44;
+/** Área útil (px) do gráfico de Equipes Visitadas e de cada gráfico da coluna empilhada. */
+const availVisitadas = computed(() => Math.max(200, relH.value - 150));
+const availPilha = computed(() => Math.max(110, (relH.value - 28) / 2 - 105));
+
+function barLayout(n: number, avail: number) {
+  const maxRows = Math.max(3, Math.floor(avail / ROW_MIN));
+  const visible = Math.min(Math.max(n, 1), maxRows);
+  const rowH = Math.min(ROW_MAX, Math.max(ROW_MIN, Math.floor(avail / visible)));
+  return {
+    visible,
+    grid: { left: 10, right: 36, top: 10, height: visible * rowH, containLabel: true },
+    barWidth: Math.min(24, Math.max(14, Math.round(rowH * 0.55))),
+  };
 }
 
 function xPad(maxVal: number) {
@@ -969,6 +1010,7 @@ const chartVisitadas = computed(() => {
   const data = visitadasSorted.value;
   const cats = data.map(e => e.nome);
   const selected = filters.prefixo !== "Todos" ? filters.prefixo : null;
+  const lay = barLayout(data.length, availVisitadas.value);
 
   return {
     tooltip: {
@@ -978,10 +1020,10 @@ const chartVisitadas = computed(() => {
           { label: "Visitas", value: String(p.value), color: G.green },
         ], "Clique para filtrar esta equipe"),
     },
-    grid: hBarGrid(),
+    grid: lay.grid,
     xAxis: xPad(Math.max(...data.map((e) => e.v), 1)),
     yAxis: yCats(cats, true),
-    dataZoom: vZoom(data.length, 18),
+    dataZoom: vZoom(data.length, lay.visible),
     series: [{
       type: "bar" as const,
       cursor: "pointer",
@@ -993,7 +1035,7 @@ const chartVisitadas = computed(() => {
           borderRadius: [0, 5, 5, 0],
         },
       })),
-      barMaxWidth: 18,
+      barMaxWidth: lay.barWidth,
       emphasis: { itemStyle: { opacity: .8 } },
       label: {
         show: true, position: "right" as const,
@@ -1030,6 +1072,7 @@ const chartRankingNcEq = computed(() => {
   const data = ncPerEquipe.value;
   const selected = filters.prefixo !== "Todos" ? filters.prefixo : null;
   const names = [AXIS_PAD, ...data.map((e) => e.name)];
+  const lay = barLayout(names.length, availPilha.value);
   return {
     tooltip: {
       ...tooltipSkin(),
@@ -1040,10 +1083,10 @@ const chartRankingNcEq = computed(() => {
         ], "Clique para filtrar esta equipe");
       },
     },
-    grid: hBarGrid(),
+    grid: lay.grid,
     xAxis: xPad(Math.max(...data.map((e) => e.v), 1)),
     yAxis: yCats(names),
-    dataZoom: vZoom(names.length, 4),
+    dataZoom: vZoom(names.length, lay.visible),
     series: [{
       type: "bar" as const,
       cursor: "pointer",
@@ -1058,7 +1101,7 @@ const chartRankingNcEq = computed(() => {
         },
       })),
       ],
-      barMaxWidth: 18,
+      barMaxWidth: lay.barWidth,
       barCategoryGap: "36%",
       emphasis: { itemStyle: { opacity: .8 } },
       label: {
@@ -1084,6 +1127,7 @@ const chartNcCat = computed(() => {
     .sort((a, b) => a.nc - b.nc);
   const selected = filters.categoria !== "Todos" ? filters.categoria : null;
   const names = [AXIS_PAD, ...entries.map((e) => e.cat)];
+  const lay = barLayout(names.length, availPilha.value);
   return {
     tooltip: {
       ...tooltipSkin(),
@@ -1094,10 +1138,10 @@ const chartNcCat = computed(() => {
         ], "Clique para filtrar esta categoria");
       },
     },
-    grid: hBarGrid(),
+    grid: lay.grid,
     xAxis: xPad(Math.max(...entries.map((e) => e.nc), 1)),
     yAxis: yCats(names),
-    dataZoom: vZoom(names.length, 4),
+    dataZoom: vZoom(names.length, lay.visible),
     series: [{
       type: "bar" as const,
       cursor: "pointer",
@@ -1112,7 +1156,7 @@ const chartNcCat = computed(() => {
         },
       })),
       ],
-      barMaxWidth: 20,
+      barMaxWidth: lay.barWidth,
       barCategoryGap: "36%",
       emphasis: { itemStyle: { opacity: .8 } },
       label: {
