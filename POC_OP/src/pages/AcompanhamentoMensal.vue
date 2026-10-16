@@ -768,7 +768,7 @@ function singleBar(labels: string[], data: number[], selected?: string | number 
 function metaMark(y: number, label: string) {
   return {
     silent: true, symbol: "none",
-    lineStyle: { color: "#0ea5e9", type: "dashed" as const, width: 2 },
+    lineStyle: { color: "#0ea5e9", type: "solid" as const, width: 2 },
     label: { position: "insideEndTop" as const, fontSize: 11, fontWeight: "bold" as const, color: "#0ea5e9", formatter: label },
     data: [{ yAxis: y }],
   };
