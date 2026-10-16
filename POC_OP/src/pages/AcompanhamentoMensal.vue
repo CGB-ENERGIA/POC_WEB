@@ -765,12 +765,34 @@ function singleBar(labels: string[], data: number[], selected?: string | number 
   }];
 }
 
-function metaMark(y: number, label: string) {
+/** Traço da meta desenhado sobre cada vela; o rótulo "Meta: N" aparece só na categoria `rotuloEm`. */
+function metaTracos(metas: number[], rotuloEm: number) {
   return {
-    silent: true, symbol: "none",
-    lineStyle: { color: "#0ea5e9", type: "solid" as const, width: 2 },
-    label: { position: "insideEndTop" as const, fontSize: 11, fontWeight: "bold" as const, color: "#0ea5e9", formatter: label },
-    data: [{ yAxis: y }],
+    name: "Meta traço",
+    type: "custom" as const,
+    silent: true,
+    animation: false,
+    z: 11,
+    data: metas.map((m, i) => [i, m]),
+    renderItem: (_p: unknown, api: { value: (d: number) => number; coord: (v: number[]) => number[]; size: (v: number[]) => number[] }) => {
+      const [cx, cy] = api.coord([api.value(0), api.value(1)]) as [number, number];
+      const meio = Math.min((api.size([1, 0]) as [number, number])[0] * 0.42, 32);
+      const children: Record<string, unknown>[] = [{
+        type: "line",
+        shape: { x1: cx - meio, y1: cy, x2: cx + meio, y2: cy },
+        style: { stroke: "#0ea5e9", lineWidth: 2 },
+      }];
+      if (api.value(0) === rotuloEm) {
+        children.push({
+          type: "text",
+          style: {
+            text: `Meta: ${Math.round(api.value(1))}`, x: cx, y: cy - 6, align: "center", verticalAlign: "bottom",
+            fill: "#0ea5e9", font: "bold 11px sans-serif", stroke: chartInk.halo, lineWidth: 3,
+          },
+        });
+      }
+      return { type: "group", children };
+    },
   };
 }
 
@@ -787,10 +809,10 @@ const chartMetaMes = computed(() => ({
   grid: { left: 12, right: 16, top: 44, bottom: 28 },
   xAxis: cleanXAxis([mesLabel.value]),
   yAxis: { show: false, min: 0, max: yPadMax([totalSubmissions.value, metaMensal.value]) },
-  series: [{
-    ...singleBar([mesLabel.value], [totalSubmissions.value])[0],
-    markLine: metaMark(metaMensal.value, `Meta: ${metaMensal.value}`),
-  }],
+  series: [
+    singleBar([mesLabel.value], [totalSubmissions.value])[0],
+    metaTracos([metaMensal.value], 0),
+  ],
 }));
 
 const WEEK_LABELS = ["1ª Sem", "2ª Sem", "3ª Sem", "4ª Sem"];
@@ -810,10 +832,10 @@ const chartMetaSemana = computed(() => {
     grid: { left: 12, right: 16, top: 44, bottom: 28 },
     xAxis: cleanXAxis(WEEK_LABELS),
     yAxis: { show: false, min: 0, max: yPadMax([...vals, weekMeta]) },
-    series: [{
-      ...singleBar(WEEK_LABELS, vals, filters.semana || null)[0],
-      markLine: metaMark(weekMeta, `Meta: ${Math.round(weekMeta)}`),
-    }],
+    series: [
+      singleBar(WEEK_LABELS, vals, filters.semana || null)[0],
+      metaTracos(WEEK_LABELS.map(() => weekMeta), WEEK_LABELS.length - 1),
+    ],
   };
 });
 
