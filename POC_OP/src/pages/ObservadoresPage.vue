@@ -535,8 +535,9 @@ const rawRows = computed<ObsRow[]>(() => {
     byMat[s.matricula].obs++;
     if (!ncIds.has(s.id)) byMat[s.matricula].obs100++;
   }
+  const subPorId = new Map(tableSubs.map((s) => [s.id, s]));
   for (const r of tableResps) {
-    const sub = tableSubs.find((s) => s.id === r.submission_id);
+    const sub = subPorId.get(r.submission_id);
     if (!sub || !byMat[sub.matricula]) continue;
     if (r.resposta === "conforme") byMat[sub.matricula].conf++;
     else if (r.resposta === "nao_conforme") byMat[sub.matricula].inc++;

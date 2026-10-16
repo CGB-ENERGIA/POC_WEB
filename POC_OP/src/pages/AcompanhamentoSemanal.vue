@@ -781,8 +781,9 @@ const conformidadePorObservador = computed(() => {
   for (const s of filteredSubs.value) {
     if (!map[s.matricula]) map[s.matricula] = { nome: s.observador, total: 0, conformes: 0 };
   }
+  const subPorId = new Map(filteredSubs.value.map(s => [s.id, s]));
   for (const r of filteredResps) {
-    const sub = filteredSubs.value.find(s => s.id === r.submission_id);
+    const sub = subPorId.get(r.submission_id);
     if (!sub) continue;
     if (!map[sub.matricula]) map[sub.matricula] = { nome: sub.observador, total: 0, conformes: 0 };
     map[sub.matricula].total++;

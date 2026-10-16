@@ -433,7 +433,9 @@ async function recarregarMes() {
   });
 }
 
+let seqAno = 0;
 async function recarregarAno() {
+  const seq = ++seqAno;
   const opts: NcPorMesOpts = {
     contarMeta: true,
     allowedAuditagens: filters.tipoPoc !== "Todos" ? TIPO_AUDITAGEM[filters.tipoPoc] : undefined,
@@ -442,11 +444,12 @@ async function recarregarAno() {
     gerente: filters.gerente,
     coordenador: filters.coordenador,
   };
-  ncPorMes.value = await fetchNaoConformesPorMes(
+  const resultado = await fetchNaoConformesPorMes(
     filters.ano,
     filters.base !== "Todos" ? filters.base : undefined,
     opts,
   );
+  if (seq === seqAno) ncPorMes.value = resultado;
 }
 
 async function recarregar() {
@@ -548,13 +551,12 @@ function tipHtml(title: string, rows: { label: string; value: string; color?: st
     + `</div>`;
 }
 
-function ncCount(subs: typeof submissions.value, resps: typeof responses.value) {
-  const ids = new Set(subs.map((s) => s.id));
-  let n = 0;
+function ncPorSubmissao(resps: typeof responses.value) {
+  const m = new Map<string, number>();
   for (const r of resps) {
-    if (ids.has(r.submission_id) && r.resposta === "nao_conforme") n++;
+    if (r.resposta === "nao_conforme") m.set(r.submission_id, (m.get(r.submission_id) ?? 0) + 1);
   }
-  return n;
+  return m;
 }
 
 function hBar(
@@ -617,9 +619,9 @@ function hBar(
 
 const ncPorBase = computed(() => {
   const map: Record<string, number> = {};
-  const resps = respsOf(subsNoBase.value);
+  const nc = ncPorSubmissao(respsOf(subsNoBase.value));
   for (const s of subsNoBase.value) {
-    const n = ncCount([s], resps);
+    const n = nc.get(s.id) ?? 0;
     if (!n) continue;
     map[s.base] = (map[s.base] ?? 0) + n;
   }
@@ -629,9 +631,9 @@ const ncPorBase = computed(() => {
 const ncPorGerenciaLocal = computed(() => {
   const map: Record<string, number> = {};
   const idx = indexEmployees(employees.value);
-  const resps = respsOf(subsNoGerencia.value);
+  const nc = ncPorSubmissao(respsOf(subsNoGerencia.value));
   for (const s of subsNoGerencia.value) {
-    const n = ncCount([s], resps);
+    const n = nc.get(s.id) ?? 0;
     if (!n) continue;
     const emp = matchSubmissionToEmployee(s, idx);
     const g = emp?.gerencia ?? s.auditagem;
@@ -642,10 +644,10 @@ const ncPorGerenciaLocal = computed(() => {
 
 const equipeRows = computed(() => {
   const map: Record<string, number> = {};
-  const resps = respsOf(subsNoEquipe.value);
+  const nc = ncPorSubmissao(respsOf(subsNoEquipe.value));
   for (const s of subsNoEquipe.value) {
     if (!s.equipe) continue;
-    const n = ncCount([s], resps);
+    const n = nc.get(s.id) ?? 0;
     if (!n) continue;
     map[s.equipe] = (map[s.equipe] ?? 0) + n;
   }

@@ -616,20 +616,19 @@ const conformidadePorObservador = computed(() => {
   const filteredIds = new Set(filteredSubs.value.map(s => s.id));
   const filteredResps = responses.value.filter(r => filteredIds.has(r.submission_id));
   const map: Record<string, { nome: string; total: number; conformes: number; totalObs: number }> = {};
+  const keyPorSub = new Map<string, string>();
   for (const s of filteredSubs.value) {
     const emp = matchSubmissionToEmployee(s, idx);
     const key = normMatricula(emp?.matricula ?? s.matricula);
+    keyPorSub.set(s.id, key);
     if (!map[key]) map[key] = { nome: emp?.nome_completo || emp?.nome || s.observador, total: 0, conformes: 0, totalObs: 0 };
     map[key].totalObs++;
   }
   for (const r of filteredResps) {
-    const sub = filteredSubs.value.find(s => s.id === r.submission_id);
-    if (!sub) continue;
-    const emp = matchSubmissionToEmployee(sub, idx);
-    const key = normMatricula(emp?.matricula ?? sub.matricula);
-    if (!map[key]) map[key] = { nome: emp?.nome_completo || emp?.nome || sub.observador, total: 0, conformes: 0, totalObs: 0 };
-    map[key].total++;
-    if (r.resposta === "conforme") map[key].conformes++;
+    const key = keyPorSub.get(r.submission_id);
+    if (key === undefined) continue;
+    map[key]!.total++;
+    if (r.resposta === "conforme") map[key]!.conformes++;
   }
   return Object.entries(map)
     .map(([matricula, d]) => ({
