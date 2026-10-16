@@ -382,13 +382,13 @@ watch(() => filters.tipoPoc, salvarTipoPoc);
 const filterBarEl = ref<HTMLElement | null>(null);
 const kpiEl = ref<HTMLElement | null>(null);
 const gridEl = ref<HTMLElement | null>(null);
-const relH = ref(420);
+const relH = ref(520);
 
 function medirGrid() {
   const el = gridEl.value;
   if (!el) return;
   const topo = el.getBoundingClientRect().top + window.scrollY;
-  relH.value = Math.max(420, Math.round(window.innerHeight - topo - 20));
+  relH.value = Math.max(520, Math.round(window.innerHeight - topo - 20));
 }
 
 let roGrid: ResizeObserver | null = null;
@@ -888,14 +888,15 @@ const taxaContato = computed(() =>
 // Linhas de barra: poucas equipes ficam grossas e juntas no topo; muitas rolam (dataZoom).
 const ROW_MIN = 26;
 const ROW_MAX = 44;
-/** Área útil (px) do gráfico de Equipes Visitadas e de cada gráfico da coluna empilhada. */
-const availVisitadas = computed(() => Math.max(200, relH.value - 150));
-const availPilha = computed(() => Math.max(110, (relH.value - 28) / 2 - 105));
+/** Área útil (px) de cada gráfico: altura do card menos cabeçalho (título + legenda) e respiros. */
+const availVisitadas = computed(() => Math.max(240, relH.value - 150));
+const availRanking = computed(() => Math.max(150, (relH.value - 28) / 2 - 106));
+const availCategoria = computed(() => Math.max(150, (relH.value - 28) / 2 - 86));
 
-function barLayout(n: number, avail: number) {
-  const maxRows = Math.max(3, Math.floor(avail / ROW_MIN));
+function barLayout(n: number, avail: number, minRow = ROW_MIN) {
+  const maxRows = Math.max(3, Math.floor(avail / minRow));
   const visible = Math.min(Math.max(n, 1), maxRows);
-  const rowH = Math.min(ROW_MAX, Math.max(ROW_MIN, Math.floor(avail / visible)));
+  const rowH = Math.min(Math.max(ROW_MAX, minRow), Math.max(minRow, Math.floor(avail / visible)));
   return {
     visible,
     grid: { left: 10, right: 36, top: 10, height: visible * rowH, containLabel: true },
@@ -941,6 +942,10 @@ function wrapAxisName(text: string, maxChars = 13) {
   return lines.join("\n");
 }
 
+const LABEL_CHARS = 24;
+const LABEL_W = 150;
+const LABEL_LINE_H = 13;
+
 function yCats(data: string[], inverse = false) {
   return {
     type: "category" as const,
@@ -953,19 +958,26 @@ function yCats(data: string[], inverse = false) {
     axisLabel: {
       color: chartInk.axis,
       fontSize: 10,
-      lineHeight: 13,
+      lineHeight: LABEL_LINE_H,
       interval: 0,
-      width: 124,
+      width: LABEL_W,
       overflow: "none" as const,
-      formatter: (v: string) => wrapAxisName(v),
+      formatter: (v: string) => wrapAxisName(v, LABEL_CHARS),
     },
   };
 }
 
-function vZoom(len: number, visible: number) {
+/** Altura mínima de linha para o maior rótulo (quebrado em várias linhas) não encostar no vizinho. */
+function minRowParaRotulos(names: string[]): number {
+  const linhas = Math.max(1, ...names.map((n) => wrapAxisName(n, LABEL_CHARS).split("\n").length));
+  return Math.max(ROW_MIN, linhas * LABEL_LINE_H + 12);
+}
+
+/** fromStart: mostra os primeiros itens (lista em ordem decrescente); senão, os últimos (ranking crescente). */
+function vZoom(len: number, visible: number, fromStart = false) {
   const vis = Math.min(Math.max(visible, 1), Math.max(len, 1));
-  const start = Math.max(0, len - vis);
-  const end = Math.max(0, len - 1);
+  const start = fromStart ? 0 : Math.max(0, len - vis);
+  const end = fromStart ? Math.max(0, vis - 1) : Math.max(0, len - 1);
   const showSlider = len > vis;
   return [
     {
@@ -1010,7 +1022,7 @@ const chartVisitadas = computed(() => {
   const data = visitadasSorted.value;
   const cats = data.map(e => e.nome);
   const selected = filters.prefixo !== "Todos" ? filters.prefixo : null;
-  const lay = barLayout(data.length, availVisitadas.value);
+  const lay = barLayout(data.length, availVisitadas.value, minRowParaRotulos(cats));
 
   return {
     tooltip: {
@@ -1023,7 +1035,7 @@ const chartVisitadas = computed(() => {
     grid: lay.grid,
     xAxis: xPad(Math.max(...data.map((e) => e.v), 1)),
     yAxis: yCats(cats, true),
-    dataZoom: vZoom(data.length, lay.visible),
+    dataZoom: vZoom(data.length, lay.visible, true),
     series: [{
       type: "bar" as const,
       cursor: "pointer",
@@ -1072,7 +1084,7 @@ const chartRankingNcEq = computed(() => {
   const data = ncPerEquipe.value;
   const selected = filters.prefixo !== "Todos" ? filters.prefixo : null;
   const names = [AXIS_PAD, ...data.map((e) => e.name)];
-  const lay = barLayout(names.length, availPilha.value);
+  const lay = barLayout(names.length, availRanking.value, minRowParaRotulos(names));
   return {
     tooltip: {
       ...tooltipSkin(),
@@ -1127,7 +1139,7 @@ const chartNcCat = computed(() => {
     .sort((a, b) => a.nc - b.nc);
   const selected = filters.categoria !== "Todos" ? filters.categoria : null;
   const names = [AXIS_PAD, ...entries.map((e) => e.cat)];
-  const lay = barLayout(names.length, availPilha.value);
+  const lay = barLayout(names.length, availCategoria.value, minRowParaRotulos(names));
   return {
     tooltip: {
       ...tooltipSkin(),
