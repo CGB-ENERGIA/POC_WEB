@@ -74,9 +74,11 @@
 
           <div class="fgroup fgroup--prefixo">
             <span class="fgroup__label">Prefixo</span>
-            <q-select v-model="filters.prefixo" :options="prefixoDisplayOpts"
+            <q-select :model-value="filters.prefixo" :options="prefixoDisplayOpts"
               dense outlined hide-bottom-space use-input input-debounce="0"
+              :clearable="filters.prefixo !== 'Todos'" clear-icon="mdi-close-circle"
               class="prefixo-select" popup-content-class="prefixo-popup"
+              @update:model-value="(v: string | null) => (filters.prefixo = v ?? 'Todos')"
               @filter="filterPrefixo" />
           </div>
 
