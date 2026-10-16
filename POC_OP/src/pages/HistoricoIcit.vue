@@ -72,17 +72,6 @@
         </div>
         <div class="frow">
 
-          <div class="fgroup">
-            <span class="fgroup__label">Mês</span>
-            <div class="pill-group">
-              <button v-for="m in meses" :key="m.v"
-                :class="['pill', filters.mes === m.v && 'pill--active']"
-                @click="filters.mes = m.v">{{ m.l }}</button>
-            </div>
-          </div>
-
-          <div class="filter-divider" />
-
           <div class="fgroup fgroup--prefixo">
             <span class="fgroup__label">Prefixo</span>
             <q-select v-model="filters.prefixo" :options="prefixoDisplayOpts"
@@ -118,8 +107,7 @@
         <thead>
           <tr>
             <th class="th-prefix">Prefixo</th>
-            <th v-for="(name, i) in monthNames" :key="name"
-              :class="['th-month', i + 1 === filters.mes && 'th-month--current']">
+            <th v-for="name in monthNames" :key="name" class="th-month">
               {{ name }}
             </th>
             <th class="th-total">Total <q-icon name="mdi-menu-down" size="14px" /></th>
@@ -133,7 +121,6 @@
             <td class="td-prefix">{{ row.prefixo }}</td>
             <td v-for="(cell, mi) in row.months" :key="mi"
               :class="['td-cell',
-                mi + 1 === filters.mes && 'td-cell--current',
                 cell ? `td-icit--${icitClass(cell.pct)} td-cell--click` : 'td-empty']"
               :tabindex="cell ? 0 : undefined"
               :role="cell ? 'button' : undefined"
@@ -259,14 +246,6 @@ const dataAtual = now.toLocaleString("pt-BR", {
 
 const bases     = ["BCB","BDC","ITM","PDS","PDT","STI"];
 const gerencias = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
-const meses     = [
-  { v: 1, l: "jan" }, { v: 2, l: "fev" },
-  { v: 3, l: "mar" }, { v: 4, l: "abr" },
-  { v: 5, l: "mai" }, { v: 6, l: "jun" },
-  { v: 7, l: "jul" }, { v: 8, l: "ago" },
-  { v: 9, l: "set" }, { v: 10, l: "out" },
-  { v: 11, l: "nov"}, { v: 12, l: "dez" },
-];
 const filtroTipos = [
   { value: "<80%",      label: "<80% ICIT",  color: "orange" },
   { value: ">80%",      label: ">80% ICIT",  color: "green"  },
@@ -285,7 +264,6 @@ const coordenadoresOpts = computed(() => uniqueHierarchyOpts(employees.value, "c
 // ─── Filter state ─────────────────────────────────────────────────────────────
 const filters = reactive({
   ano:        now.getFullYear(),
-  mes:        now.getMonth() + 1,
   base:       "",
   prefixo:    "Todos",
   gerente:    "",
@@ -663,10 +641,6 @@ $icit-red:    #dc2626;
     left: 0;
     z-index: 3;
   }
-  .th-month--current {
-    background: rgba($brand, .7) !important;
-    color: #fff;
-  }
   .th-total {
     background: #0f172a;
     min-width: 110px;
@@ -703,8 +677,6 @@ $icit-red:    #dc2626;
     min-width: 90px;
     transition: filter .15s;
   }
-  .td-cell--current { outline: 2px solid rgba($brand,.5); outline-offset: -2px; }
-
   .td-empty {
     background: #f8fafc;
     min-width: 90px;
