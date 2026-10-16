@@ -236,6 +236,9 @@ import {
 const { loading, submissions, responses, employees, load } = useChecklistData();
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+/** Meta de ICIT (%): meses abaixo dela contam como reincidência. */
+const ICIT_META = 80;
+
 interface Cell { reinc?: number; pct: number }
 interface Row  { prefixo: string; months: (Cell | null)[]; total: { reinc: number; pct: number } }
 
@@ -344,16 +347,19 @@ const rawRows = computed<Row[]>(() => {
     const months: (Cell | null)[] = [];
     let totalSubs  = 0;
     let totalSemNc = 0;
+    let reincidencias = 0;
     for (let mi = 1; mi <= 12; mi++) {
       const st = mStats[mi];
       if (!st) { months.push(null); continue; }
       const pct = Math.round((st.semNc / st.total) * 10000) / 100;
-      months.push({ pct });
+      // Reincidência = mês abaixo de 80% de ICIT; o total soma os meses nessa situação.
+      if (pct < ICIT_META) { months.push({ pct, reinc: 1 }); reincidencias++; }
+      else months.push({ pct });
       totalSubs  += st.total;
       totalSemNc += st.semNc;
     }
     const avgPct = totalSubs > 0 ? Math.round((totalSemNc / totalSubs) * 10000) / 100 : 0;
-    return { prefixo, months, total: { reinc: 0, pct: avgPct } };
+    return { prefixo, months, total: { reinc: reincidencias, pct: avgPct } };
   });
 });
 
