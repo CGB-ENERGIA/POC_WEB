@@ -462,13 +462,20 @@ $icit-red:    #dc2626;
 .prefixo-select {
   height: 28px;
   :deep(.q-field__control) {
-    height: 28px; min-height: 28px; border-radius: 8px;
-    border-color: $border; background: $inactive-bg; padding: 0 8px;
-    &:hover { border-color: $brand; }
+    height: 28px; min-height: 28px; border-radius: 999px;
+    background: $inactive-bg; padding: 0 10px;
   }
-  :deep(.q-field--focused .q-field__control) { border-color: $brand; }
-  :deep(.q-field__native) { font-size: 11px; color: $inactive-txt; min-height: unset; line-height: 28px; }
+  // Quasar outlined usa ::before para a borda
+  :deep(.q-field__control::before) {
+    border-color: $border;
+    border-radius: 999px;
+    transition: border-color .15s;
+  }
+  :deep(.q-field__control:hover::before) { border-color: $brand; }
+  :deep(.q-field--focused .q-field__control::before) { border-color: $brand; }
+  :deep(.q-field__native) { font-size: 11px; font-weight: 500; color: $inactive-txt; min-height: unset; line-height: 28px; }
   :deep(.q-field__append) { height: 28px; }
+  :deep(.q-field__append .q-icon) { font-size: 16px; color: $label-color; }
 }
 :global(.prefixo-popup .q-item) { font-size: 11px; min-height: 28px; padding: 2px 10px; }
 :global(.prefixo-popup .q-item--active) { color: $brand !important; font-weight: 600; }
@@ -640,8 +647,12 @@ $icit-red:    #dc2626;
     &--active { background: $brand; color: #fff; border-color: $brand; }
   }
   .prefixo-select {
-    :deep(.q-field__control) { background: #1e293b; border-color: #334155; }
-    :deep(.q-field__native)  { color: #94a3b8; }
+    :deep(.q-field__control)        { background: #1e293b; }
+    :deep(.q-field__control::before){ border-color: #334155; }
+    :deep(.q-field__control:hover::before) { border-color: $brand; }
+    :deep(.q-field--focused .q-field__control::before) { border-color: $brand; }
+    :deep(.q-field__native)         { color: #94a3b8; }
+    :deep(.q-field__append .q-icon) { color: #475569; }
   }
 
   .hist-table {
