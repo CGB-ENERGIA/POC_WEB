@@ -1083,9 +1083,9 @@ const chartRankingNcEq = computed(() => {
         ], "Clique para filtrar esta equipe");
       },
     },
-    grid: lay.grid,
-    xAxis: xPad(Math.max(...data.map((e) => e.v), 1)),
-    yAxis: yCats(names),
+    grid: { ...lay.grid, left: 6, right: 24 },
+    xAxis: { type: "value" as const, show: false, splitLine: { show: false }, max: Math.max(1, Math.max(...data.map((e) => e.v), 1)) * 1.14 },
+    yAxis: yCats(names, false, 120, 18),
     dataZoom: vZoom(names.length, lay.visible),
     series: [{
       type: "bar" as const,
@@ -1138,9 +1138,9 @@ const chartNcCat = computed(() => {
         ], "Clique para filtrar esta categoria");
       },
     },
-    grid: lay.grid,
-    xAxis: xPad(Math.max(...entries.map((e) => e.nc), 1)),
-    yAxis: yCats(names),
+    grid: { ...lay.grid, left: 6, right: 24 },
+    xAxis: { type: "value" as const, show: false, splitLine: { show: false }, max: Math.max(1, Math.max(...entries.map((e) => e.nc), 1)) * 1.14 },
+    yAxis: yCats(names, false, 120, 18),
     dataZoom: vZoom(names.length, lay.visible),
     series: [{
       type: "bar" as const,
