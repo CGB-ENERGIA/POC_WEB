@@ -226,7 +226,7 @@ async function recarregar() {
   await load({
     ano:  filters.ano,
     base: filters.base || undefined,
-  });
+  }, false, false, "nc");
 }
 onMounted(recarregar);
 watch(() => [filters.ano, filters.base], recarregar);

@@ -202,12 +202,17 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, filterByCoordenador } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, filterByCoordenador, fetchRespostasPorCategoria, type CatAgg } from "@/lib/dashboard";
 import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
 
 use([CanvasRenderer, BarChart, GridComponent, TooltipComponent, LegendComponent]);
 
-const { loading, error, submissions, responses, employees, load, gerentesOpts, coordenadoresOpts } = useChecklistData();
+const { loading: loadingBase, error, submissions, employees, load, gerentesOpts, coordenadoresOpts } = useChecklistData();
+
+// Conformes/não conformes por categoria de cada checklist, calculado no banco (evita baixar todas as respostas do ano).
+const catAgg = ref<CatAgg>({});
+const loadingAgg = ref(false);
+const loading = computed(() => loadingBase.value || loadingAgg.value);
 
 // â"€â"€â"€ Colors â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const G = { green: "#16a34a", brand: "#8B1C2B" };
@@ -263,13 +268,22 @@ const filters = reactive({
 });
 watch(() => filters.tipo, salvarTipoPoc);
 
+let seqCarga = 0;
 async function recarregar() {
-  // Sem "mes": load() busca o ano inteiro, necessário para a quebra mensal do gráfico
-  await load({
-    ano: Number(filters.ano),
-    base: filters.base === "Todos" ? undefined : filters.base,
-    contarMeta: true,
-  });
+  const seq = ++seqCarga;
+  loadingAgg.value = true;
+  try {
+    // Sem "mes": load() busca o ano inteiro, necessário para a quebra mensal do gráfico
+    await load({
+      ano: Number(filters.ano),
+      base: filters.base === "Todos" ? undefined : filters.base,
+      contarMeta: true,
+    }, false, false, "nenhuma");
+    const agg = await fetchRespostasPorCategoria(submissions.value.map((x) => x.id));
+    if (seq === seqCarga) catAgg.value = agg;
+  } finally {
+    if (seq === seqCarga) loadingAgg.value = false;
+  }
 }
 onMounted(recarregar);
 watch(() => [filters.ano, filters.base], recarregar);
@@ -351,17 +365,8 @@ function catMatch(categoria: string | undefined, key: string) {
   return cat.includes(m) || cat === m;
 }
 
-function respsOf(subs: typeof submissions.value, omitCat = false) {
-  const ids = new Set(subs.map((s) => s.id));
-  let r = responses.value.filter((resp) => ids.has(resp.submission_id));
-  if (!omitCat && viz.catKey) r = r.filter((resp) => catMatch(resp.categoria, viz.catKey!));
-  return r;
-}
-
 const chartSubs = computed(() => applySlice(submissions.value, { mes: true }));
-const chartResps = computed(() => respsOf(chartSubs.value, true));
 const filteredSubs = computed(() => applySlice(submissions.value));
-const filteredResps = computed(() => respsOf(filteredSubs.value));
 
 // â"€â"€â"€ Chart data â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const months = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
@@ -392,14 +397,17 @@ const rawData = computed(() => {
     result[def.key] = { conf: Array(12).fill(0), inc: Array(12).fill(0) };
   }
 
-  for (const r of chartResps.value) {
-    const mes = subMonthMap.value[r.submission_id];
-    if (!mes) continue;
-    const cat = (r.categoria ?? "").toLowerCase();
-    const def = CAT_DEFS.find(d => cat.includes(d.match.toLowerCase()) || d.match.toLowerCase() === cat);
-    if (!def) continue;
-    if (r.resposta === "conforme") result[def.key].conf[mes - 1]++;
-    else if (r.resposta === "nao_conforme") result[def.key].inc[mes - 1]++;
+  for (const sub of chartSubs.value) {
+    const mes = subMonthMap.value[sub.id];
+    const cats = catAgg.value[sub.id];
+    if (!mes || !cats) continue;
+    for (const [categoria, [conf, nc]] of Object.entries(cats)) {
+      const cat = categoria.toLowerCase();
+      const def = CAT_DEFS.find(d => cat.includes(d.match.toLowerCase()) || d.match.toLowerCase() === cat);
+      if (!def) continue;
+      result[def.key].conf[mes - 1] += conf;
+      result[def.key].inc[mes - 1] += nc;
+    }
   }
 
   return result;
@@ -526,10 +534,22 @@ const bottomCharts = computed(() => [
 const todosGraficos = computed(() => [...topCharts.value, ...bottomCharts.value, ...extraCharts.value]);
 
 // â"€â"€â"€ KPI totals â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-const totalConformes    = computed(() => filteredResps.value.filter(r => r.resposta === "conforme").length);
-const totalNaoConformes = computed(() => filteredResps.value.filter(r => r.resposta === "nao_conforme").length);
+const totaisFiltrados = computed(() => {
+  let conf = 0, nc = 0;
+  for (const sub of filteredSubs.value) {
+    const cats = catAgg.value[sub.id];
+    if (!cats) continue;
+    for (const [categoria, [c, n]] of Object.entries(cats)) {
+      if (viz.catKey && !catMatch(categoria, viz.catKey)) continue;
+      conf += c; nc += n;
+    }
+  }
+  return { conf, nc };
+});
+const totalConformes    = computed(() => totaisFiltrados.value.conf);
+const totalNaoConformes = computed(() => totaisFiltrados.value.nc);
 const conformidadeIndex = computed(() => {
-  const t = filteredResps.value.length;
+  const t = totalConformes.value + totalNaoConformes.value;
   return t ? totalConformes.value / t : 0;
 });
 

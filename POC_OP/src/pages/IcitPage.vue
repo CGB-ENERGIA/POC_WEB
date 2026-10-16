@@ -371,7 +371,7 @@ const yearResps = ref<ResponseRow[]>([]);
 async function recarregarAno() {
   const subs = await fetchSubmissions({ ano: filters.ano, contarMeta: true });
   yearSubs.value = subs;
-  yearResps.value = await fetchResponses(subs.map((s) => s.id));
+  yearResps.value = await fetchResponses(subs.map((s) => s.id), { soNc: true });
 }
 
 async function recarregar() {

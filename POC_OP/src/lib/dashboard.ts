@@ -370,17 +370,34 @@ export async function fetchSubmissions(f: Filters, usarSemana = false): Promise<
 }
 
 /** Respostas ligadas a um conjunto de submissions (chunked + paginado para datasets grandes). */
-export async function fetchResponses(submissionIds: string[]): Promise<ResponseRow[]> {
+export async function fetchResponses(submissionIds: string[], opts: { soNc?: boolean } = {}): Promise<ResponseRow[]> {
   if (!submissionIds.length) return [];
   const lotes = await mapLimit(chunked(submissionIds, 300), 3, (chunk) =>
-    allPages<ResponseRow>(() =>
-      supabase
+    allPages<ResponseRow>(() => {
+      let q = supabase
         .from("checklist_responses")
         .select("submission_id,pergunta_id,categoria,pergunta,gravidade,peso,resposta,observacao,foto_r2_key,resolvido,itens,atribuido_tipo,atribuido_nome,atribuido_matricula")
-        .in("submission_id", chunk)
-    ),
+        .in("submission_id", chunk);
+      if (opts.soNc) q = q.eq("resposta", "nao_conforme");
+      return q;
+    }),
   );
   return lotes.flat();
+}
+
+/** Conformes/não conformes por categoria de cada checklist, calculado no banco: [conformes, não conformes]. */
+export type CatAgg = Record<string, Record<string, [number, number]>>;
+
+export async function fetchRespostasPorCategoria(submissionIds: string[]): Promise<CatAgg> {
+  const out: CatAgg = {};
+  if (!submissionIds.length) return out;
+  const lotes = await mapLimit(chunked(submissionIds, 1000), 3, async (chunk) => {
+    const { data, error } = await supabase.rpc("resp_cat_agg" as never, { p_ids: chunk } as never);
+    if (error) throw error;
+    return (data ?? []) as unknown as { submission_id: string; cats: Record<string, [number, number]> }[];
+  });
+  for (const row of lotes.flat()) out[row.submission_id] = row.cats;
+  return out;
 }
 
 export interface NcPorMesOpts {

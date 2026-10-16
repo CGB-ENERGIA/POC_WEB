@@ -32,7 +32,13 @@ export function useChecklistData() {
   // apenas a mais recente atualiza o estado.
   let loadSeq = 0;
 
-  async function load(filters: Filters, loadYear = false, usarSemana = false) {
+  /** respostas: "todas" (padrão), "nc" (só não conformes, para períodos longos) ou "nenhuma". */
+  async function load(
+    filters: Filters,
+    loadYear = false,
+    usarSemana = false,
+    respostas: "todas" | "nc" | "nenhuma" = "todas",
+  ) {
     const seq = ++loadSeq;
     loading.value = true;
     error.value = null;
@@ -47,7 +53,9 @@ export function useChecklistData() {
       submissions.value = subs;
       employees.value = emps as EmployeeRow[];
 
-      const resp = await fetchResponses(subs.map((s) => s.id));
+      const resp = respostas === "nenhuma"
+        ? []
+        : await fetchResponses(subs.map((s) => s.id), { soNc: respostas === "nc" });
       if (seq !== loadSeq) return;
       responses.value = resp;
 
