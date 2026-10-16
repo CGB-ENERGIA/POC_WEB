@@ -961,7 +961,7 @@ const barObservadores = computed(() => {
   const maxY = Math.max(2, ...rows.map(r => Math.max(r.contado, r.meta)), 0) + 1.8;
   const okColor = chartInk.ok;
   const missColor = chartInk.miss;
-  const metaTick = chartInk.metaTick;
+  const metaTick = "#0ea5e9";
   const todos = verTodosObs.value;
   const porLinha = porLinhaObs.value;
   const multi = todos && rows.length > porLinha;
@@ -1024,18 +1024,22 @@ const barObservadores = computed(() => {
       yAxisIndex: i,
       data: bl.rows.map(r => ({
         value: [r.short, r.meta],
-        itemStyle: { opacity: !viz.matricula || r.matricula === viz.matricula ? 1 : 0.22 },
         label: { position: pos(r).metaPos, distance: pos(r).metaDist },
       })),
       symbol: "rect",
       symbolSize: [20, 5],
       cursor: "pointer",
-      itemStyle: {
-        color: metaTick,
-        borderColor: chartInk.halo,
-        borderWidth: 1,
-        shadowColor: "rgba(254,205,211,.45)",
-        shadowBlur: 6,
+      itemStyle: { color: "transparent", borderWidth: 0 },
+      markLine: {
+        silent: true,
+        symbol: "none",
+        animation: false,
+        label: { show: false },
+        lineStyle: { color: metaTick, type: "dashed" as const, width: 2 },
+        data: bl.rows.map((r, idx) => [
+          { coord: [idx - 0.42, r.meta], lineStyle: { opacity: !viz.matricula || r.matricula === viz.matricula ? 1 : 0.22 } },
+          { coord: [idx + 0.42, r.meta] },
+        ]),
       },
       z: 10,
       label: {
