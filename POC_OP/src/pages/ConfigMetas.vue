@@ -492,7 +492,10 @@
               <span class="cm-override-item__num">{{ fg.meta_semanal }}</span>
               <span class="cm-override-item__unit">/sem</span>
             </div>
-            <button class="cm-override-item__del" :disabled="fixedSaving" @click="handleRemoveFixa(fg.matricula, fg.nome)">
+            <button class="cm-override-item__edit" title="Editar meta fixa" @click="editarFixa(fg)">
+              <q-icon name="mdi-pencil-outline" size="18px" />
+            </button>
+            <button class="cm-override-item__del" title="Remover meta fixa" :disabled="fixedSaving" @click="handleRemoveFixa(fg.matricula, fg.nome)">
               <q-icon name="mdi-delete-outline" size="18px" />
             </button>
           </div>
@@ -522,7 +525,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, nextTick } from "vue";
 import { useQuasar } from "quasar";
 import { useGoals, chaveFuncao, metaRoleFrom, type IndividualOverride } from "@/composables/useGoals";
 import { supabase } from "@/lib/supabase";
@@ -828,6 +831,17 @@ async function handleSaveFixa() {
   } finally {
     fixedSaving.value = false;
   }
+}
+
+/** Abre o colaborador no painel acima com a meta fixa atual para editar. */
+async function editarFixa(fg: { matricula: string; nome: string }) {
+  const emp = allEmps.value.find((e) => e.matricula === fg.matricula) ?? {
+    matricula: fg.matricula, nomeCompleto: fg.nome, gerencia: "", funcao: "", label: `${fg.nome} (${fg.matricula})`,
+  };
+  selectedEmp.value = emp;
+  openPanel(emp);
+  await nextTick();
+  document.querySelector(".cm-week-panel")?.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 async function handleRemoveFixa(matricula: string, nome: string) {
@@ -1357,6 +1371,14 @@ $border:  #e2e8f0;
   &__mensal{ font-size: 11px; color: #94a3b8; }
   &__sem   { color: $brand; font-weight: 600; }
 
+  &__edit {
+    background: none; border: none; cursor: pointer;
+    color: #64748b; padding: 4px;
+    border-radius: 6px; transition: background .12s, color .12s;
+    display: flex; align-items: center;
+    &:hover { background: #e2e8f0; color: #1e293b; }
+  }
+
   &__del {
     background: none; border: none; cursor: pointer;
     color: #f87171; padding: 4px;
@@ -1414,6 +1436,8 @@ $border:  #e2e8f0;
   .cm-derived { border-top-color: #334155; color: #94a3b8; }
   .cm-override-item { border-bottom-color: #334155; }
   .cm-override-item__name { color: #e2e8f0; }
+  .cm-override-item__edit { color: #94a3b8; }
+  .cm-override-item__edit:hover { background: #334155; color: #e2e8f0; }
   .cm-info__title { color: #e2e8f0; }
   .cm-info__list { color: #94a3b8; }
   .cm-btn--reset { background: #1e293b; border-color: #334155; color: #94a3b8; }
