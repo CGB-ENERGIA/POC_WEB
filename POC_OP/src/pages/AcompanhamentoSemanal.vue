@@ -1062,7 +1062,7 @@ const barObservadores = computed(() => {
         return {
           type: "line",
           shape: { x1: cx - 11, y1: cy, x2: cx + 11, y2: cy },
-          style: { stroke: metaTick, lineWidth: 2, lineDash: [4, 3], opacity: api.value(2) },
+          style: { stroke: metaTick, lineWidth: 2, opacity: api.value(2) },
         };
       },
     },
