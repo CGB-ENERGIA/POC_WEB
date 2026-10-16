@@ -14,7 +14,7 @@
           <div class="analise-tab__content">
             <q-icon name="mdi-clipboard-check-outline" size="18px" />
             <span>Validar Checklists</span>
-            <q-badge v-if="checklistsTabRef?.pendentes?.length" color="warning" text-color="dark" :label="checklistsTabRef.pendentes.length" />
+            <q-badge v-if="checklistsTabRef?.totalPendentes" color="warning" text-color="dark" :label="checklistsTabRef.totalPendentes" />
           </div>
         </q-tab>
         <q-tab name="resolucoes" class="analise-tab">

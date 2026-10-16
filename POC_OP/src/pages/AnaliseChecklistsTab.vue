@@ -35,6 +35,16 @@
 
     <!-- Filtros -->
     <div class="row items-center q-mb-md q-gutter-sm">
+      <q-select
+        v-model="filtroAno" :options="anoOpts" emit-value map-options dense outlined
+        class="period-select" style="width:140px" aria-label="Ano"
+      >
+        <template #prepend><q-icon name="mdi-calendar-blank-outline" size="18px" color="grey-6" /></template>
+      </q-select>
+      <q-select
+        v-model="filtroMes" :options="mesOpts" emit-value map-options dense outlined
+        :disable="filtroAno === 'todos'" class="period-select" style="width:150px" aria-label="Mês"
+      />
       <button
         v-for="s in statusOpts" :key="s.value"
         :class="['pill', filtroStatus === s.value && 'pill--active']"
@@ -55,6 +65,12 @@
       <q-input v-model="search" dense outlined placeholder="Buscar..." class="search-input q-ml-auto" style="min-width:200px">
         <template #prepend><q-icon name="mdi-magnify" size="18px" color="grey-6" /></template>
       </q-input>
+    </div>
+
+    <div v-if="pendentesFora > 0" class="pend-fora q-mb-md">
+      <q-icon name="mdi-clock-alert-outline" size="16px" />
+      Há {{ pendentesFora }} {{ pendentesFora === 1 ? "pendente" : "pendentes" }} em outros períodos.
+      <button class="pend-fora__btn" @click="verTodosPeriodos">Ver todos os períodos</button>
     </div>
 
     <!-- Lista -->
@@ -469,6 +485,7 @@ import { ref, computed, onMounted, reactive, watch } from "vue";
 import { useQuasar } from "quasar";
 import {
   fetchChecklistsParaAnalise,
+  fetchContagemPendentes,
   atualizarStatusChecklist,
   deletarChecklist,
   editarChecklist,
@@ -525,28 +542,67 @@ function evidenciasDe(item: ChecklistParaAnalise): number {
   return evidenciasMap.value[item.id] ?? exigidas(item);
 }
 function faltamEvidencias(item: ChecklistParaAnalise): number {
-  if (!(item.id in evidenciasMap.value)) return 0;
+  if (ehLegado(item) || !(item.id in evidenciasMap.value)) return 0;
   return Math.max(0, exigidas(item) - evidenciasDe(item));
 }
 function slotsDe(item: ChecklistParaAnalise): number[] {
   return Array.from({ length: exigidas(item) }, (_, i) => i);
 }
 
+// ── Período ───────────────────────────────────────────────────────────────────
+const hoje = new Date();
+const filtroAno = ref<number | "todos">(hoje.getFullYear());
+const filtroMes = ref<number | "todos">(hoje.getMonth() + 1);
+const anoOpts = [
+  { label: "Todos os anos", value: "todos" },
+  ...[2024, 2025, 2026].map((a) => ({ label: String(a), value: a })),
+];
+const mesOpts = [
+  { label: "Todos os meses", value: "todos" },
+  ...["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+    .map((label, i) => ({ label, value: i + 1 })),
+];
+/** Pendentes que ficam fora do período selecionado (medido na carga). */
+const pendentesFora = ref(0);
+
+/** Checklists da base histórica não têm fotos de evidência: nunca contam como "sem evidências". */
+function ehLegado(item: ChecklistParaAnalise): boolean {
+  return !!(item.resumo as { legado?: unknown } | null)?.legado;
+}
+
+let seqCarga = 0;
 async function recarregar() {
+  const seq = ++seqCarga;
   loading.value = true;
   loadError.value = null;
   try {
-    itens.value = await fetchChecklistsParaAnalise();
+    const ano = filtroAno.value === "todos" ? undefined : filtroAno.value;
+    const mes = ano === undefined || filtroMes.value === "todos" ? undefined : filtroMes.value;
+    const [lista, totalPendentes] = await Promise.all([
+      fetchChecklistsParaAnalise({ ano, mes }),
+      fetchContagemPendentes().catch(() => null),
+    ]);
+    if (seq !== seqCarga) return;
+    itens.value = lista;
+    const naLista = lista.filter((i) => i.status === "pendente").length;
+    pendentesFora.value = totalPendentes === null ? 0 : Math.max(0, totalPendentes - naLista);
     // Falha ao contar não bloqueia a tela: sem o número, nada é marcado nem travado
-    evidenciasMap.value = await fetchContagemEvidencias(itens.value).catch(() => ({}));
+    const contagem = await fetchContagemEvidencias(lista.filter((i) => !ehLegado(i))).catch(() => ({}));
+    if (seq === seqCarga) evidenciasMap.value = contagem;
   } catch (e) {
-    loadError.value = (e as Error).message;
+    if (seq === seqCarga) loadError.value = (e as Error).message;
   } finally {
-    loading.value = false;
+    if (seq === seqCarga) loading.value = false;
   }
 }
 
+function verTodosPeriodos() {
+  filtroAno.value = "todos";
+}
+
 onMounted(recarregar);
+watch(filtroAno, (a) => { if (a === "todos") filtroMes.value = "todos"; });
+watch([filtroAno, filtroMes], recarregar);
 
 // ── Filtros ───────────────────────────────────────────────────────────────────
 const filtroStatus = ref<"todos" | AnaliseStatus>("pendente");
@@ -568,7 +624,9 @@ const taxaAprovacao = computed(() => {
   return analisados === 0 ? 0 : Math.round((aprovados.value.length / analisados) * 100);
 });
 
-defineExpose({ recarregar, pendentes });
+const totalPendentes = computed(() => pendentes.value.length + pendentesFora.value);
+
+defineExpose({ recarregar, pendentes, totalPendentes });
 
 function contagem(status: string): number {
   if (status === "todos") return itens.value.length;
@@ -1159,6 +1217,18 @@ $inactive-text: #475569;
   .pill { background: #1e293b; border-color: #334155; color: #94a3b8; &--active { background: $brand; color: #fff; border-color: $brand; } }
   .ac-expand__body { background: #0f172a; }
   .ac-resp-row__pergunta { color: #e2e8f0; }
+}
+
+.pend-fora {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  font-size: 12.5px; color: #d97706;
+  background: rgba(217, 119, 6, 0.1); border: 1px solid rgba(217, 119, 6, 0.3);
+  border-radius: 10px; padding: 8px 12px;
+
+  &__btn {
+    background: none; border: none; cursor: pointer; padding: 0 2px;
+    color: inherit; font-weight: 700; text-decoration: underline; font-size: inherit;
+  }
 }
 
 .edit-resp {

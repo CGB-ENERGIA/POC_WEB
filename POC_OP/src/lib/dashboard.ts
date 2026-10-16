@@ -848,11 +848,31 @@ export interface ChecklistParaAnalise extends SubmissionRow {
 const CHECKLIST_ANALISE_FIELDS =
   "id,client_id,matricula,observador,auditagem,data,base,equipe,membros,resumo,status,analisado_por,data_analise,comentario_analise";
 
-/** Todos os checklists enviados (qualquer status), para a aba de validação. */
-export async function fetchChecklistsParaAnalise(): Promise<ChecklistParaAnalise[]> {
-  return allPages<ChecklistParaAnalise>(() =>
-    supabase.from("checklist_submissions").select(CHECKLIST_ANALISE_FIELDS).order("data", { ascending: false }),
-  );
+/** Checklists enviados (qualquer status), para a aba de validação. Sem `ano`, traz todos; sem `mes`, o ano inteiro. */
+export async function fetchChecklistsParaAnalise(
+  opts: { ano?: number | undefined; mes?: number | undefined } = {},
+): Promise<ChecklistParaAnalise[]> {
+  return allPages<ChecklistParaAnalise>(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let q: any = supabase.from("checklist_submissions").select(CHECKLIST_ANALISE_FIELDS).order("data", { ascending: false });
+    if (opts.ano) {
+      const { start, end } = opts.mes
+        ? mesRange(opts.ano, opts.mes)
+        : { start: new Date(opts.ano, 0, 1).toISOString(), end: new Date(opts.ano + 1, 0, 1).toISOString() };
+      q = q.gte("data", start).lt("data", end);
+    }
+    return q;
+  });
+}
+
+/** Quantos checklists aguardam validação, em qualquer período. */
+export async function fetchContagemPendentes(): Promise<number> {
+  const { count, error } = await supabase
+    .from("checklist_submissions")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pendente");
+  if (error) throw error;
+  return count ?? 0;
 }
 
 /**
