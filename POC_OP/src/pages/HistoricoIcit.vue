@@ -112,7 +112,22 @@
             <th v-for="name in monthNames" :key="name" class="th-month">
               {{ name }}
             </th>
-            <th class="th-total">Total <q-icon name="mdi-menu-down" size="14px" /></th>
+            <th class="th-total th-total--menu" tabindex="0" role="button" aria-haspopup="true" title="Ordenar"
+              @keydown.enter="($event.currentTarget as HTMLElement).click()">
+              Total <q-icon name="mdi-menu-down" size="14px" />
+              <q-menu anchor="bottom right" self="top right">
+                <q-list dense style="min-width: 250px">
+                  <q-item-label header>Ordenar linhas por</q-item-label>
+                  <q-item
+                    v-for="o in ordemOpts" :key="o.value"
+                    clickable v-close-popup :active="ordem === o.value" @click="ordem = o.value">
+                    <q-item-section avatar><q-icon :name="o.icon" size="18px" /></q-item-section>
+                    <q-item-section>{{ o.label }}</q-item-section>
+                    <q-item-section v-if="ordem === o.value" side><q-icon name="mdi-check" size="16px" /></q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -368,6 +383,16 @@ const rawRows = computed<Row[]>(() => {
   });
 });
 
+// ─── Ordenação (menu do cabeçalho "Total") ────────────────────────────────────
+type Ordem = "reincidencia" | "icit-menor" | "icit-maior" | "prefixo";
+const ordem = ref<Ordem>("reincidencia");
+const ordemOpts: { value: Ordem; label: string; icon: string }[] = [
+  { value: "reincidencia", label: "Mais reincidências primeiro",  icon: "mdi-alert-circle-outline" },
+  { value: "icit-menor",   label: "ICIT total: menor para maior", icon: "mdi-sort-ascending" },
+  { value: "icit-maior",   label: "ICIT total: maior para menor", icon: "mdi-sort-descending" },
+  { value: "prefixo",      label: "Prefixo: A a Z",               icon: "mdi-sort-alphabetical-ascending" },
+];
+
 // ─── Filtered + sorted rows ───────────────────────────────────────────────────
 const filteredRows = computed<Row[]>(() => {
   let rows = rawRows.value;
@@ -382,10 +407,13 @@ const filteredRows = computed<Row[]>(() => {
   else if (filters.tipo === "<80%")      rows = rows.filter(r => r.total.pct < 80);
   else if (filters.tipo === "Acidentes") rows = [];
 
-  return [...rows].sort((a, b) => {
-    if (b.total.reinc !== a.total.reinc) return b.total.reinc - a.total.reinc;
-    return a.total.pct - b.total.pct;
-  });
+  const comparadores: Record<Ordem, (a: Row, b: Row) => number> = {
+    reincidencia: (a, b) => b.total.reinc - a.total.reinc || a.total.pct - b.total.pct,
+    "icit-menor": (a, b) => a.total.pct - b.total.pct || b.total.reinc - a.total.reinc,
+    "icit-maior": (a, b) => b.total.pct - a.total.pct || a.total.reinc - b.total.reinc,
+    prefixo:      (a, b) => a.prefixo.localeCompare(b.prefixo, "pt-BR"),
+  };
+  return [...rows].sort(comparadores[ordem.value]);
 });
 
 // ─── Detalhes da célula (prefixo × mês) ───────────────────────────────────────
@@ -660,6 +688,12 @@ $icit-red:    #dc2626;
     position: sticky;
     right: 0;
     z-index: 3;
+  }
+  .th-total--menu {
+    cursor: pointer;
+    user-select: none;
+    &:hover { filter: brightness(1.25); }
+    &:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
   }
 
   // ── Body rows
