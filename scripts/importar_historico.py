@@ -116,6 +116,8 @@ def ler_planilha(catalogos, xlsx=XLSX, abas=None):
         i_res = col_idx(df, "Todos as inconformidades foram resolvidas?")
         i_obs = col_idx(df, "Observador")
         i_coord = col_idx(df, "Coordenador do Obs")
+        if i_coord is None:  # versões novas da planilha chamam esta coluna de "Gerente Obs" (o valor é o coordenador)
+            i_coord = col_idx(df, "Gerente Obs")
         i_basobs = col_idx(df, "Base do Obs")
         cols = list(df.columns)
         mat_cols = [j for j in range(7, 19) if j < len(cols) and "matricula" in norm(cols[j])]
