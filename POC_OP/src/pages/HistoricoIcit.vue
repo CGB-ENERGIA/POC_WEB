@@ -177,8 +177,14 @@
     <!-- Empty state -->
     <div v-else-if="!loading" class="empty-state">
       <q-icon name="mdi-table-off" size="56px" color="grey-5" />
-      <div class="empty-label">Nenhuma equipe encontrada para os filtros selecionados</div>
-      <div class="empty-hint">Verifique se há dados carregados para {{ filters.ano }}</div>
+      <template v-if="filters.tipo === 'Acidentes' && !acidentes.length">
+        <div class="empty-label">Nenhum acidente cadastrado em {{ filters.ano }}</div>
+        <div class="empty-hint">Os acidentes ainda não foram registrados no sistema; assim que forem, as equipes aparecem aqui.</div>
+      </template>
+      <template v-else>
+        <div class="empty-label">Nenhuma equipe encontrada para os filtros selecionados</div>
+        <div class="empty-hint">Verifique se há dados carregados para {{ filters.ano }}</div>
+      </template>
     </div>
 
     <!-- Detalhes da célula (prefixo × mês) -->
