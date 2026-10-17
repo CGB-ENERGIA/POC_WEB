@@ -138,18 +138,22 @@
             <td class="td-prefix">{{ row.prefixo }}</td>
             <td v-for="(cell, mi) in row.months" :key="mi"
               :class="['td-cell',
-                cell ? `td-icit--${icitClass(cell.pct)} td-cell--click` : 'td-empty']"
+                cell ? `${cellClass(cell)} td-cell--click` : 'td-empty']"
               :tabindex="cell ? 0 : undefined"
               :role="cell ? 'button' : undefined"
               :aria-label="cell ? `Ver detalhes de ${row.prefixo} em ${monthNames[mi]}` : undefined"
               @click="cell && abrirDetalhe(row.prefixo, mi + 1)"
               @keydown.enter="cell && abrirDetalhe(row.prefixo, mi + 1)">
               <template v-if="cell">
-                <div v-if="cell.reinc" class="cell-inner">
+                <div v-if="cell.acid" class="cell-inner">
+                  <span class="cell-reinc">Acidentes: {{ cell.acid }}</span>
+                  <span v-if="cell.pct !== null" class="cell-pct">{{ fmtPct(cell.pct) }}</span>
+                </div>
+                <div v-else-if="cell.reinc && cell.pct !== null" class="cell-inner">
                   <span class="cell-reinc">Reincidência: {{ cell.reinc }}</span>
                   <span class="cell-pct">{{ fmtPct(cell.pct) }}</span>
                 </div>
-                <div v-else class="cell-inner cell-inner--single">{{ fmtPct(cell.pct) }}</div>
+                <div v-else-if="cell.pct !== null" class="cell-inner cell-inner--single">{{ fmtPct(cell.pct) }}</div>
               </template>
             </td>
             <td class="td-total td-cell--click" tabindex="0" role="button"
@@ -157,9 +161,11 @@
               @click="abrirDetalhe(row.prefixo, null)"
               @keydown.enter="abrirDetalhe(row.prefixo, null)">
               <div class="cell-inner">
-                <span class="total-reinc">Reincidência: {{ row.total.reinc }}</span>
-                <span class="total-pct" :class="`total-pct--${icitClass(row.total.pct)}`">
-                  {{ fmtPct(row.total.pct) }}
+                <span class="total-reinc">
+                  {{ row.total.acid ? `Acidentes: ${row.total.acid}` : `Reincidência: ${row.total.reinc}` }}
+                </span>
+                <span class="total-pct" :class="row.total.acid ? 'total-pct--acid' : `total-pct--${icitClass(row.total.pct)}`">
+                  {{ row.semVisitas ? "—" : fmtPct(row.total.pct) }}
                 </span>
               </div>
             </td>
@@ -233,6 +239,26 @@
               </tfoot>
             </table>
           </div>
+
+          <div v-if="detalheDados.acidentes.length" class="icit-det__acid">
+            <div class="icit-det__acid-titulo">Histórico de Acidentes</div>
+            <div class="icit-det__scroll">
+              <table class="icit-det__table">
+                <thead>
+                  <tr><th>Data</th><th>Descrição</th></tr>
+                </thead>
+                <tbody>
+                  <tr v-for="a in detalheDados.acidentes" :key="a.id">
+                    <td>{{ fmtDataAcid(a.data) }}</td>
+                    <td class="icit-det__desc">{{ a.descricao || "—" }}</td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr><td>Total</td><td>{{ detalheDados.acidentes.length }}</td></tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
         </div>
       </q-card>
     </q-dialog>
@@ -245,6 +271,7 @@ import { reactive, computed, ref, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
 import {
   uniqueHierarchyOpts, foldName, fetchHierarquiaEquipes, hierarquiaDaEquipe, type EquipeHier,
+  fetchAcidentes, type AcidenteRow,
   indexEmployees, matchSubmissionToEmployee,
 } from "@/lib/dashboard";
 
@@ -259,8 +286,9 @@ function normPrefixo(equipe: string | null | undefined): string {
 /** Meta de ICIT (%): meses abaixo dela contam como reincidência. */
 const ICIT_META = 80;
 
-interface Cell { reinc?: number; pct: number }
-interface Row  { prefixo: string; months: (Cell | null)[]; total: { reinc: number; pct: number } }
+/** `pct` é null no mês em que houve acidente mas nenhuma visita. */
+interface Cell { reinc?: number; acid?: number; pct: number | null }
+interface Row  { prefixo: string; months: (Cell | null)[]; semVisitas: boolean; total: { reinc: number; acid: number; pct: number } }
 
 // ─── Filter options ───────────────────────────────────────────────────────────
 const now = new Date();
@@ -298,8 +326,11 @@ const filters = reactive({
 });
 
 // ─── Data loading ─────────────────────────────────────────────────────────────
+const acidentes = ref<AcidenteRow[]>([]);
+
 async function recarregar() {
   // A base é filtrada no cliente, pela base da EQUIPE (o BI faz assim); a base do checklist pode ser a do observador.
+  fetchAcidentes(filters.ano).then((r) => { acidentes.value = r; }).catch(() => { acidentes.value = []; });
   await load({ ano: filters.ano }, false, false, "nc");
 }
 onMounted(recarregar);
@@ -344,25 +375,50 @@ const gerenteDoCoordenador = computed(() => {
   return out;
 });
 
-/** Checklists do ano depois dos filtros de gerente, coordenador e gerência (todos pela equipe). */
+/** Filtros de coordenador, gerente, gerência e base, todos pela EQUIPE (valores já normalizados). */
+const filtrosEquipe = computed(() => ({
+  coord:    filters.coordenador ? foldName(filters.coordenador) : "",
+  gerente:  filters.gerente ? foldName(filters.gerente) : "",
+  gerencia: filters.gerencia && filters.gerencia !== "Todos" ? filters.gerencia.toUpperCase() : "",
+  base:     filters.base.toUpperCase(),
+}));
+
+/** A equipe passa nos filtros? (`auditagem` e `baseChecklist` só entram quando a equipe não está no cadastro.) */
+function passaFiltros(equipe: string | null | undefined, auditagem = "", baseChecklist = ""): boolean {
+  const f = filtrosEquipe.value;
+  if (!f.coord && !f.gerente && !f.gerencia && !f.base) return true;
+  const h = hierarquiaDaEquipe(hierEquipes.value, equipe);
+  if (f.base && (h?.base || baseChecklist || "").toUpperCase() !== f.base) return false;
+  const coordDaEquipe = foldName(h?.coordenador ?? "");
+  if (f.coord && coordDaEquipe !== f.coord) return false;
+  if (f.gerente) {
+    const g = h?.gerente || gerenteDoCoordenador.value.get(coordDaEquipe) || "";
+    if (foldName(g) !== f.gerente) return false;
+  }
+  if (f.gerencia && (h?.gerencia || auditagem || "").toUpperCase() !== f.gerencia) return false;
+  return true;
+}
+
+/** Checklists do ano depois dos filtros de gerente, coordenador, gerência e base (todos pela equipe). */
 const subsFiltrados = computed(() => {
-  const coord = filters.coordenador ? foldName(filters.coordenador) : "";
-  const gerente = filters.gerente ? foldName(filters.gerente) : "";
-  const gerencia = filters.gerencia && filters.gerencia !== "Todos" ? filters.gerencia.toUpperCase() : "";
-  const base = filters.base.toUpperCase();
-  if (!coord && !gerente && !gerencia && !base) return submissions.value;
-  return submissions.value.filter((s) => {
-    const h = hierarquiaDaEquipe(hierEquipes.value, s.equipe);
-    if (base && (h?.base || s.base || "").toUpperCase() !== base) return false;
-    const coordDaEquipe = foldName(h?.coordenador ?? "");
-    if (coord && coordDaEquipe !== coord) return false;
-    if (gerente) {
-      const g = h?.gerente || gerenteDoCoordenador.value.get(coordDaEquipe) || "";
-      if (foldName(g) !== gerente) return false;
-    }
-    if (gerencia && (h?.gerencia || s.auditagem || "").toUpperCase() !== gerencia) return false;
-    return true;
-  });
+  const f = filtrosEquipe.value;
+  if (!f.coord && !f.gerente && !f.gerencia && !f.base) return submissions.value;
+  return submissions.value.filter((s) => passaFiltros(s.equipe, s.auditagem, s.base));
+});
+
+/** Acidentes do ano por equipe (prefixo em maiúsculas) e mês, respeitando os filtros da equipe. */
+const acidentesFiltrados = computed(() => acidentes.value.filter((a) => passaFiltros(a.prefixo)));
+const acidentesPorEquipeMes = computed(() => {
+  const m = new Map<string, number[]>();
+  for (const a of acidentesFiltrados.value) {
+    const chave = normPrefixo(a.prefixo);
+    const mes = Number(a.data.slice(5, 7));
+    if (!(mes >= 1 && mes <= 12)) continue;
+    const arr = m.get(chave) ?? new Array<number>(12).fill(0);
+    arr[mes - 1] = (arr[mes - 1] ?? 0) + 1;
+    m.set(chave, arr);
+  }
+  return m;
 });
 
 /** IDs dos checklists que têm pelo menos uma resposta não conforme. */
@@ -377,7 +433,8 @@ const ncIds = computed(() => {
 
 const rawRows = computed<Row[]>(() => {
   const subs = subsFiltrados.value;
-  if (!subs.length) return [];
+  const acidPorEquipe = acidentesPorEquipeMes.value;
+  if (!subs.length && !acidPorEquipe.size) return [];
   const ncSubIds = ncIds.value;
 
   // Group submissions by equipe × month
@@ -394,25 +451,33 @@ const rawRows = computed<Row[]>(() => {
     equipeData[eq][month].total++;
     if (!ncSubIds.has(s.id)) equipeData[eq][month].semNc++;
   }
+  // Equipe com acidente no ano mas sem nenhuma visita também aparece (como no BI).
+  for (const eq of acidPorEquipe.keys()) if (!equipeData[eq]) equipeData[eq] = {};
 
   // Build rows
   return Object.entries(equipeData).map(([prefixo, mStats]) => {
     const months: (Cell | null)[] = [];
+    const acidMeses = acidPorEquipe.get(prefixo);
     let totalSubs  = 0;
     let totalSemNc = 0;
     let reincidencias = 0;
+    let acidTotal = 0;
     for (let mi = 1; mi <= 12; mi++) {
       const st = mStats[mi];
-      if (!st) { months.push(null); continue; }
+      const acid = acidMeses?.[mi - 1] ?? 0;
+      acidTotal += acid;
+      if (!st) { months.push(acid ? { pct: null, acid } : null); continue; }
       const pct = Math.round((st.semNc / st.total) * 10000) / 100;
       // Reincidência = mês abaixo de 80% de ICIT; o total soma os meses nessa situação.
-      if (pct < ICIT_META) { months.push({ pct, reinc: 1 }); reincidencias++; }
-      else months.push({ pct });
+      const cell: Cell = { pct };
+      if (pct < ICIT_META) { cell.reinc = 1; reincidencias++; }
+      if (acid) cell.acid = acid;
+      months.push(cell);
       totalSubs  += st.total;
       totalSemNc += st.semNc;
     }
     const avgPct = totalSubs > 0 ? Math.round((totalSemNc / totalSubs) * 10000) / 100 : 0;
-    return { prefixo, months, total: { reinc: reincidencias, pct: avgPct } };
+    return { prefixo, months, semVisitas: totalSubs === 0, total: { reinc: reincidencias, acid: acidTotal, pct: avgPct } };
   });
 });
 
@@ -435,7 +500,7 @@ const filteredRows = computed<Row[]>(() => {
 
   if      (filters.tipo === ">80%")      rows = rows.filter(r => r.total.pct >= 80);
   else if (filters.tipo === "<80%")      rows = rows.filter(r => r.total.pct < 80);
-  else if (filters.tipo === "Acidentes") rows = [];
+  else if (filters.tipo === "Acidentes") rows = rows.filter(r => r.total.acid > 0);
 
   const comparadores: Record<Ordem, (a: Row, b: Row) => number> = {
     reincidencia: (a, b) => b.total.reinc - a.total.reinc || a.total.pct - b.total.pct,
@@ -493,8 +558,11 @@ const detalheDados = computed(() => {
   const visitas = conformes + inconformes;
   const linhas = [...porObs.values()]
     .sort((a, b) => b.visitas - a.visitas || a.observador.localeCompare(b.observador, "pt-BR"));
+  const acids = acidentesFiltrados.value
+    .filter((a) => normPrefixo(a.prefixo) === d.prefixo && (d.mes === null || Number(a.data.slice(5, 7)) === d.mes))
+    .sort((a, b) => a.data.localeCompare(b.data));
   return {
-    linhas, conformes, inconformes, visitas,
+    linhas, conformes, inconformes, visitas, acidentes: acids,
     icit: visitas ? Math.round((conformes / visitas) * 10000) / 100 : 0,
   };
 });
@@ -502,6 +570,16 @@ const detalheDados = computed(() => {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmtPct(v: number) {
   return v.toFixed(2).replace(".", ",") + "%";
+}
+
+function cellClass(cell: Cell): string {
+  if (cell.acid || cell.pct === null) return "td-acid";
+  return `td-icit--${icitClass(cell.pct)}`;
+}
+
+function fmtDataAcid(iso: string): string {
+  const [a, m, d] = iso.slice(0, 10).split("-");
+  return `${d}/${m}/${a}`;
 }
 
 function icitClass(pct: number): "green" | "yellow" | "red" {
@@ -763,6 +841,7 @@ $icit-red:    #dc2626;
   .td-icit--green  { background: $icit-green; color: #fff; }
   .td-icit--yellow { background: $icit-yellow; color: #fff; }
   .td-icit--red    { background: $icit-red; color: #fff; }
+  .td-acid         { background: $icit-red; color: #fff; }
 
   .td-total {
     background: #1e293b;
@@ -805,6 +884,7 @@ $icit-red:    #dc2626;
   &--green  { color: #4ade80; }
   &--yellow { color: #fbbf24; }
   &--red    { color: #f87171; }
+  &--acid   { color: #fff; background: #dc2626; border-radius: 4px; padding: 0 6px; }
 }
 
 /* ─── Empty state ────────────────────────────────────────────────────────── */
@@ -905,6 +985,9 @@ $icit-red:    #dc2626;
     tfoot td { font-weight: 800; border-top: 2px solid #cbd5e1; border-bottom: none; background: #f8fafc; }
   }
   &__th-obs { min-width: 150px; }
+  &__acid { margin-top: 16px; }
+  &__acid-titulo { font-size: 1.05rem; font-weight: 800; color: #1e293b; margin-bottom: 8px; }
+  &__desc { white-space: normal !important; min-width: 220px; }
   &__conf { background: rgba(47, 158, 31, .18); color: #166534; font-weight: 700; }
   &__inc  { background: rgba(180, 20, 58, .14); color: #9f1239; font-weight: 700; }
 }
@@ -914,6 +997,7 @@ $icit-red:    #dc2626;
   &__head { border-bottom-color: #334155; }
   &__prefixo { color: #e2e8f0; }
   &__periodo, &__icit { color: #94a3b8; }
+  &__acid-titulo { color: #e2e8f0; }
   &__card { background: #0f172a; border-color: #334155; }
   &__card-num { color: #e2e8f0; }
   &__scroll { border-color: #334155; }

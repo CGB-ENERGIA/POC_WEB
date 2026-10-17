@@ -1102,6 +1102,22 @@ export function coordenadorDaEquipe(mapa: Map<string, string>, equipe: string | 
   return mapa.get(chave) ?? mapa.get((chave.split(/\s+[–-]\s+/)[0] ?? "").trim()) ?? "";
 }
 
+export interface AcidenteRow {
+  id: string;
+  data: string; // AAAA-MM-DD
+  prefixo: string;
+  descricao: string;
+}
+
+/** Acidentes registrados no ano (tabela acidentes; só para usuários logados). */
+export async function fetchAcidentes(ano: number): Promise<AcidenteRow[]> {
+  return allPages<AcidenteRow>(
+    () => supabase.from("acidentes" as never).select("id,data,prefixo,descricao")
+      .gte("data", `${ano}-01-01`).lt("data", `${ano + 1}-01-01`),
+    ["data", "id"],
+  );
+}
+
 /** Hierarquia de uma equipe (prefixo): quem coordena, quem gerencia, a gerência e a base da equipe. */
 export interface EquipeHier {
   coordenador: string;
