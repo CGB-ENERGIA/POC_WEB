@@ -142,7 +142,6 @@
           <span v-if="filters.seguranca !== 'Segurança'" class="filter-chip filter-chip--hit" @click="filters.seguranca = 'Segurança'">{{ filters.seguranca }}</span>
           <span v-if="viz.equipe" class="filter-chip filter-chip--hit" @click="viz.equipe = null">{{ viz.equipe }}</span>
           <span v-if="viz.categoria" class="filter-chip filter-chip--hit" @click="viz.categoria = null">{{ viz.categoria }}</span>
-          <span v-if="viz.lado" class="filter-chip filter-chip--hit" @click="viz.lado = null">{{ viz.lado === 'semNc' ? 'Checklists perfeitos' : 'Com inconformidade' }}</span>
           <button class="filter-clear" @click="resetSlice">
             <q-icon name="mdi-close-circle" size="14px" />
             Limpar
@@ -197,23 +196,12 @@
         <!-- LEFT: 3Ã—2 grid -->
         <div class="col-12 col-md-9">
 
-          <!-- Row 1: Donut · Mês · Gerência -->
+          <!-- Row 1: Mês (linha) · Gerência -->
           <div class="row q-col-gutter-md q-mb-md">
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-7">
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Índice Geral de conformidade</div>
-                  <div class="text-caption text-grey-6">Clique na fatia para filtrar</div>
-                </q-card-section>
-                <q-card-section>
-                  <v-chart class="chart-hit" :option="chartDonut" autoresize style="height:260px" @click="onDonutClick" />
-                </q-card-section>
-              </q-card>
-            </div>
-            <div class="col-12 col-md-4">
-              <q-card flat bordered class="chart-card">
-                <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Índice de conformidade por Mês</div>
+                  <div class="text-subtitle1 text-weight-bold">Índice de Conformidade por Mês</div>
                   <div class="text-caption text-grey-6">ICIT no ano · clique no mês para abrir</div>
                 </q-card-section>
                 <q-card-section>
@@ -221,10 +209,10 @@
                 </q-card-section>
               </q-card>
             </div>
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-5">
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Índice de conformidade por Gerência</div>
+                  <div class="text-subtitle1 text-weight-bold">Índice de Conformidade por Gerência</div>
                   <div class="text-caption text-grey-6">Clique para filtrar a gerência</div>
                 </q-card-section>
                 <q-card-section>
@@ -234,12 +222,12 @@
             </div>
           </div>
 
-          <!-- Row 2: Base · Não conformidades por Categoria -->
+          <!-- Row 2: Base · Não conformidades por Categoria · Tolerância Zero -->
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-4">
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Índice de conformidade por Base</div>
+                  <div class="text-subtitle1 text-weight-bold">Índice de Conformidade por Base</div>
                   <div class="text-caption text-grey-6">Clique para ver só esta base</div>
                 </q-card-section>
                 <q-card-section>
@@ -247,14 +235,25 @@
                 </q-card-section>
               </q-card>
             </div>
-            <div class="col-12 col-md-8">
+            <div class="col-12 col-md-4">
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
-                  <div class="text-subtitle1 text-weight-bold">Não conformidades por Categoria</div>
+                  <div class="text-subtitle1 text-weight-bold">Não Conformidades por Categoria</div>
                   <div class="text-caption text-grey-6">Clique na categoria para filtrar</div>
                 </q-card-section>
                 <q-card-section>
                   <v-chart class="chart-hit" :option="chartCategoria" autoresize style="height:260px" @click="onCategoriaClick" />
+                </q-card-section>
+              </q-card>
+            </div>
+            <div class="col-12 col-md-4">
+              <q-card flat bordered class="chart-card">
+                <q-card-section class="q-pb-none">
+                  <div class="text-subtitle1 text-weight-bold">Não Conformidades de Tolerância Zero</div>
+                  <div class="text-caption text-grey-6">Itens de maior gravidade · role para ver mais</div>
+                </q-card-section>
+                <q-card-section>
+                  <v-chart :option="chartTolerancia" autoresize style="height:260px" />
                 </q-card-section>
               </q-card>
             </div>
@@ -285,7 +284,7 @@
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
-import { BarChart, PieChart } from "echarts/charts";
+import { BarChart, LineChart } from "echarts/charts";
 import {
   GridComponent,
   TooltipComponent,
@@ -297,12 +296,15 @@ import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtPct, fmtN } from "@/composables/useChecklistData";
 import { rotuloSemana } from "@/lib/semanas";
-import { filterByGerencia, filterByGerente, semanaDaData, indexEmployees, matchSubmissionToEmployee, fetchSubmissions, fetchResponses, type ResponseRow, type SubmissionRow, filterByCoordenador } from "@/lib/dashboard";
+import {
+  semanaDaData, indexEmployees, matchSubmissionToEmployee, fetchSubmissions, fetchResponses, type ResponseRow, type SubmissionRow,
+  foldName, fetchHierarquiaEquipes, hierarquiaDaEquipe, type EquipeHier,
+} from "@/lib/dashboard";
 import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
 import { metaRoleFrom } from "@/composables/useGoals";
 
 use([
-  CanvasRenderer, BarChart, PieChart,
+  CanvasRenderer, BarChart, LineChart,
   GridComponent, TooltipComponent, LegendComponent,
   TitleComponent, DataZoomComponent
 ]);
@@ -385,7 +387,6 @@ watch(() => filters.ano, recarregarAno);
 const viz = reactive({
   equipe: null as string | null,
   categoria: null as string | null,
-  lado: null as "semNc" | "comNc" | null,
 });
 
 const BASE_NOME: Record<string, string> = {
@@ -428,7 +429,6 @@ function resetSlice() {
   filters.coordenador = "Todos";
   viz.equipe = null;
   viz.categoria = null;
-  viz.lado = null;
 }
 
 type EcClick = {
@@ -439,10 +439,7 @@ type EcClick = {
 
 function onMesClick(p: EcClick) {
   if (p.componentType && p.componentType !== "series") return;
-  let mes = 0;
-  if (typeof p.dataIndex === "number") mes = p.dataIndex + 1;
-  const fromName = meses.find((m) => m.label === p.name);
-  if (fromName) mes = fromName.value;
+  const mes = mesesDoAno.value[p.dataIndex ?? -1]?.mes ?? 0;
   if (mes < 1 || mes > 12) return;
   filters.mes = mes;
 }
@@ -471,14 +468,6 @@ function onCategoriaClick(p: EcClick) {
   viz.categoria = viz.categoria === row.cat ? null : row.cat;
 }
 
-function onDonutClick(p: EcClick) {
-  if (p.componentType && p.componentType !== "series") return;
-  const name = (p.name ?? "").toLowerCase();
-  const next = name.startsWith("inconf") ? "comNc" : name.startsWith("conf") ? "semNc" : null;
-  if (!next) return;
-  viz.lado = viz.lado === next ? null : next;
-}
-
 const mesLabel = computed(() => meses.find((m) => m.value === filters.mes)?.label ?? "");
 const semanaLabel = computed(() => semanas.value.find((s) => s.value === filters.semana)?.label ?? "");
 const hasActiveFilters = computed(() =>
@@ -490,23 +479,66 @@ const hasActiveFilters = computed(() =>
   || filters.tipoPoc !== "Todos"
   || filters.seguranca !== "Segurança"
   || !!viz.equipe
-  || !!viz.categoria
-  || !!viz.lado,
+  || !!viz.categoria,
 );
+
+// ─── Hierarquia da EQUIPE (coordenador, gerente, gerência, base) ──────────────
+// Gerência, base, coordenador e gerente olham a equipe do checklist (como o BI), não o cadastro do observador.
+const hierEquipes = ref(new Map<string, EquipeHier>());
+fetchHierarquiaEquipes().then((m) => { hierEquipes.value = m; });
+
+/** Gerente de cada coordenador (o mais comum no cadastro), para equipes sem gerente informado. */
+const gerenteDoCoordenador = computed(() => {
+  const cont = new Map<string, Map<string, number>>();
+  for (const e of employees.value) {
+    const c = foldName(e.coordenador ?? "");
+    const g = (e.gerente ?? "").trim();
+    if (!c || !g) continue;
+    const m = cont.get(c) ?? new Map<string, number>();
+    m.set(g, (m.get(g) ?? 0) + 1);
+    cont.set(c, m);
+  }
+  const out = new Map<string, string>();
+  for (const [c, m] of cont) out.set(c, [...m.entries()].sort((a, b) => b[1] - a[1])[0]![0]);
+  return out;
+});
+
+function gerenciaDaSub(sub: SubmissionRow): string {
+  return (hierarquiaDaEquipe(hierEquipes.value, sub.equipe)?.gerencia || sub.auditagem || "").toUpperCase();
+}
+
+function baseDaSub(sub: SubmissionRow): string {
+  return (hierarquiaDaEquipe(hierEquipes.value, sub.equipe)?.base || sub.base || "").toUpperCase();
+}
+
+function passaCoordenadorGerente(sub: SubmissionRow): boolean {
+  const h = hierarquiaDaEquipe(hierEquipes.value, sub.equipe);
+  const coordDaEquipe = foldName(h?.coordenador ?? "");
+  if (filters.coordenador !== "Todos" && coordDaEquipe !== foldName(filters.coordenador)) return false;
+  if (filters.gerente !== "Todos") {
+    const g = h?.gerente || gerenteDoCoordenador.value.get(coordDaEquipe) || "";
+    if (foldName(g) !== foldName(filters.gerente)) return false;
+  }
+  return true;
+}
 
 function applySlice(
   source: SubmissionRow[],
-  omit: { week?: boolean; base?: boolean; gerencia?: boolean; tipo?: boolean; seguranca?: boolean; equipe?: boolean; lado?: boolean } = {},
+  omit: { week?: boolean; base?: boolean; gerencia?: boolean; tipo?: boolean; seguranca?: boolean; equipe?: boolean } = {},
 ) {
   const idx = indexEmployees(employees.value);
-  let s = filterByGerente(source, employees.value, filters.gerente);
-  s = filterByCoordenador(s, employees.value, filters.coordenador);
-  if (!omit.gerencia) s = filterByGerencia(s, employees.value, filters.gerencia);
+  let s = source;
+  if (filters.coordenador !== "Todos" || filters.gerente !== "Todos") s = s.filter(passaCoordenadorGerente);
+  if (!omit.gerencia && filters.gerencia !== "Todos") {
+    const alvo = filters.gerencia.toUpperCase();
+    s = s.filter((sub) => gerenciaDaSub(sub) === alvo);
+  }
   if (!omit.week && filters.semana) {
     s = s.filter((sub) => semanaDaData(sub.data) === filters.semana);
   }
   if (!omit.base && filters.base !== "Todos") {
-    s = s.filter((sub) => sub.base === filters.base);
+    const alvo = filters.base.toUpperCase();
+    s = s.filter((sub) => baseDaSub(sub) === alvo);
   }
   if (!omit.tipo && filters.tipoPoc !== "Todos") {
     s = s.filter((sub) => matchTipoPoc(sub.auditagem));
@@ -535,23 +567,13 @@ function respsOf(subs: SubmissionRow[], allResps: ResponseRow[], omitCat = false
   return r;
 }
 
-function applyLado(subs: SubmissionRow[], resps: ResponseRow[]) {
-  if (!viz.lado) return subs;
-  const ncIds = ncIdSet(resps);
-  return viz.lado === "comNc"
-    ? subs.filter((s) => ncIds.has(s.id))
-    : subs.filter((s) => !ncIds.has(s.id));
-}
-
 const slicedSubs = computed(() => applySlice(submissions.value));
-const slicedResps = computed(() => respsOf(slicedSubs.value, responses.value));
-const filteredSubs = computed(() => applyLado(slicedSubs.value, slicedResps.value));
+const filteredSubs = slicedSubs;
 const filteredResps = computed(() => respsOf(filteredSubs.value, responses.value));
 
-const subsNoBase = computed(() => applyLado(applySlice(submissions.value, { base: true }), respsOf(applySlice(submissions.value, { base: true }), responses.value)));
-const subsNoGerencia = computed(() => applyLado(applySlice(submissions.value, { gerencia: true }), respsOf(applySlice(submissions.value, { gerencia: true }), responses.value)));
-const subsNoEquipe = computed(() => applyLado(applySlice(submissions.value, { equipe: true }), respsOf(applySlice(submissions.value, { equipe: true }), responses.value)));
-const subsNoLado = computed(() => slicedSubs.value);
+const subsNoBase = computed(() => applySlice(submissions.value, { base: true }));
+const subsNoGerencia = computed(() => applySlice(submissions.value, { gerencia: true }));
+const subsNoEquipe = computed(() => applySlice(submissions.value, { equipe: true }));
 
 const totalConformes    = computed(() => filteredResps.value.filter(r => r.resposta === "conforme").length);
 const totalNaoConformes = computed(() => filteredResps.value.filter(r => r.resposta === "nao_conforme").length);
@@ -561,9 +583,6 @@ const conformidadeIndex = computed(() => {
 });
 const equipesAuditadas = computed(() => new Set(filteredSubs.value.map(s => s.equipe).filter(Boolean)).size);
 
-const donutNcIds = computed(() => ncIdSet(respsOf(subsNoLado.value, responses.value)));
-const subsComNc = computed(() => subsNoLado.value.filter(s => donutNcIds.value.has(s.id)).length);
-const subsSemNc = computed(() => subsNoLado.value.length - subsComNc.value);
 const checklistIndex = computed(() => {
   const t = filteredSubs.value.length;
   const ncIds = ncIdSet(filteredResps.value);
@@ -688,88 +707,85 @@ function hBar(
   };
 }
 
-const chartDonut = computed(() => ({
-  tooltip: {
-    ...tooltipSkin("item"),
-    formatter: (p: { name: string; value: number; percent: number }) =>
-      tipHtml(p.name, [
-        { label: "Checklists", value: String(p.value), color: p.name.toLowerCase().startsWith("inconf") ? P.inconf : P.conf },
-        { label: "Fatia", value: `${p.percent.toFixed(0)}%` },
-      ], "Clique para ver só este grupo"),
-  },
-  legend: {
-    bottom: 4, left: "center", itemWidth: 10, itemHeight: 10, itemGap: 16,
-    textStyle: { color: chartInk.muted, fontSize: 11 },
-  },
-  title: {
-    text: fmtPct(checklistIndex.value),
-    subtext: "checklists perfeitos",
-    left: "50%", top: "34%", textAlign: "center",
-    textStyle: { fontSize: 26, fontWeight: "bold" as const, color: P.conf },
-    subtextStyle: { fontSize: 11, color: chartInk.faint },
-  },
-  series: [{
-    type: "pie" as const,
-    radius: ["52%", "74%"], center: ["50%", "46%"],
-    avoidLabelOverlap: false,
-    cursor: "pointer",
-    label: {
-      show: true,
-      formatter: (p: { name: string; value: number; percent: number }) =>
-        `{nm|${p.name}}\n{vl|${p.value} (${p.percent.toFixed(0)}%)}`,
-      rich: {
-        nm: { fontSize: 10, color: chartInk.muted },
-        vl: { fontSize: 11, fontWeight: "bold", color: chartInk.axis },
-      },
-    },
-    labelLine: { length: 10, length2: 8 },
-    itemStyle: { borderRadius: 8, borderColor: chartInk.halo, borderWidth: 3 },
-    emphasis: { scale: true, scaleSize: 5, itemStyle: { shadowBlur: 16, shadowColor: "rgba(0,0,0,.15)" } },
-    data: [
-      {
-        value: subsSemNc.value,
-        name: "conformidade",
-        itemStyle: { color: P.conf, opacity: !viz.lado || viz.lado === "semNc" ? 1 : 0.22 },
-      },
-      {
-        value: subsComNc.value,
-        name: "Inconformidade",
-        itemStyle: { color: P.inconf, opacity: !viz.lado || viz.lado === "comNc" ? 1 : 0.22 },
-      },
-    ],
-  }],
-}));
+const yearSliced = computed(() => applySlice(yearSubs.value));
 
-const yearSliced = computed(() => applyLado(applySlice(yearSubs.value), respsOf(applySlice(yearSubs.value), yearResps.value)));
-
-const chartMes = computed(() => {
-  const mesLabels = meses.map((m) => m.label);
+/** Meses do ano com checklists (ICIT = checklists sem não conformidade / total do mês). */
+const mesesDoAno = computed(() => {
   const groups: SubmissionRow[][] = Array.from({ length: 12 }, () => []);
   for (const s of yearSliced.value) {
     const m = mesDaData(s.data);
     if (m >= 1 && m <= 12) groups[m - 1]!.push(s);
   }
-  const rows = mesLabels.map((name, i) => ({
-    name,
-    value: icitPct(groups[i]!, respsOf(groups[i]!, yearResps.value)),
-  }));
-  return hBar(
-    rows,
-    mesLabels[filters.mes - 1] ?? null,
-    P.conf,
-    "%",
-    100,
-    "Clique para abrir o recorte daquele mês",
-  );
+  return meses
+    .map((m, i) => ({
+      mes: m.value,
+      label: `${m.label}/${String(filters.ano).slice(2)}`,
+      n: groups[i]!.length,
+      value: icitPct(groups[i]!, respsOf(groups[i]!, yearResps.value)),
+    }))
+    .filter((r) => r.n > 0);
+});
+
+const chartMes = computed(() => {
+  const rows = mesesDoAno.value;
+  const vals = rows.map((r) => r.value);
+  const minV = Math.min(...vals, 100);
+  const maxV = Math.max(...vals, 0);
+  return {
+    tooltip: {
+      ...tooltipSkin("item"),
+      formatter: (p: { dataIndex: number }) => {
+        const r = rows[p.dataIndex];
+        if (!r) return "";
+        return tipHtml(r.label, [
+          { label: "ICIT", value: `${r.value}%`, color: P.conf },
+          { label: "Checklists", value: fmtN(r.n) },
+        ], "Clique para abrir o recorte daquele mês");
+      },
+    },
+    grid: { left: 28, right: 28, top: 40, bottom: 30 },
+    xAxis: {
+      type: "category" as const,
+      data: rows.map((r) => r.label),
+      boundaryGap: true,
+      axisLine: { show: false }, axisTick: { show: false },
+      axisLabel: { color: P.inconf, fontWeight: "bold" as const, fontSize: 11, interval: 0 },
+    },
+    yAxis: { type: "value" as const, show: false, splitLine: { show: false }, min: Math.max(0, minV - 14), max: Math.min(110, maxV + 12) },
+    series: [{
+      type: "line" as const,
+      cursor: "pointer",
+      symbol: "circle",
+      lineStyle: { color: chartInk.muted, width: 3 },
+      data: rows.map((r, i) => {
+        const ant = i > 0 ? rows[i - 1]!.value : null;
+        const prox = i < rows.length - 1 ? rows[i + 1]!.value : null;
+        // Vale (abaixo do mês anterior e não acima do próximo) leva o rótulo embaixo, como no BI.
+        const vale = ant !== null && r.value < ant && (prox === null || r.value <= prox);
+        const sel = r.mes === filters.mes;
+        return {
+          value: r.value,
+          symbolSize: sel ? 15 : 11,
+          itemStyle: { color: sel ? "#166534" : "#35b00f", borderColor: chartInk.halo, borderWidth: 2 },
+          label: { position: vale ? ("bottom" as const) : ("top" as const) },
+        };
+      }),
+      label: {
+        show: true,
+        fontSize: 11, fontWeight: "bold" as const, color: chartInk.axis,
+        backgroundColor: "rgba(148,163,184,.22)", borderRadius: 4, padding: [2, 6],
+        distance: 10,
+        formatter: (p: { value: number }) => `${p.value}%`,
+      },
+      emphasis: { scale: true },
+    }],
+  };
 });
 
 const chartGerencia = computed(() => {
-  const idx = indexEmployees(employees.value);
   const map: Record<string, SubmissionRow[]> = {};
   for (const s of subsNoGerencia.value) {
-    const emp = matchSubmissionToEmployee(s, idx);
-    const g = emp?.gerencia ?? s.auditagem ?? "Outro";
-    (map[g] ??= []).push(s);
+    (map[gerenciaDaSub(s) || "Outro"] ??= []).push(s);
   }
   const resps = respsOf(subsNoGerencia.value, responses.value);
   const rows = Object.entries(map)
@@ -781,13 +797,48 @@ const chartGerencia = computed(() => {
 const chartBase = computed(() => {
   const map: Record<string, SubmissionRow[]> = {};
   for (const s of subsNoBase.value) {
-    (map[s.base] ??= []).push(s);
+    (map[baseDaSub(s) || "Outra"] ??= []).push(s);
   }
   const resps = respsOf(subsNoBase.value, responses.value);
   const rows = Object.entries(map)
     .map(([name, list]) => ({ name, value: answerPct(list, resps) }))
-    .sort((a, b) => a.value - b.value);
-  return hBar(rows, filters.base !== "Todos" ? filters.base : null, P.conf, "%", 100, "Clique para ver só esta base");
+    .sort((a, b) => b.value - a.value);
+  const selected = filters.base !== "Todos" ? filters.base : null;
+  return {
+    tooltip: {
+      ...tooltipSkin("item"),
+      formatter: (p: { name: string; value: number }) =>
+        tipHtml(nomeBase(p.name), [{ label: "Conformidade", value: `${p.value}%`, color: P.conf }], "Clique para ver só esta base"),
+    },
+    grid: { left: 8, right: 8, top: 36, bottom: 28 },
+    xAxis: {
+      type: "category" as const,
+      data: rows.map((r) => r.name),
+      axisLine: { show: false }, axisTick: { show: false },
+      axisLabel: { color: P.inconf, fontWeight: "bold" as const, fontSize: 11 },
+    },
+    yAxis: { type: "value" as const, show: false, splitLine: { show: false }, min: 0, max: 100 },
+    series: [{
+      type: "bar" as const,
+      cursor: "pointer",
+      barMaxWidth: 40,
+      data: rows.map((r) => ({
+        value: r.value,
+        itemStyle: {
+          color: P.conf,
+          opacity: !selected || selected === r.name ? 1 : 0.22,
+          borderRadius: [6, 6, 0, 0],
+        },
+      })),
+      emphasis: { itemStyle: { opacity: 0.85 } },
+      label: {
+        show: true, position: "top" as const,
+        fontSize: 11, fontWeight: "bold" as const, color: chartInk.axis,
+        backgroundColor: "rgba(148,163,184,.22)", borderRadius: 4, padding: [2, 6],
+        formatter: (p: { value: number }) => `${p.value}%`,
+      },
+    }],
+  };
 });
 
 const categoriaRows = computed(() => {
@@ -840,6 +891,66 @@ const chartCategoria = computed(() => {
       label: {
         show: true, position: "right" as const,
         fontSize: 12, fontWeight: "bold" as const,
+        formatter: (p: { value: number }) => `${p.value}`,
+      },
+    }],
+  };
+});
+
+/** Tolerância Zero: não conformidade de gravidade "Tolerância Zero" ou de peso 5 (mesmo critério da página Tolerância Zero). */
+function isTz(r: ResponseRow): boolean {
+  return r.resposta === "nao_conforme" && (
+    r.gravidade === "tolerancia_zero" || r.gravidade === "Tolerância Zero" || (r.peso ?? 0) >= 5
+  );
+}
+
+const toleranciaRows = computed(() => {
+  const m: Record<string, number> = {};
+  for (const r of respsOf(filteredSubs.value, responses.value, true)) {
+    if (!isTz(r)) continue;
+    const q = r.pergunta ?? "Sem descrição";
+    m[q] = (m[q] ?? 0) + 1;
+  }
+  return Object.entries(m)
+    .map(([pergunta, nc]) => ({ pergunta, nc }))
+    .sort((a, b) => a.nc - b.nc);
+});
+
+const chartTolerancia = computed(() => {
+  const rows = toleranciaRows.value;
+  const visiveis = 10;
+  return {
+    tooltip: {
+      ...tooltipSkin("item"),
+      formatter: (p: { dataIndex: number; value: number }) => {
+        const o = rows[p.dataIndex];
+        if (!o) return "";
+        return tipHtml(o.pergunta, [{ label: "Não conformes", value: String(p.value), color: P.inconf }]);
+      },
+    },
+    grid: { left: 12, right: 40, top: 8, bottom: 8, containLabel: true },
+    xAxis: { type: "value" as const, show: false, splitLine: { show: false } },
+    yAxis: {
+      type: "category" as const, data: rows.map((r) => r.pergunta),
+      axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false },
+      axisLabel: { color: chartInk.axis, fontSize: 10, width: 170, overflow: "truncate" as const },
+    },
+    dataZoom: [{
+      type: "inside" as const,
+      orient: "vertical" as const,
+      startValue: Math.max(0, rows.length - visiveis),
+      endValue: Math.max(0, rows.length - 1),
+      zoomOnMouseWheel: false,
+      moveOnMouseWheel: true,
+    }],
+    series: [{
+      type: "bar" as const,
+      data: rows.map((r) => ({ value: r.nc, itemStyle: { color: P.inconf, borderRadius: [0, 6, 6, 0] } })),
+      barMaxWidth: 22,
+      label: {
+        show: true, position: "right" as const,
+        fontSize: 11, fontWeight: "bold" as const, color: chartInk.axis,
+        backgroundColor: "rgba(148,163,184,.22)", borderRadius: 4, padding: [2, 6],
         formatter: (p: { value: number }) => `${p.value}`,
       },
     }],
