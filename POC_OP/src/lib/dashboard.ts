@@ -1107,12 +1107,17 @@ export interface AcidenteRow {
   data: string; // AAAA-MM-DD
   prefixo: string;
   descricao: string;
+  colaborador: string;
+  caracteristica: string;
+  gravidade: string;
+  lesao: string;
+  cidade: string;
 }
 
 /** Acidentes registrados no ano (tabela acidentes; só para usuários logados). */
 export async function fetchAcidentes(ano: number): Promise<AcidenteRow[]> {
   return allPages<AcidenteRow>(
-    () => supabase.from("acidentes" as never).select("id,data,prefixo,descricao")
+    () => supabase.from("acidentes" as never).select("id,data,prefixo,descricao,colaborador,caracteristica,gravidade,lesao,cidade")
       .gte("data", `${ano}-01-01`).lt("data", `${ano + 1}-01-01`),
     ["data", "id"],
   );

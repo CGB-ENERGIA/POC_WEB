@@ -251,16 +251,19 @@
             <div class="icit-det__scroll">
               <table class="icit-det__table">
                 <thead>
-                  <tr><th>Data</th><th>Descrição</th></tr>
+                  <tr><th>Data</th><th>Colaborador</th><th>Característica</th><th>Gravidade</th><th>Lesão</th></tr>
                 </thead>
                 <tbody>
                   <tr v-for="a in detalheDados.acidentes" :key="a.id">
                     <td>{{ fmtDataAcid(a.data) }}</td>
-                    <td class="icit-det__desc">{{ a.descricao || "—" }}</td>
+                    <td class="icit-det__desc">{{ a.colaborador || "—" }}</td>
+                    <td class="icit-det__desc">{{ a.caracteristica || a.descricao || "—" }}</td>
+                    <td>{{ a.gravidade || "—" }}</td>
+                    <td>{{ a.lesao || "—" }}</td>
                   </tr>
                 </tbody>
                 <tfoot>
-                  <tr><td>Total</td><td>{{ detalheDados.acidentes.length }}</td></tr>
+                  <tr><td>Total</td><td colspan="4">{{ detalheDados.acidentes.length }}</td></tr>
                 </tfoot>
               </table>
             </div>
@@ -457,8 +460,10 @@ const rawRows = computed<Row[]>(() => {
     equipeData[eq][month].total++;
     if (!ncSubIds.has(s.id)) equipeData[eq][month].semNc++;
   }
-  // Equipe com acidente no ano mas sem nenhuma visita também aparece (como no BI).
-  for (const eq of acidPorEquipe.keys()) if (!equipeData[eq]) equipeData[eq] = {};
+  // Com o filtro "Acidentes", equipe com acidente no ano mas sem nenhuma visita também aparece (como no BI).
+  if (filters.tipo === "Acidentes") {
+    for (const eq of acidPorEquipe.keys()) if (!equipeData[eq]) equipeData[eq] = {};
+  }
 
   // Build rows
   return Object.entries(equipeData).map(([prefixo, mStats]) => {
