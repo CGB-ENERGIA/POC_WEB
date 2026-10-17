@@ -233,9 +233,9 @@ export const EQUIPES: Equipe[] = [
   { base: "STI", prefixo: "MA-ZDC-M001M", gerencia: "GSTC", coordenador: "Afonso", gerente: "Jamerson" },
   { base: "STI", prefixo: "LOG006", gerencia: "LOGISTICA", coordenador: "Camila", gerente: "Jamerson" },
   { base: "STI", prefixo: "OFI005", gerencia: "OFICINA", coordenador: "Ruan", gerente: "Jamerson" },
-  { base: "STI", prefixo: "MA-STI-O005M", gerencia: "SPOT", coordenador: "Jamerson", gerente: "Jamerson" },
-  { base: "STI", prefixo: "MA-STI-O006M", gerencia: "SPOT", coordenador: "Jamerson", gerente: "Jamerson" },
-  { base: "STI", prefixo: "MA-STI-O007M", gerencia: "SPOT", coordenador: "Jamerson", gerente: "Jamerson" },
+  { base: "STI", prefixo: "MA-STI-O005M", gerencia: "SPOT", coordenador: "Marcos", gerente: "Jamerson" },
+  { base: "STI", prefixo: "MA-STI-O006M", gerencia: "SPOT", coordenador: "Marcos", gerente: "Jamerson" },
+  { base: "STI", prefixo: "MA-STI-O007M", gerencia: "SPOT", coordenador: "Marcos", gerente: "Jamerson" },
 ];
 
 export const equipesAtivas = shallowRef<Equipe[]>(EQUIPES);
