@@ -244,7 +244,7 @@
 import { reactive, computed, ref, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
 import {
-  filterByGerencia, filterByGerente, uniqueHierarchyOpts, filterByCoordenador,
+  uniqueHierarchyOpts, foldName, fetchHierarquiaEquipes, hierarquiaDaEquipe, type EquipeHier,
   indexEmployees, matchSubmissionToEmployee,
 } from "@/lib/dashboard";
 
@@ -299,13 +299,11 @@ const filters = reactive({
 
 // ─── Data loading ─────────────────────────────────────────────────────────────
 async function recarregar() {
-  await load({
-    ano:  filters.ano,
-    base: filters.base || undefined,
-  }, false, false, "nc");
+  // A base é filtrada no cliente, pela base da EQUIPE (o BI faz assim); a base do checklist pode ser a do observador.
+  await load({ ano: filters.ano }, false, false, "nc");
 }
 onMounted(recarregar);
-watch(() => [filters.ano, filters.base], recarregar);
+watch(() => filters.ano, recarregar);
 
 // ─── Prefixo options from real submissions ────────────────────────────────────
 const allEquipes = computed<string[]>(() =>
@@ -325,11 +323,46 @@ function filterPrefixo(val: string, update: (fn: () => void) => void) {
 }
 
 // ─── ICIT per equipe per month (submission-level: checklists sem NC / total) ──
-/** Checklists do ano depois dos filtros de gerente, coordenador e gerência. */
+// ─── Hierarquia da EQUIPE (coordenador, gerente, gerência) ────────────────────
+// Os filtros olham a equipe do checklist (como o BI), não o cadastro do observador.
+const hierEquipes = ref(new Map<string, EquipeHier>());
+fetchHierarquiaEquipes().then((m) => { hierEquipes.value = m; });
+
+/** Gerente de cada coordenador (o mais comum no cadastro), para equipes sem gerente informado. */
+const gerenteDoCoordenador = computed(() => {
+  const cont = new Map<string, Map<string, number>>();
+  for (const e of employees.value) {
+    const c = foldName(e.coordenador ?? "");
+    const g = (e.gerente ?? "").trim();
+    if (!c || !g) continue;
+    const m = cont.get(c) ?? new Map<string, number>();
+    m.set(g, (m.get(g) ?? 0) + 1);
+    cont.set(c, m);
+  }
+  const out = new Map<string, string>();
+  for (const [c, m] of cont) out.set(c, [...m.entries()].sort((a, b) => b[1] - a[1])[0]![0]);
+  return out;
+});
+
+/** Checklists do ano depois dos filtros de gerente, coordenador e gerência (todos pela equipe). */
 const subsFiltrados = computed(() => {
-  let subs = filterByGerente(submissions.value,  employees.value, filters.gerente    || "Todos");
-  subs     = filterByCoordenador(subs,            employees.value, filters.coordenador || "Todos");
-  return     filterByGerencia(subs,               employees.value, filters.gerencia   || "Todos");
+  const coord = filters.coordenador ? foldName(filters.coordenador) : "";
+  const gerente = filters.gerente ? foldName(filters.gerente) : "";
+  const gerencia = filters.gerencia && filters.gerencia !== "Todos" ? filters.gerencia.toUpperCase() : "";
+  const base = filters.base.toUpperCase();
+  if (!coord && !gerente && !gerencia && !base) return submissions.value;
+  return submissions.value.filter((s) => {
+    const h = hierarquiaDaEquipe(hierEquipes.value, s.equipe);
+    if (base && (h?.base || s.base || "").toUpperCase() !== base) return false;
+    const coordDaEquipe = foldName(h?.coordenador ?? "");
+    if (coord && coordDaEquipe !== coord) return false;
+    if (gerente) {
+      const g = h?.gerente || gerenteDoCoordenador.value.get(coordDaEquipe) || "";
+      if (foldName(g) !== gerente) return false;
+    }
+    if (gerencia && (h?.gerencia || s.auditagem || "").toUpperCase() !== gerencia) return false;
+    return true;
+  });
 });
 
 /** IDs dos checklists que têm pelo menos uma resposta não conforme. */
@@ -399,9 +432,6 @@ const filteredRows = computed<Row[]>(() => {
 
   if (filters.prefixo && filters.prefixo !== "Todos")
     rows = rows.filter(r => r.prefixo === filters.prefixo);
-
-  if (filters.base)
-    rows = rows.filter(r => r.prefixo.split("-")[1] === filters.base);
 
   if      (filters.tipo === ">80%")      rows = rows.filter(r => r.total.pct >= 80);
   else if (filters.tipo === "<80%")      rows = rows.filter(r => r.total.pct < 80);

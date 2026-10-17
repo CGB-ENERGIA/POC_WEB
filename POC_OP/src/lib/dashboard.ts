@@ -1102,6 +1102,53 @@ export function coordenadorDaEquipe(mapa: Map<string, string>, equipe: string | 
   return mapa.get(chave) ?? mapa.get((chave.split(/\s+[–-]\s+/)[0] ?? "").trim()) ?? "";
 }
 
+/** Hierarquia de uma equipe (prefixo): quem coordena, quem gerencia, a gerência e a base da equipe. */
+export interface EquipeHier {
+  coordenador: string;
+  gerente: string;
+  gerencia: string;
+  base: string;
+}
+
+/**
+ * Coordenador, gerente e gerência de cada equipe (chave = prefixo em MAIÚSCULAS). O cadastro pwa_equipes tem
+ * prioridade campo a campo; o que faltar vem da tabela equipes_coordenacao_historico (planilhas históricas).
+ */
+export async function fetchHierarquiaEquipes(): Promise<Map<string, EquipeHier>> {
+  type Linha = { prefixo: string | null; coordenador: string | null; gerente?: string | null; gerencia: string | null; base: string | null };
+  const mapa = new Map<string, EquipeHier>();
+  const [hist, cadastro] = await Promise.all([
+    allPages<Linha>(
+      () => supabase.from("equipes_coordenacao_historico" as never).select("prefixo,coordenador,gerencia,base"),
+      "prefixo",
+    ).catch(() => [] as Linha[]),
+    allPages<Linha>(
+      () => supabase.from("pwa_equipes").select("id,prefixo,coordenador,gerente,gerencia,base"),
+    ).catch(() => [] as Linha[]),
+  ]);
+  for (const lista of [hist, cadastro]) {
+    for (const r of lista) {
+      const chave = (r.prefixo ?? "").trim().toUpperCase();
+      if (!chave) continue;
+      const atual = mapa.get(chave) ?? { coordenador: "", gerente: "", gerencia: "", base: "" };
+      mapa.set(chave, {
+        coordenador: (r.coordenador ?? "").trim() || atual.coordenador,
+        gerente: (r.gerente ?? "").trim() || atual.gerente,
+        gerencia: (r.gerencia ?? "").trim().toUpperCase() || atual.gerencia,
+        base: (r.base ?? "").trim().toUpperCase() || atual.base,
+      });
+    }
+  }
+  return mapa;
+}
+
+/** Hierarquia da equipe pelo prefixo; aceita nomes com cidade ("ALOJ43 – MIRANDA"). */
+export function hierarquiaDaEquipe(mapa: Map<string, EquipeHier>, equipe: string | null | undefined): EquipeHier | undefined {
+  const chave = (equipe ?? "").trim().toUpperCase();
+  if (!chave) return undefined;
+  return mapa.get(chave) ?? mapa.get((chave.split(/\s+[–-]\s+/)[0] ?? "").trim());
+}
+
 export function filterByCoordenador(
   subs: SubmissionRow[],
   employees: EmployeeRow[],
