@@ -416,7 +416,8 @@ function tzResps(
   const ids = new Set(subs.map(s => s.id));
   let r = responses.value.filter(resp => ids.has(resp.submission_id) && isTz(resp));
   if (!omit.cat && filters.categoria !== "Todos") {
-    r = r.filter(resp => resp.categoria === filters.categoria);
+    const alvo = filters.categoria.toLowerCase();
+    r = r.filter(resp => (resp.categoria ?? "").toLowerCase() === alvo);
   }
   if (!omit.pergunta && viz.pergunta) {
     r = r.filter(resp => (resp.pergunta ?? "Sem descrição") === viz.pergunta);
@@ -475,13 +476,21 @@ function tipHtml(title: string, rows: { label: string; value: string }[], foot?:
 
 // â"€â"€â"€ Treemap â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const treemapData = computed(() => {
-  const map: Record<string, number> = {};
+  // "EPI, EPC e FERRAMENTAS" e "EPI, EPC e Ferramentas" são a mesma categoria (catálogos diferentes escrevem diferente).
+  const grupos = new Map<string, { total: number; grafias: Map<string, number> }>();
   for (const r of respsNoCat.value) {
     const cat = r.categoria ?? "Sem categoria";
-    map[cat] = (map[cat] ?? 0) + 1;
+    const chave = cat.trim().toLowerCase();
+    const g = grupos.get(chave) ?? { total: 0, grafias: new Map<string, number>() };
+    g.total++;
+    g.grafias.set(cat, (g.grafias.get(cat) ?? 0) + 1);
+    grupos.set(chave, g);
   }
-  return Object.entries(map)
-    .map(([name, value]) => ({ name, value }))
+  return [...grupos.values()]
+    .map((g) => ({
+      name: [...g.grafias.entries()].sort((a, b) => b[1] - a[1])[0]![0],
+      value: g.total,
+    }))
     .filter(e => e.value > 0)
     .sort((a, b) => b.value - a.value);
 });
