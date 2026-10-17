@@ -276,7 +276,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, ref, watch, onMounted } from "vue";
+import { reactive, computed, ref, shallowRef, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
 import {
   uniqueHierarchyOpts, foldName, fetchHierarquiaEquipes, hierarquiaDaEquipe, type EquipeHier,
@@ -365,7 +365,7 @@ function filterPrefixo(val: string, update: (fn: () => void) => void) {
 // ─── ICIT per equipe per month (submission-level: checklists sem NC / total) ──
 // ─── Hierarquia da EQUIPE (coordenador, gerente, gerência) ────────────────────
 // Os filtros olham a equipe do checklist (como o BI), não o cadastro do observador.
-const hierEquipes = ref(new Map<string, EquipeHier>());
+const hierEquipes = shallowRef(new Map<string, EquipeHier>());
 fetchHierarquiaEquipes().then((m) => { hierEquipes.value = m; });
 
 /** Gerente de cada coordenador (o mais comum no cadastro), para equipes sem gerente informado. */

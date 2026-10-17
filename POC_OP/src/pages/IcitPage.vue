@@ -281,7 +281,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed, watch, onMounted } from "vue";
+import { reactive, ref, shallowRef, computed, watch, onMounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, LineChart } from "echarts/charts";
@@ -367,8 +367,8 @@ async function recarregarMes() {
   });
 }
 
-const yearSubs = ref<SubmissionRow[]>([]);
-const yearResps = ref<ResponseRow[]>([]);
+const yearSubs = shallowRef<SubmissionRow[]>([]);
+const yearResps = shallowRef<ResponseRow[]>([]);
 
 async function recarregarAno() {
   const subs = await fetchSubmissions({ ano: filters.ano, contarMeta: true });
@@ -484,7 +484,7 @@ const hasActiveFilters = computed(() =>
 
 // ─── Hierarquia da EQUIPE (coordenador, gerente, gerência, base) ──────────────
 // Gerência, base, coordenador e gerente olham a equipe do checklist (como o BI), não o cadastro do observador.
-const hierEquipes = ref(new Map<string, EquipeHier>());
+const hierEquipes = shallowRef(new Map<string, EquipeHier>());
 fetchHierarquiaEquipes().then((m) => { hierEquipes.value = m; });
 
 /** Gerente de cada coordenador (o mais comum no cadastro), para equipes sem gerente informado. */
@@ -560,9 +560,28 @@ function ncIdSet(resps: ResponseRow[]) {
   return ids;
 }
 
+// Respostas indexadas por checklist (uma vez por carga): evita varrer todas as respostas a cada gráfico.
+const respsIndexCache = new WeakMap<ResponseRow[], Map<string, ResponseRow[]>>();
+function indexarRespostas(all: ResponseRow[]): Map<string, ResponseRow[]> {
+  let m = respsIndexCache.get(all);
+  if (!m) {
+    m = new Map();
+    for (const r of all) {
+      const lista = m.get(r.submission_id);
+      if (lista) lista.push(r); else m.set(r.submission_id, [r]);
+    }
+    respsIndexCache.set(all, m);
+  }
+  return m;
+}
+
 function respsOf(subs: SubmissionRow[], allResps: ResponseRow[], omitCat = false) {
-  const ids = new Set(subs.map((s) => s.id));
-  let r = allResps.filter((resp) => ids.has(resp.submission_id));
+  const idx = indexarRespostas(allResps);
+  let r: ResponseRow[] = [];
+  for (const s of subs) {
+    const lista = idx.get(s.id);
+    if (lista) for (const x of lista) r.push(x);
+  }
   if (!omitCat && viz.categoria) r = r.filter((resp) => (resp.categoria ?? "Sem categoria") === viz.categoria);
   return r;
 }
@@ -647,16 +666,25 @@ function icitPct(subs: SubmissionRow[], resps: ResponseRow[]) {
   return Math.round((sem / subs.length) * 100);
 }
 
-function answerPct(subs: SubmissionRow[], resps: ResponseRow[]) {
-  const ids = new Set(subs.map((s) => s.id));
-  let conf = 0;
-  let total = 0;
-  for (const r of resps) {
-    if (!ids.has(r.submission_id)) continue;
-    total++;
-    if (r.resposta === "conforme") conf++;
+/** % de respostas conformes por grupo (gerência, base, equipe…), numa única passada pelas respostas. */
+function indicePorGrupo(subs: SubmissionRow[], resps: ResponseRow[], chave: (s: SubmissionRow) => string): Map<string, number> {
+  const grupoDe = new Map<string, string>();
+  const acc = new Map<string, { conf: number; total: number }>();
+  for (const s of subs) {
+    const g = chave(s);
+    grupoDe.set(s.id, g);
+    if (!acc.has(g)) acc.set(g, { conf: 0, total: 0 });
   }
-  return total ? Math.round((conf / total) * 100) : 0;
+  for (const r of resps) {
+    const g = grupoDe.get(r.submission_id);
+    if (g === undefined) continue;
+    const a = acc.get(g)!;
+    a.total++;
+    if (r.resposta === "conforme") a.conf++;
+  }
+  const out = new Map<string, number>();
+  for (const [g, a] of acc) out.set(g, a.total ? Math.round((a.conf / a.total) * 100) : 0);
+  return out;
 }
 
 function hBar(
@@ -783,25 +811,17 @@ const chartMes = computed(() => {
 });
 
 const chartGerencia = computed(() => {
-  const map: Record<string, SubmissionRow[]> = {};
-  for (const s of subsNoGerencia.value) {
-    (map[gerenciaDaSub(s) || "Outro"] ??= []).push(s);
-  }
   const resps = respsOf(subsNoGerencia.value, responses.value);
-  const rows = Object.entries(map)
-    .map(([name, list]) => ({ name, value: answerPct(list, resps) }))
+  const rows = [...indicePorGrupo(subsNoGerencia.value, resps, (s) => gerenciaDaSub(s) || "Outro").entries()]
+    .map(([name, value]) => ({ name, value }))
     .sort((a, b) => a.value - b.value);
   return hBar(rows, filters.gerencia !== "Todos" ? filters.gerencia : null, P.conf, "%", 100, "Clique para filtrar a gerência");
 });
 
 const chartBase = computed(() => {
-  const map: Record<string, SubmissionRow[]> = {};
-  for (const s of subsNoBase.value) {
-    (map[baseDaSub(s) || "Outra"] ??= []).push(s);
-  }
   const resps = respsOf(subsNoBase.value, responses.value);
-  const rows = Object.entries(map)
-    .map(([name, list]) => ({ name, value: answerPct(list, resps) }))
+  const rows = [...indicePorGrupo(subsNoBase.value, resps, (s) => baseDaSub(s) || "Outra").entries()]
+    .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value);
   const selected = filters.base !== "Todos" ? filters.base : null;
   return {
@@ -958,14 +978,9 @@ const chartTolerancia = computed(() => {
 });
 
 const equipeRows = computed(() => {
-  const map: Record<string, SubmissionRow[]> = {};
-  for (const s of subsNoEquipe.value) {
-    const eq = s.equipe ?? "Sem equipe";
-    (map[eq] ??= []).push(s);
-  }
   const resps = respsOf(subsNoEquipe.value, responses.value);
-  return Object.entries(map)
-    .map(([equipe, list]) => ({ equipe, value: answerPct(list, resps) }))
+  return [...indicePorGrupo(subsNoEquipe.value, resps, (s) => s.equipe ?? "Sem equipe").entries()]
+    .map(([equipe, value]) => ({ equipe, value }))
     .sort((a, b) => a.value - b.value);
 });
 

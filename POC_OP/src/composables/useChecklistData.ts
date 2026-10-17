@@ -1,4 +1,4 @@
-import { ref, computed, type Ref } from "vue";
+import { ref, shallowRef, computed, type Ref } from "vue";
 import {
   fetchSubmissions,
   fetchResponses,
@@ -22,11 +22,12 @@ export type { Filters, SubmissionRow, ResponseRow, EmployeeRow };
 export function useChecklistData() {
   const loading = ref(false);
   const error = ref<string | null>(null);
-  const submissions = ref<SubmissionRow[]>([]);
-  const responses = ref<ResponseRow[]>([]);
-  const employees = ref<EmployeeRow[]>([]);
+  // shallowRef: milhares de linhas; ninguém altera os itens no lugar, só troca o array inteiro.
+  const submissions = shallowRef<SubmissionRow[]>([]);
+  const responses = shallowRef<ResponseRow[]>([]);
+  const employees = shallowRef<EmployeeRow[]>([]);
   // Submissions for full year (line chart / heatmap without month filter)
-  const submissionsAno = ref<SubmissionRow[]>([]);
+  const submissionsAno = shallowRef<SubmissionRow[]>([]);
 
   // Protege contra respostas obsoletas: se load() for chamado duas vezes,
   // apenas a mais recente atualiza o estado.
