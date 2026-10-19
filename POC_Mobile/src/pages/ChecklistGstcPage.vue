@@ -89,7 +89,6 @@
             :equipe="equipe"
             :observador="session.employee?.nomeCompleto ?? session.employee?.nome ?? ''"
             :matricula="session.employee?.matricula"
-            @data-foto="onDataFoto"
           />
         </div>
 
@@ -1139,11 +1138,6 @@ function avisarSeIncompleto(): boolean {
   return false;
 }
 
-const dataFotoGaleria = ref<string | null>(null);
-function onDataFoto(iso: string) {
-  if (!dataFotoGaleria.value || iso < dataFotoGaleria.value) dataFotoGaleria.value = iso;
-}
-
 async function onSubmit() {
   if (!session.employee) return;
   if (avisarSeIncompleto()) return;
@@ -1153,9 +1147,8 @@ async function onSubmit() {
   let dataRegistro: string;
   try {
     const { date } = await getTrustedTime();
-    dataRegistro = dataFotoGaleria.value && dataFotoGaleria.value < date.toISOString()
-      ? dataFotoGaleria.value
-      : date.toISOString();
+    // Data = hora real do envio (horário confiável do servidor). A hora em que cada foto foi tirada fica no carimbo da própria foto.
+    dataRegistro = date.toISOString();
   } catch (err) {
     saving.value = false;
     const message =
