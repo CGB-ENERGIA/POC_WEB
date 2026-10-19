@@ -659,31 +659,36 @@ function mesDaData(data: string) {
   return m ? Number(m[2]) : 0;
 }
 
+/** Meta de ICIT: a partir dela a barra/célula é verde. */
+const ICIT_META = 80;
+
 function icitPct(subs: SubmissionRow[], resps: ResponseRow[]) {
   if (!subs.length) return 0;
   const nc = ncIdSet(resps);
   const sem = subs.filter((s) => !nc.has(s.id)).length;
-  return Math.round((sem / subs.length) * 100);
+  const pct = Math.round((sem / subs.length) * 100);
+  return sem < subs.length ? Math.min(pct, 99) : pct;
 }
 
-/** % de respostas conformes por grupo (gerência, base, equipe…), numa única passada pelas respostas. */
+/**
+ * ICIT por grupo (gerência, base, equipe…): % de checklists sem nenhuma não conformidade, o mesmo critério do
+ * gráfico por mês e dos cartões. Só mostra 100% quando nenhum checklist do grupo tem não conformidade.
+ */
 function indicePorGrupo(subs: SubmissionRow[], resps: ResponseRow[], chave: (s: SubmissionRow) => string): Map<string, number> {
-  const grupoDe = new Map<string, string>();
-  const acc = new Map<string, { conf: number; total: number }>();
+  const nc = ncIdSet(resps);
+  const acc = new Map<string, { sem: number; total: number }>();
   for (const s of subs) {
     const g = chave(s);
-    grupoDe.set(s.id, g);
-    if (!acc.has(g)) acc.set(g, { conf: 0, total: 0 });
-  }
-  for (const r of resps) {
-    const g = grupoDe.get(r.submission_id);
-    if (g === undefined) continue;
-    const a = acc.get(g)!;
+    let a = acc.get(g);
+    if (!a) { a = { sem: 0, total: 0 }; acc.set(g, a); }
     a.total++;
-    if (r.resposta === "conforme") a.conf++;
+    if (!nc.has(s.id)) a.sem++;
   }
   const out = new Map<string, number>();
-  for (const [g, a] of acc) out.set(g, a.total ? Math.round((a.conf / a.total) * 100) : 0);
+  for (const [g, a] of acc) {
+    const pct = Math.round((a.sem / a.total) * 100);
+    out.set(g, a.sem < a.total ? Math.min(pct, 99) : pct);
+  }
   return out;
 }
 
@@ -828,7 +833,7 @@ const chartBase = computed(() => {
     tooltip: {
       ...tooltipSkin("item"),
       formatter: (p: { name: string; value: number }) =>
-        tipHtml(nomeBase(p.name), [{ label: "Conformidade", value: `${p.value}%`, color: P.conf }], "Clique para ver só esta base"),
+        tipHtml(nomeBase(p.name), [{ label: "ICIT", value: `${p.value}%`, color: P.conf }], "Clique para ver só esta base"),
     },
     grid: { left: 8, right: 8, top: 36, bottom: 28 },
     xAxis: {
@@ -991,7 +996,7 @@ const chartEquipe = computed(() => {
       ...tooltipSkin("item"),
       formatter: (p: { name: string; value: number }) =>
         tipHtml(p.name, [
-          { label: "Conformidade", value: `${p.value}%`, color: p.value === 100 ? P.conf : P.inconfLt },
+          { label: "ICIT", value: `${p.value}%`, color: p.value >= ICIT_META ? P.conf : P.inconfLt },
         ], "Clique para filtrar esta equipe"),
     },
     grid: { left: 12, right: 52, top: 4, bottom: 4, containLabel: true },
@@ -1016,7 +1021,7 @@ const chartEquipe = computed(() => {
       data: data.map((e) => ({
         value: e.value,
         itemStyle: {
-          color: e.value === 100 ? P.conf : e.value >= 90 ? "#84cc16" : P.inconfLt,
+          color: e.value >= ICIT_META ? P.conf : P.inconfLt,
           opacity: !viz.equipe || viz.equipe === e.equipe ? 1 : 0.22,
           borderRadius: [0, 4, 4, 0],
         },
