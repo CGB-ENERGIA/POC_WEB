@@ -723,7 +723,8 @@ const monthOverrides = computed(() => getOverridesForMonth(selectedAno.value, se
 async function loadEmployees() {
   const data = await fetchEmployees().catch(() => null);
   if (data) {
-    allEmps.value = data.map(e => ({
+    const hoje = new Date().toISOString().slice(0, 10);
+    allEmps.value = data.filter(e => !e.desligado_em || e.desligado_em >= hoje).map(e => ({
       matricula:    e.matricula,
       nomeCompleto: e.nome_completo,
       gerencia:     e.gerencia,

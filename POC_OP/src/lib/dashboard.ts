@@ -223,6 +223,8 @@ export interface EmployeeRow {
   coordenador?: string | null;
   gerente?: string | null;
   processo?: string | null;
+  /** Data de desligamento (AAAA-MM-DD): a pessoa não entra em períodos que começam depois dela. */
+  desligado_em?: string | null;
   /** Outras matrículas da mesma pessoa (cadastro duplicado unificado por dedupeEmployees). */
   aliasMatriculas?: string[];
 }
@@ -264,7 +266,7 @@ export function dedupeEmployees(list: EmployeeRow[]): EmployeeRow[] {
     );
     const principal = { ...ordenado[0]! };
     for (const outro of ordenado.slice(1)) {
-      for (const campo of ["coordenador", "gerente", "processo", "gerencia", "base", "funcao"] as const) {
+      for (const campo of ["coordenador", "gerente", "processo", "gerencia", "base", "funcao", "desligado_em"] as const) {
         if (!principal[campo] && outro[campo]) principal[campo] = outro[campo] as never;
       }
     }
@@ -548,7 +550,7 @@ export async function fetchEmployees(): Promise<EmployeeRow[]> {
   const lista = await allPages<EmployeeRow>(
     () => supabase
       .from("employees")
-      .select("matricula,nome,nome_completo,gerencia,base,funcao,coordenador,gerente,processo")
+      .select("matricula,nome,nome_completo,gerencia,base,funcao,coordenador,gerente,processo,desligado_em")
       .eq("ativo", true)
       .order("nome_completo"),
     "matricula",
@@ -578,9 +580,17 @@ export function countByMatricula(subs: SubmissionRow[]): Record<string, number> 
 /** Roster de observadores para gráficos de meta (todos, inclusive quem fez 0). */
 export function filterObserverRoster(
   employees: EmployeeRow[],
-  opts: { gerencia?: string; gerente?: string; coordenador?: string; funcao?: string; base?: string } = {},
+  opts: {
+    gerencia?: string; gerente?: string; coordenador?: string; funcao?: string; base?: string;
+    /** AAAA-MM-DD: primeiro dia do período; quem foi desligado antes dele não entra. */
+    periodoInicio?: string;
+  } = {},
 ): EmployeeRow[] {
   let list = employees;
+  if (opts.periodoInicio) {
+    const ini = opts.periodoInicio;
+    list = list.filter((e) => !e.desligado_em || e.desligado_em >= ini);
+  }
   if (opts.gerencia && opts.gerencia !== "Todos") {
     list = list.filter((e) => e.gerencia === opts.gerencia);
   }

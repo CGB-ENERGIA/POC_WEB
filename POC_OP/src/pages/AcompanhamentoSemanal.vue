@@ -362,7 +362,7 @@ import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 import { filterByGerencia, filterByGerente, semanaDaData, filterObserverRoster, uniqueChartLabels, tallyObserverRecords, normMatricula, indexEmployees, matchSubmissionToEmployee, filterByCoordenador } from "@/lib/dashboard";
-import { semanaDeData, rotuloSemana, carregarSemanas } from "@/lib/semanas";
+import { semanaDeData, rotuloSemana, carregarSemanas, faixaDaSemana } from "@/lib/semanas";
 import { useGoals } from "@/composables/useGoals";
 import { gerarRankingPng, coordenadoresDe, SEM_COORDENADOR } from "@/lib/ranking-imagem";
 import { posicionarRotulos } from "@/lib/rotulos-barra";
@@ -590,11 +590,18 @@ const bySemana = computed(() => {
   return m;
 });
 
+/** Primeiro dia do período em análise (a semana escolhida ou o mês): quem saiu antes dele não entra na lista. */
+const inicioPeriodo = computed(() => {
+  const dia = filters.semana ? faixaDaSemana(filters.ano, filters.mes, filters.semana).ini : 1;
+  return `${filters.ano}-${String(filters.mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+});
+
 const observerRoster = computed(() =>
   filterObserverRoster(employees.value, {
     gerencia: filters.gerencia,
     gerente: filters.gerente,
     coordenador: filters.coordenador,
+    periodoInicio: inicioPeriodo.value,
   }),
 );
 

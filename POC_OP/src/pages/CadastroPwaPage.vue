@@ -154,6 +154,7 @@
                 <span v-if="e.coordenador" class="dbp-chip">{{ e.coordenador }}</span>
                 <span v-if="e.gerente" class="dbp-chip dbp-chip--base">{{ e.gerente }}</span>
                 <span v-if="!e.ativo" class="dbp-chip dbp-chip--off">INATIVO</span>
+                <span v-if="e.desligado_em" class="dbp-chip dbp-chip--off" title="Data de desligamento">DESLIGADO {{ fmtDesligamento(e.desligado_em) }}</span>
               </div>
               <div class="dbp-record__acts">
                 <button class="dbp-act" @click="openEmpDialog(e)" title="Editar">
@@ -462,6 +463,10 @@
             <q-select v-model="empForm.coordenador" :options="coordFormOpts" label="Coordenador" dense outlined clearable class="col" emit-value map-options use-input new-value-mode="add" />
             <q-select v-model="empForm.gerente" :options="gerenteFormOpts" label="Gerente/Supervisor" dense outlined clearable class="col" emit-value map-options use-input new-value-mode="add" />
           </div>
+          <q-input
+            v-model="empForm.desligado_em" type="date" label="Data de desligamento" dense outlined clearable stack-label
+            hint="Deixe vazio se a pessoa está no quadro. O histórico é mantido; ela deixa de aparecer nas listas e metas dos períodos que começam depois desta data."
+          />
           <p v-if="empError" class="text-negative text-caption q-mb-none">{{ empError }}</p>
         </div>
         <div class="dbp-dlg__foot">
@@ -784,6 +789,7 @@ interface Employee {
   coordenador?: string | null;
   gerente?: string | null;
   processo?: string | null;
+  desligado_em?: string | null;
 }
 
 const employees        = ref<Employee[]>([]);
@@ -803,6 +809,11 @@ const filteredEmployees = computed(() => {
     return matchSearch && matchGerencia;
   });
 });
+
+function fmtDesligamento(iso: string): string {
+  const [a, m, d] = iso.slice(0, 10).split("-");
+  return `${d}/${m}/${a}`;
+}
 
 function openEmpDialog(e?: Employee) {
   empError.value  = "";
@@ -826,6 +837,7 @@ async function saveEmployee() {
     coordenador: f.coordenador || null,
     gerente: f.gerente || null,
     processo: f.processo || null,
+    desligado_em: f.desligado_em || null,
   };
 
   const { error } = empIsEditing.value
@@ -984,7 +996,7 @@ async function fetchEmployees() {
     employees.value = await allPages<Employee>(
       () => supabase
         .from("employees")
-        .select("matricula, nome, nome_completo, gerencia, base, funcao, ativo, coordenador, gerente, processo")
+        .select("matricula, nome, nome_completo, gerencia, base, funcao, ativo, coordenador, gerente, processo, desligado_em")
         .order("nome_completo"),
       "matricula",
     );
