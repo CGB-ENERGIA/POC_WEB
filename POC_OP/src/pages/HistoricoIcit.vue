@@ -593,10 +593,9 @@ function fmtDataAcid(iso: string): string {
   return `${d}/${m}/${a}`;
 }
 
-function icitClass(pct: number): "green" | "yellow" | "red" {
-  if (pct >= 90) return "green";
-  if (pct >= 80) return "yellow";
-  return "red";
+/** Mesmo padrão dos filtros: a partir da meta (80%) é verde; abaixo, laranja. */
+function icitClass(pct: number): "green" | "orange" {
+  return pct >= ICIT_META ? "green" : "orange";
 }
 </script>
 
@@ -615,7 +614,7 @@ $inactive-txt:#475569;
 
 // ─── ICIT colours ─────────────────────────────────────────────────────────────
 $icit-green:  #16a34a;
-$icit-yellow: #d97706;
+$icit-orange: #d97706;
 $icit-red:    #dc2626;
 
 .hist-page {
@@ -850,8 +849,7 @@ $icit-red:    #dc2626;
 
   // ICIT colour classes
   .td-icit--green  { background: $icit-green; color: #fff; }
-  .td-icit--yellow { background: $icit-yellow; color: #fff; }
-  .td-icit--red    { background: $icit-red; color: #fff; }
+  .td-icit--orange { background: $icit-orange; color: #fff; }
   .td-acid         { background: $icit-red; color: #fff; }
 
   .td-total {
@@ -893,8 +891,7 @@ $icit-red:    #dc2626;
 .total-pct {
   font-size: 14px; font-weight: 800;
   &--green  { color: #4ade80; }
-  &--yellow { color: #fbbf24; }
-  &--red    { color: #f87171; }
+  &--orange { color: #fb923c; }
   &--acid   { color: #fff; background: #dc2626; border-radius: 4px; padding: 0 6px; }
 }
 
