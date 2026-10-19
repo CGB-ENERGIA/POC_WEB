@@ -139,7 +139,7 @@
           <span v-if="filters.gerente !== 'Todos'" class="filter-chip">{{ filters.gerente }}</span>
           <span v-if="filters.coordenador !== 'Todos'" class="filter-chip">{{ filters.coordenador }}</span>
           <span v-if="filters.tipoPoc !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.tipoPoc = 'Todos'">{{ filters.tipoPoc }}</span>
-          <span v-if="filters.seguranca !== 'Segurança'" class="filter-chip filter-chip--hit" @click="filters.seguranca = 'Segurança'">{{ filters.seguranca }}</span>
+          <span v-if="filters.seguranca !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.seguranca = 'Todos'">{{ filters.seguranca }}</span>
           <span v-if="viz.equipe" class="filter-chip filter-chip--hit" @click="viz.equipe = null">{{ viz.equipe }}</span>
           <span v-if="viz.categoria" class="filter-chip filter-chip--hit" @click="viz.categoria = null">{{ viz.categoria }}</span>
           <button class="filter-clear" @click="resetSlice">
@@ -301,6 +301,7 @@ import {
   foldName, fetchHierarquiaEquipes, hierarquiaDaEquipe, type EquipeHier,
 } from "@/lib/dashboard";
 import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
+import { lerFiltros, salvarFiltros } from "@/lib/filtros-salvos";
 import { metaRoleFrom } from "@/composables/useGoals";
 
 use([
@@ -348,17 +349,38 @@ const bases      = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const segurancas = ["Todos", "Segurança"];
 const tiposPoc   = ["Todos", "Administrativo", "Operacional"];
 // â"€â"€â"€ Filter state â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-const filters = reactive({
+// Sem escolha salva, tudo começa em "Todos" (e no mês atual); o que o usuário escolher é lembrado ao recarregar.
+const FILTROS_CHAVE = "icit";
+const filtrosPadrao = {
   ano:       now.getFullYear(),
   semana:    0,
   mes:       now.getMonth() + 1,
   gerencia:  "Todos",
   base:      "Todos",
-  seguranca: "Segurança",
-  tipoPoc:   lerTipoPoc(tiposPoc),
-  gerente:   "Todos", coordenador: "Todos",
+  seguranca: "Todos",
+  gerente:   "Todos",
+  coordenador: "Todos",
+};
+const opcoesValidas: Record<string, (v: string | number) => boolean> = {
+  ano: (v) => anos.includes(Number(v)),
+  semana: (v) => Number(v) >= 0 && Number(v) <= 4,
+  mes: (v) => Number(v) >= 1 && Number(v) <= 12,
+  gerencia: (v) => gerencias.includes(String(v)),
+  base: (v) => bases.includes(String(v)),
+  seguranca: (v) => segurancas.includes(String(v)),
+};
+const filters = reactive({
+  ...lerFiltros(FILTROS_CHAVE, filtrosPadrao, (campo, v) => opcoesValidas[campo]?.(v) ?? true),
+  tipoPoc: lerTipoPoc(tiposPoc),
 });
 watch(() => filters.tipoPoc, salvarTipoPoc);
+watch(
+  () => ({
+    ano: filters.ano, semana: filters.semana, mes: filters.mes, gerencia: filters.gerencia, base: filters.base,
+    seguranca: filters.seguranca, gerente: filters.gerente, coordenador: filters.coordenador,
+  }),
+  (v) => salvarFiltros(FILTROS_CHAVE, v),
+);
 
 async function recarregarMes() {
   await load({
@@ -425,7 +447,7 @@ function resetSlice() {
   filters.gerencia = "Todos";
   filters.base = "Todos";
   filters.tipoPoc = "Todos";
-  filters.seguranca = "Segurança";
+  filters.seguranca = "Todos";
   filters.gerente = "Todos";
   filters.coordenador = "Todos";
   viz.equipe = null;
@@ -478,7 +500,7 @@ const hasActiveFilters = computed(() =>
   || filters.gerente !== "Todos"
   || filters.coordenador !== "Todos"
   || filters.tipoPoc !== "Todos"
-  || filters.seguranca !== "Segurança"
+  || filters.seguranca !== "Todos"
   || !!viz.equipe
   || !!viz.categoria,
 );
