@@ -220,7 +220,7 @@
                 <tr>
                   <th class="icit-det__th-obs">Observador</th>
                   <th class="num">Visitas</th>
-                  <th>Gerência</th>
+                  <th class="ctr">Gerência</th>
                   <th class="num">Conforme</th>
                   <th class="num">Inconforme</th>
                 </tr>
@@ -229,7 +229,7 @@
                 <tr v-for="l in detalheDados.linhas" :key="l.matricula">
                   <td class="icit-det__th-obs">{{ l.observador }}</td>
                   <td class="num">{{ l.visitas }}</td>
-                  <td>{{ l.gerencia }}</td>
+                  <td class="ctr">{{ l.gerencia }}</td>
                   <td class="num icit-det__conf">{{ l.conforme }}</td>
                   <td class="num icit-det__inc">{{ l.inconforme }}</td>
                 </tr>
@@ -989,7 +989,7 @@ $icit-red:    #dc2626;
     width: 100%; border-collapse: collapse; font-size: .85rem;
     th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #eef2f6; white-space: nowrap; }
     th { background: #f1f5f9; color: #334155; font-weight: 700; position: sticky; top: 0; }
-    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .num, .ctr { text-align: center; font-variant-numeric: tabular-nums; }
     tfoot td { font-weight: 800; border-top: 2px solid #cbd5e1; border-bottom: none; background: #f8fafc; }
   }
   &__th-obs { min-width: 150px; }
