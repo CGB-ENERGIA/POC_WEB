@@ -194,7 +194,7 @@
       <div class="row q-col-gutter-md">
 
         <!-- LEFT: 3Ã—2 grid -->
-        <div class="col-12 col-md-9">
+        <div class="col-12 col-md-9 charts-left">
 
           <!-- Row 1: Mês (linha) · Gerência -->
           <div class="row q-col-gutter-md q-mb-md">
@@ -205,7 +205,7 @@
                   <div class="text-caption text-grey-6">ICIT no ano · clique no mês para abrir</div>
                 </q-card-section>
                 <q-card-section>
-                  <v-chart class="chart-hit" :option="chartMes" autoresize style="height:260px" @click="onMesClick" />
+                  <v-chart class="chart-hit chart-fill" :option="chartMes" autoresize @click="onMesClick" />
                 </q-card-section>
               </q-card>
             </div>
@@ -216,14 +216,14 @@
                   <div class="text-caption text-grey-6">Clique para filtrar a gerência</div>
                 </q-card-section>
                 <q-card-section>
-                  <v-chart class="chart-hit" :option="chartGerencia" autoresize style="height:260px" @click="onGerenciaClick" />
+                  <v-chart class="chart-hit chart-fill" :option="chartGerencia" autoresize @click="onGerenciaClick" />
                 </q-card-section>
               </q-card>
             </div>
           </div>
 
           <!-- Row 2: Base · Não conformidades por Categoria · Tolerância Zero -->
-          <div class="row q-col-gutter-md">
+          <div class="row q-col-gutter-md charts-row-grow">
             <div class="col-12 col-md-4">
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pb-none">
@@ -231,7 +231,7 @@
                   <div class="text-caption text-grey-6">Clique para ver só esta base</div>
                 </q-card-section>
                 <q-card-section>
-                  <v-chart class="chart-hit" :option="chartBase" autoresize style="height:260px" @click="onBaseClick" />
+                  <v-chart class="chart-hit chart-fill" :option="chartBase" autoresize @click="onBaseClick" />
                 </q-card-section>
               </q-card>
             </div>
@@ -242,7 +242,7 @@
                   <div class="text-caption text-grey-6">Clique na categoria para filtrar</div>
                 </q-card-section>
                 <q-card-section>
-                  <v-chart class="chart-hit" :option="chartCategoria" autoresize style="height:260px" @click="onCategoriaClick" />
+                  <v-chart class="chart-hit chart-fill" :option="chartCategoria" autoresize @click="onCategoriaClick" />
                 </q-card-section>
               </q-card>
             </div>
@@ -253,7 +253,7 @@
                   <div class="text-caption text-grey-6">Itens de maior gravidade · role para ver mais</div>
                 </q-card-section>
                 <q-card-section>
-                  <v-chart :option="chartTolerancia" autoresize style="height:260px" />
+                  <v-chart class="chart-fill" :option="chartTolerancia" autoresize />
                 </q-card-section>
               </q-card>
             </div>
@@ -1217,6 +1217,10 @@ $label-color:  #94a3b8;
   }
 }
 
+.charts-left { display: flex; flex-direction: column; }
+.charts-row-grow { flex: 1 1 auto; }
+/* O gráfico ocupa a altura que o cartão tiver (mínimo de 260px) em vez de deixar vazio embaixo. */
+.chart-fill { flex: 1 1 auto; min-height: 260px; width: 100%; }
 .equipe-col { display: flex; flex-direction: column; }
 .equipe-card { height: 100%; display: flex; flex-direction: column; }
 .equipe-body { flex: 1; min-height: 420px; position: relative; padding-bottom: 12px; }
