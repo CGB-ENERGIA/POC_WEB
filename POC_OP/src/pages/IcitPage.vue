@@ -323,6 +323,7 @@ const P = {
   confLt:  "#22c55e",
   inconf:  "#8B1C2B",
   inconfLt:"#C4364E",
+  abaixo:  "#d97706", // ICIT abaixo da meta (mesma cor do filtro "<80% ICIT" no Histórico)
 };
 
 // â"€â"€â"€ Filter options â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
@@ -575,6 +576,11 @@ function indexarRespostas(all: ResponseRow[]): Map<string, ResponseRow[]> {
   return m;
 }
 
+/** Chave da categoria sem diferenciar maiúsculas (o banco tem "PROCEDIMENTO" e "Procedimento" para a mesma categoria). */
+function catKey(c: string | null | undefined): string {
+  return (c ?? "Sem categoria").trim().toLowerCase();
+}
+
 function respsOf(subs: SubmissionRow[], allResps: ResponseRow[], omitCat = false) {
   const idx = indexarRespostas(allResps);
   let r: ResponseRow[] = [];
@@ -582,7 +588,10 @@ function respsOf(subs: SubmissionRow[], allResps: ResponseRow[], omitCat = false
     const lista = idx.get(s.id);
     if (lista) for (const x of lista) r.push(x);
   }
-  if (!omitCat && viz.categoria) r = r.filter((resp) => (resp.categoria ?? "Sem categoria") === viz.categoria);
+  if (!omitCat && viz.categoria) {
+    const alvo = catKey(viz.categoria);
+    r = r.filter((resp) => catKey(resp.categoria) === alvo);
+  }
   return r;
 }
 
@@ -721,7 +730,7 @@ function hBar(
       data: rows.map((r) => ({
         value: r.value,
         itemStyle: {
-          color,
+          color: suffix === "%" && r.value < ICIT_META ? P.abaixo : color,
           opacity: !selected || selected === r.name ? 1 : 0.22,
           borderRadius: [0, 6, 6, 0],
           shadowColor: "rgba(0,0,0,.06)",
@@ -799,7 +808,10 @@ const chartMes = computed(() => {
         return {
           value: r.value,
           symbolSize: sel ? 15 : 11,
-          itemStyle: { color: sel ? "#166534" : "#35b00f", borderColor: chartInk.halo, borderWidth: 2 },
+          itemStyle: {
+            color: r.value < ICIT_META ? (sel ? "#b45309" : P.abaixo) : sel ? "#166534" : "#35b00f",
+            borderColor: chartInk.halo, borderWidth: 2,
+          },
           label: { position: vale ? ("bottom" as const) : ("top" as const) },
         };
       }),
@@ -850,7 +862,7 @@ const chartBase = computed(() => {
       data: rows.map((r) => ({
         value: r.value,
         itemStyle: {
-          color: P.conf,
+          color: r.value >= ICIT_META ? P.conf : P.abaixo,
           opacity: !selected || selected === r.name ? 1 : 0.22,
           borderRadius: [6, 6, 0, 0],
         },
@@ -867,15 +879,19 @@ const chartBase = computed(() => {
 });
 
 const categoriaRows = computed(() => {
-  const ncMap: Record<string, number> = {};
+  // Agrupa sem diferenciar maiúsculas; o rótulo é a grafia mais usada no banco.
+  const grupos = new Map<string, { nc: number; grafias: Map<string, number> }>();
   for (const r of respsOf(filteredSubs.value, responses.value, true)) {
     if (r.resposta !== "nao_conforme") continue;
     const cat = r.categoria ?? "Sem categoria";
-    ncMap[cat] = (ncMap[cat] ?? 0) + 1;
+    const k = catKey(cat);
+    const g = grupos.get(k) ?? { nc: 0, grafias: new Map<string, number>() };
+    g.nc++;
+    g.grafias.set(cat, (g.grafias.get(cat) ?? 0) + 1);
+    grupos.set(k, g);
   }
-  return Object.entries(ncMap)
-    .map(([cat, nc]) => ({ cat, nc }))
-    .filter((e) => e.nc > 0)
+  return [...grupos.values()]
+    .map((g) => ({ cat: [...g.grafias.entries()].sort((a, b) => b[1] - a[1])[0]![0], nc: g.nc }))
     .sort((a, b) => a.nc - b.nc);
 });
 
@@ -907,7 +923,7 @@ const chartCategoria = computed(() => {
         value: e.nc,
         itemStyle: {
           color: e.nc <= 2 ? P.inconfLt : `rgba(139,28,43,${0.6 + (e.nc / maxV) * 0.4})`,
-          opacity: !viz.categoria || viz.categoria === e.cat ? 1 : 0.22,
+          opacity: !viz.categoria || catKey(viz.categoria) === catKey(e.cat) ? 1 : 0.22,
           borderRadius: [0, 6, 6, 0],
         },
       })),
@@ -996,7 +1012,7 @@ const chartEquipe = computed(() => {
       ...tooltipSkin("item"),
       formatter: (p: { name: string; value: number }) =>
         tipHtml(p.name, [
-          { label: "ICIT", value: `${p.value}%`, color: p.value >= ICIT_META ? P.conf : P.inconfLt },
+          { label: "ICIT", value: `${p.value}%`, color: p.value >= ICIT_META ? P.conf : P.abaixo },
         ], "Clique para filtrar esta equipe"),
     },
     grid: { left: 12, right: 52, top: 4, bottom: 4, containLabel: true },
@@ -1021,7 +1037,7 @@ const chartEquipe = computed(() => {
       data: data.map((e) => ({
         value: e.value,
         itemStyle: {
-          color: e.value >= ICIT_META ? P.conf : P.inconfLt,
+          color: e.value >= ICIT_META ? P.conf : P.abaixo,
           opacity: !viz.equipe || viz.equipe === e.equipe ? 1 : 0.22,
           borderRadius: [0, 4, 4, 0],
         },
