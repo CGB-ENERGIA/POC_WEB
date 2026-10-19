@@ -204,7 +204,7 @@
                   <div class="text-subtitle1 text-weight-bold">Índice de Conformidade por Mês</div>
                   <div class="text-caption text-grey-6">ICIT no ano · clique no mês para abrir</div>
                 </q-card-section>
-                <q-card-section>
+                <q-card-section class="chart-host">
                   <v-chart class="chart-hit chart-fill" :option="chartMes" autoresize @click="onMesClick" />
                 </q-card-section>
               </q-card>
@@ -215,7 +215,7 @@
                   <div class="text-subtitle1 text-weight-bold">Índice de Conformidade por Gerência</div>
                   <div class="text-caption text-grey-6">Clique para filtrar a gerência</div>
                 </q-card-section>
-                <q-card-section>
+                <q-card-section class="chart-host">
                   <v-chart class="chart-hit chart-fill" :option="chartGerencia" autoresize @click="onGerenciaClick" />
                 </q-card-section>
               </q-card>
@@ -230,7 +230,7 @@
                   <div class="text-subtitle1 text-weight-bold">Índice de Conformidade por Base</div>
                   <div class="text-caption text-grey-6">Clique para ver só esta base</div>
                 </q-card-section>
-                <q-card-section>
+                <q-card-section class="chart-host">
                   <v-chart class="chart-hit chart-fill" :option="chartBase" autoresize @click="onBaseClick" />
                 </q-card-section>
               </q-card>
@@ -241,7 +241,7 @@
                   <div class="text-subtitle1 text-weight-bold">Não Conformidades por Categoria</div>
                   <div class="text-caption text-grey-6">Clique na categoria para filtrar</div>
                 </q-card-section>
-                <q-card-section>
+                <q-card-section class="chart-host">
                   <v-chart class="chart-hit chart-fill" :option="chartCategoria" autoresize @click="onCategoriaClick" />
                 </q-card-section>
               </q-card>
@@ -252,7 +252,7 @@
                   <div class="text-subtitle1 text-weight-bold">Não Conformidades de Tolerância Zero</div>
                   <div class="text-caption text-grey-6">Itens de maior gravidade · role para ver mais</div>
                 </q-card-section>
-                <q-card-section>
+                <q-card-section class="chart-host">
                   <v-chart class="chart-fill" :option="chartTolerancia" autoresize />
                 </q-card-section>
               </q-card>
@@ -1220,7 +1220,8 @@ $label-color:  #94a3b8;
 .charts-left { display: flex; flex-direction: column; }
 .charts-row-grow { flex: 1 1 auto; }
 /* O gráfico ocupa a altura que o cartão tiver (mínimo de 260px) em vez de deixar vazio embaixo. */
-.chart-fill { flex: 1 1 auto; min-height: 260px; width: 100%; }
+.chart-card > .chart-host.q-card-section { position: relative; min-height: 260px; }
+.chart-fill { position: absolute; inset: 0 16px 16px; width: auto; height: auto; }
 .equipe-col { display: flex; flex-direction: column; }
 .equipe-card { height: 100%; display: flex; flex-direction: column; }
 .equipe-body { flex: 1; min-height: 420px; position: relative; padding-bottom: 12px; }
