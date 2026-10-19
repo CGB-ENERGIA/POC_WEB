@@ -383,10 +383,10 @@ watch(
 );
 
 async function recarregarMes() {
+  // Só checklists aprovados (como o BI): os pendentes ainda não entram no índice.
   await load({
     ano: filters.ano,
     mes: filters.mes,
-    contarMeta: true,
   });
 }
 
@@ -394,7 +394,7 @@ const yearSubs = shallowRef<SubmissionRow[]>([]);
 const yearResps = shallowRef<ResponseRow[]>([]);
 
 async function recarregarAno() {
-  const subs = await fetchSubmissions({ ano: filters.ano, contarMeta: true });
+  const subs = await fetchSubmissions({ ano: filters.ano });
   yearSubs.value = subs;
   yearResps.value = await fetchResponses(subs.map((s) => s.id), { soNc: true });
 }
