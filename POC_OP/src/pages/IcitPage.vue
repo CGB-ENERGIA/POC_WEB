@@ -268,8 +268,10 @@
               <div class="text-subtitle1 text-weight-bold">Índice de conformidade por Equipe</div>
               <div class="text-caption text-grey-6">Clique na equipe · role para ver mais</div>
             </q-card-section>
-            <q-card-section>
-              <v-chart class="chart-hit" :option="chartEquipe" autoresize style="height:564px" @click="onEquipeClick" />
+            <q-card-section class="equipe-body">
+              <div class="equipe-scroll">
+                <v-chart class="chart-hit" :option="chartEquipe" autoresize :style="{ height: alturaEquipe + 'px' }" @click="onEquipeClick" />
+              </div>
             </q-card-section>
           </q-card>
         </div>
@@ -1027,6 +1029,10 @@ const equipeRows = computed(() => {
     .sort((a, b) => a.value - b.value);
 });
 
+/** Cada equipe ocupa uma linha de altura fixa; a lista rola dentro do cartão (barra de rolagem, roda do mouse ou toque). */
+const ALTURA_LINHA_EQUIPE = 28;
+const alturaEquipe = computed(() => Math.max(equipeRows.value.length, 1) * ALTURA_LINHA_EQUIPE + 8);
+
 const chartEquipe = computed(() => {
   const data = equipeRows.value.length ? equipeRows.value : [{ equipe: "Sem dados", value: 0 }];
   return {
@@ -1045,14 +1051,6 @@ const chartEquipe = computed(() => {
       axisLine: { show: false }, axisTick: { show: false },
       splitLine: { show: false }, axisLabel: { color: chartInk.axis, fontSize: 10 },
     },
-    dataZoom: [{
-      type: "inside" as const,
-      orient: "vertical" as const,
-      startValue: Math.max(0, data.length - 16),
-      endValue: Math.max(0, data.length - 1),
-      zoomOnMouseWheel: false,
-      moveOnMouseWheel: true,
-    }],
     series: [{
       type: "bar" as const,
       cursor: "pointer",
@@ -1220,7 +1218,12 @@ $label-color:  #94a3b8;
 }
 
 .equipe-col { display: flex; flex-direction: column; }
-.equipe-card { height: 100%; }
+.equipe-card { height: 100%; display: flex; flex-direction: column; }
+.equipe-body { flex: 1; min-height: 420px; position: relative; padding-bottom: 12px; }
+.equipe-scroll {
+  position: absolute; inset: 0 8px 12px 16px;
+  overflow-y: auto; overflow-x: hidden;
+}
 
 .body--dark {
   .icit-page   { background: #0f172a; }
