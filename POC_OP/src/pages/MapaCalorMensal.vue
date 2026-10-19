@@ -334,7 +334,7 @@ const tiposOpts     = ["Todos","Operacional","Administrativo","Alojamento"];
 
 const TIPO_AUDITAGEM: Record<string, string[]> = {
   Operacional: ["GOMAN", "GSTC"],
-  Administrativo: ["ADMINISTRATIVO", "LOGISTICA", "OFICINA", "ADM"],
+  Administrativo: ["ADMINISTRATIVO", "ALOJAMENTO", "LOGISTICA", "OFICINA", "ADM"],
   Alojamento: ["ALOJAMENTO"],
 };
 

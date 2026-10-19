@@ -420,6 +420,8 @@ export interface NcPorMesOpts {
   gerencia?: string;
   gerente?: string;
   coordenador?: string;
+  /** Filtro extra sobre as submissions (ex.: hierarquia da equipe), aplicado depois dos demais. */
+  filtro?: (s: { id: string; data: string; auditagem: string; equipe: string; base: string }) => boolean;
 }
 
 /** Contagem de não conformidades por mês, ao longo de um ano inteiro (para gráfico de tendência). */
@@ -430,13 +432,13 @@ export async function fetchNaoConformesPorMes(
 ): Promise<Record<number, number>> {
   const start = new Date(ano, 0, 1).toISOString();
   const end = new Date(ano + 1, 0, 1).toISOString();
-  const { contarMeta, allowedAuditagens, employees = [], gerencia, gerente, coordenador } = opts ?? {};
+  const { contarMeta, allowedAuditagens, employees = [], gerencia, gerente, coordenador, filtro } = opts ?? {};
 
-  type SubLight = Pick<SubmissionRow, "id" | "data" | "auditagem" | "matricula" | "observador">;
+  type SubLight = Pick<SubmissionRow, "id" | "data" | "auditagem" | "matricula" | "observador" | "equipe" | "base">;
   let subs = await allPages<SubLight>(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q: any = supabase.from("checklist_submissions")
-      .select("id,data,auditagem,matricula,observador")
+      .select("id,data,auditagem,matricula,observador,equipe,base")
       .gte("data", start).lt("data", end);
     q = contarMeta ? q.in("status", ["aprovado", "pendente"]) : q.eq("status", "aprovado");
     if (base && base !== "Todos") q = q.eq("base", base);
@@ -458,6 +460,7 @@ export async function fetchNaoConformesPorMes(
       subs = filterByGerencia(subs as SubmissionRow[], employees, gerencia) as SubLight[];
     }
   }
+  if (filtro) subs = subs.filter((s) => filtro(s as never));
   if (!subs.length) return {};
 
   const mesPorSubmissao = new Map<string, number>();

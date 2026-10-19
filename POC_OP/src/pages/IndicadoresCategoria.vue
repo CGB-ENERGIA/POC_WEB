@@ -243,7 +243,7 @@ const tiposOpts     = ["Todos","Operacional","Administrativo","Alojamento"];
 // Mapeia o "Tipo de POC" para os valores reais de auditagem gravados no checklist
 const TIPO_AUDITAGEM: Record<string, string[]> = {
   Operacional: ["GOMAN", "GSTC"],
-  Administrativo: ["ADMINISTRATIVO", "LOGISTICA", "OFICINA", "ADM"],
+  Administrativo: ["ADMINISTRATIVO", "ALOJAMENTO", "LOGISTICA", "OFICINA", "ADM"],
   Alojamento: ["ALOJAMENTO"],
 };
 

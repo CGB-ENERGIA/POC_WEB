@@ -424,7 +424,7 @@ const BASE_NOME: Record<string, string> = {
 };
 
 const TIPO_AUDITAGEM: Record<string, string[]> = {
-  Administrativo: ["ADMINISTRATIVO", "LOGISTICA", "OFICINA", "ADM"],
+  Administrativo: ["ADMINISTRATIVO", "ALOJAMENTO", "LOGISTICA", "OFICINA", "ADM"],
   Operacional: ["GOMAN", "GSTC"],
 };
 

@@ -340,7 +340,7 @@ const basesOpts    = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
 const tiposOpts     = ["Todos","Administrativo","Operacional"];
 const TIPO_AUDITAGEM: Record<string, string[]> = {
-  Administrativo: ["ADMINISTRATIVO", "LOGISTICA", "OFICINA", "ADM"],
+  Administrativo: ["ADMINISTRATIVO", "ALOJAMENTO", "LOGISTICA", "OFICINA", "ADM"],
   Operacional: ["GOMAN", "GSTC"],
 };
 const mesesOpts     = ["Todos","jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
