@@ -63,9 +63,10 @@
 
           <div class="fgroup fgroup--select">
             <span class="fgroup__label">Observador</span>
-            <q-select v-model="filters.observador" :options="observadorOpts"
+            <q-select v-model="filters.observador" :options="observadoresVisiveis"
               dense outlined hide-bottom-space class="fselect"
-              popup-content-class="fselect-popup" />
+              use-input input-debounce="0" popup-content-class="fselect-popup"
+              @filter="(v: string, update: (fn: () => void) => void) => update(() => { buscaObservador = v; })" />
           </div>
         </div>
 
@@ -428,6 +429,14 @@ function tzResps(
 const observadorOpts = computed(() => {
   const names = [...new Set(submissions.value.map(s => s.observador).filter(Boolean))].sort();
   return ["Todos", ...names];
+});
+
+// Busca no filtro de Observador: digitar filtra a lista, sem diferenciar maiúsculas nem acentos.
+const semAcento = (t: string) => t.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+const buscaObservador = ref("");
+const observadoresVisiveis = computed(() => {
+  const q = semAcento(buscaObservador.value.trim());
+  return q ? observadorOpts.value.filter((o) => o === "Todos" || semAcento(o).includes(q)) : observadorOpts.value;
 });
 
 const filteredSubs = computed(() => applySlice(submissions.value));

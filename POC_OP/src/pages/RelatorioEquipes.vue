@@ -91,9 +91,10 @@
           <div class="filter-divider" />
           <div class="fgroup fgroup--gerente" style="min-width:220px">
             <span class="fgroup__label">Categoria</span>
-            <q-select v-model="filters.categoria" :options="categoriasOpts"
+            <q-select v-model="filters.categoria" :options="categoriasVisiveis"
               dense outlined hide-bottom-space class="gerente-select"
-              popup-content-class="gerente-popup" />
+              use-input input-debounce="0" popup-content-class="gerente-popup"
+              @filter="(v: string, update: (fn: () => void) => void) => update(() => { buscaCategoria = v; })" />
           </div>
           <div class="fgroup fgroup--gerente" style="min-width:160px">
             <span class="fgroup__label">Prefixo</span>
@@ -104,9 +105,10 @@
           </div>
           <div class="fgroup fgroup--gerente">
             <span class="fgroup__label">Observador</span>
-            <q-select v-model="filters.observador" :options="observadorOpts"
+            <q-select v-model="filters.observador" :options="observadoresVisiveis"
               dense outlined hide-bottom-space class="gerente-select"
-              popup-content-class="gerente-popup" />
+              use-input input-debounce="0" popup-content-class="gerente-popup"
+              @filter="(v: string, update: (fn: () => void) => void) => update(() => { buscaObservador = v; })" />
           </div>
         </div>
 
@@ -593,6 +595,19 @@ const observadorOpts = computed(() => {
 const categoriasOpts = computed(() => {
   const cats = [...new Set(responses.value.map((r) => r.categoria).filter(Boolean))].sort() as string[];
   return ["Todos", ...cats];
+});
+
+// Busca nas listas de Observador e Categoria: digitar filtra a lista, sem diferenciar maiúsculas nem acentos.
+const semAcento = (t: string) => t.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+const buscaObservador = ref("");
+const buscaCategoria = ref("");
+const observadoresVisiveis = computed(() => {
+  const q = semAcento(buscaObservador.value.trim());
+  return q ? observadorOpts.value.filter((o) => o === "Todos" || semAcento(o).includes(q)) : observadorOpts.value;
+});
+const categoriasVisiveis = computed(() => {
+  const q = semAcento(buscaCategoria.value.trim());
+  return q ? categoriasOpts.value.filter((o) => o === "Todos" || semAcento(o).includes(q)) : categoriasOpts.value;
 });
 
 const filteredResps = computed(() => {
