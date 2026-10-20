@@ -850,20 +850,10 @@ const totalContado = computed(() => {
   return rows.reduce((total, r) => total + Math.min(r.realizado, r.meta), 0);
 });
 
-const obsNoMeta = computed(() => {
-  const rows = viz.matricula
-    ? observerRows.value.filter((x) => x.matricula === viz.matricula)
-    : observerRows.value;
-  return rows.filter((r) => r.realizado >= r.meta).length;
-});
-
-const numObservadores = computed(() =>
-  viz.matricula ? (observerRows.value.some((x) => x.matricula === viz.matricula) ? 1 : 0) : observerRows.value.length,
-);
-
+// Atingimento = soma das observações contadas ÷ soma das metas (mesmo cálculo do BI: Realizado ÷ Meta).
 const atingimento = computed(() => {
-  if (numObservadores.value === 0) return "—";
-  return `${Math.round((obsNoMeta.value / numObservadores.value) * 100)}%`;
+  if (metaTotal.value === 0) return "—";
+  return `${Math.round((totalContado.value / metaTotal.value) * 100)}%`;
 });
 
 // ─── KPI ────────────────────────────────────────────────────────────────────
