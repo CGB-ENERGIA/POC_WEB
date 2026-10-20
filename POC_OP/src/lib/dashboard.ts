@@ -485,6 +485,37 @@ export async function fetchNaoConformesPorMes(
   return map;
 }
 
+/**
+ * Meta semanal de uma pessoa (tabela "Metas POC", a mesma que alimenta o BI): quem estava na lista de observadores
+ * naquela semana, a meta, o realizado e o "real" (realizado limitado à meta).
+ */
+export interface MetaSemanalRow {
+  aba: "Operacional" | "Administrativo";
+  ano: number;
+  mes: number;
+  semana: number;
+  matricula: string;
+  nome: string;
+  funcao: string | null;
+  base: string | null;
+  gerencia: string | null;
+  gerente: string | null;
+  processo: string | null;
+  realizado: number;
+  meta: number;
+  real: number;
+}
+
+/** Linhas da tabela de metas semanais de um mês (vazio quando o mês ainda não foi carregado). */
+export async function fetchMetasSemanais(ano: number, mes: number): Promise<MetaSemanalRow[]> {
+  return allPages<MetaSemanalRow>(() =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from("metas_semanais" as never) as any)
+      .select("aba,ano,mes,semana,matricula,nome,funcao,base,gerencia,gerente,processo,realizado,meta,real")
+      .eq("ano", ano).eq("mes", mes),
+  );
+}
+
 export interface IcitPrefixo {
   visitas: number;
   semNc: number;

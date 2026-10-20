@@ -344,7 +344,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, ref, watch, onMounted, onBeforeUnmount } from "vue";
+import { reactive, computed, ref, shallowRef, watch, onMounted, onBeforeUnmount } from "vue";
 import { useQuasar } from "quasar";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
@@ -361,7 +361,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDaData, filterObserverRoster, uniqueChartLabels, tallyObserverRecords, normMatricula, indexEmployees, matchSubmissionToEmployee, filterByCoordenador } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDaData, filterObserverRoster, uniqueChartLabels, tallyObserverRecords, normMatricula, indexEmployees, matchSubmissionToEmployee, filterByCoordenador, fetchMetasSemanais, foldName, type MetaSemanalRow } from "@/lib/dashboard";
 import { semanaDeData, rotuloSemana, carregarSemanas, faixaDaSemana } from "@/lib/semanas";
 import { useGoals } from "@/composables/useGoals";
 import { gerarRankingPng, coordenadoresDe, SEM_COORDENADOR } from "@/lib/ranking-imagem";
@@ -519,12 +519,21 @@ const {
   coordenadoresOpts: coordenadores,
 } = useChecklistData();
 
+// Tabela de metas semanais (a mesma do BI) do mês: quando existe, manda na lista de observadores, na meta e no realizado.
+const metasMes = shallowRef<MetaSemanalRow[]>([]);
+let seqMetas = 0;
+async function carregarMetasMes() {
+  const seq = ++seqMetas;
+  let linhas: MetaSemanalRow[] = [];
+  try { linhas = await fetchMetasSemanais(filters.ano, filters.mes); } catch { /* sem a tabela: usa as regras do sistema */ }
+  if (seq === seqMetas) metasMes.value = linhas;
+}
+
 async function recarregar() {
-  await load(
-    { ano: filters.ano, mes: filters.mes, contarMeta: true },
-    false,
-    false,
-  );
+  await Promise.all([
+    load({ ano: filters.ano, mes: filters.mes, contarMeta: true }, false, false),
+    carregarMetasMes(),
+  ]);
 }
 
 onMounted(async () => {
@@ -586,6 +595,15 @@ const byBase = computed(() => {
  * meta da semana, o mesmo critério do cartão "Total de Observações" e do gráfico de observadores.
  */
 const bySemana = computed(() => {
+  if (usaTabela.value) {
+    const m: Record<number, number> = {};
+    for (const w of [1, 2, 3, 4]) {
+      m[w] = tabelaAba.value
+        .filter((r) => r.semana === w && passaFiltrosTabela(r))
+        .reduce((total, r) => total + r.real, 0);
+    }
+    return m;
+  }
   const idx = indexEmployees(employees.value);
   const doMes = applySlice(barraGerencia.value, { week: true, mat: true });
   const m: Record<number, number> = {};
@@ -633,7 +651,56 @@ const observerRoster = computed(() =>
   }),
 );
 
+// ─── Tabela de metas semanais (BI) ────────────────────────────────────────────
+// A aba do Alojamento (república) tem a sua própria lista e meta, como na página de República do BI.
+const abaTabela = computed(() => (filters.alojamento ? "Administrativo" : "Operacional"));
+const tabelaAba = computed(() => metasMes.value.filter((r) => r.aba === abaTabela.value));
+// O filtro de processo do sistema (Goman, Gstc…) não existe na tabela: com ele ativo, volta às regras do sistema.
+const usaTabela = computed(() => tabelaAba.value.length > 0 && (!viz.processo || viz.processo === "ALOJAMENTO"));
+
+function mesmoNome(a: string | null | undefined, b: string | null | undefined): boolean {
+  const x = foldName(a), y = foldName(b);
+  return !!x && !!y && (x === y || x.startsWith(`${y} `) || y.startsWith(`${x} `));
+}
+
+function passaFiltrosTabela(r: MetaSemanalRow): boolean {
+  if (filters.gerencia !== "Todos" && (r.gerencia ?? "").toUpperCase() !== filters.gerencia.toUpperCase()) return false;
+  if (filters.gerente !== "Todos" && !mesmoNome(r.gerente, filters.gerente)) return false;
+  if (viz.base && r.base !== viz.base) return false;
+  if (filters.coordenador !== "Todos") {
+    const emp = indexEmployees(employees.value).byMat.get(normMatricula(r.matricula));
+    if (!emp || !mesmoNome(emp.coordenador, filters.coordenador)) return false;
+  }
+  return true;
+}
+
+/** Observadores da semana pela tabela: quem estava na lista, com a meta e o realizado dela (mesmos números do BI). */
+function linhasDaTabela(semana: number) {
+  const agr = new Map<string, { nome: string; funcao: string; gerente: string; realizado: number; meta: number; real: number }>();
+  for (const r of tabelaAba.value) {
+    if (r.semana !== semana || !passaFiltrosTabela(r)) continue;
+    const k = normMatricula(r.matricula) || foldName(r.nome);
+    const a = agr.get(k) ?? { nome: r.nome, funcao: r.funcao ?? "", gerente: r.gerente ?? "", realizado: 0, meta: 0, real: 0 };
+    a.realizado += r.realizado; a.meta += r.meta; a.real += r.real;
+    agr.set(k, a);
+  }
+  const lista = [...agr.entries()];
+  const shorts = uniqueChartLabels(lista.map(([, a]) => a.nome));
+  const idx = indexEmployees(employees.value);
+  return lista.map(([k, a], i) => ({
+    matricula: k,
+    nome: a.nome,
+    short: shorts[i]!,
+    realizado: a.realizado,
+    contado: a.real,
+    meta: a.meta,
+    funcao: a.funcao || "—",
+    coordenador: idx.byMat.get(k)?.coordenador?.trim() || a.gerente,
+  }));
+}
+
 const observerRows = computed(() => {
+  if (usaTabela.value) return linhasDaTabela(filters.semana);
   let roster = observerRoster.value;
   const idx = indexEmployees(employees.value);
   const slice = subsWeekNoObs.value;
@@ -847,7 +914,7 @@ const totalContado = computed(() => {
   const rows = viz.matricula
     ? observerRows.value.filter((x) => x.matricula === viz.matricula)
     : observerRows.value;
-  return rows.reduce((total, r) => total + Math.min(r.realizado, r.meta), 0);
+  return rows.reduce((total, r) => total + r.contado, 0);
 });
 
 // Atingimento = soma das observações contadas ÷ soma das metas (mesmo cálculo do BI: Realizado ÷ Meta).
