@@ -581,11 +581,39 @@ const byBase = computed(() => {
   return m;
 });
 
+/**
+ * Observações CONTADAS por semana (Evolução e Distribuição por Semana): cada observador conta no máximo até a sua
+ * meta da semana, o mesmo critério do cartão "Total de Observações" e do gráfico de observadores.
+ */
 const bySemana = computed(() => {
+  const idx = indexEmployees(employees.value);
+  const doMes = applySlice(barraGerencia.value, { week: true, mat: true });
   const m: Record<number, number> = {};
-  for (const s of allMonthSubs.value) {
-    const sem = semanaDaData(s.data);
-    m[sem] = (m[sem] ?? 0) + 1;
+  for (const w of [1, 2, 3, 4]) {
+    const slice = doMes.filter((s) => semanaDaData(s.data) === w);
+    const dia = faixaDaSemana(filters.ano, filters.mes, w).ini;
+    let roster = filterObserverRoster(employees.value, {
+      gerencia: filters.gerencia,
+      gerente: filters.gerente,
+      coordenador: filters.coordenador,
+      periodoInicio: `${filters.ano}-${String(filters.mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`,
+    });
+    if (viz.base) roster = roster.filter((e) => e.base === viz.base);
+    if (viz.processo) {
+      const presentes = new Set(
+        slice.map((sub) => normMatricula(matchSubmissionToEmployee(sub, idx)?.matricula ?? sub.matricula)),
+      );
+      roster = roster.filter((e) => presentes.has(normMatricula(e.matricula)));
+    }
+    const { counts, extras } = tallyObserverRecords(roster, employees.value, slice);
+    let total = 0;
+    for (const emp of extras.length ? [...roster, ...extras] : roster) {
+      const key = normMatricula(emp.matricula);
+      if (viz.matricula && key !== viz.matricula) continue;
+      const meta = goalForColaborador(emp.matricula, emp.gerencia, filters.ano, filters.mes, w, emp.funcao).semanal;
+      total += Math.min(counts.get(key) ?? 0, meta);
+    }
+    m[w] = total;
   }
   return m;
 });
