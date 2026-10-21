@@ -674,6 +674,11 @@ function passaFiltrosTabela(r: MetaSemanalRow): boolean {
   return true;
 }
 
+/** Quem está com meta 0 na semana (atestado, férias…) e não observou nada não entra na lista. */
+function semMetaSemRealizado(r: { meta: number; realizado: number }): boolean {
+  return r.meta > 0 || r.realizado > 0;
+}
+
 /** Observadores da semana pela tabela: quem estava na lista, com a meta e o realizado dela (mesmos números do BI). */
 function linhasDaTabela(semana: number) {
   const agr = new Map<string, { nome: string; funcao: string; gerente: string; realizado: number; meta: number; real: number }>();
@@ -696,7 +701,7 @@ function linhasDaTabela(semana: number) {
     meta: a.meta,
     funcao: a.funcao || "—",
     coordenador: idx.byMat.get(k)?.coordenador?.trim() || a.gerente,
-  }));
+  })).filter(semMetaSemRealizado);
 }
 
 const observerRows = computed(() => {
@@ -736,7 +741,7 @@ const observerRows = computed(() => {
       funcao: emp.funcao || "—",
       coordenador: emp.coordenador?.trim() || "",
     };
-  });
+  }).filter(semMetaSemRealizado);
 });
 
 // Ordenação do gráfico "Observações Realizadas na Semana" (null = ordem do cadastro)

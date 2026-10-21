@@ -596,7 +596,8 @@ const observerRows = computed(() => {
       meta: filters.semana ? g.semanal : g.mensal,
       funcao: emp.funcao || "—",
     };
-  });
+    // Quem está com meta 0 (atestado, férias…) e não observou nada não entra na lista.
+  }).filter((r) => r.meta > 0 || r.realizado > 0);
 });
 
 // Ordenação do gráfico "Observações Realizadas no Mês" (null = ordem do cadastro)
