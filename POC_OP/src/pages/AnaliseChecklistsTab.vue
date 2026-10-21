@@ -399,8 +399,30 @@
 
           <div class="text-overline text-grey-6">Membros</div>
           <div v-for="(m, i) in editDialog.membros" :key="i" class="row q-col-gutter-sm q-mb-xs items-center">
-            <div class="col"><q-input v-model="m.nome" dense outlined label="Nome" /></div>
-            <div class="col-4"><q-input v-model="m.matricula" dense outlined label="Matrícula" /></div>
+            <div v-for="campo in (['nome', 'matricula'] as const)" :key="campo" :class="campo === 'nome' ? 'col' : 'col-4'">
+              <q-input
+                v-model="m[campo]" dense outlined :label="campo === 'nome' ? 'Nome' : 'Matrícula'" autocomplete="off"
+                @update:model-value="(v) => buscarMembro(i, campo, String(v ?? ''))"
+                @blur="fecharSugestoes"
+              >
+                <q-menu
+                  :model-value="sugestoes.idx === i && sugestoes.campo === campo && sugestoes.lista.length > 0"
+                  no-focus no-parent-event no-refocus fit anchor="bottom left" self="top left"
+                >
+                  <q-list dense separator>
+                    <q-item
+                      v-for="c in sugestoes.lista" :key="c.matricula" clickable
+                      @mousedown.prevent @click="escolherMembro(i, c)"
+                    >
+                      <q-item-section>
+                        <q-item-label>{{ c.nome }}</q-item-label>
+                        <q-item-label caption>{{ c.matricula }}{{ c.funcao ? ` · ${c.funcao}` : "" }}{{ c.base ? ` · ${c.base}` : "" }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-menu>
+              </q-input>
+            </div>
             <div class="col-auto">
               <q-btn flat round dense icon="mdi-close" color="negative" @click="editDialog.membros.splice(i, 1)" />
             </div>
@@ -498,6 +520,7 @@ import {
   type FotoChecklistRow,
   type AnaliseStatus,
 } from "@/lib/dashboard";
+import { carregarColaboradores, sugerirColaboradores, type ColaboradorSugestao } from "@/lib/colaboradores-geral";
 import { useAuth } from "@/composables/useAuth";
 
 const R2_PUBLIC_BASE = (import.meta.env.VITE_R2_PUBLIC_BASE_URL as string ?? "").replace(/\/$/, "");
@@ -777,6 +800,26 @@ const editDialog = reactive({
   alteradas: 0,
 });
 
+// Sugestões de colaborador (nome ou matrícula) ao editar os membros da equipe: escolher preenche nome e matrícula.
+let colaboradores: ColaboradorSugestao[] = [];
+const sugestoes = reactive({ idx: -1, campo: "nome" as "nome" | "matricula", lista: [] as ColaboradorSugestao[] });
+
+function buscarMembro(i: number, campo: "nome" | "matricula", texto: string) {
+  sugestoes.idx = i;
+  sugestoes.campo = campo;
+  sugestoes.lista = sugerirColaboradores(colaboradores, texto);
+}
+
+function fecharSugestoes() {
+  sugestoes.lista = [];
+  sugestoes.idx = -1;
+}
+
+function escolherMembro(i: number, c: ColaboradorSugestao) {
+  editDialog.membros[i] = { nome: c.nome, matricula: c.matricula };
+  fecharSugestoes();
+}
+
 const normObs = (v: string | null | undefined) => (v ?? "").trim();
 function respostaAlterada(r: RespostaEdit) {
   return r.resposta !== r._orig.resposta || normObs(r.observacao) !== normObs(r._orig.observacao);
@@ -788,6 +831,8 @@ async function abrirEdicao(item: ChecklistParaAnalise) {
   editDialog.base = item.base ?? "";
   editDialog.observador = item.observador ?? "";
   editDialog.membros = (item.membros ?? []).map((m) => ({ nome: m.nome, matricula: m.matricula }));
+  fecharSugestoes();
+  void carregarColaboradores().then((l) => { colaboradores = l; });
   editDialog.respostas = [];
   editDialog.error = null;
   editDialog.open = true;
