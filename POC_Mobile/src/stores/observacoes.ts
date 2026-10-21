@@ -133,21 +133,47 @@ function resolveFotoUrl(key: string | null | undefined): string | undefined {
   return `${base.replace(/\/$/, "")}/${key}`;
 }
 
+/** Dados do checklist oficial (checklist_submissions): é a fonte de verdade; user_observations é só uma cópia. */
+interface ChecklistOficial {
+  data: string;
+  base: string;
+  equipe: string;
+  resumo: ChecklistResumo;
+  status: "aprovado" | "reprovado" | "pendente";
+  comentarioAnalise: string | null;
+  analisadoPor: string | null;
+}
+
 /**
- * Busca as não conformidades (checklist_responses) dos itens sincronizados,
- * já que user_observations guarda só o resumo (total/conformes/naoConformes).
- * Retorna um mapa client_id (= id em user_observations) -> respostas nao_conforme.
+ * Busca, para os itens sincronizados, o checklist oficial (data, equipe, resumo e situação) e as não conformidades
+ * (checklist_responses): user_observations é só uma cópia e pode ficar diferente do oficial (ex.: rascunho retomado
+ * dias depois). Retorna mapas por client_id (= id em user_observations).
  */
-async function fetchNaoConformesParaItens(clientIds: string[]): Promise<Map<string, RespostaSalva[]>> {
+async function fetchNaoConformesParaItens(
+  clientIds: string[],
+): Promise<{ respostas: Map<string, RespostaSalva[]>; oficial: Map<string, ChecklistOficial> }> {
   const result = new Map<string, RespostaSalva[]>();
-  if (!clientIds.length) return result;
+  const oficial = new Map<string, ChecklistOficial>();
+  if (!clientIds.length) return { respostas: result, oficial };
   const supabase = getSupabase();
 
   const { data: subs } = await supabase
     .from("checklist_submissions")
-    .select("id,client_id")
+    .select("id,client_id,data,base,equipe,resumo,status,comentario_analise,analisado_por")
     .in("client_id", clientIds);
-  if (!subs?.length) return result;
+  if (!subs?.length) return { respostas: result, oficial };
+  for (const s of subs) {
+    if (!s.client_id) continue;
+    oficial.set(s.client_id, {
+      data: s.data,
+      base: s.base,
+      equipe: s.equipe,
+      resumo: s.resumo as unknown as ChecklistResumo,
+      status: (s.status as ChecklistOficial["status"]) ?? "pendente",
+      comentarioAnalise: s.comentario_analise ?? null,
+      analisadoPor: s.analisado_por ?? null,
+    });
+  }
 
   const subToClient = new Map<string, string>();
   for (const s of subs) if (s.client_id) subToClient.set(s.id, s.client_id);
@@ -158,7 +184,7 @@ async function fetchNaoConformesParaItens(clientIds: string[]): Promise<Map<stri
     .select("submission_id,pergunta_id,categoria,pergunta,gravidade,peso,resposta,observacao,foto_r2_key,resolvido,itens")
     .in("submission_id", subIds)
     .eq("resposta", "nao_conforme");
-  if (!resps) return result;
+  if (!resps) return { respostas: result, oficial };
 
   for (const r of resps) {
     const clientId = subToClient.get(r.submission_id);
@@ -179,7 +205,7 @@ async function fetchNaoConformesParaItens(clientIds: string[]): Promise<Map<stri
     });
     result.set(clientId, list);
   }
-  return result;
+  return { respostas: result, oficial };
 }
 
 export const useObservacoesStore = defineStore("observacoes", {
@@ -369,24 +395,29 @@ export const useObservacoesStore = defineStore("observacoes", {
       const finalizados = data.filter(
         (row) => (row as { sync_status?: string }).sync_status !== "em_andamento"
       );
-      const respostasPorItem = await fetchNaoConformesParaItens(finalizados.map((row) => row.id));
-      this.syncedItems = finalizados.map((row) => ({
-        id: row.id,
-        matricula: row.matricula,
-        observador: row.observador,
-        auditagem: row.auditagem as AuditagemCategoria,
-        data: row.data,
-        base: row.base,
-        equipe: row.equipe,
-        membros: [],
-        fotosLocal: [],
-        respostas: respostasPorItem.get(row.id) ?? [],
-        resumo: row.resumo as unknown as ChecklistResumo,
-        syncStatus: "synced",
-        analiseStatus: (row.status as "aprovado" | "reprovado" | "pendente") ?? "pendente",
-        analiseMotivo: row.comentario_analise ?? null,
-        analisadoPor: row.analisado_por ?? null,
-      }));
+      const { respostas: respostasPorItem, oficial } = await fetchNaoConformesParaItens(finalizados.map((row) => row.id));
+      // Quando o checklist oficial existe, ele manda (data, equipe, resumo e situação): a cópia em user_observations
+      // pode ter ficado com valores do rascunho.
+      this.syncedItems = finalizados.map((row) => {
+        const of = oficial.get(row.id);
+        return {
+          id: row.id,
+          matricula: row.matricula,
+          observador: row.observador,
+          auditagem: row.auditagem as AuditagemCategoria,
+          data: of?.data ?? row.data,
+          base: of?.base ?? row.base,
+          equipe: of?.equipe ?? row.equipe,
+          membros: [],
+          fotosLocal: [],
+          respostas: respostasPorItem.get(row.id) ?? [],
+          resumo: of?.resumo ?? (row.resumo as unknown as ChecklistResumo),
+          syncStatus: "synced",
+          analiseStatus: of?.status ?? (row.status as "aprovado" | "reprovado" | "pendente") ?? "pendente",
+          analiseMotivo: of ? of.comentarioAnalise : row.comentario_analise ?? null,
+          analisadoPor: of ? of.analisadoPor : row.analisado_por ?? null,
+        };
+      });
     },
 
     add(payload: Omit<Observacao, "id" | "data"> & { data: string; employee: Employee }) {
