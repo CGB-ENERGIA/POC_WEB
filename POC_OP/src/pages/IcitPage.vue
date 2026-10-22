@@ -37,7 +37,7 @@
             <div class="pill-group">
               <button v-for="s in semanas" :key="s.value"
                 :class="['pill', { 'pill--active': filters.semana === s.value }]"
-                @click="filters.semana = s.value">{{ s.label }}</button>
+                @click="filters.semana = filters.semana === s.value ? 0 : s.value">{{ s.label }}</button>
             </div>
           </div>
 
@@ -45,7 +45,8 @@
 
           <div class="fgroup fgroup--gerente">
             <span class="fgroup__label">Gerente</span>
-            <q-select v-model="filters.gerente" :options="gerentes"
+            <q-select v-model="filters.gerente"
+              :clearable="filters.gerente !== 'Todos'" @clear="filters.gerente = 'Todos'" :options="gerentes"
               dense outlined hide-bottom-space class="gerente-select"
               popup-content-class="gerente-popup">
               <template #prepend>
@@ -55,7 +56,8 @@
           </div>
           <div class="fgroup fgroup--gerente">
             <span class="fgroup__label">Coordenador</span>
-            <q-select v-model="filters.coordenador" :options="coordenadores"
+            <q-select v-model="filters.coordenador"
+              :clearable="filters.coordenador !== 'Todos'" @clear="filters.coordenador = 'Todos'" :options="coordenadores"
               dense outlined hide-bottom-space class="gerente-select"
               popup-content-class="gerente-popup">
               <template #prepend>
@@ -85,7 +87,7 @@
             <div class="pill-group">
               <button v-for="g in gerencias" :key="g"
                 :class="['pill', { 'pill--active': filters.gerencia === g }]"
-                @click="filters.gerencia = g">{{ g }}</button>
+                @click="filters.gerencia = filters.gerencia === g ? 'Todos' : g">{{ g }}</button>
             </div>
           </div>
 
@@ -99,7 +101,7 @@
             <div class="pill-group">
               <button v-for="b in bases" :key="b"
                 :class="['pill', { 'pill--active': filters.base === b }]"
-                @click="filters.base = b">{{ b }}</button>
+                @click="filters.base = filters.base === b ? 'Todos' : b">{{ b }}</button>
             </div>
           </div>
 
@@ -110,7 +112,7 @@
             <div class="pill-group">
               <button v-for="s in segurancas" :key="s"
                 :class="['pill', { 'pill--active': filters.seguranca === s }]"
-                @click="filters.seguranca = s">{{ s }}</button>
+                @click="filters.seguranca = filters.seguranca === s ? 'Todos' : s">{{ s }}</button>
             </div>
           </div>
 
@@ -121,7 +123,7 @@
             <div class="pill-group">
               <button v-for="t in tiposPoc" :key="t"
                 :class="['pill', { 'pill--active': filters.tipoPoc === t }]"
-                @click="filters.tipoPoc = t">{{ t }}</button>
+                @click="filters.tipoPoc = filters.tipoPoc === t ? 'Todos' : t">{{ t }}</button>
             </div>
           </div>
 
@@ -136,8 +138,8 @@
           <span v-if="filters.semana" class="filter-chip filter-chip--hit" @click="filters.semana = 0">{{ semanaLabel }}</span>
           <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ nomeBase(filters.base) }}</span>
           <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
-          <span v-if="filters.gerente !== 'Todos'" class="filter-chip">{{ filters.gerente }}</span>
-          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip">{{ filters.coordenador }}</span>
+          <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ filters.gerente }}</span>
+          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ filters.coordenador }}</span>
           <span v-if="filters.tipoPoc !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.tipoPoc = 'Todos'">{{ filters.tipoPoc }}</span>
           <span v-if="filters.seguranca !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.seguranca = 'Todos'">{{ filters.seguranca }}</span>
           <span v-if="viz.equipe" class="filter-chip filter-chip--hit" @click="viz.equipe = null">{{ viz.equipe }}</span>

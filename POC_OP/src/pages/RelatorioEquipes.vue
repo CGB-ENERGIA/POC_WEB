@@ -43,13 +43,14 @@
             <div class="pill-group">
               <button v-for="b in basesOpts" :key="b"
                 :class="['pill', filters.base === b && 'pill--active']"
-                @click="filters.base = b">{{ b }}</button>
+                @click="filters.base = filters.base === b ? 'Todos' : b">{{ b }}</button>
             </div>
           </div>
           <div class="filter-divider" />
           <div class="fgroup fgroup--gerente">
             <span class="fgroup__label">Gerente</span>
-            <q-select v-model="filters.gerente" :options="gerentesOpts"
+            <q-select v-model="filters.gerente"
+              :clearable="filters.gerente !== 'Todos'" @clear="filters.gerente = 'Todos'" :options="gerentesOpts"
               dense outlined hide-bottom-space class="gerente-select"
               popup-content-class="gerente-popup">
               <template #prepend>
@@ -59,7 +60,8 @@
           </div>
           <div class="fgroup fgroup--gerente">
             <span class="fgroup__label">Coordenador</span>
-            <q-select v-model="filters.coordenador" :options="coordenadoresOpts"
+            <q-select v-model="filters.coordenador"
+              :clearable="filters.coordenador !== 'Todos'" @clear="filters.coordenador = 'Todos'" :options="coordenadoresOpts"
               dense outlined hide-bottom-space class="gerente-select"
               popup-content-class="gerente-popup">
               <template #prepend>
@@ -76,7 +78,7 @@
             <div class="pill-group">
               <button v-for="g in gerenciasOpts" :key="g"
                 :class="['pill', filters.gerencia === g && 'pill--active']"
-                @click="filters.gerencia = g">{{ g }}</button>
+                @click="filters.gerencia = filters.gerencia === g ? 'Todos' : g">{{ g }}</button>
             </div>
           </div>
           <div class="filter-divider" />
@@ -85,27 +87,30 @@
             <div class="pill-group">
               <button v-for="t in tiposPoc" :key="t"
                 :class="['pill', filters.tipoPoc === t && 'pill--active']"
-                @click="filters.tipoPoc = t">{{ t }}</button>
+                @click="filters.tipoPoc = filters.tipoPoc === t ? 'Todos' : t">{{ t }}</button>
             </div>
           </div>
           <div class="filter-divider" />
           <div class="fgroup fgroup--gerente" style="min-width:220px">
             <span class="fgroup__label">Categoria</span>
-            <q-select v-model="filters.categoria" :options="categoriasVisiveis"
+            <q-select v-model="filters.categoria"
+              :clearable="filters.categoria !== 'Todos'" @clear="filters.categoria = 'Todos'" :options="categoriasVisiveis"
               dense outlined hide-bottom-space class="gerente-select"
               use-input input-debounce="0" popup-content-class="gerente-popup"
               @filter="(v: string, update: (fn: () => void) => void) => update(() => { buscaCategoria = v; })" />
           </div>
           <div class="fgroup fgroup--gerente" style="min-width:160px">
             <span class="fgroup__label">Prefixo</span>
-            <q-select v-model="filters.prefixo" :options="prefixoOpts"
+            <q-select v-model="filters.prefixo"
+              :clearable="filters.prefixo !== 'Todos'" @clear="filters.prefixo = 'Todos'" :options="prefixoOpts"
               dense outlined hide-bottom-space class="gerente-select"
               use-input input-debounce="0" popup-content-class="gerente-popup"
               @filter="filterPrefixo" />
           </div>
           <div class="fgroup fgroup--gerente">
             <span class="fgroup__label">Observador</span>
-            <q-select v-model="filters.observador" :options="observadoresVisiveis"
+            <q-select v-model="filters.observador"
+              :clearable="filters.observador !== 'Todos'" @clear="filters.observador = 'Todos'" :options="observadoresVisiveis"
               dense outlined hide-bottom-space class="gerente-select"
               use-input input-debounce="0" popup-content-class="gerente-popup"
               @filter="(v: string, update: (fn: () => void) => void) => update(() => { buscaObservador = v; })" />
@@ -121,8 +126,8 @@
           <span class="filter-chip">{{ filters.mes }}</span>
           <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ nomeBase(filters.base) }}</span>
           <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
-          <span v-if="filters.gerente !== 'Todos'" class="filter-chip">{{ filters.gerente }}</span>
-          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip">{{ filters.coordenador }}</span>
+          <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ filters.gerente }}</span>
+          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ filters.coordenador }}</span>
           <span v-if="filters.tipoPoc !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.tipoPoc = 'Todos'">{{ filters.tipoPoc }}</span>
           <span v-if="filters.categoria !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.categoria = 'Todos'">{{ filters.categoria }}</span>
           <span v-if="filters.prefixo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.prefixo = 'Todos'">{{ filters.prefixo }}</span>

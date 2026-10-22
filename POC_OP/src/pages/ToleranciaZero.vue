@@ -36,7 +36,7 @@
             <div class="pill-group">
               <button v-for="c in categorias" :key="c"
                 :class="['pill', filters.categoria === c && 'pill--active']"
-                @click="filters.categoria = c">{{ c }}</button>
+                @click="filters.categoria = filters.categoria === c ? 'Todos' : c">{{ c }}</button>
             </div>
           </div>
 
@@ -55,7 +55,7 @@
             <div class="pill-group">
               <button v-for="g in coordenadoresOpts" :key="g"
                 :class="['pill', filters.coordenador === g && 'pill--active']"
-                @click="filters.coordenador = g">{{ g }}</button>
+                @click="filters.coordenador = filters.coordenador === g ? 'Todos' : g">{{ g }}</button>
             </div>
           </div>
 
@@ -63,7 +63,8 @@
 
           <div class="fgroup fgroup--select">
             <span class="fgroup__label">Observador</span>
-            <q-select v-model="filters.observador" :options="observadoresVisiveis"
+            <q-select v-model="filters.observador"
+              :clearable="filters.observador !== 'Todos'" @clear="filters.observador = 'Todos'" :options="observadoresVisiveis"
               dense outlined hide-bottom-space class="fselect"
               use-input input-debounce="0" popup-content-class="fselect-popup"
               @filter="(v: string, update: (fn: () => void) => void) => update(() => { buscaObservador = v; })" />
@@ -81,7 +82,8 @@
 
           <div class="fgroup fgroup--select">
             <span class="fgroup__label">Semana</span>
-            <q-select v-model="filters.semana" :options="semanasOpts"
+            <q-select v-model="filters.semana"
+              :clearable="filters.semana !== 'Todos'" @clear="filters.semana = 'Todos'" :options="semanasOpts"
               dense outlined hide-bottom-space class="fselect"
               popup-content-class="fselect-popup" />
           </div>
@@ -93,7 +95,7 @@
             <div class="pill-group">
               <button v-for="b in bases" :key="b"
                 :class="['pill', filters.base === b && 'pill--active']"
-                @click="filters.base = b">{{ b }}</button>
+                @click="filters.base = filters.base === b ? 'Todos' : b">{{ b }}</button>
             </div>
           </div>
 
@@ -101,14 +103,16 @@
 
           <div class="fgroup fgroup--select" style="min-width:160px">
             <span class="fgroup__label">Gerência da Equipe</span>
-            <q-select v-model="filters.gerencia" :options="gerenciasOpts"
+            <q-select v-model="filters.gerencia"
+              :clearable="filters.gerencia !== 'Todos'" @clear="filters.gerencia = 'Todos'" :options="gerenciasOpts"
               dense outlined hide-bottom-space class="fselect"
               popup-content-class="fselect-popup" />
           </div>
 
           <div class="fgroup fgroup--select" style="min-width:170px">
             <span class="fgroup__label">Prefixo da Equipe</span>
-            <q-select v-model="filters.prefixo" :options="prefixoOpts"
+            <q-select v-model="filters.prefixo"
+              :clearable="filters.prefixo !== 'Todos'" @clear="filters.prefixo = 'Todos'" :options="prefixoOpts"
               dense outlined hide-bottom-space class="fselect"
               use-input input-debounce="0" popup-content-class="fselect-popup"
               @filter="filterPrefixo" />

@@ -39,7 +39,7 @@
               <button
                 v-for="s in semanas" :key="s.value"
                 :class="['pill', { 'pill--active': filters.semana === s.value }]"
-                @click="filters.semana = s.value"
+                @click="filters.semana = filters.semana === s.value ? 0 : s.value"
               >{{ s.label }}</button>
             </div>
           </div>
@@ -50,6 +50,8 @@
             <span class="fgroup__label">Gerente</span>
             <q-select
               v-model="filters.gerente"
+              :clearable="filters.gerente !== 'Todos'"
+              @clear="filters.gerente = 'Todos'"
               :options="gerentes"
               dense outlined hide-bottom-space
               class="gerente-select"
@@ -64,6 +66,8 @@
             <span class="fgroup__label">Coordenador</span>
             <q-select
               v-model="filters.coordenador"
+              :clearable="filters.coordenador !== 'Todos'"
+              @clear="filters.coordenador = 'Todos'"
               :options="coordenadores"
               dense outlined hide-bottom-space
               class="gerente-select"
@@ -99,7 +103,7 @@
               <button
                 v-for="b in bases" :key="b"
                 :class="['pill', { 'pill--active': filters.base === b }]"
-                @click="filters.base = b"
+                @click="filters.base = filters.base === b ? 'Todos' : b"
               >{{ b }}</button>
             </div>
           </div>
@@ -110,6 +114,8 @@
             <span class="fgroup__label">Função</span>
             <q-select
               v-model="filters.funcao"
+              :clearable="filters.funcao !== 'Todos'"
+              @clear="filters.funcao = 'Todos'"
               :options="funcoes"
               dense outlined hide-bottom-space
               class="funcao-select"
@@ -125,7 +131,7 @@
               <button
                 v-for="g in gerencias" :key="g"
                 :class="['pill', { 'pill--active': filters.gerencia === g }]"
-                @click="filters.gerencia = g"
+                @click="filters.gerencia = filters.gerencia === g ? 'Todos' : g"
               >{{ g }}</button>
             </div>
           </div>
@@ -141,8 +147,8 @@
           <span v-if="filters.semana" class="filter-chip filter-chip--hit" @click="filters.semana = 0">{{ semanaLabel }}</span>
           <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ nomeBase(filters.base) }}</span>
           <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
-          <span v-if="filters.gerente !== 'Todos'" class="filter-chip">{{ filters.gerente }}</span>
-          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip">{{ filters.coordenador }}</span>
+          <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ filters.gerente }}</span>
+          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ filters.coordenador }}</span>
           <span v-if="filters.funcao !== 'Todos'" class="filter-chip">{{ filters.funcao }}</span>
           <span v-if="viz.observadorNome" class="filter-chip filter-chip--hit" @click="clearObs">{{ viz.observadorNome }}</span>
           <button class="filter-clear" @click="resetSlice">

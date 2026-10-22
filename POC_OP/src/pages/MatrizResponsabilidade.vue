@@ -23,7 +23,7 @@
             <div class="pill-group">
               <button v-for="s in semanasOpts" :key="s.v"
                 :class="['pill', filters.semana === s.v && 'pill--active']"
-                @click="filters.semana = s.v">{{ s.l }}</button>
+                @click="filters.semana = filters.semana === s.v ? 0 : s.v">{{ s.l }}</button>
             </div>
           </div>
           <div class="filter-divider" />
@@ -50,7 +50,7 @@
             <div class="pill-group">
               <button v-for="g in gerenciasOpts" :key="g"
                 :class="['pill', filters.gerencia === g && 'pill--active']"
-                @click="filters.gerencia = g">{{ g }}</button>
+                @click="filters.gerencia = filters.gerencia === g ? 'Todos' : g">{{ g }}</button>
             </div>
           </div>
         </div>
@@ -62,7 +62,7 @@
             <div class="pill-group">
               <button v-for="b in basesOpts" :key="b"
                 :class="['pill', filters.base === b && 'pill--active']"
-                @click="filters.base = b">{{ b }}</button>
+                @click="filters.base = filters.base === b ? 'Todos' : b">{{ b }}</button>
             </div>
           </div>
           <div class="filter-divider" />
@@ -71,7 +71,7 @@
             <div class="pill-group">
               <button v-for="g in gerentesOpts" :key="g"
                 :class="['pill', filters.gerente === g && 'pill--active']"
-                @click="filters.gerente = g">{{ g }}</button>
+                @click="filters.gerente = filters.gerente === g ? 'Todos' : g">{{ g }}</button>
             </div>
           </div>
           <div class="fgroup">
@@ -79,7 +79,7 @@
             <div class="pill-group">
               <button v-for="g in coordenadoresOpts" :key="g"
                 :class="['pill', filters.coordenador === g && 'pill--active']"
-                @click="filters.coordenador = g">{{ g }}</button>
+                @click="filters.coordenador = filters.coordenador === g ? 'Todos' : g">{{ g }}</button>
             </div>
           </div>
         </div>

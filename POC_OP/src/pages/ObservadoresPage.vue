@@ -31,7 +31,7 @@
             <div class="pill-group">
               <button v-for="b in basesOpts" :key="b"
                 :class="['pill', filters.base === b && 'pill--active']"
-                @click="filters.base = b">{{ b }}</button>
+                @click="filters.base = filters.base === b ? 'Todos' : b">{{ b }}</button>
             </div>
           </div>
           <div class="filter-divider" />
@@ -40,7 +40,7 @@
             <div class="pill-group">
               <button v-for="g in gerenciasOpts" :key="g"
                 :class="['pill', filters.gerencia === g && 'pill--active']"
-                @click="filters.gerencia = g">{{ g }}</button>
+                @click="filters.gerencia = filters.gerencia === g ? 'Todos' : g">{{ g }}</button>
             </div>
           </div>
           <div class="filter-divider" />
@@ -49,7 +49,7 @@
             <div class="pill-group">
               <button v-for="t in tiposOpts" :key="t"
                 :class="['pill', filters.tipo === t && 'pill--active']"
-                @click="filters.tipo = t">{{ t }}</button>
+                @click="filters.tipo = filters.tipo === t ? 'Todos' : t">{{ t }}</button>
             </div>
           </div>
         </div>
@@ -65,21 +65,24 @@
           <div class="filter-divider" />
           <div class="fgroup fgroup--sel" style="min-width:130px">
             <span class="fgroup__label">Semana</span>
-            <q-select v-model="filters.semana" :options="semanasOpts"
+            <q-select v-model="filters.semana"
+              :clearable="filters.semana !== 'Todos'" @clear="filters.semana = 'Todos'" :options="semanasOpts"
               dense outlined hide-bottom-space class="gerente-select"
               popup-content-class="gerente-popup" />
           </div>
           <div class="filter-divider" />
           <div class="fgroup fgroup--sel" style="min-width:150px">
             <span class="fgroup__label">Função</span>
-            <q-select v-model="filters.funcao" :options="funcoesOpts"
+            <q-select v-model="filters.funcao"
+              :clearable="filters.funcao !== 'Todos'" @clear="filters.funcao = 'Todos'" :options="funcoesOpts"
               dense outlined hide-bottom-space class="gerente-select"
               popup-content-class="gerente-popup" />
           </div>
           <div class="filter-divider" />
           <div class="fgroup fgroup--sel">
             <span class="fgroup__label">Gerente</span>
-            <q-select v-model="filters.gerente" :options="gerentesOpts"
+            <q-select v-model="filters.gerente"
+              :clearable="filters.gerente !== 'Todos'" @clear="filters.gerente = 'Todos'" :options="gerentesOpts"
               dense outlined hide-bottom-space class="gerente-select"
               popup-content-class="gerente-popup">
               <template #prepend>
@@ -89,7 +92,8 @@
           </div>
           <div class="fgroup fgroup--sel">
             <span class="fgroup__label">Coordenador</span>
-            <q-select v-model="filters.coordenador" :options="coordenadoresOpts"
+            <q-select v-model="filters.coordenador"
+              :clearable="filters.coordenador !== 'Todos'" @clear="filters.coordenador = 'Todos'" :options="coordenadoresOpts"
               dense outlined hide-bottom-space class="gerente-select"
               popup-content-class="gerente-popup">
               <template #prepend>
@@ -100,7 +104,8 @@
           <div class="filter-divider" />
           <div class="fgroup fgroup--sel" style="min-width:160px">
             <span class="fgroup__label">Observador</span>
-            <q-select v-model="filters.observador" :options="observadoresOpts"
+            <q-select v-model="filters.observador"
+              :clearable="filters.observador !== 'Todos'" @clear="filters.observador = 'Todos'" :options="observadoresOpts"
               dense outlined hide-bottom-space class="gerente-select"
               use-input input-debounce="0" popup-content-class="gerente-popup"
               @filter="filterObservador" />

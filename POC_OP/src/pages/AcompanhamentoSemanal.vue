@@ -41,6 +41,8 @@
             <span class="fgroup__label">Gerente</span>
             <q-select
               v-model="filters.gerente"
+              :clearable="filters.gerente !== 'Todos'"
+              @clear="filters.gerente = 'Todos'"
               :options="gerentes"
               dense
               outlined
@@ -57,6 +59,8 @@
             <span class="fgroup__label">Coordenador</span>
             <q-select
               v-model="filters.coordenador"
+              :clearable="filters.coordenador !== 'Todos'"
+              @clear="filters.coordenador = 'Todos'"
               :options="coordenadores"
               dense
               outlined
@@ -112,7 +116,7 @@
                 v-for="g in gerencias"
                 :key="g"
                 :class="['pill', { 'pill--active': filters.gerencia === g }]"
-                @click="filters.gerencia = g"
+                @click="filters.gerencia = filters.gerencia === g ? 'Todos' : g"
               >{{ g }}</button>
             </div>
           </div>
