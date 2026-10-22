@@ -89,6 +89,7 @@
             :equipe="equipe"
             :observador="session.employee?.nomeCompleto ?? session.employee?.nome ?? ''"
             :matricula="session.employee?.matricula"
+            @data-foto="onDataFoto"
           />
         </div>
 
@@ -540,6 +541,7 @@ import type { ItemVerificado } from "@/data/goman-checklist";
 import type { RespostaSalva } from "@/types/checklist";
 import { compressBase64 } from "@/utils/image";
 import { getTrustedTime, ServerTimeError } from "@/utils/server-time";
+import { menorData } from "@/utils/data-foto";
 import { processarFotoComCarimbo } from "@/utils/native-camera";
 import { prepararFotoDaGaleria, FotoGaleriaAntigaError } from "@/utils/galeria-import";
 import { extrairItensPergunta } from "@/utils/pergunta-itens";
@@ -609,6 +611,7 @@ onMounted(() => {
     rascunhoId.value = restoreId;
     const existing = observacoes.items.find(o => o.id === restoreId);
     if (existing && isChecklist(existing)) {
+      if (existing.resumo?.dataFoto) dataFotoGaleria.value = existing.resumo.dataFoto;
       base.value = existing.base;
       equipe.value = existing.equipe;
       evidencias.value = [0, 1, 2].map(i => existing.fotosLocal[i] ?? null);
@@ -1046,6 +1049,12 @@ function onConcluirMaisTarde() {
   }).onOk(() => _salvarRascunho());
 }
 
+// Data da foto mais antiga (galeria ou rascunho): define a semana do checklist nas páginas de acompanhamento do painel.
+const dataFotoGaleria = ref<string | null>(null);
+function onDataFoto(iso: string) {
+  dataFotoGaleria.value = menorData(dataFotoGaleria.value, iso) ?? null;
+}
+
 async function _salvarRascunho() {
   if (!session.employee) return;
 
@@ -1073,7 +1082,11 @@ async function _salvarRascunho() {
     }
   }
 
+  // O rascunho guarda a data da foto mais antiga: as fotos já existem quando ele é salvo.
+  const dataFotoRascunho = menorData(dataFotoGaleria.value, fotosLocal.value.length ? new Date().toISOString() : null);
+  dataFotoGaleria.value = dataFotoRascunho ?? null;
   const saved = observacoes.saveEmAndamento({
+    ...(dataFotoRascunho ? { dataFoto: dataFotoRascunho } : {}),
     id: rascunhoId.value,
     auditagem: "GSTC",
     matricula: session.employee.matricula,
@@ -1185,7 +1198,10 @@ async function onSubmit() {
     }
   }
 
+  const dataFoto = dataFotoGaleria.value && dataFotoGaleria.value < dataRegistro ? dataFotoGaleria.value : undefined;
+
   observacoes.addChecklist({
+    ...(dataFoto ? { dataFoto } : {}),
     id: rascunhoId.value,
     auditagem: "GSTC",
     matricula: session.employee.matricula,

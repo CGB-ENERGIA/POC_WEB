@@ -202,7 +202,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useChecklistData, type SubmissionRow, type ResponseRow, type EmployeeRow } from "@/composables/useChecklistData";
-import { filterByGerente, semanaDaData, uniqueHierarchyOpts, filterByCoordenador } from "@/lib/dashboard";
+import { filterByGerente, semanaDaData, uniqueHierarchyOpts, filterByCoordenador, dataReferencia } from "@/lib/dashboard";
 import { rotuloSemana } from "@/lib/semanas";
 
 const R2_PUBLIC_BASE = (import.meta.env.VITE_R2_PUBLIC_BASE_URL as string ?? "").replace(/\/$/, "");
@@ -339,7 +339,7 @@ const todasNcs = computed<NcRow[]>(() => {
       return {
         key:            `${r.submission_id}_${r.pergunta_id}`,
         mes:            mesesAbrev[d.getMonth()] ?? "",
-        data:           sub.data,
+        data:           dataReferencia(sub),
         observador:     sub.observador,
         equipe:         sub.equipe,
         gerencia:       sub.auditagem,

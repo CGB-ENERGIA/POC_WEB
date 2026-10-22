@@ -540,7 +540,7 @@
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
 import {
-  fetchResolucoes, inserirResolucao, reabrirResolucao, filterByGerencia, filterByGerente, semanaDaData,
+  fetchResolucoes, inserirResolucao, reabrirResolucao, filterByGerencia, filterByGerente, semanaDaSub,
   type ResolucaoRow, fetchCoordenadorPorEquipe, coordenadorDaEquipe, foldName,
 } from "@/lib/dashboard";
 import { useAuth } from "@/composables/useAuth";
@@ -739,7 +739,7 @@ const allData = computed<SubRow[]>(() => {
       s = s.filter((sub) => foldName(coordenadorDaEquipe(coordPorEquipe.value, sub.equipe)) === alvo);
     }
     s = filterByGerencia(s, employees.value, filters.gerencia);
-    if (filters.semana) s = s.filter((sub) => semanaDaData(sub.data) === filters.semana);
+    if (filters.semana) s = s.filter((sub) => semanaDaSub(sub) === filters.semana);
     return s;
   })();
 

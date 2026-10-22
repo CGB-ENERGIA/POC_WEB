@@ -60,6 +60,21 @@ export function semanaDaData(data: string): 1 | 2 | 3 | 4 {
   return semanaDeIso(data);
 }
 
+/**
+ * Data de referência do checklist: quando a inspeção aconteceu (data da foto mais antiga, gravada no envio), desde que seja
+ * do mesmo mês do envio e anterior a ele. Sem isso, a data do envio. É ela que define a semana nas páginas de acompanhamento.
+ */
+export function dataReferencia(sub: { data: string; resumo?: { dataFoto?: string } | null }): string {
+  const f = sub.resumo?.dataFoto;
+  if (f && f < sub.data && f.slice(0, 7) === sub.data.slice(0, 7)) return f;
+  return sub.data;
+}
+
+/** Semana (1–4) do checklist, pela data de referência (a da foto, quando houver). */
+export function semanaDaSub(sub: { data: string; resumo?: { dataFoto?: string } | null }): 1 | 2 | 3 | 4 {
+  return semanaDaData(dataReferencia(sub));
+}
+
 export function normMatricula(m: string | undefined | null): string {
   const t = (m ?? "").trim();
   if (!t) return "";
@@ -190,7 +205,7 @@ export interface SubmissionRow {
   base: string;
   equipe: string;
   membros: { nome: string; matricula: string }[];
-  resumo: { total: number; conformes: number; naoConformes: number };
+  resumo: { total: number; conformes: number; naoConformes: number; dataFoto?: string };
 }
 
 export interface ResponseRow {

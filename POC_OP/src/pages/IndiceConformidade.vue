@@ -253,7 +253,7 @@ import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN, fmtPct } from "@/composables/useChecklistData";
 import {
-  fetchNaoConformesPorMes, semanaDaData, foldName, fetchHierarquiaEquipes, hierarquiaDaEquipe,
+  fetchNaoConformesPorMes, semanaDaSub, foldName, fetchHierarquiaEquipes, hierarquiaDaEquipe,
   type NcPorMesOpts, type EquipeHier,
 } from "@/lib/dashboard";
 import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
@@ -522,7 +522,7 @@ function applySlice(
     s = s.filter((sub) => gerenciaDaSub(sub) === alvo);
   }
   if (!omit.week && filters.semana) {
-    s = s.filter((sub) => semanaDaData(sub.data) === filters.semana);
+    s = s.filter((sub) => semanaDaSub(sub) === filters.semana);
   }
   if (!omit.base && filters.base !== "Todos") {
     const alvo = filters.base.toUpperCase();

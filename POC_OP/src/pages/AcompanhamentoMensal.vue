@@ -316,7 +316,7 @@ import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 import { faixaDaSemana } from "@/lib/semanas";
-import { filterByGerencia, filterByGerente, semanaDaData, filterObserverRoster, uniqueChartLabels, tallyObserverRecords, normMatricula, indexEmployees, matchSubmissionToEmployee, filterByCoordenador } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDaSub, filterObserverRoster, uniqueChartLabels, tallyObserverRecords, normMatricula, indexEmployees, matchSubmissionToEmployee, filterByCoordenador } from "@/lib/dashboard";
 import { useGoals } from "@/composables/useGoals";
 const { goalForColaborador } = useGoals();
 
@@ -511,7 +511,7 @@ function applySlice(
   let s = source;
   if (!omit.gerencia) s = filterByGerencia(s, employees.value, filters.gerencia);
   if (!omit.week && filters.semana) {
-    s = s.filter((sub) => semanaDaData(sub.data) === filters.semana);
+    s = s.filter((sub) => semanaDaSub(sub) === filters.semana);
   }
   if (!omit.base && filters.base !== "Todos") {
     s = s.filter((sub) => sub.base === filters.base);
@@ -549,7 +549,7 @@ const byBase = computed(() => {
 const bySemana = computed(() => {
   const m: Record<number, number> = {};
   for (const s of subsNoWeek.value) {
-    const sem = semanaDaData(s.data);
+    const sem = semanaDaSub(s);
     m[sem] = (m[sem] ?? 0) + 1;
   }
   return m;

@@ -226,7 +226,7 @@
 <script setup lang="ts">
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDaData, filterByCoordenador } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDaSub, filterByCoordenador } from "@/lib/dashboard";
 import KpiFlame from "@/components/KpiFlame.vue";
 
 const { loading, error, submissions, responses, employees, load, gerentesOpts, coordenadoresOpts } = useChecklistData();
@@ -328,7 +328,7 @@ function applySlice(omit: { base?: boolean } = {}) {
   s = filterByCoordenador(s, employees.value, filters.coordenador);
   s = filterByGerencia(s, employees.value, filters.gerencia);
   if (filters.semana) {
-    s = s.filter((sub) => semanaDaData(sub.data) === filters.semana);
+    s = s.filter((sub) => semanaDaSub(sub) === filters.semana);
   }
   const base = selectedBase.value;
   if (!omit.base && base) s = s.filter((sub) => sub.base === base);

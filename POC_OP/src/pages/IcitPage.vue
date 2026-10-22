@@ -299,7 +299,7 @@ import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtPct, fmtN } from "@/composables/useChecklistData";
 import { rotuloSemana } from "@/lib/semanas";
 import {
-  semanaDaData, indexEmployees, matchSubmissionToEmployee, fetchSubmissions, fetchResponses, type ResponseRow, type SubmissionRow,
+  semanaDaSub, indexEmployees, matchSubmissionToEmployee, fetchSubmissions, fetchResponses, type ResponseRow, type SubmissionRow,
   foldName, fetchHierarquiaEquipes, hierarquiaDaEquipe, type EquipeHier,
 } from "@/lib/dashboard";
 import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
@@ -559,7 +559,7 @@ function applySlice(
     s = s.filter((sub) => gerenciaDaSub(sub) === alvo);
   }
   if (!omit.week && filters.semana) {
-    s = s.filter((sub) => semanaDaData(sub.data) === filters.semana);
+    s = s.filter((sub) => semanaDaSub(sub) === filters.semana);
   }
   if (!omit.base && filters.base !== "Todos") {
     const alvo = filters.base.toUpperCase();

@@ -361,7 +361,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDaData, filterObserverRoster, uniqueChartLabels, tallyObserverRecords, normMatricula, indexEmployees, matchSubmissionToEmployee, filterByCoordenador, fetchMetasSemanais, foldName, type MetaSemanalRow } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDaSub, filterObserverRoster, uniqueChartLabels, tallyObserverRecords, normMatricula, indexEmployees, matchSubmissionToEmployee, filterByCoordenador, fetchMetasSemanais, foldName, type MetaSemanalRow } from "@/lib/dashboard";
 import { semanaDeData, rotuloSemana, carregarSemanas, faixaDaSemana } from "@/lib/semanas";
 import { useGoals } from "@/composables/useGoals";
 import { gerarRankingPng, coordenadoresDe, SEM_COORDENADOR } from "@/lib/ranking-imagem";
@@ -561,7 +561,7 @@ function applySlice(
   omit: { week?: boolean; base?: boolean; processo?: boolean; mat?: boolean } = {},
 ) {
   let s = source;
-  if (!omit.week) s = s.filter((sub) => semanaDaData(sub.data) === filters.semana);
+  if (!omit.week) s = s.filter((sub) => semanaDaSub(sub) === filters.semana);
   if (!omit.base && viz.base) s = s.filter((sub) => sub.base === viz.base);
   if (!omit.processo && viz.processo) s = s.filter((sub) => auditagemKey(sub) === viz.processo);
   if (!omit.mat && viz.matricula) {
@@ -608,7 +608,7 @@ const bySemana = computed(() => {
   const doMes = applySlice(barraGerencia.value, { week: true, mat: true });
   const m: Record<number, number> = {};
   for (const w of [1, 2, 3, 4]) {
-    const slice = doMes.filter((s) => semanaDaData(s.data) === w);
+    const slice = doMes.filter((s) => semanaDaSub(s) === w);
     const dia = faixaDaSemana(filters.ano, filters.mes, w).ini;
     let roster = filterObserverRoster(employees.value, {
       gerencia: filters.gerencia,

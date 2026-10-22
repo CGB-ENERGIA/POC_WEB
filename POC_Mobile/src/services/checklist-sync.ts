@@ -61,6 +61,7 @@ export async function syncEmAndamentoToRemote(entry: ObservacaoChecklist): Promi
       total: entry.resumo.total,
       conformes: entry.resumo.conformes,
       naoConformes: entry.resumo.naoConformes,
+      ...(entry.resumo.dataFoto ? { dataFoto: entry.resumo.dataFoto } : {}),
       _rascunho: { membros: entry.membros, respostas: respostasSemFoto, fotosUrls },
     },
     sync_status: "em_andamento",

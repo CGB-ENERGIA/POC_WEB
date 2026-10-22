@@ -302,7 +302,7 @@
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import {
   fetchSubmissions, fetchEmployees, fetchNcLight,
-  filterByGerencia, filterByGerente, semanaDaData, uniqueHierarchyOpts, filterByCoordenador,
+  filterByGerencia, filterByGerente, semanaDaSub, uniqueHierarchyOpts, filterByCoordenador,
   type SubmissionRow, type EmployeeRow, type NcLightRow,
 } from "@/lib/dashboard";
 import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
@@ -484,7 +484,7 @@ function applySlice(omit: { base?: boolean; mes?: boolean } = {}) {
   s = filterByGerencia(s, employees.value, filters.gerencia);
   s = s.filter((sub) => matchTipoPoc(sub.auditagem));
   if (filters.semana) {
-    s = s.filter((sub) => semanaDaData(sub.data) === filters.semana);
+    s = s.filter((sub) => semanaDaSub(sub) === filters.semana);
   }
   const base = selectedBase.value;
   if (!omit.base && base) s = s.filter((sub) => sub.base === base);

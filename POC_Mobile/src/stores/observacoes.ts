@@ -363,7 +363,7 @@ export const useObservacoesStore = defineStore("observacoes", {
         if ((row as { sync_status?: string }).sync_status !== "em_andamento") continue;
         if (this.items.find((o) => o.id === row.id)) continue; // já existe localmente
         const resumoRaw = row.resumo as unknown as {
-          total?: number; conformes?: number; naoConformes?: number;
+          total?: number; conformes?: number; naoConformes?: number; dataFoto?: string;
           _rascunho?: { membros?: { nome: string; matricula: string }[]; respostas?: RespostaSalva[]; fotosUrls?: string[] };
         };
         const rascunho = resumoRaw?._rascunho;
@@ -382,6 +382,7 @@ export const useObservacoesStore = defineStore("observacoes", {
             total: resumoRaw?.total ?? 0,
             conformes: resumoRaw?.conformes ?? 0,
             naoConformes: resumoRaw?.naoConformes ?? 0,
+            ...(resumoRaw?.dataFoto ? { dataFoto: resumoRaw.dataFoto } : {}),
           },
           status: "em_andamento",
         };
@@ -585,6 +586,8 @@ export const useObservacoesStore = defineStore("observacoes", {
       fotosLocal: string[];
       respostas: RespostaSalva[];
       data: string;
+      /** Data da foto mais antiga (ISO), quando anterior ao envio. */
+      dataFoto?: string;
       employee: Employee;
       status?: "finalizado" | "em_andamento";
       id?: string;
@@ -594,6 +597,7 @@ export const useObservacoesStore = defineStore("observacoes", {
         total: payload.respostas.length,
         conformes: payload.respostas.filter((r) => r.resposta === "conforme").length,
         naoConformes: payload.respostas.filter((r) => r.resposta === "nao_conforme").length,
+        ...(payload.dataFoto ? { dataFoto: payload.dataFoto } : {}),
       };
 
       const fields = {
@@ -676,6 +680,7 @@ export const useObservacoesStore = defineStore("observacoes", {
       membros: { nome: string; matricula: string }[];
       fotosLocal: string[];
       respostas: RespostaSalva[];
+      dataFoto?: string;
       employee: Employee;
     }): ObservacaoChecklist {
       const existing =

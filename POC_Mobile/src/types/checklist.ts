@@ -5,6 +5,8 @@ export interface ChecklistResumo {
   total: number;
   conformes: number;
   naoConformes: number;
+  /** Quando a inspeção aconteceu (foto mais antiga, ISO): define a semana do checklist no painel. */
+  dataFoto?: string;
 }
 
 export type RespostaSalva = RespostaPergunta & {
