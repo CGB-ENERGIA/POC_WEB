@@ -134,7 +134,7 @@
                 {{ totalConf.toLocaleString('pt-BR') }}
               </div>
               <div class="kpi-stat-label">Total conformidade</div>
-              <div class="kpi-stat-sub">ano {{ filters.ano }}</div>
+              <div class="kpi-stat-sub">{{ periodoKpi }}</div>
             </q-card-section>
           </q-card>
         </div>
@@ -150,7 +150,7 @@
                 {{ totalInc.toLocaleString('pt-BR') }}
               </div>
               <div class="kpi-stat-label">Total Inconformidade</div>
-              <div class="kpi-stat-sub">ano {{ filters.ano }}</div>
+              <div class="kpi-stat-sub">{{ periodoKpi }}</div>
             </q-card-section>
           </q-card>
         </div>
@@ -160,7 +160,7 @@
             <div class="kpi-stat-accent" style="background:#16a34a" />
             <q-card-section class="q-pa-md kpi-stat-section">
               <div class="kpi-ring" :style="{ '--p': pctGlobal + '%' }" />
-              <div class="kpi-stat-value" style="color:#8B1C2B">{{ pctGlobal }}%</div>
+              <div class="kpi-stat-value" style="color:#8B1C2B">{{ pctGlobalTxt }}%</div>
               <div class="kpi-stat-label">% conformidade</div>
               <div class="kpi-stat-sub">
                 {{ totalConf.toLocaleString('pt-BR') }} de {{ (totalConf + totalInc).toLocaleString('pt-BR') }} observações
@@ -558,7 +558,14 @@ const conformidadeIndex = computed(() => {
 
 const totalConf = totalConformes;
 const totalInc  = totalNaoConformes;
-const pctGlobal = computed(() => Math.round(conformidadeIndex.value * 100));
+/** % de conformidade com 2 casas; só mostra 100% quando não há nenhuma inconformidade (99,75% não vira "100%"). */
+const pctGlobal = computed(() => {
+  const v = conformidadeIndex.value * 100;
+  return totalNaoConformes.value > 0 ? Math.min(Math.floor(v * 100) / 100, 99.99) : Math.round(v * 100) / 100;
+});
+const pctGlobalTxt = computed(() => pctGlobal.value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+/** Período dos cartões: o mês escolhido no gráfico ou o ano todo. */
+const periodoKpi = computed(() => (viz.mes ? `${months[viz.mes - 1]}/${filters.ano}` : `ano ${filters.ano}`));
 
 </script>
 
