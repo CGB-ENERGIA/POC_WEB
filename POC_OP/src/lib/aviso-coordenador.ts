@@ -3,8 +3,8 @@ import { allPages, type ChecklistParaAnalise } from "@/lib/dashboard";
 
 /**
  * Aviso ao coordenador quando um checklist é reprovado.
- * O coordenador responsável é o do observador que enviou o checklist (employees.coordenador pela matrícula);
- * se o observador não tiver coordenador cadastrado, vale o da equipe (pwa_equipes.coordenador pelo prefixo).
+ * O coordenador responsável é sempre o do observador que enviou o checklist (employees.coordenador pela matrícula),
+ * nunca o da equipe inspecionada. Sem coordenador cadastrado no observador, quem valida escolhe quem avisar.
  * O envio é pelo WhatsApp do analista (link wa.me com a mensagem pronta) e cada aviso fica registrado em avisos_reprovacao.
  */
 
@@ -16,7 +16,6 @@ export interface ContatoCoord {
 export interface AvisoCtx {
   contatos: ContatoCoord[];
   porMatricula: Map<string, string>;
-  porPrefixo: Map<string, string>;
 }
 
 export interface AvisoRow {
@@ -70,21 +69,16 @@ export async function carregarContatos(): Promise<ContatoCoord[]> {
 }
 
 export async function carregarAvisoCtx(): Promise<AvisoCtx> {
-  const [contatos, emps, eqs] = await Promise.all([
+  const [contatos, emps] = await Promise.all([
     carregarContatos().catch(() => [] as ContatoCoord[]),
     allPages<{ matricula: string; coordenador: string | null }>(
       () => supabase.from("employees").select("matricula,coordenador").not("coordenador", "is", null).order("matricula"),
       "matricula",
     ).catch(() => []),
-    allPages<{ id: string; prefixo: string; coordenador: string | null }>(
-      () => supabase.from("pwa_equipes").select("id,prefixo,coordenador").order("prefixo"),
-    ).catch(() => []),
   ]);
   const porMatricula = new Map<string, string>();
   for (const e of emps) if (e.coordenador?.trim()) porMatricula.set(String(e.matricula).trim(), e.coordenador.trim());
-  const porPrefixo = new Map<string, string>();
-  for (const e of eqs) if (e.coordenador?.trim()) porPrefixo.set(e.prefixo.trim().toUpperCase(), e.coordenador.trim());
-  return { contatos, porMatricula, porPrefixo };
+  return { contatos, porMatricula };
 }
 
 /** Nome do coordenador como está nos contatos (ou o texto original, se ele ainda não tem contato). */
@@ -99,9 +93,9 @@ export function contatoDe(nome: string | null, ctx: AvisoCtx): ContatoCoord | nu
   return ctx.contatos.find((c) => chaveNome(c.nome) === k) ?? null;
 }
 
-/** Coordenador responsável pelo checklist (null quando nem o observador nem a equipe têm coordenador). */
+/** Coordenador do observador que enviou o checklist (null quando o observador não tem coordenador cadastrado). */
 export function coordenadorDoItem(item: ChecklistParaAnalise, ctx: AvisoCtx): string | null {
-  const nome = ctx.porMatricula.get(String(item.matricula ?? "").trim()) ?? ctx.porPrefixo.get((item.equipe ?? "").trim().toUpperCase());
+  const nome = ctx.porMatricula.get(String(item.matricula ?? "").trim());
   return nome ? nomeCanonico(nome, ctx) : null;
 }
 

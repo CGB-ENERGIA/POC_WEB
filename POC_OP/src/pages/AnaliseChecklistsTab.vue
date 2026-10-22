@@ -828,7 +828,7 @@ async function confirmarReprovacao() {
 }
 
 // ── Aviso ao coordenador ──────────────────────────────────────────────────────
-const avisoCtx = ref<AvisoCtx>({ contatos: [], porMatricula: new Map(), porPrefixo: new Map() });
+const avisoCtx = ref<AvisoCtx>({ contatos: [], porMatricula: new Map() });
 const avisos = ref<Record<string, AvisoRow>>({});
 const avisoDialog = reactive({ open: false, coordenador: null as string | null, itens: [] as ItemAviso[] });
 const resumoDialog = ref(false);
