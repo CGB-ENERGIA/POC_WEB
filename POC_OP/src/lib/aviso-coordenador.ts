@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import { allPages, type ChecklistParaAnalise } from "@/lib/dashboard";
+import { allPages, dataReferencia, type ChecklistParaAnalise } from "@/lib/dashboard";
 
 /**
  * Aviso ao coordenador quando um checklist é reprovado.
@@ -129,32 +129,70 @@ export async function registrarAvisos(ids: string[], coordenador: string, enviad
 }
 
 // ─── Mensagens ────────────────────────────────────────────────────────────────
+// O foco é a observação do OBSERVADOR que foi reprovada (não a equipe observada): a equipe aparece só como dado da observação.
 
 const RODAPE = "_Validação POC · CGB_";
+
+const ROTULO_TIPO: Record<string, string> = {
+  ADMINISTRATIVO: "Administrativo",
+  ALOJAMENTO: "Alojamento",
+  LOGISTICA: "Logística",
+  OFICINA: "Oficina",
+};
+const tipoDe = (a: string) => ROTULO_TIPO[a] ?? a;
 
 function dataHora(iso: string): string {
   return new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }).replace(",", "");
 }
 
-function primeiroNome(nome: string | null): string {
-  return nome ? nome.trim() : "coordenação";
+function soData(iso: string): string {
+  return new Date(iso).toLocaleDateString("pt-BR");
+}
+
+/** "Manoel N. (mat. 12345)" */
+function observadorComMatricula(item: ChecklistParaAnalise): string {
+  const mat = String(item.matricula ?? "").trim();
+  return mat ? `${item.observador} (mat. ${mat})` : item.observador;
+}
+
+/** Data da inspeção (foto) quando difere do dia do envio: é ela que define a semana do checklist. */
+function inspecao(item: ChecklistParaAnalise): string | null {
+  const ref = dataReferencia(item);
+  return soData(ref) !== soData(item.data) ? soData(ref) : null;
+}
+
+function equipeBase(item: ChecklistParaAnalise): string {
+  return `${item.equipe}${item.base ? ` · ${item.base}` : ""}`;
 }
 
 export function montarMensagem(coordenador: string | null, { item, motivo }: ItemAviso): string {
-  return [
-    "⚠️ *POC reprovado na validação*",
+  const insp = inspecao(item);
+  const membros = (item.membros ?? []).filter((m) => m.nome?.trim());
+  const r = item.resumo;
+  const linhas = [
+    "⚠️ *Observação reprovada na validação do POC*",
     "",
-    `Olá, ${primeiroNome(coordenador)}! Um checklist de observação da sua equipe não foi aprovado.`,
+    `Olá, ${coordenador?.trim() || "coordenação"}! A observação do seu observador *${item.observador}* foi reprovada.`,
     "",
-    `*Observador:* ${item.observador}`,
-    `*Equipe:* ${item.equipe}${item.base ? ` (${item.base})` : ""}`,
-    `*Checklist:* ${item.auditagem} · enviado em ${dataHora(item.data)}`,
     `*Motivo:* ${motivo.trim() || "não informado"}`,
     "",
-    "Por favor, oriente o observador a refazer o envio com a correção. Ele também vê o motivo no PWA.",
+    "*Dados da observação*",
+    `• Observador: ${observadorComMatricula(item)}`,
+    `• Tipo: ${tipoDe(item.auditagem)}`,
+    `• Equipe observada: ${equipeBase(item)}`,
+  ];
+  if (membros.length) linhas.push(`• Colaboradores: ${membros.map((m) => (m.matricula ? `${m.nome} (${m.matricula})` : m.nome)).join(", ")}`);
+  linhas.push(`• Enviada em: ${dataHora(item.data)}`);
+  if (insp) linhas.push(`• Inspeção realizada em: ${insp}`);
+  if (r && typeof r.total === "number") linhas.push(`• Resultado: ${r.total} itens · ${r.conformes} conformes · ${r.naoConformes} não conformes`);
+  if (item.data_analise) linhas.push(`• Reprovada em: ${dataHora(item.data_analise)}${item.analisado_por ? ` por ${item.analisado_por}` : ""}`);
+  linhas.push(
+    "",
+    "O observador precisa refazer e reenviar a observação com a correção. Ele também vê o motivo no PWA.",
     "",
     RODAPE,
-  ].join("\n");
+  );
+  return linhas.join("\n");
 }
 
 /** O link do WhatsApp aceita ~2.000 caracteres já codificados (acento, quebra de linha e emoji incham): o que não couber fica de fora e segue como "não avisado" para o próximo envio. */
@@ -163,17 +201,24 @@ const tamanhoNoLink = (t: string) => encodeURIComponent(t).length;
 
 export function montarResumo(coordenador: string | null, lista: ItemAviso[]): { texto: string; incluidos: string[] } {
   const cab = [
-    "⚠️ *POC · reprovações para acompanhar*",
+    "⚠️ *Observações reprovadas na validação do POC*",
     "",
-    `Olá, ${primeiroNome(coordenador)}! Estes checklists da sua equipe foram reprovados na validação:`,
+    `Olá, ${coordenador?.trim() || "coordenação"}! Estas observações dos seus observadores foram reprovadas:`,
     "",
   ];
-  const fim = ["", "Por favor, oriente os observadores a refazer os envios com as correções.", "", RODAPE];
+  const fim = ["", "Os observadores precisam refazer e reenviar as observações com as correções.", "", RODAPE];
   const incluidos: string[] = [];
   const blocos: string[] = [];
   let tamanho = tamanhoNoLink([...cab, ...fim].join("\n")) + 90; // 90 = folga para a linha "+N em um próximo aviso"
   for (const { item, motivo } of lista) {
-    const bloco = `${blocos.length + 1}. *${item.observador}* · ${item.equipe} · ${item.auditagem} · ${dataHora(item.data)}\n    Motivo: ${motivo.trim() || "não informado"}`;
+    const insp = inspecao(item);
+    const bloco = [
+      `*${blocos.length + 1}. ${observadorComMatricula(item)}*`,
+      `${tipoDe(item.auditagem)} · equipe ${equipeBase(item)}`,
+      `Enviada em ${dataHora(item.data)}${insp ? ` · inspeção em ${insp}` : ""}`,
+      `Motivo: ${motivo.trim() || "não informado"}`,
+      "",
+    ].join("\n");
     const custo = tamanhoNoLink(bloco + "\n");
     if (blocos.length && tamanho + custo > LIMITE_RESUMO) break;
     blocos.push(bloco);
@@ -181,8 +226,9 @@ export function montarResumo(coordenador: string | null, lista: ItemAviso[]): { 
     tamanho += custo;
   }
   const faltam = lista.length - blocos.length;
-  if (faltam > 0) blocos.push(`_(+ ${faltam} em um próximo aviso)_`);
-  return { texto: [...cab, ...blocos, ...fim].join("\n"), incluidos };
+  const corpo = blocos.join("\n").replace(/\n+$/, "");
+  const extra = faltam > 0 ? `\n\n_(+ ${faltam} em um próximo aviso)_` : "";
+  return { texto: [...cab, corpo + extra, ...fim].join("\n"), incluidos };
 }
 
 /** Agrupa por coordenador; checklists sem coordenador identificado ficam na chave "". */

@@ -59,7 +59,7 @@
             />
           </div>
           <div v-if="parcial" class="text-caption text-grey-7 q-mt-xs">
-            Esta mensagem leva {{ incluidos.length }} de {{ itens.length }} reprovações; as demais ficam para o próximo aviso.
+            Esta mensagem leva {{ incluidos.length }} de {{ itens.length }} observações; as demais ficam para o próximo aviso.
           </div>
           <div class="text-caption text-grey-7 q-mt-sm">
             Abre o WhatsApp com a mensagem pronta: é só enviar. O aviso fica registrado no checklist.
@@ -127,7 +127,7 @@ const parcial = computed(() => incluidos.value.length < props.itens.length);
 const subtitulo = computed(() => {
   const n = props.itens.length;
   if (n === 1) return `${props.itens[0]!.item.observador} · ${props.itens[0]!.item.equipe}`;
-  return `${n} checklists reprovados`;
+  return `${n} observações reprovadas`;
 });
 
 const podeEnviar = computed(() => !!contato.value?.telefone && !!mensagem.value.trim());
