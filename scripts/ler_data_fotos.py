@@ -47,7 +47,8 @@ def ler_carimbo(base, chave):
     except Exception:
         return None
     w, hh = im.size
-    res, _ = motor()(np.array(im.crop((0, int(hh * 0.78), w, hh))))
+    # fotos horizontais têm a faixa do carimbo mais acima que as verticais: lê o terço inferior
+    res, _ = motor()(np.array(im.crop((0, int(hh * 0.60), w, hh))))
     texto = " | ".join(r[1] for r in (res or []))
     m = RE_CARIMBO.search(texto)
     if not m:
@@ -85,6 +86,7 @@ def main():
     ap.add_argument("--desde", required=True, help="created_at mínimo (ISO UTC)")
     ap.add_argument("--saida", required=True)
     ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--so-nao-lidas", help="resultado anterior (JSON): refaz só os checklists que ficaram sem data lida")
     args = ap.parse_args()
 
     key = h.chave_env()
@@ -102,6 +104,9 @@ def main():
     for f in fotos:
         por_sub.setdefault(f["submission_id"], []).append(f["r2_key"])
     alvo = [s for s in subs if por_sub.get(s["id"])]
+    if args.so_nao_lidas:
+        antes = json.load(open(args.so_nao_lidas, encoding="utf-8"))
+        alvo = [s for s in alvo if not antes.get(s["id"]) or str(antes.get(s["id"])).startswith("erro")]
     print(f"{len(alvo)} checklists com fotos a ler", flush=True)
 
     resultado, feitos = {}, 0
