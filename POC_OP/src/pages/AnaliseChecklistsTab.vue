@@ -73,6 +73,12 @@
       <button class="pend-fora__btn" @click="verTodosPeriodos">Ver todos os períodos</button>
     </div>
 
+    <div v-if="avisosOk && reprovadosSemAviso.length > 0" class="pend-fora q-mb-md">
+      <q-icon name="mdi-bell-alert-outline" size="16px" />
+      {{ reprovadosSemAviso.length }} {{ reprovadosSemAviso.length === 1 ? "reprovação sem aviso" : "reprovações sem aviso" }} ao coordenador.
+      <button class="pend-fora__btn" @click="resumoDialog = true">Avisar coordenadores</button>
+    </div>
+
     <!-- Lista -->
     <div class="analise-list">
       <div v-if="listaFiltrada.length === 0" class="analise-empty">
@@ -154,6 +160,19 @@
           <div v-if="item.comentario_analise" class="analise-item__comentario" :class="`analise-item__comentario--${item.status}`">
             <q-icon name="mdi-message-text-outline" size="14px" class="q-mr-xs" />
             <span><strong>{{ item.analisado_por }}</strong>: {{ item.comentario_analise }}</span>
+          </div>
+
+          <!-- Aviso ao coordenador (só reprovados) -->
+          <div
+            v-if="item.status === 'reprovado' && avisosOk && (avisos[item.id] || recente(item))"
+            class="aviso-linha" :class="avisos[item.id] ? 'aviso-linha--ok' : 'aviso-linha--pend'"
+          >
+            <q-icon :name="avisos[item.id] ? 'mdi-check-all' : 'mdi-bell-outline'" size="14px" />
+            <span v-if="avisos[item.id]">
+              Coordenador <strong>{{ avisos[item.id]!.coordenador }}</strong> avisado em {{ fmtDate(avisos[item.id]!.created_at) }}
+              <template v-if="avisos[item.id]!.enviado_por"> por {{ avisos[item.id]!.enviado_por }}</template>
+            </span>
+            <span v-else>Coordenador ainda não avisado</span>
           </div>
 
           <!-- Ver respostas (expandível) -->
@@ -307,6 +326,13 @@
             />
           </template>
           <template v-else>
+            <q-btn
+              v-if="item.status === 'reprovado'"
+              :outline="!!avisos[item.id]" :unelevated="!avisos[item.id]" no-caps size="sm" icon="mdi-whatsapp"
+              :class="avisos[item.id] ? '' : 'btn-zap'" :color="avisos[item.id] ? 'grey-8' : undefined"
+              :label="avisos[item.id] ? 'Avisar de novo' : 'Avisar coordenador'"
+              @click="avisarItem(item)"
+            />
             <q-btn
               flat size="sm" color="grey-7"
               :icon="item.status === 'aprovado' ? 'mdi-close' : 'mdi-check'"
@@ -499,7 +525,20 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+  
+
+    <AvisoCoordenadorDialog
+      v-model="avisoDialog.open"
+      :coordenador="avisoDialog.coordenador"
+      :itens="avisoDialog.itens"
+      :ctx="avisoCtx"
+      :enviado-por="nomeAnalista()"
+      @avisado="aoAvisar"
+      @contato-salvo="aoSalvarContato"
+    />
+    <AvisosPendentesDialog v-model="resumoDialog" :grupos="gruposSemAviso" @avisar="avisarGrupo" />
   </div>
+
 </template>
 
 <script setup lang="ts">
@@ -522,6 +561,12 @@ import {
 } from "@/lib/dashboard";
 import { carregarColaboradores, sugerirColaboradores, type ColaboradorSugestao } from "@/lib/colaboradores-geral";
 import { useAuth } from "@/composables/useAuth";
+import AvisoCoordenadorDialog from "@/components/AvisoCoordenadorDialog.vue";
+import AvisosPendentesDialog from "@/components/AvisosPendentesDialog.vue";
+import {
+  agruparPorCoordenador, buscarAvisos, carregarAvisoCtx, contatoDe, coordenadorDoItem,
+  type AvisoCtx, type AvisoRow, type ContatoCoord, type ItemAviso,
+} from "@/lib/aviso-coordenador";
 
 const R2_PUBLIC_BASE = (import.meta.env.VITE_R2_PUBLIC_BASE_URL as string ?? "").replace(/\/$/, "");
 
@@ -610,6 +655,7 @@ async function recarregar() {
     const naLista = lista.filter((i) => i.status === "pendente").length;
     pendentesFora.value = totalPendentes === null ? 0 : Math.max(0, totalPendentes - naLista);
     // Falha ao contar não bloqueia a tela: sem o número, nada é marcado nem travado
+    void carregarAvisos(lista, seq);
     const contagem = await fetchContagemEvidencias(lista.filter((i) => !ehLegado(i))).catch(() => ({}));
     if (seq === seqCarga) evidenciasMap.value = contagem;
   } catch (e) {
@@ -770,11 +816,82 @@ async function confirmarReprovacao() {
     const idx = itens.value.findIndex((i) => i.id === updated.id);
     if (idx >= 0) itens.value[idx] = { ...itens.value[idx], ...updated };
     acaoDialog.open = false;
+    avisarItem(idx >= 0 ? itens.value[idx]! : updated);
   } catch (e) {
     acaoDialog.error = (e as Error).message;
   } finally {
     acaoDialog.saving = false;
   }
+}
+
+// ── Aviso ao coordenador ──────────────────────────────────────────────────────
+const avisoCtx = ref<AvisoCtx>({ contatos: [], porMatricula: new Map(), porPrefixo: new Map() });
+const avisos = ref<Record<string, AvisoRow>>({});
+const avisoDialog = reactive({ open: false, coordenador: null as string | null, itens: [] as ItemAviso[] });
+const resumoDialog = ref(false);
+/** Só mostra "sem aviso" depois de ler o registro: sem ele (ex.: falha de rede) a tela não afirma nada. */
+const avisosOk = ref(false);
+let avisoCtxCarregado = false;
+
+/** Reprovações antigas não entram na cobrança de aviso (avisar por semanas depois só gera ruído); o botão do cartão continua disponível. */
+const DIAS_PARA_AVISAR = 7;
+function recente(item: ChecklistParaAnalise): boolean {
+  return !!item.data_analise && Date.now() - new Date(item.data_analise).getTime() <= DIAS_PARA_AVISAR * 86_400_000;
+}
+
+/** Falha aqui (ex.: tabela ainda não criada) não pode travar a validação: a tela só fica sem o aviso. */
+async function carregarAvisos(lista: ChecklistParaAnalise[], seq: number) {
+  const ids = lista.filter((i) => i.status === "reprovado").map((i) => i.id);
+  const [ctx, rows] = await Promise.all([
+    avisoCtxCarregado ? null : carregarAvisoCtx().catch(() => null),
+    ids.length ? buscarAvisos(ids).catch(() => null) : {},
+  ]);
+  if (seq !== seqCarga) return;
+  if (ctx) { avisoCtx.value = ctx; avisoCtxCarregado = true; }
+  if (rows) { avisos.value = rows; avisosOk.value = true; }
+}
+
+function itemAviso(item: ChecklistParaAnalise): ItemAviso {
+  return { item, motivo: item.comentario_analise ?? "" };
+}
+
+function abrirAviso(lista: ItemAviso[], coordenador: string | null) {
+  avisoDialog.itens = lista;
+  avisoDialog.coordenador = coordenador;
+  avisoDialog.open = true;
+}
+
+function avisarItem(item: ChecklistParaAnalise) {
+  abrirAviso([itemAviso(item)], coordenadorDoItem(item, avisoCtx.value));
+}
+
+const reprovadosSemAviso = computed(() => reprovados.value.filter((i) => !avisos.value[i.id] && recente(i)));
+const gruposSemAviso = computed(() =>
+  [...agruparPorCoordenador(reprovadosSemAviso.value.map(itemAviso), avisoCtx.value)]
+    .map(([coordenador, lista]) => ({
+      coordenador,
+      itens: lista,
+      temTelefone: !!contatoDe(coordenador, avisoCtx.value)?.telefone,
+    }))
+    .sort((a, b) => b.itens.length - a.itens.length),
+);
+
+function avisarGrupo(coordenador: string) {
+  const g = gruposSemAviso.value.find((x) => x.coordenador === coordenador);
+  if (!g) return;
+  resumoDialog.value = false;
+  abrirAviso(g.itens, coordenador || null);
+}
+
+function aoAvisar(rows: AvisoRow[]) {
+  const novo = { ...avisos.value };
+  for (const r of rows) novo[r.submission_id] = r;
+  avisos.value = novo;
+}
+
+function aoSalvarContato(c: ContatoCoord) {
+  const outros = avisoCtx.value.contatos.filter((x) => x.nome !== c.nome);
+  avisoCtx.value = { ...avisoCtx.value, contatos: [...outros, c].sort((a, b) => a.nome.localeCompare(b.nome)) };
 }
 
 // ── Dialog editar ─────────────────────────────────────────────────────────────
@@ -1058,6 +1175,14 @@ $inactive-text: #475569;
   &--reprovado { background: #fef2f2; color: #991b1b; border: 1px solid rgba(220,38,38,.2); }
   &--pendente  { background: #fffbeb; color: #92400e; border: 1px solid rgba(217,119,6,.2); }
 }
+
+.aviso-linha {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; margin-top: 8px; padding: 6px 10px; border-radius: 8px;
+  &--ok   { background: #f0fdf4; color: #15803d; }
+  &--pend { background: #fffbeb; color: #92400e; }
+}
+.btn-zap { background: #128c4a; color: #fff; &:hover { background: #0f7a40; } }
 
 .analise-item__actions { display: flex; align-items: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid $border; flex-wrap: wrap; gap: 6px; }
 
