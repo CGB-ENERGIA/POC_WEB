@@ -256,6 +256,7 @@ import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN, fmtPct } from "@/composables/useChecklistData";
 import {
   fetchNaoConformesPorMes, semanaDaSub, foldName, fetchHierarquiaEquipes, hierarquiaDaEquipe,
+  contagemItens,
   type NcPorMesOpts, type EquipeHier,
 } from "@/lib/dashboard";
 import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
@@ -554,10 +555,19 @@ function respsOf(subs: typeof submissions.value, omitPergunta = false) {
 const filteredResps = computed(() => respsOf(filteredSubs.value));
 const respsNoPergunta = computed(() => respsOf(filteredSubs.value, true));
 
-const totalConformes    = computed(() => filteredResps.value.filter(r => r.resposta === "conforme").length);
-const totalNaoConformes = computed(() => filteredResps.value.filter(r => r.resposta === "nao_conforme").length);
+// Item a item nas perguntas de vários itens (Regras de Ouro), como no BI.
+const totaisItens = computed(() => {
+  let conf = 0, nc = 0;
+  for (const r of filteredResps.value) {
+    const c = contagemItens(r);
+    conf += c.conf; nc += c.nc;
+  }
+  return { conf, nc };
+});
+const totalConformes    = computed(() => totaisItens.value.conf);
+const totalNaoConformes = computed(() => totaisItens.value.nc);
 const conformidadeIndex = computed(() => {
-  const t = filteredResps.value.length;
+  const t = totalConformes.value + totalNaoConformes.value;
   return t ? totalConformes.value / t : 0;
 });
 const basesCovertas = computed(() => new Set(filteredSubs.value.map(baseDaSub)).size);

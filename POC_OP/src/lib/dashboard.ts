@@ -208,6 +208,25 @@ export interface SubmissionRow {
   resumo: { total: number; conformes: number; naoConformes: number; dataFoto?: string };
 }
 
+/** Perguntas com vários itens que o BI conta um a um (Regras de Ouro: 6 itens). */
+const PERGUNTAS_COM_ITENS = new Set(["goman-012", "gstc-021"]);
+const ITENS_REGRAS_DE_OURO = 6;
+
+/**
+ * Conformes e não conformes de uma resposta, contando item a item nas perguntas de vários itens (como o BI):
+ * "Cumpriu todas as regras de ouro" vale 6 conformes quando conforme, e 5 conformes + 1 não conforme quando não conforme.
+ */
+export function contagemItens(r: { pergunta_id: string; resposta: string; itens?: { conforme: boolean }[] | null }): { conf: number; nc: number } {
+  if (PERGUNTAS_COM_ITENS.has(r.pergunta_id)) {
+    if (r.itens?.length) {
+      const conf = r.itens.filter((i) => i.conforme).length;
+      return { conf, nc: r.itens.length - conf };
+    }
+    return r.resposta === "conforme" ? { conf: ITENS_REGRAS_DE_OURO, nc: 0 } : { conf: ITENS_REGRAS_DE_OURO - 1, nc: 1 };
+  }
+  return r.resposta === "conforme" ? { conf: 1, nc: 0 } : { conf: 0, nc: 1 };
+}
+
 export interface ResponseRow {
   submission_id: string;
   pergunta_id: string;
