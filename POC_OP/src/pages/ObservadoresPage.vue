@@ -330,7 +330,7 @@ import { GridComponent, TooltipComponent, LegendComponent } from "echarts/compon
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDaSub, indexEmployees, matchSubmissionToEmployee, filterByCoordenador } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDaSub, indexEmployees, matchSubmissionToEmployee, filterByCoordenador, contagemItens } from "@/lib/dashboard";
 import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
 
 use([CanvasRenderer, BarChart, PieChart, GridComponent, TooltipComponent, LegendComponent]);
@@ -544,8 +544,10 @@ const rawRows = computed<ObsRow[]>(() => {
   for (const r of tableResps) {
     const sub = subPorId.get(r.submission_id);
     if (!sub || !byMat[sub.matricula]) continue;
-    if (r.resposta === "conforme") byMat[sub.matricula].conf++;
-    else if (r.resposta === "nao_conforme") byMat[sub.matricula].inc++;
+    // Item a item nas perguntas de vários itens (Regras de Ouro), como no BI.
+    const c = contagemItens(r);
+    byMat[sub.matricula].conf += c.conf;
+    byMat[sub.matricula].inc += c.nc;
   }
   return Object.values(byMat);
 });
@@ -572,8 +574,16 @@ const ncSubIds = computed(() =>
   new Set(filteredResps.value.filter((r) => r.resposta === "nao_conforme").map((r) => r.submission_id)),
 );
 const totalObs    = computed(() => filteredSubs.value.length);
-const totalConf   = computed(() => filteredResps.value.filter((r) => r.resposta === "conforme").length);
-const totalInc    = computed(() => filteredResps.value.filter((r) => r.resposta === "nao_conforme").length);
+const totaisItens = computed(() => {
+  let conf = 0, nc = 0;
+  for (const r of filteredResps.value) {
+    const c = contagemItens(r);
+    conf += c.conf; nc += c.nc;
+  }
+  return { conf, nc };
+});
+const totalConf   = computed(() => totaisItens.value.conf);
+const totalInc    = computed(() => totaisItens.value.nc);
 const totalObs100 = computed(() => filteredSubs.value.filter((s) => !ncSubIds.value.has(s.id)).length);
 const obsDesvio   = computed(() => totalObs.value - totalObs100.value);
 const globalPct   = computed(() => {
