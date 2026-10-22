@@ -116,7 +116,11 @@
       <div class="kpi-sticky">
       <div class="row q-col-gutter-sm q-mb-none">
         <div class="col-6 col-md-3">
-          <q-card flat bordered class="kpi-card kpi-stat-card">
+          <q-card
+            flat bordered class="kpi-card kpi-stat-card kpi-card--click" :class="{ 'kpi-card--on': viz.status === 'pendente' }"
+            tabindex="0" role="button" title="Filtrar os não resolvidos (clique de novo para limpar)"
+            @click="toggleStatus('pendente')" @keydown.enter.prevent="toggleStatus('pendente')"
+          >
             <div class="kpi-stat-accent" style="background:#dc2626" />
             <q-card-section class="q-pa-md kpi-stat-section">
               <div class="kpi-stat-icon-wrap" style="background:rgba(220,38,38,.1)">
@@ -129,7 +133,11 @@
           </q-card>
         </div>
         <div class="col-6 col-md-3">
-          <q-card flat bordered class="kpi-card kpi-stat-card">
+          <q-card
+            flat bordered class="kpi-card kpi-stat-card kpi-card--click" :class="{ 'kpi-card--on': viz.status === 'resolvido' }"
+            tabindex="0" role="button" title="Filtrar os resolvidos (clique de novo para limpar)"
+            @click="toggleStatus('resolvido')" @keydown.enter.prevent="toggleStatus('resolvido')"
+          >
             <div class="kpi-stat-accent" style="background:#16a34a" />
             <q-card-section class="q-pa-md kpi-stat-section">
               <div class="kpi-stat-icon-wrap" style="background:rgba(22,163,74,.1)">
@@ -142,7 +150,11 @@
           </q-card>
         </div>
         <div class="col-12 col-md-6">
-          <q-card flat bordered class="kpi-card kpi-progress-card">
+          <q-card
+            flat bordered class="kpi-card kpi-progress-card kpi-card--click"
+            tabindex="0" role="button" title="Mostrar todas as inconformidades (limpa o filtro de status)"
+            @click="viz.status = null" @keydown.enter.prevent="viz.status = null"
+          >
             <q-card-section class="q-pa-md">
               <div class="kpi-prog-label">Taxa de Resolução</div>
               <div class="kpi-prog-value">{{ taxaResolucao }}%</div>
@@ -810,14 +822,13 @@ function toggleExpand(id: string) { expanded[id] = !expanded[id]; }
 function isExpanded(id: string) { return !!expanded[id]; }
 
 // ─── Filtrado ─────────────────────────────────────────────────────────────────
-const filteredData = computed<SubRow[]>(() => {
+// Tudo menos o filtro de status: os cartões (Não resolvidos, Resolvidos, Taxa) contam sobre isto e funcionam como filtro.
+const dadosSemStatus = computed<SubRow[]>(() => {
   let data = allData.value;
   const base = selectedBase.value;
   if (base) data = data.filter((s) => s.base === base);
   if (viz.observador) data = data.filter((s) => s.observador === viz.observador);
   if (viz.equipe) data = data.filter((s) => s.equipe === viz.equipe);
-  if (viz.status === "pendente") data = data.filter((s) => s.naoResolvidos > 0);
-  if (viz.status === "resolvido") data = data.filter((s) => s.naoResolvidos === 0);
   if (viz.cat) data = data.filter((s) => s.ncs.some((nc) => nc.categoria === viz.cat));
 
   const q = search.value.toLowerCase();
@@ -829,6 +840,13 @@ const filteredData = computed<SubRow[]>(() => {
       `${nc.categoria} ${nc.inconformidade} ${nc.pergunta} ${nc.responsavel ?? ""}`.toLowerCase().includes(q)
     );
   });
+});
+
+// Pendentes: checklists com alguma não conformidade ainda não resolvida. Resolvidos: checklists com alguma já resolvida.
+const filteredData = computed<SubRow[]>(() => {
+  if (viz.status === "pendente") return dadosSemStatus.value.filter((s) => s.naoResolvidos > 0);
+  if (viz.status === "resolvido") return dadosSemStatus.value.filter((s) => s.totalNc - s.naoResolvidos > 0);
+  return dadosSemStatus.value;
 });
 
 // ─── Histórico de resoluções ──────────────────────────────────────────────────
@@ -846,13 +864,13 @@ const historicoResolvidos = computed(() => {
 
 // ─── KPIs ─────────────────────────────────────────────────────────────────────
 const naoResolvidos = computed(() =>
-  filteredData.value.reduce((acc, s) => acc + s.naoResolvidos, 0)
+  dadosSemStatus.value.reduce((acc, s) => acc + s.naoResolvidos, 0)
 );
 const resolvidos = computed(() =>
-  filteredData.value.reduce((acc, s) => acc + (s.totalNc - s.naoResolvidos), 0)
+  dadosSemStatus.value.reduce((acc, s) => acc + (s.totalNc - s.naoResolvidos), 0)
 );
 const totalInc = computed(() =>
-  filteredData.value.reduce((acc, s) => acc + s.totalNc, 0)
+  dadosSemStatus.value.reduce((acc, s) => acc + s.totalNc, 0)
 );
 const taxaResolucao = computed(() =>
   totalInc.value === 0 ? 0 : Math.round((resolvidos.value / totalInc.value) * 100)
@@ -1068,6 +1086,10 @@ $header-bg:    #fce4e8;
   &:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); }
 }
 .kpi-stat-card { position: relative; overflow: hidden; }
+.kpi-card--click { cursor: pointer; transition: box-shadow .15s, transform .1s; }
+.kpi-card--click:hover { box-shadow: 0 6px 18px rgba(0, 0, 0, .18); }
+.kpi-card--click:active { transform: scale(.99); }
+.kpi-card--on { outline: 2px solid #8B1C2B; outline-offset: -2px; }
 .kpi-stat-accent {
   position: absolute; top: 0; left: 0; right: 0;
   height: 3px; border-radius: 12px 12px 0 0;
