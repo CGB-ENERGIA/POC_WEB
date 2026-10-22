@@ -34,11 +34,22 @@
           <q-item-section class="text-grey-6 text-center q-py-md">Todas as reprovações já têm aviso.</q-item-section>
         </q-item>
       </q-list>
+
+      <q-card-actions v-if="prontos > 1" class="pend__rodape">
+        <div class="text-caption text-grey-7">
+          Abre o WhatsApp de um coordenador por vez; você só confirma o envio em cada um.
+        </div>
+        <q-btn
+          unelevated no-caps class="pend__btn pend__btn--todos" icon="mdi-whatsapp-outline"
+          :label="`Avisar todos (${prontos})`" @click="emit('todos')"
+        />
+      </q-card-actions>
     </q-card>
   </q-dialog>
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import { iniciais, type ItemAviso } from "@/lib/aviso-coordenador";
 
 export interface GrupoAviso {
@@ -47,11 +58,15 @@ export interface GrupoAviso {
   temTelefone: boolean;
 }
 
-defineProps<{ modelValue: boolean; grupos: GrupoAviso[] }>();
+const props = defineProps<{ modelValue: boolean; grupos: GrupoAviso[] }>();
 const emit = defineEmits<{
   (e: "update:modelValue", v: boolean): void;
   (e: "avisar", coordenador: string): void;
+  (e: "todos"): void;
 }>();
+
+/** Coordenadores identificados e com telefone: os que entram na fila de avisos em sequência. */
+const prontos = computed(() => props.grupos.filter((g) => g.coordenador && g.temTelefone).length);
 
 function observadores(g: GrupoAviso): string {
   const nomes = [...new Set(g.itens.map((i) => i.item.observador))];
@@ -75,6 +90,15 @@ function observadores(g: GrupoAviso): string {
   overflow: auto;
   padding-bottom: 8px;
 }
+.pend__rodape {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px 16px;
+  border-top: 1px solid #e2e8f0;
+}
+.pend__btn--todos { padding: 6px 16px; flex-shrink: 0; }
 .pend__btn {
   background: #128c4a;
   color: #fff;

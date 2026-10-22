@@ -533,10 +533,13 @@
       :itens="avisoDialog.itens"
       :ctx="avisoCtx"
       :enviado-por="nomeAnalista()"
+      :progresso="fila.total ? `${fila.atual} de ${fila.total}` : ''"
+      @cancelar="encerrarFila"
       @avisado="aoAvisar"
+      @pular="proximoDaFila"
       @contato-salvo="aoSalvarContato"
     />
-    <AvisosPendentesDialog v-model="resumoDialog" :grupos="gruposSemAviso" @avisar="avisarGrupo" />
+    <AvisosPendentesDialog v-model="resumoDialog" :grupos="gruposSemAviso" @avisar="avisarGrupo" @todos="avisarTodos" />
   </div>
 
 </template>
@@ -880,13 +883,48 @@ function avisarGrupo(coordenador: string) {
   const g = gruposSemAviso.value.find((x) => x.coordenador === coordenador);
   if (!g) return;
   resumoDialog.value = false;
+  fila.restantes = [];
+  fila.total = 0;
   abrirAviso(g.itens, coordenador || null);
+}
+
+// Fila de avisos em sequência: abre um coordenador por vez (o analista confirma o envio no WhatsApp de cada um).
+// Fechar no X encerra a fila; "Pular" segue para o próximo.
+const fila = reactive({ restantes: [] as string[], total: 0, atual: 0 });
+
+function avisarTodos() {
+  const nomes = gruposSemAviso.value.filter((g) => g.coordenador && g.temTelefone).map((g) => g.coordenador);
+  if (!nomes.length) return;
+  resumoDialog.value = false;
+  fila.restantes = nomes;
+  fila.total = nomes.length;
+  fila.atual = 0;
+  proximoDaFila();
+}
+
+function proximoDaFila() {
+  while (fila.restantes.length) {
+    const nome = fila.restantes.shift()!;
+    const g = gruposSemAviso.value.find((x) => x.coordenador === nome);
+    if (!g) continue;
+    fila.atual = fila.total - fila.restantes.length;
+    // espera a animação de fechar do diálogo anterior (~300 ms) antes de reabrir com o próximo
+    setTimeout(() => abrirAviso(g.itens, nome), 450);
+    return;
+  }
+  fila.total = 0;
+}
+
+function encerrarFila() {
+  fila.restantes = [];
+  fila.total = 0;
 }
 
 function aoAvisar(rows: AvisoRow[]) {
   const novo = { ...avisos.value };
   for (const r of rows) novo[r.submission_id] = r;
   avisos.value = novo;
+  if (fila.total) proximoDaFila();
 }
 
 function aoSalvarContato(c: ContatoCoord) {

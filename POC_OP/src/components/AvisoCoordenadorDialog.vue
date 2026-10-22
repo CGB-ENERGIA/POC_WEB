@@ -5,7 +5,9 @@
         <div class="aviso__titulo">
           <q-icon name="mdi-bell-ring-outline" size="22px" color="primary" />
           <div>
-            <div class="text-subtitle1 text-weight-bold">Avisar coordenador</div>
+            <div class="text-subtitle1 text-weight-bold">
+              Avisar coordenador<span v-if="progresso" class="text-grey-7 text-weight-regular"> · {{ progresso }}</span>
+            </div>
             <div class="text-caption text-grey-7">{{ subtitulo }}</div>
           </div>
         </div>
@@ -66,7 +68,7 @@
       </q-card-section>
 
       <q-card-actions class="aviso__acoes">
-        <q-btn flat no-caps color="grey-8" label="Agora não" v-close-popup />
+        <q-btn flat no-caps color="grey-8" :label="progresso ? 'Pular' : 'Agora não'" v-close-popup @click="pular" />
         <q-space />
         <q-btn outline no-caps color="grey-8" icon="mdi-content-copy" label="Copiar" :disable="!mensagem" @click="copiar" />
         <q-btn
@@ -94,8 +96,12 @@ const props = defineProps<{
   itens: ItemAviso[];
   ctx: AvisoCtx;
   enviadoPor: string;
+  /** Posição na fila de avisos em sequência (ex.: "2 de 4"); vazio no aviso avulso. */
+  progresso?: string;
 }>();
 const emit = defineEmits<{
+  (e: "pular"): void;
+  (e: "cancelar"): void;
   (e: "update:modelValue", v: boolean): void;
   (e: "avisado", rows: AvisoRow[]): void;
   (e: "contato-salvo", c: ContatoCoord): void;
@@ -135,11 +141,15 @@ watch(() => [props.modelValue, nome.value, props.itens], () => {
   if (props.modelValue) gerarMensagem();
 }, { immediate: true });
 watch(() => props.modelValue, (aberto) => {
-  if (aberto) { escolhido.value = null; telefoneNovo.value = ""; erroTel.value = ""; }
+  if (aberto) { escolhido.value = null; telefoneNovo.value = ""; erroTel.value = ""; seguiu = false; }
 });
 
+/** Fechou sem avisar nem pular (X, Esc ou clique fora): quem controla a fila encerra a sequência. */
+let seguiu = false;
 function aoFechar() {
   enviando.value = false;
+  if (!seguiu) emit("cancelar");
+  seguiu = false;
 }
 
 async function salvarNovoTelefone() {
@@ -160,6 +170,11 @@ async function salvarNovoTelefone() {
   }
 }
 
+function pular() {
+  seguiu = true;
+  emit("pular");
+}
+
 async function copiar() {
   try {
     await navigator.clipboard.writeText(mensagem.value);
@@ -177,6 +192,7 @@ async function abrirWhatsapp() {
   enviando.value = true;
   try {
     const rows = await registrarAvisos(incluidos.value, nome.value, props.enviadoPor);
+    seguiu = true;
     emit("avisado", rows);
     $q.notify({
       type: "positive", position: "top", timeout: 3500,
