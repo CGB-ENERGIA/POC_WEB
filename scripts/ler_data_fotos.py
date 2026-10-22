@@ -47,10 +47,13 @@ def ler_carimbo(base, chave):
     except Exception:
         return None
     w, hh = im.size
-    # fotos horizontais têm a faixa do carimbo mais acima que as verticais: lê o terço inferior
-    res, _ = motor()(np.array(im.crop((0, int(hh * 0.60), w, hh))))
-    texto = " | ".join(r[1] for r in (res or []))
-    m = RE_CARIMBO.search(texto)
+    m = None
+    # fotos horizontais têm a faixa do carimbo mais acima que as verticais: tenta o terço inferior e, se não achar, a imagem toda
+    for corte in (0.60, 0.0):
+        res, _ = motor()(np.array(im.crop((0, int(hh * corte), w, hh))))
+        m = RE_CARIMBO.search(" | ".join(r[1] for r in (res or [])))
+        if m:
+            break
     if not m:
         return None
     d, mo, a, hh_, mi, se = (int(x) for x in m.groups())
@@ -126,7 +129,10 @@ def main():
                 json.dump(resultado, open(args.saida, "w"), ensure_ascii=False)
     json.dump(resultado, open(args.saida, "w"), ensure_ascii=False)
     lidos = sum(1 for v in resultado.values() if v and not str(v).startswith("erro"))
-    print(f"pronto: {lidos} com data lida de {len(alvo)}", flush=True)
+    sem = [k for k, v in resultado.items() if not v or str(v).startswith("erro")]
+    print(f"pronto: {lidos} com data lida de {len(alvo)} | SEM leitura: {len(sem)} ({len(sem) * 100 // max(len(alvo), 1)}%)", flush=True)
+    if sem:
+        print("ATENÇÃO: não considere concluído enquanto houver checklists sem leitura; confira uma amostra e refaça com --so-nao-lidas", flush=True)
 
 
 if __name__ == "__main__":
