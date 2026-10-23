@@ -354,7 +354,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, fetchIcitPorPrefixo, type IcitPrefixo, filterByCoordenador, foldName, allPages, indexEmployees, matchSubmissionToEmployee } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, fetchIcitPorPrefixo, type IcitPrefixo, filterByCoordenador, foldName, allPages, indexEmployees, matchSubmissionToEmployee, chaveEquipe } from "@/lib/dashboard";
 import { supabase } from "@/lib/supabase";
 import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
 
@@ -496,7 +496,7 @@ async function carregarEquipesHier() {
     for (const r of rows) {
       const p = (r.prefixo ?? "").trim();
       if (!p) continue;
-      m.set(p, {
+      m.set(p.toUpperCase(), {
         base: (r.base ?? "").trim().toUpperCase(),
         gerencia: r.gerencia ?? "",
         coordenador: r.coordenador ?? "",
@@ -563,9 +563,9 @@ function matchTipoPoc(auditagem: string | undefined) {
   return allowed.includes((auditagem ?? "").toUpperCase());
 }
 
+/** Chave da equipe (maiúsculas, sem complemento): "MA-Bmj-E001M" e "MA-BMJ-E001M" contam como uma só. */
 function extractPrefixo(equipe: string | undefined): string {
-  if (!equipe) return "";
-  return (equipe.split(" - ")[0] ?? "").trim();
+  return chaveEquipe(equipe);
 }
 
 function togglePrefixo(code: string) {
@@ -680,7 +680,8 @@ function applySlice(
     s = s.filter((sub) => sub.observador === filters.observador);
   }
   if (!omit.prefixo && filters.prefixo !== "Todos") {
-    s = s.filter((sub) => extractPrefixo(sub.equipe) === filters.prefixo);
+    const alvo = chaveEquipe(filters.prefixo);
+    s = s.filter((sub) => extractPrefixo(sub.equipe) === alvo);
   }
   if (filters.funcoesExcluidas.length) {
     s = s.filter((sub) => !filters.funcoesExcluidas.includes(funcaoDoObservador(sub)));

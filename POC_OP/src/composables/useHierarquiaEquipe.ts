@@ -3,17 +3,12 @@ import {
   fetchHierarquiaEquipes,
   hierarquiaDaEquipe,
   foldName,
+  chaveEquipe,
   type EmployeeRow,
   type EquipeHier,
 } from "@/lib/dashboard";
 
-/**
- * Chave única de uma equipe: sem diferença de maiúsculas/minúsculas e sem o complemento depois do prefixo
- * ("MA-Pds-e002m" e "MA-PDS-E002M" são a mesma equipe; "ALOJ64 – BACABAL" é "ALOJ64").
- */
-export function chaveEquipe(equipe: string | null | undefined): string {
-  return ((equipe ?? "").split(/\s+[–-]\s+/)[0] ?? "").trim().toUpperCase();
-}
+export { chaveEquipe };
 
 type SubEquipe = { auditagem?: string | null; equipe?: string | null; base?: string | null };
 

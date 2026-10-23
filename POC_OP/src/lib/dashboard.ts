@@ -103,6 +103,14 @@ export function normMatricula(m: string | undefined | null): string {
   return t.replace(/^0+/, "") || "0";
 }
 
+/**
+ * Chave única de uma equipe: sem diferença de maiúsculas/minúsculas e sem o complemento depois do prefixo
+ * ("MA-Bmj-E001M" e "MA-BMJ-E001M" são a mesma equipe; "ALOJ64 – BACABAL" é "ALOJ64").
+ */
+export function chaveEquipe(equipe: string | null | undefined): string {
+  return ((equipe ?? "").split(/\s+[–-]\s+/)[0] ?? "").trim().toUpperCase();
+}
+
 export function foldName(s: string | undefined | null): string {
   return (s ?? "")
     .normalize("NFD")
@@ -609,9 +617,10 @@ export async function fetchIcitPorPrefixo(startIso: string, endIso: string, base
   for (const r of lotes.flat()) ncSubIds.add(r.submission_id);
 
   for (const s of subs) {
-    if (!s.equipe) continue;
-    if (!map.has(s.equipe)) map.set(s.equipe, { visitas: 0, semNc: 0 });
-    const entry = map.get(s.equipe)!;
+    const chave = chaveEquipe(s.equipe);
+    if (!chave) continue;
+    if (!map.has(chave)) map.set(chave, { visitas: 0, semNc: 0 });
+    const entry = map.get(chave)!;
     entry.visitas++;
     if (!ncSubIds.has(s.id)) entry.semNc++;
   }
