@@ -121,6 +121,33 @@
               {{ freqDe(item).mes }}× mês
             </span>
 
+            <button
+              type="button" class="sem-badge" :class="semanaManual(item) && 'sem-badge--manual'"
+              :title="semanaManual(item) ? 'Semana direcionada por quem validou. Clique para alterar.' : 'Semana pela data da foto. Clique para direcionar.'"
+            >
+              <q-icon name="mdi-calendar-week" size="12px" />
+              Semana {{ semanaDoItem(item) }}ª<template v-if="semanaManual(item)"> · direcionada</template>
+              <q-menu anchor="bottom left" self="top left" auto-close>
+                <q-list dense style="min-width:230px">
+                  <q-item-label header class="text-weight-bold">Direcionar para a semana</q-item-label>
+                  <q-item
+                    v-for="o in opcoesSemana(item)" :key="o.n" clickable :active="o.atual" active-class="text-primary"
+                    @click="direcionar(item, o.n)"
+                  >
+                    <q-item-section avatar style="min-width:28px"><q-icon :name="o.atual ? 'mdi-check' : ''" size="16px" /></q-item-section>
+                    <q-item-section>{{ o.label }}</q-item-section>
+                  </q-item>
+                  <template v-if="semanaManual(item)">
+                    <q-separator />
+                    <q-item clickable @click="direcionar(item, null)">
+                      <q-item-section avatar style="min-width:28px"><q-icon name="mdi-restore" size="16px" /></q-item-section>
+                      <q-item-section>Voltar ao automático (pela data)</q-item-section>
+                    </q-item>
+                  </template>
+                </q-list>
+              </q-menu>
+            </button>
+
             <span
               v-if="faltamEvidencias(item) > 0"
               class="ev-badge"
@@ -312,12 +339,26 @@
         <!-- Ações -->
         <div class="analise-item__actions">
           <template v-if="item.status === 'pendente'">
-            <q-btn
-              unelevated color="positive" icon="mdi-check" label="Aprovar"
+            <q-btn-dropdown
+              split unelevated color="positive" icon="mdi-check" label="Aprovar"
               size="sm" class="q-mr-sm"
-              :loading="loadingId === item.id"
+              :loading="loadingId === item.id" :disable="loadingId !== null && loadingId !== item.id"
               @click="abrirAcao(item, 'aprovado')"
-            />
+            >
+              <q-list dense style="min-width:250px">
+                <q-item-label header class="text-weight-bold">Aprovar e direcionar para a semana</q-item-label>
+                <q-item
+                  v-for="o in opcoesSemana(item)" :key="o.n" clickable v-close-popup :active="o.atual" active-class="text-primary"
+                  @click="aprovarNaSemana(item, o.n)"
+                >
+                  <q-item-section avatar style="min-width:28px"><q-icon :name="o.atual ? 'mdi-check' : ''" size="16px" /></q-item-section>
+                  <q-item-section>
+                    {{ o.label }}
+                    <q-item-label v-if="o.atual" caption>{{ semanaManual(item) ? "direcionada" : "pela data da foto" }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-btn-dropdown>
             <q-btn
               unelevated color="negative" icon="mdi-close" label="Reprovar"
               size="sm" class="q-mr-sm"
@@ -557,6 +598,9 @@ import {
   fetchFotosChecklist,
   fetchContagemEvidencias,
   evidenciasExigidas,
+  direcionarSemanaChecklist,
+  semanaDaSub,
+  dataReferencia,
   type ChecklistParaAnalise,
   type ResponseRow,
   type FotoChecklistRow,
@@ -564,6 +608,7 @@ import {
 } from "@/lib/dashboard";
 import { carregarColaboradores, sugerirColaboradores, type ColaboradorSugestao } from "@/lib/colaboradores-geral";
 import { useAuth } from "@/composables/useAuth";
+import { rotuloSemana } from "@/lib/semanas";
 import AvisoCoordenadorDialog from "@/components/AvisoCoordenadorDialog.vue";
 import AvisosPendentesDialog from "@/components/AvisosPendentesDialog.vue";
 import {
@@ -824,6 +869,64 @@ async function confirmarReprovacao() {
     acaoDialog.error = (e as Error).message;
   } finally {
     acaoDialog.saving = false;
+  }
+}
+
+// ── Direcionar a observação para uma semana ───────────────────────────────────
+// Por padrão a semana vem da data da foto; quem valida pode direcionar para outra semana do mês (resumo.semanaManual).
+const MESES_CURTO = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+function semanaManual(item: ChecklistParaAnalise): boolean {
+  return !!(item.resumo as { semanaManual?: unknown } | null)?.semanaManual;
+}
+function semanaDoItem(item: ChecklistParaAnalise): 1 | 2 | 3 | 4 {
+  return semanaDaSub(item);
+}
+function opcoesSemana(item: ChecklistParaAnalise): { n: 1 | 2 | 3 | 4; label: string; atual: boolean }[] {
+  const m = /^(\d{4})-(\d{2})/.exec(dataReferencia(item));
+  const ano = m ? Number(m[1]) : new Date().getFullYear();
+  const mes = m ? Number(m[2]) : new Date().getMonth() + 1;
+  const atual = semanaDoItem(item);
+  return ([1, 2, 3, 4] as const).map((n) => ({ n, label: `${rotuloSemana(ano, mes, n)} · ${MESES_CURTO[mes - 1] ?? ""}`, atual: n === atual }));
+}
+
+/** Grava a semana escolhida (null = volta ao automático) e atualiza o cartão. Devolve o checklist atualizado. */
+async function gravarSemana(item: ChecklistParaAnalise, semana: 1 | 2 | 3 | 4 | null): Promise<ChecklistParaAnalise> {
+  const atualizado = await direcionarSemanaChecklist(item.id, item.resumo as unknown as Record<string, unknown>, semana);
+  const idx = itens.value.findIndex((i) => i.id === atualizado.id);
+  if (idx >= 0) itens.value[idx] = { ...itens.value[idx], ...atualizado };
+  return idx >= 0 ? itens.value[idx]! : atualizado;
+}
+
+async function direcionar(item: ChecklistParaAnalise, semana: 1 | 2 | 3 | 4 | null) {
+  loadingId.value = item.id;
+  try {
+    await gravarSemana(item, semana);
+    $q.notify({
+      type: "positive", position: "top", timeout: 2500,
+      message: semana === null ? "Semana voltou ao automático (pela data da foto)." : `Observação direcionada para a ${semana}ª semana.`,
+    });
+  } catch (e) {
+    $q.notify({ type: "negative", message: `Erro: ${(e as Error).message}`, position: "top", timeout: 6000 });
+  } finally {
+    loadingId.value = null;
+  }
+}
+
+/** Aprova e já direciona para a semana escolhida. Se a aprovação falhar depois de gravar a semana, a semana fica salva. */
+async function aprovarNaSemana(item: ChecklistParaAnalise, semana: 1 | 2 | 3 | 4) {
+  if (faltamEvidencias(item) > 0) { void abrirAcao(item, "aprovado"); return; } // mesmo bloqueio da aprovação direta
+  loadingId.value = item.id;
+  try {
+    const comSemana = semana === semanaDoItem(item) && !semanaManual(item) ? item : await gravarSemana(item, semana);
+    const updated = await atualizarStatusChecklist(comSemana.id, "aprovado", nomeAnalista(), undefined);
+    const idx = itens.value.findIndex((i) => i.id === updated.id);
+    if (idx >= 0) itens.value[idx] = { ...itens.value[idx], ...updated };
+    $q.notify({ type: "positive", message: `Checklist aprovado e direcionado para a ${semana}ª semana.`, position: "top", timeout: 3000 });
+  } catch (e) {
+    $q.notify({ type: "negative", message: `Erro: ${(e as Error).message}`, position: "top", timeout: 6000 });
+  } finally {
+    loadingId.value = null;
   }
 }
 
@@ -1184,6 +1287,13 @@ $inactive-text: #475569;
   flex-wrap: wrap; gap: 6px; margin-bottom: 10px;
 }
 .analise-item__meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.sem-badge {
+  display: inline-flex; align-items: center; gap: 4px; cursor: pointer;
+  padding: 2px 8px; border-radius: 999px; border: 1px solid #e2e8f0; background: #fff;
+  font-size: 11px; font-weight: 700; color: #475569; white-space: nowrap;
+  &:hover { border-color: #94a3b8; }
+  &--manual { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+}
 .ev-badge {
   display: inline-flex; align-items: center;
   font-size: 11px; font-weight: 700;

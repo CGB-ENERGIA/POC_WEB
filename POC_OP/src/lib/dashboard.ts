@@ -70,8 +70,13 @@ export function dataReferencia(sub: { data: string; resumo?: { dataFoto?: string
   return sub.data;
 }
 
-/** Semana (1–4) do checklist, pela data de referência (a da foto, quando houver). */
-export function semanaDaSub(sub: { data: string; resumo?: { dataFoto?: string } | null }): 1 | 2 | 3 | 4 {
+/**
+ * Semana (1–4) do checklist. Vale primeiro a semana que o analista direcionou ao validar (resumo.semanaManual);
+ * sem ela, a da data de referência (a da foto, quando houver).
+ */
+export function semanaDaSub(sub: { data: string; resumo?: { dataFoto?: string; semanaManual?: number } | null }): 1 | 2 | 3 | 4 {
+  const m = sub.resumo?.semanaManual;
+  if (m === 1 || m === 2 || m === 3 || m === 4) return m;
   return semanaDaData(dataReferencia(sub));
 }
 
@@ -205,7 +210,7 @@ export interface SubmissionRow {
   base: string;
   equipe: string;
   membros: { nome: string; matricula: string }[];
-  resumo: { total: number; conformes: number; naoConformes: number; dataFoto?: string };
+  resumo: { total: number; conformes: number; naoConformes: number; dataFoto?: string; semanaManual?: number };
 }
 
 /** Perguntas com vários itens que o BI conta um a um (Regras de Ouro: 6 itens). */
@@ -985,6 +990,25 @@ export async function atualizarStatusChecklist(
     }).eq("id", row.client_id);
   }
   return row;
+}
+
+/** Direciona o checklist para uma semana do mês (1–4) ou, com null, devolve ao cálculo automático pela data. */
+export async function direcionarSemanaChecklist(
+  id: string,
+  resumoAtual: Record<string, unknown> | null | undefined,
+  semana: 1 | 2 | 3 | 4 | null,
+): Promise<ChecklistParaAnalise> {
+  const resumo: Record<string, unknown> = { ...(resumoAtual ?? {}) };
+  if (semana === null) delete resumo.semanaManual;
+  else resumo.semanaManual = semana;
+  const { data, error } = await supabase
+    .from("checklist_submissions")
+    .update({ resumo })
+    .eq("id", id)
+    .select(CHECKLIST_ANALISE_FIELDS)
+    .single();
+  if (error) throw error;
+  return data as ChecklistParaAnalise;
 }
 
 export interface EdicaoChecklist {
