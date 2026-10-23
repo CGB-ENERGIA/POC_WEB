@@ -21,11 +21,12 @@
         <!-- Row 1: Mês · Ano · Base · Gerente -->
         <div class="filter-row">
           <div class="fgroup">
-            <span class="fgroup__label">Mês</span>
+            <span class="fgroup__label">Mês (um ou mais)</span>
             <div class="pill-group">
               <button v-for="m in mesesOpts" :key="m"
-                :class="['pill', filters.mes === m && 'pill--active']"
-                @click="filters.mes = m">{{ m }}</button>
+                :class="['pill', filters.meses.includes(m) && 'pill--active']"
+                :title="filters.meses.includes(m) ? 'Clique para tirar este mês' : 'Clique para somar este mês'"
+                @click="alternarMes(m)">{{ m }}</button>
             </div>
           </div>
           <div class="filter-divider" />
@@ -115,6 +116,13 @@
               use-input input-debounce="0" popup-content-class="gerente-popup"
               @filter="(v: string, update: (fn: () => void) => void) => update(() => { buscaObservador = v; })" />
           </div>
+          <div class="fgroup fgroup--gerente">
+            <span class="fgroup__label">Função do observador</span>
+            <q-select v-model="filters.funcao"
+              :clearable="filters.funcao !== 'Todos'" @clear="filters.funcao = 'Todos'" :options="funcoesOpts"
+              dense outlined hide-bottom-space class="gerente-select"
+              popup-content-class="gerente-popup" />
+          </div>
         </div>
 
       </div>
@@ -123,7 +131,7 @@
         <div v-if="hasActiveFilters" class="filter-summary">
           <span class="filter-summary__label">Filtros ativos:</span>
           <span class="filter-chip">{{ filters.ano }}</span>
-          <span class="filter-chip">{{ filters.mes }}</span>
+          <span class="filter-chip">{{ mesesTexto }}</span>
           <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ nomeBase(filters.base) }}</span>
           <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
           <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ filters.gerente }}</span>
@@ -132,6 +140,7 @@
           <span v-if="filters.categoria !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.categoria = 'Todos'">{{ filters.categoria }}</span>
           <span v-if="filters.prefixo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.prefixo = 'Todos'">{{ filters.prefixo }}</span>
           <span v-if="filters.observador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.observador = 'Todos'">{{ filters.observador }}</span>
+          <span v-if="filters.funcao !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.funcao = 'Todos'">{{ filters.funcao }}</span>
           <button class="filter-clear" @click="resetSlice">
             <q-icon name="mdi-close-circle" size="14px" />
             Limpar
@@ -331,7 +340,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, fetchIcitPorPrefixo, type IcitPrefixo, filterByCoordenador, foldName, allPages } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, fetchIcitPorPrefixo, type IcitPrefixo, filterByCoordenador, foldName, allPages, indexEmployees, matchSubmissionToEmployee } from "@/lib/dashboard";
 import { supabase } from "@/lib/supabase";
 import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
 
@@ -366,12 +375,36 @@ const tiposPoc     = ["Todos","Administrativo","Operacional","Alojamento"];
 const curMesLabel = mesesOpts[now.getMonth()] ?? "jan/26";
 
 const filters = reactive({
-  mes: curMesLabel, ano: String(now.getFullYear()), categoria: "Todos",
+  meses: [curMesLabel] as string[], ano: String(now.getFullYear()), categoria: "Todos",
   base: "Todos", prefixo: "Todos", gerencia: "Todos",
-  gerente: "Todos", coordenador: "Todos", observador: "Todos",
+  gerente: "Todos", coordenador: "Todos", observador: "Todos", funcao: "Todos",
   tipoPoc: lerTipoPoc(tiposPoc),
 });
 watch(() => filters.tipoPoc, salvarTipoPoc);
+
+/** Meses escolhidos, como números (1–12) em ordem. Sempre há pelo menos um. */
+const mesesNum = computed(() => {
+  const nums = filters.meses.map((m) => MONTH_MAP[m.slice(0, 3)] ?? 0).filter(Boolean).sort((a, b) => a - b);
+  return nums.length ? nums : [now.getMonth() + 1];
+});
+
+/** Marca/desmarca um mês; o último mês marcado não pode ser desmarcado (o relatório sempre precisa de um período). */
+function alternarMes(m: string) {
+  if (!filters.meses.includes(m)) {
+    filters.meses = [...filters.meses, m].sort((a, b) => (MONTH_MAP[a.slice(0, 3)] ?? 0) - (MONTH_MAP[b.slice(0, 3)] ?? 0));
+  } else if (filters.meses.length > 1) {
+    filters.meses = filters.meses.filter((x) => x !== m);
+  }
+}
+
+/** "out/26", "jan–mar/26" (meses seguidos) ou "jan/26, mar/26". */
+const mesesTexto = computed(() => {
+  const nums = mesesNum.value;
+  const lab = (n: number) => mesesOpts[n - 1] ?? "";
+  if (nums.length === 1) return lab(nums[0]!);
+  const seguidos = nums.every((n, i) => i === 0 || n === nums[i - 1]! + 1);
+  return seguidos ? `${lab(nums[0]!).slice(0, 3)}–${lab(nums[nums.length - 1]!)}` : nums.map(lab).join(", ");
+});
 
 // ─── Altura do grid: ocupa o que sobra da janela (mín. 420px) ────────────────
 const filterBarEl = ref<HTMLElement | null>(null);
@@ -405,18 +438,22 @@ const icitMesAnterior = ref<Map<string, IcitPrefixo>>(new Map());
 const icitAcumulado    = ref<Map<string, IcitPrefixo>>(new Map());
 
 async function recarregar() {
-  const mesNum = MONTH_MAP[filters.mes.slice(0, 3)] ?? (now.getMonth() + 1);
+  const nums = mesesNum.value;
+  const primeiro = nums[0]!;
+  const ultimo = nums[nums.length - 1]!;
   const anoNum = Number(filters.ano);
 
-  await load({ ano: anoNum, mes: mesNum, contarMeta: true });
+  await load(nums.length === 1
+    ? { ano: anoNum, mes: primeiro, contarMeta: true }
+    : { ano: anoNum, meses: nums, contarMeta: true });
 
-  const anteriorMes = mesNum === 1 ? 12 : mesNum - 1;
-  const anteriorAno = mesNum === 1 ? anoNum - 1 : anoNum;
-  const anteriorStart = new Date(anteriorAno, anteriorMes - 1, 1).toISOString();
-  const anteriorEnd   = new Date(anteriorAno, anteriorMes, 1).toISOString();
+  // "Ant.": o mesmo número de meses imediatamente antes do primeiro mês escolhido (com 1 mês, o mês anterior)
+  const anteriorStart = new Date(anoNum, primeiro - 1 - nums.length, 1).toISOString();
+  const anteriorEnd   = new Date(anoNum, primeiro - 1, 1).toISOString();
 
+  // "Acum.": do começo do ano até o fim do último mês escolhido
   const acumuladoStart = new Date(anoNum, 0, 1).toISOString();
-  const acumuladoEnd   = new Date(anoNum, mesNum, 1).toISOString();
+  const acumuladoEnd   = new Date(anoNum, ultimo, 1).toISOString();
 
   [icitMesAnterior.value, icitAcumulado.value] = await Promise.all([
     fetchIcitPorPrefixo(anteriorStart, anteriorEnd),
@@ -424,7 +461,7 @@ async function recarregar() {
   ]);
 }
 onMounted(recarregar);
-watch(() => [filters.ano, filters.mes], recarregar);
+watch(() => [filters.ano, filters.meses.join(",")], recarregar);
 
 // ─── Hierarquia das equipes (prefixo → gerência/coordenador/gerente, do cadastro) ──
 interface EquipeHier { base: string; gerencia: string; coordenador: string; gerente: string }
@@ -547,6 +584,7 @@ function resetSlice() {
   filters.categoria = "Todos";
   filters.prefixo = "Todos";
   filters.observador = "Todos";
+  filters.funcao = "Todos";
 }
 
 const hasActiveFilters = computed(() =>
@@ -557,8 +595,23 @@ const hasActiveFilters = computed(() =>
   || filters.tipoPoc !== "Todos"
   || filters.categoria !== "Todos"
   || filters.prefixo !== "Todos"
-  || filters.observador !== "Todos",
+  || filters.observador !== "Todos"
+  || filters.funcao !== "Todos",
 );
+
+// Função do observador (Encarregado, Supervisor, Fiscal...): vem do cadastro de funcionários, pela matrícula/nome do checklist.
+const indiceFuncionarios = computed(() => indexEmployees(employees.value));
+function funcaoDoObservador(sub: (typeof submissions.value)[number]): string {
+  return (matchSubmissionToEmployee(sub, indiceFuncionarios.value)?.funcao ?? "").trim();
+}
+const funcoesOpts = computed(() => {
+  const nomes = new Set<string>();
+  for (const s of submissions.value) {
+    const f = funcaoDoObservador(s);
+    if (f) nomes.add(f);
+  }
+  return ["Todos", ...[...nomes].sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }))];
+});
 
 function applySlice(
   source: typeof submissions.value,
@@ -585,6 +638,9 @@ function applySlice(
   }
   if (!omit.prefixo && filters.prefixo !== "Todos") {
     s = s.filter((sub) => extractPrefixo(sub.equipe) === filters.prefixo);
+  }
+  if (filters.funcao !== "Todos") {
+    s = s.filter((sub) => funcaoDoObservador(sub) === filters.funcao);
   }
   return s;
 }

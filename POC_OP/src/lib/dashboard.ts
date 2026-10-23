@@ -32,6 +32,8 @@ export function uniqueHierarchyOpts(
 export interface Filters {
   ano: number;
   mes?: number;
+  /** Vários meses de uma vez (ex.: jan, fev e mar); vale no lugar de `mes`. */
+  meses?: number[] | undefined;
   semana?: number;
   base?: string;
   gerencia?: string;
@@ -45,6 +47,21 @@ function mesRange(ano: number, mes: number) {
   const start = new Date(ano, mes - 1, 1).toISOString();
   const end   = new Date(ano, mes, 1).toISOString();
   return { start, end };
+}
+
+/** Meses seguidos viram um só intervalo ISO (início inclusive, fim exclusive). */
+function intervalosDeMeses(ano: number, meses: number[]): { start: string; end: string }[] {
+  const ord = [...new Set(meses)].sort((a, b) => a - b);
+  const out: { ini: number; fim: number }[] = [];
+  for (const m of ord) {
+    const ult = out[out.length - 1];
+    if (ult && ult.fim === m - 1) ult.fim = m;
+    else out.push({ ini: m, fim: m });
+  }
+  return out.map((r) => ({
+    start: new Date(ano, r.ini - 1, 1).toISOString(),
+    end: new Date(ano, r.fim, 1).toISOString(),
+  }));
 }
 
 /** Dia do mês a partir do campo `data`, sem deslocar fuso. */
@@ -328,6 +345,10 @@ function applySubmissionFilters(
   if (usarSemana && f.semana && f.mes) {
     const { start, end } = semanaRange(f.ano, f.mes, f.semana);
     q = q.gte("data", start).lt("data", end);
+  } else if (f.meses?.length) {
+    const faixas = intervalosDeMeses(f.ano, f.meses);
+    if (faixas.length === 1) q = q.gte("data", faixas[0]!.start).lt("data", faixas[0]!.end);
+    else q = q.or(faixas.map((r) => `and(data.gte.${r.start},data.lt.${r.end})`).join(","));
   } else if (f.mes) {
     const { start, end } = mesRange(f.ano, f.mes);
     q = q.gte("data", start).lt("data", end);
