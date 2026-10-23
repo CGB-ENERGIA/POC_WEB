@@ -193,7 +193,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed, watch, onMounted } from "vue";
+import { reactive, ref, shallowRef, computed, watch, onMounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart } from "echarts/charts";
@@ -205,12 +205,70 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, filterByCoordenador, fetchRespostasPorCategoria, type CatAgg } from "@/lib/dashboard";
+import { fetchRespostasPorCategoria, fetchHierarquiaEquipes, hierarquiaDaEquipe, foldName, type CatAgg, type EquipeHier } from "@/lib/dashboard";
 import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
 
 use([CanvasRenderer, BarChart, GridComponent, TooltipComponent, LegendComponent]);
 
-const { loading: loadingBase, error, submissions, employees, load, gerentesOpts, coordenadoresOpts } = useChecklistData();
+const { loading: loadingBase, error, submissions, employees, load, gerentesOpts } = useChecklistData();
+
+// ─── Hierarquia da EQUIPE (coordenador, gerente, gerência, base) ──────────────
+// Coordenador, gerente, gerência e base olham a equipe do checklist (as equipes vinculadas ao coordenador),
+// não o cadastro de quem observou. Mesmo critério do Índice de Conformidade.
+const hierEquipes = shallowRef(new Map<string, EquipeHier>());
+fetchHierarquiaEquipes().then((m) => { hierEquipes.value = m; });
+
+/** Coordenadores que têm equipe vinculada (sem repetir "AFONSO"/"Afonso"). */
+const coordenadoresOpts = computed(() => {
+  const nomes = new Map<string, string>();
+  for (const h of hierEquipes.value.values()) {
+    const nome = h.coordenador.trim();
+    const k = foldName(nome);
+    if (!k) continue;
+    const atual = nomes.get(k);
+    // prefere a grafia que não está toda em maiúsculas
+    if (!atual || (atual === atual.toUpperCase() && nome !== nome.toUpperCase())) nomes.set(k, nome);
+  }
+  return ["Todos", ...[...nomes.values()].sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }))];
+});
+
+/** Gerente de cada coordenador (o mais comum no cadastro), para equipes sem gerente informado. */
+const gerenteDoCoordenador = computed(() => {
+  const cont = new Map<string, Map<string, number>>();
+  for (const e of employees.value) {
+    const c = foldName(e.coordenador ?? "");
+    const g = (e.gerente ?? "").trim();
+    if (!c || !g) continue;
+    const m = cont.get(c) ?? new Map<string, number>();
+    m.set(g, (m.get(g) ?? 0) + 1);
+    cont.set(c, m);
+  }
+  const out = new Map<string, string>();
+  for (const [c, m] of cont) out.set(c, [...m.entries()].sort((a, b) => b[1] - a[1])[0]![0]);
+  return out;
+});
+
+type SubEquipe = { auditagem?: string | null; equipe?: string | null; base?: string | null };
+
+function gerenciaDaSub(sub: SubEquipe): string {
+  return (hierarquiaDaEquipe(hierEquipes.value, sub.equipe ?? "")?.gerencia || sub.auditagem || "").toUpperCase();
+}
+
+function baseDaSub(sub: SubEquipe): string {
+  return (hierarquiaDaEquipe(hierEquipes.value, sub.equipe ?? "")?.base || sub.base || "").toUpperCase();
+}
+
+function passaCoordenadorGerente(sub: SubEquipe): boolean {
+  if (filters.coordenador === "Todos" && filters.gerente === "Todos") return true;
+  const h = hierarquiaDaEquipe(hierEquipes.value, sub.equipe ?? "");
+  const coordDaEquipe = foldName(h?.coordenador ?? "");
+  if (filters.coordenador !== "Todos" && coordDaEquipe !== foldName(filters.coordenador)) return false;
+  if (filters.gerente !== "Todos") {
+    const g = h?.gerente || gerenteDoCoordenador.value.get(coordDaEquipe) || "";
+    if (foldName(g) !== foldName(filters.gerente)) return false;
+  }
+  return true;
+}
 
 // Conformes/não conformes por categoria de cada checklist, calculado no banco (evita baixar todas as respostas do ano).
 const catAgg = ref<CatAgg>({});
@@ -279,7 +337,6 @@ async function recarregar() {
     // Sem "mes": load() busca o ano inteiro, necessário para a quebra mensal do gráfico
     await load({
       ano: Number(filters.ano),
-      base: filters.base === "Todos" ? undefined : filters.base,
       contarMeta: true,
     }, false, false, "nenhuma");
     const agg = await fetchRespostasPorCategoria(submissions.value.map((x) => x.id));
@@ -289,7 +346,7 @@ async function recarregar() {
   }
 }
 onMounted(recarregar);
-watch(() => [filters.ano, filters.base], recarregar);
+watch(() => filters.ano, recarregar);
 
 const viz = reactive({
   mes: null as number | null,
@@ -344,9 +401,16 @@ function applySlice(
   source: typeof submissions.value,
   omit: { gerencia?: boolean; prefixo?: boolean; tipo?: boolean; mes?: boolean } = {},
 ) {
-  let s = filterByGerente(source, employees.value, filters.gerente);
-  s = filterByCoordenador(s, employees.value, filters.coordenador);
-  if (!omit.gerencia) s = filterByGerencia(s, employees.value, filters.gerencia);
+  let s = source;
+  if (filters.coordenador !== "Todos" || filters.gerente !== "Todos") s = s.filter(passaCoordenadorGerente);
+  if (filters.base !== "Todos") {
+    const base = filters.base.toUpperCase();
+    s = s.filter((sub) => baseDaSub(sub) === base);
+  }
+  if (!omit.gerencia && filters.gerencia !== "Todos") {
+    const alvo = filters.gerencia.toUpperCase();
+    s = s.filter((sub) => gerenciaDaSub(sub) === alvo);
+  }
   if (!omit.tipo) s = s.filter((sub) => matchTipoPoc(sub.auditagem));
   if (!omit.prefixo && filters.prefixo !== "Todos") {
     s = s.filter((sub) => sub.equipe === filters.prefixo);
