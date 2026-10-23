@@ -482,15 +482,15 @@ onMounted(recarregar);
 watch(() => [filters.ano, filters.meses.join(",")], recarregar);
 
 // ─── Hierarquia das equipes (prefixo → gerência/coordenador/gerente, do cadastro) ──
-interface EquipeHier { base: string; gerencia: string; coordenador: string; gerente: string }
+interface EquipeHier { base: string; gerencia: string; coordenador: string; gerente: string; criadaEm: string }
 const equipesHier = ref<Map<string, EquipeHier>>(new Map());
 /** Cadastro carregado: base/gerência/coordenador/gerente passam a ser decididos pela equipe. */
 const hierCarregada = computed(() => equipesHier.value.size > 0);
 
 async function carregarEquipesHier() {
   try {
-    const rows = await allPages<{ prefixo: string; base: string | null; gerencia: string | null; coordenador: string | null; gerente: string | null }>(
-      () => supabase.from("pwa_equipes").select("id,prefixo,base,gerencia,coordenador,gerente"),
+    const rows = await allPages<{ prefixo: string; base: string | null; gerencia: string | null; coordenador: string | null; gerente: string | null; criada_em: string | null }>(
+      () => supabase.from("pwa_equipes").select("id,prefixo,base,gerencia,coordenador,gerente,criada_em"),
     );
     const m = new Map<string, EquipeHier>();
     for (const r of rows) {
@@ -501,6 +501,7 @@ async function carregarEquipesHier() {
         gerencia: r.gerencia ?? "",
         coordenador: r.coordenador ?? "",
         gerente: r.gerente ?? "",
+        criadaEm: r.criada_em ?? "",
       });
     }
     equipesHier.value = m;
@@ -849,9 +850,24 @@ const alojamentosDaBase = () =>
     .filter(a => filters.base === "Todos" || a.base === filters.base)
     .map(a => a.prefixo);
 
+/** Último dia do período escolhido (AAAA-MM-DD): equipes criadas depois dele não existiam no período. */
+const fimDoPeriodo = computed(() => {
+  const ano = Number(filters.ano);
+  const mes = mesesNum.value[mesesNum.value.length - 1]!;
+  const ultimoDia = new Date(ano, mes, 0).getDate();
+  return `${ano}-${String(mes).padStart(2, "0")}-${String(ultimoDia).padStart(2, "0")}`;
+});
+
+/** A equipe já existia no período? Sem data de criação no cadastro, vale como existente. */
+function equipeExistiaNoPeriodo(prefixo: string): boolean {
+  const criada = equipesHier.value.get(prefixo)?.criadaEm;
+  return !criada || criada <= fimDoPeriodo.value;
+}
+
 const rosterListado = computed(() => {
   if (filters.tipoPoc === "Alojamento") return alojamentosDaBase().filter((p) => equipeNaHierarquia(p));
   return rosterOperacional.value
+    .filter(equipeExistiaNoPeriodo)
     .filter((p) => filters.base === "Todos" || baseDaEquipe(p) === filters.base)
     .filter((p) => equipeNaHierarquia(p));
 });
