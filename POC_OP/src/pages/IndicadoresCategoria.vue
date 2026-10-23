@@ -558,10 +558,10 @@ const conformidadeIndex = computed(() => {
 
 const totalConf = totalConformes;
 const totalInc  = totalNaoConformes;
-/** % de conformidade com 2 casas; só mostra 100% quando não há nenhuma inconformidade (99,75% não vira "100%"). */
+/** % de conformidade com 2 casas, arredondado como no BI (99,4868% = 99,49%); só chega a 100% quando não há nenhuma inconformidade. */
 const pctGlobal = computed(() => {
-  const v = conformidadeIndex.value * 100;
-  return totalNaoConformes.value > 0 ? Math.min(Math.floor(v * 100) / 100, 99.99) : Math.round(v * 100) / 100;
+  const v = Math.round(conformidadeIndex.value * 10000) / 100;
+  return totalNaoConformes.value > 0 ? Math.min(v, 99.99) : v;
 });
 const pctGlobalTxt = computed(() => pctGlobal.value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 /** Período dos cartões: o mês escolhido no gráfico ou o ano todo. */
