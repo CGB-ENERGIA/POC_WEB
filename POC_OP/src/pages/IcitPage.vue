@@ -299,6 +299,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtPct, fmtN } from "@/composables/useChecklistData";
+import { ocorrenciasTz } from "@/lib/tolerancia-zero";
 import { rotuloSemana } from "@/lib/semanas";
 import {
   semanaDaSub, indexEmployees, matchSubmissionToEmployee, fetchSubmissions, fetchResponses, type ResponseRow, type SubmissionRow,
@@ -316,7 +317,7 @@ use([
 
 const {
   loading,
-  submissions, responses, employees,
+  submissions, responses, employees, mapaTz,
   load,
   gerentesOpts: gerentes,
   coordenadoresOpts: coordenadores,
@@ -964,17 +965,10 @@ const chartCategoria = computed(() => {
   };
 });
 
-/** Tolerância Zero: não conformidade de gravidade "Tolerância Zero" ou de peso 5 (mesmo critério da página Tolerância Zero). */
-function isTz(r: ResponseRow): boolean {
-  return r.resposta === "nao_conforme" && (
-    r.gravidade === "tolerancia_zero" || r.gravidade === "Tolerância Zero" || (r.peso ?? 0) >= 5
-  );
-}
-
+/** Tolerância Zero: não conformidade das perguntas da lista oficial (a mesma da página Tolerância Zero). */
 const toleranciaRows = computed(() => {
   const m: Record<string, number> = {};
-  for (const r of respsOf(filteredSubs.value, responses.value, true)) {
-    if (!isTz(r)) continue;
+  for (const r of ocorrenciasTz(respsOf(filteredSubs.value, responses.value, true), mapaTz.value)) {
     const q = r.pergunta ?? "Sem descrição";
     m[q] = (m[q] ?? 0) + 1;
   }

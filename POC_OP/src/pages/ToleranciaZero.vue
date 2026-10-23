@@ -235,12 +235,13 @@ import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 import { semanaDaSub } from "@/lib/dashboard";
 import { useHierarquiaEquipe, chaveEquipe } from "@/composables/useHierarquiaEquipe";
+import { ocorrenciasTz, categoriasTz } from "@/lib/tolerancia-zero";
 
 use([CanvasRenderer, BarChart, TreemapChart, TooltipComponent, GridComponent, DataZoomComponent]);
 
 const {
   loading, error,
-  byCategoria, byGravidade, submissions, responses, employees,
+  byCategoria, byGravidade, submissions, responses, employees, mapaTz,
   load,
   gerentesOpts: gerentesFinal,
 } = useChecklistData();
@@ -252,7 +253,8 @@ const { coordenadoresOpts, gerenciaDaSub, baseDaSub, passaCoordenadorGerente } =
 const showFilters = ref(false);
 
 const anos         = ["2024", "2025", "2026"];
-const categorias   = ["Todos", "APR", "Padrinho de Segurança", "Procedimento", "Regras de Ouro"];
+// Categorias da lista oficial de tolerância zero (tabela tolerancia_zero_perguntas)
+const categorias = computed(() => ["Todos", ...categoriasTz(mapaTz.value)]);
 const bases        = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const mesesOpts    = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26","jul/26","ago/26","set/26","out/26","nov/26","dez/26"];
 const semanasOpts  = ["Todos","1ª Semana","2ª Semana","3ª Semana","4ª Semana"];
@@ -388,13 +390,8 @@ const perguntaChip = computed(() => {
   return q.length > 42 ? `${q.slice(0, 40)}…` : q;
 });
 
-function isTz(r: { resposta: string; gravidade?: string | null; peso: number }) {
-  return r.resposta === "nao_conforme" && (
-    r.gravidade === "tolerancia_zero"
-    || r.gravidade === "Tolerância Zero"
-    || r.peso >= 5
-  );
-}
+/** Ocorrências de tolerância zero: não conformidades das perguntas da lista oficial, já com a pergunta e a categoria da lista. */
+const ocorrenciasTodas = computed(() => ocorrenciasTz(responses.value, mapaTz.value));
 
 function applySlice(
   source: typeof submissions.value,
@@ -431,7 +428,7 @@ function tzResps(
   omit: { cat?: boolean; pergunta?: boolean } = {},
 ) {
   const ids = new Set(subs.map(s => s.id));
-  let r = responses.value.filter(resp => ids.has(resp.submission_id) && isTz(resp));
+  let r = ocorrenciasTodas.value.filter(resp => ids.has(resp.submission_id));
   if (!omit.cat && filters.categoria !== "Todos") {
     const alvo = filters.categoria.toLowerCase();
     r = r.filter(resp => (resp.categoria ?? "").toLowerCase() === alvo);

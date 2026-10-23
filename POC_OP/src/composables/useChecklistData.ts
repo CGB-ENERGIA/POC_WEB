@@ -16,6 +16,7 @@ import {
   type EmployeeRow,
 } from "@/lib/dashboard";
 import { carregarSemanas } from "@/lib/semanas";
+import { carregarPerguntasTz, ocorrenciasTz, type MapaTz } from "@/lib/tolerancia-zero";
 
 export type { Filters, SubmissionRow, ResponseRow, EmployeeRow };
 
@@ -26,6 +27,12 @@ export function useChecklistData() {
   const submissions = shallowRef<SubmissionRow[]>([]);
   const responses = shallowRef<ResponseRow[]>([]);
   const employees = shallowRef<EmployeeRow[]>([]);
+  // Lista oficial de perguntas de tolerância zero (tabela tolerancia_zero_perguntas)
+  const mapaTz = shallowRef<MapaTz>(new Map());
+  carregarPerguntasTz()
+    .then((m) => { mapaTz.value = m; })
+    .catch((e) => { error.value = `Lista de tolerância zero indisponível: ${(e as Error).message}`; });
+
   // Submissions for full year (line chart / heatmap without month filter)
   const submissionsAno = shallowRef<SubmissionRow[]>([]);
 
@@ -98,16 +105,8 @@ export function useChecklistData() {
     return vals.length ? vals.filter(Boolean).length / vals.length : 0;
   });
 
-  const toleranciaZero = computed(
-    () =>
-      responses.value.filter(
-        (r) =>
-          r.resposta === "nao_conforme" &&
-          (r.gravidade === "tolerancia_zero" ||
-            r.gravidade === "Tolerância Zero" ||
-            r.peso >= 5),
-      ).length,
-  );
+  /** Ocorrências de tolerância zero: não conformidades das perguntas da lista oficial (tabela tolerancia_zero_perguntas). */
+  const toleranciaZero = computed(() => ocorrenciasTz(responses.value, mapaTz.value).length);
 
   const byBase = computed(() => countByBase(submissions.value));
   const basesCovertas = computed(() => Object.keys(byBase.value).length);
@@ -173,6 +172,7 @@ export function useChecklistData() {
     conformidadeIndex,
     pctPerfeitas,
     toleranciaZero,
+    mapaTz,
     byBase,
     basesCovertas,
     byMes,
