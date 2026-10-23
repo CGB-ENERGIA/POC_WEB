@@ -116,12 +116,26 @@
               use-input input-debounce="0" popup-content-class="gerente-popup"
               @filter="(v: string, update: (fn: () => void) => void) => update(() => { buscaObservador = v; })" />
           </div>
-          <div class="fgroup fgroup--gerente">
+          <div class="fgroup fgroup--gerente" style="min-width:230px">
             <span class="fgroup__label">Função do observador</span>
-            <q-select v-model="filters.funcao"
-              :clearable="filters.funcao !== 'Todos'" @clear="filters.funcao = 'Todos'" :options="funcoesOpts"
-              dense outlined hide-bottom-space class="gerente-select"
-              popup-content-class="gerente-popup" />
+            <q-select :model-value="funcoesSelecionadas" @update:model-value="definirFuncoes" :options="funcoesOpts"
+              multiple dense outlined hide-bottom-space class="gerente-select"
+              :display-value="funcoesResumo" popup-content-class="gerente-popup">
+              <template #before-options>
+                <div class="funcao-atalhos">
+                  <button type="button" class="funcao-atalho" @click="filters.funcoesExcluidas = []">Marcar todas</button>
+                  <button type="button" class="funcao-atalho" @click="filters.funcoesExcluidas = [...FUNCOES_FORA_PADRAO]">Sem Encarregado</button>
+                </div>
+              </template>
+              <template #option="{ itemProps, opt, selected, toggleOption }">
+                <q-item v-bind="itemProps">
+                  <q-item-section side>
+                    <q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" />
+                  </q-item-section>
+                  <q-item-section>{{ opt }}</q-item-section>
+                </q-item>
+              </template>
+            </q-select>
           </div>
         </div>
 
@@ -140,7 +154,7 @@
           <span v-if="filters.categoria !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.categoria = 'Todos'">{{ filters.categoria }}</span>
           <span v-if="filters.prefixo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.prefixo = 'Todos'">{{ filters.prefixo }}</span>
           <span v-if="filters.observador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.observador = 'Todos'">{{ filters.observador }}</span>
-          <span v-if="filters.funcao !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.funcao = 'Todos'">{{ filters.funcao }}</span>
+          <span v-if="filters.funcoesExcluidas.length" class="filter-chip filter-chip--hit" title="Clique para incluir todas as funções" @click="filters.funcoesExcluidas = []">{{ funcoesChip }}</span>
           <button class="filter-clear" @click="resetSlice">
             <q-icon name="mdi-close-circle" size="14px" />
             Limpar
@@ -374,10 +388,14 @@ const tiposPoc     = ["Todos","Administrativo","Operacional","Alojamento"];
 
 const curMesLabel = mesesOpts[now.getMonth()] ?? "jan/26";
 
+const FUNCOES_FORA_PADRAO = ["Encarregado"];
+
 const filters = reactive({
   meses: [curMesLabel] as string[], ano: String(now.getFullYear()), categoria: "Todos",
   base: "Todos", prefixo: "Todos", gerencia: "Todos",
-  gerente: "Todos", coordenador: "Todos", observador: "Todos", funcao: "Todos",
+  gerente: "Todos", coordenador: "Todos", observador: "Todos",
+  // Funções do observador que NÃO entram no relatório. Padrão: todas, menos Encarregado (assim funções novas já vêm marcadas).
+  funcoesExcluidas: [...FUNCOES_FORA_PADRAO] as string[],
   tipoPoc: lerTipoPoc(tiposPoc),
 });
 watch(() => filters.tipoPoc, salvarTipoPoc);
@@ -584,7 +602,7 @@ function resetSlice() {
   filters.categoria = "Todos";
   filters.prefixo = "Todos";
   filters.observador = "Todos";
-  filters.funcao = "Todos";
+  filters.funcoesExcluidas = [];
 }
 
 const hasActiveFilters = computed(() =>
@@ -596,7 +614,7 @@ const hasActiveFilters = computed(() =>
   || filters.categoria !== "Todos"
   || filters.prefixo !== "Todos"
   || filters.observador !== "Todos"
-  || filters.funcao !== "Todos",
+  || filters.funcoesExcluidas.length > 0,
 );
 
 // Função do observador (Encarregado, Supervisor, Fiscal...): vem do cadastro de funcionários, pela matrícula/nome do checklist.
@@ -610,7 +628,31 @@ const funcoesOpts = computed(() => {
     const f = funcaoDoObservador(s);
     if (f) nomes.add(f);
   }
-  return ["Todos", ...[...nomes].sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }))];
+  return [...nomes].sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+});
+
+/** Marcadas = todas as funções da lista, menos as excluídas. */
+const funcoesSelecionadas = computed(() => funcoesOpts.value.filter((f) => !filters.funcoesExcluidas.includes(f)));
+
+/** Quem marca/desmarca no select muda só as funções da lista; exclusões de funções que não estão na lista agora ficam como estavam. */
+function definirFuncoes(marcadas: string[]) {
+  const naLista = new Set(funcoesOpts.value);
+  const foraDaLista = filters.funcoesExcluidas.filter((f) => !naLista.has(f));
+  filters.funcoesExcluidas = [...foraDaLista, ...funcoesOpts.value.filter((f) => !marcadas.includes(f))];
+}
+
+const funcoesResumo = computed(() => {
+  const total = funcoesOpts.value.length;
+  const marcadas = funcoesSelecionadas.value.length;
+  if (marcadas === total) return "Todas as funções";
+  if (marcadas === 0) return "Nenhuma função";
+  const fora = funcoesOpts.value.filter((f) => filters.funcoesExcluidas.includes(f));
+  return fora.length <= 2 ? `Todas, exceto ${fora.join(" e ")}` : `${marcadas} de ${total} funções`;
+});
+
+const funcoesChip = computed(() => {
+  const fora = filters.funcoesExcluidas;
+  return fora.length <= 2 ? `Sem ${fora.join(" e ")}` : `${fora.length} funções fora`;
 });
 
 function applySlice(
@@ -639,8 +681,8 @@ function applySlice(
   if (!omit.prefixo && filters.prefixo !== "Todos") {
     s = s.filter((sub) => extractPrefixo(sub.equipe) === filters.prefixo);
   }
-  if (filters.funcao !== "Todos") {
-    s = s.filter((sub) => funcaoDoObservador(sub) === filters.funcao);
+  if (filters.funcoesExcluidas.length) {
+    s = s.filter((sub) => !filters.funcoesExcluidas.includes(funcaoDoObservador(sub)));
   }
   return s;
 }
@@ -1577,6 +1619,13 @@ $inactive-text:#475569;
   background: #0b1220 !important;
   color: #f8fafc !important;
   border-color: #334155 !important;
+}
+
+.funcao-atalhos { display: flex; gap: 6px; padding: 8px 12px; border-bottom: 1px solid rgba(148, 163, 184, .25); }
+.funcao-atalho {
+  background: none; border: 1px solid rgba(148, 163, 184, .45); border-radius: 999px; cursor: pointer;
+  font-size: 11.5px; font-weight: 600; padding: 3px 10px; color: inherit;
+  &:hover { border-color: #C4364E; color: #C4364E; }
 }
 </style>
 
