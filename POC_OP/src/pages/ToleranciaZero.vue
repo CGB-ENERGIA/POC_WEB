@@ -233,7 +233,8 @@ import { TooltipComponent, GridComponent, DataZoomComponent } from "echarts/comp
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDaSub, filterByCoordenador } from "@/lib/dashboard";
+import { semanaDaSub } from "@/lib/dashboard";
+import { useHierarquiaEquipe, chaveEquipe } from "@/composables/useHierarquiaEquipe";
 
 use([CanvasRenderer, BarChart, TreemapChart, TooltipComponent, GridComponent, DataZoomComponent]);
 
@@ -242,8 +243,10 @@ const {
   byCategoria, byGravidade, submissions, responses, employees,
   load,
   gerentesOpts: gerentesFinal,
-  coordenadoresOpts,
 } = useChecklistData();
+
+// Coordenador, gerente, gerência e base: as equipes vinculadas (como no Índice de Conformidade), não os observadores.
+const { coordenadoresOpts, gerenciaDaSub, baseDaSub, passaCoordenadorGerente } = useHierarquiaEquipe(employees);
 
 // â"€â"€â"€ Filter options â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const showFilters = ref(false);
@@ -332,11 +335,10 @@ async function recarregar() {
   await load({
     ano: Number(filters.ano),
     mes: mesNum,
-    base: filters.base === "Todos" ? undefined : filters.base,
   });
 }
 onMounted(recarregar);
-watch(() => [filters.ano, filters.mes, filters.base], recarregar);
+watch(() => [filters.ano, filters.mes], recarregar);
 
 const viz = reactive({ pergunta: null as string | null });
 
@@ -398,9 +400,18 @@ function applySlice(
   source: typeof submissions.value,
   omit: { gerencia?: boolean; prefixo?: boolean; observador?: boolean; week?: boolean } = {},
 ) {
-  let s = filterByGerente(source, employees.value, filters.gerenteFinal);
-  s = filterByCoordenador(s, employees.value, filters.coordenador);
-  if (!omit.gerencia) s = filterByGerencia(s, employees.value, filters.gerencia);
+  let s = source;
+  if (filters.coordenador !== "Todos" || filters.gerenteFinal !== "Todos") {
+    s = s.filter((sub) => passaCoordenadorGerente(sub, filters.coordenador, filters.gerenteFinal));
+  }
+  if (filters.base !== "Todos") {
+    const base = filters.base.toUpperCase();
+    s = s.filter((sub) => baseDaSub(sub) === base);
+  }
+  if (!omit.gerencia && filters.gerencia !== "Todos") {
+    const alvo = filters.gerencia.toUpperCase();
+    s = s.filter((sub) => gerenciaDaSub(sub) === alvo);
+  }
   if (!omit.week && filters.semana !== "Todos") {
     const semNum = Number(filters.semana.replace(/\D/g, "")) || 0;
     if (semNum) s = s.filter(sub => semanaDaSub(sub) === semNum);
@@ -409,7 +420,8 @@ function applySlice(
     s = s.filter(sub => sub.observador === filters.observador);
   }
   if (!omit.prefixo && filters.prefixo !== "Todos") {
-    s = s.filter(sub => sub.equipe === filters.prefixo);
+    const alvo = chaveEquipe(filters.prefixo);
+    s = s.filter(sub => chaveEquipe(sub.equipe) === alvo);
   }
   return s;
 }
@@ -573,7 +585,8 @@ const rankEquipes = computed(() => {
   for (const sub of subsNoPrefixo.value) {
     const nc = ncPerSub[sub.id] ?? 0;
     if (nc === 0) continue;
-    if (sub.equipe) counts[sub.equipe] = (counts[sub.equipe] ?? 0) + nc;
+    const chave = chaveEquipe(sub.equipe);
+    if (chave) counts[chave] = (counts[chave] ?? 0) + nc;
   }
   return Object.entries(counts)
     .map(([name, v]) => ({ name, v }))
@@ -589,7 +602,7 @@ function barColor(v: number): string {
 
 const chartRankingEq = computed(() => {
   const data = rankEquipes.value;
-  const selected = filters.prefixo !== "Todos" ? filters.prefixo : null;
+  const selected = filters.prefixo !== "Todos" ? chaveEquipe(filters.prefixo) : null;
   const vis = Math.min(12, Math.max(data.length, 1));
   const start = Math.max(0, data.length - vis);
   const end = Math.max(0, data.length - 1);
