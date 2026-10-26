@@ -653,12 +653,17 @@ const tmPalette = ["#6b1321","#8B1C2B","#a32636","#c43d52","#e8889a","#f9c5cb"];
 
 const chartTreemap = computed(() => {
   const selecionadas = valores(filters.categoria).map((x) => x.toLowerCase());
+  // Categoria com poucas ocorrências virava uma faixa fina, sem espaço para o nome. O bloco ganha uma área mínima (9% do total)
+  // só para caber a legenda; o número exibido (rótulo e dica) é sempre o real.
+  const total = treemapData.value.reduce((soma, d) => soma + d.value, 0);
+  const piso = Math.ceil(total * 0.09);
+  const real = (p: { value: number; data?: { real?: number } }) => p.data?.real ?? p.value;
   return {
     tooltip: {
       ...tooltipSkin("item"),
-      formatter: (p: { name: string; value: number }) =>
+      formatter: (p: { name: string; value: number; data?: { real?: number } }) =>
         tipHtml(p.name, [
-          { label: "Ocorrências", value: String(p.value) },
+          { label: "Ocorrências", value: String(real(p)) },
         ], "Clique para filtrar esta categoria"),
     },
     series: [{
@@ -670,7 +675,8 @@ const chartTreemap = computed(() => {
         show: true,
         position: "insideTopLeft" as const,
         padding: [10, 10],
-        formatter: (p: { name: string; value: number }) => `${p.name}\n\n${p.value}`,
+        overflow: "truncate" as const,
+        formatter: (p: { name: string; value: number; data?: { real?: number } }) => `${p.name}\n\n${real(p)}`,
         fontSize: 13,
         fontWeight: "bold" as const,
         color: "#fff",
@@ -684,7 +690,8 @@ const chartTreemap = computed(() => {
         const claro = i >= 4 || apagado;
         return {
           name: d.name,
-          value: d.value,
+          value: Math.max(d.value, piso),
+          real: d.value,
           itemStyle: { color: apagado ? withAlpha(cor, 0.3) : cor },
           label: claro ? { color: "#4a0e18", textBorderWidth: 0 } : undefined,
         };
