@@ -152,16 +152,27 @@
               </q-item-label>
             </q-item-section>
             <q-item-section side>
-              <q-btn
-                flat round dense
-                icon="mdi-delete-outline"
-                color="negative"
-                size="sm"
-                :loading="actionId === m.id + '_userdel'"
-                @click="removerUsuario(m)"
-              >
-                <q-tooltip>Remover usuário</q-tooltip>
-              </q-btn>
+              <div class="row items-center no-wrap q-gutter-xs">
+                <q-btn
+                  flat round dense
+                  icon="mdi-key-variant"
+                  color="primary"
+                  size="sm"
+                  @click="abrirAlterarSenha(m)"
+                >
+                  <q-tooltip>Alterar senha</q-tooltip>
+                </q-btn>
+                <q-btn
+                  flat round dense
+                  icon="mdi-delete-outline"
+                  color="negative"
+                  size="sm"
+                  :loading="actionId === m.id + '_userdel'"
+                  @click="removerUsuario(m)"
+                >
+                  <q-tooltip>Remover usuário</q-tooltip>
+                </q-btn>
+              </div>
             </q-item-section>
           </q-item>
         </q-list>
@@ -214,6 +225,55 @@
             label="Criar"
             :loading="creatingUser"
             @click="criarUsuario"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="pwDialog" @hide="resetPwDialog">
+      <q-card style="min-width: 360px; max-width: 420px;">
+        <q-card-section>
+          <p class="text-subtitle1 text-weight-bold q-mb-none">Alterar senha</p>
+          <p class="text-caption text-grey-7 q-mb-none q-mt-xs">{{ pwTarget?.email }}</p>
+        </q-card-section>
+        <q-card-section class="q-gutter-md q-pt-none">
+          <q-input
+            v-model="pwNew"
+            label="Nova senha (mín. 8 caracteres)"
+            :type="showPwNew ? 'text' : 'password'"
+            dense outlined
+            autocomplete="new-password"
+          >
+            <template #append>
+              <q-icon
+                :name="showPwNew ? 'mdi-eye-off' : 'mdi-eye'"
+                class="cursor-pointer"
+                @click="showPwNew = !showPwNew"
+              />
+            </template>
+          </q-input>
+          <q-input
+            v-model="pwConfirm"
+            label="Confirmar senha"
+            :type="showPwNew ? 'text' : 'password'"
+            dense outlined
+            autocomplete="new-password"
+          />
+          <q-checkbox
+            v-model="pwMustChange"
+            dense
+            label="Exigir troca de senha no próximo login"
+          />
+          <p v-if="pwError" class="text-negative text-caption q-mb-none">{{ pwError }}</p>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
+          <q-btn
+            unelevated
+            color="primary"
+            label="Salvar senha"
+            :loading="pwSaving"
+            @click="salvarSenha"
           />
         </q-card-actions>
       </q-card>
@@ -501,6 +561,78 @@ const roleOptions = [
   { label: "Somente gráficos e visões", value: "member" },
   { label: "Administrador (acesso total)", value: "admin" },
 ];
+
+const pwDialog     = ref(false);
+const pwTarget     = ref<Profile | null>(null);
+const pwNew        = ref("");
+const pwConfirm    = ref("");
+const pwMustChange = ref(true);
+const pwSaving     = ref(false);
+const pwError      = ref("");
+const showPwNew    = ref(false);
+
+function abrirAlterarSenha(m: Profile) {
+  pwTarget.value = m;
+  pwNew.value = "";
+  pwConfirm.value = "";
+  pwMustChange.value = true;
+  pwError.value = "";
+  showPwNew.value = false;
+  pwDialog.value = true;
+}
+
+function resetPwDialog() {
+  pwTarget.value = null;
+  pwNew.value = "";
+  pwConfirm.value = "";
+  pwError.value = "";
+  pwSaving.value = false;
+}
+
+async function salvarSenha() {
+  pwError.value = "";
+  if (!pwTarget.value) return;
+  if (pwNew.value.length < 8) {
+    pwError.value = "A senha precisa ter no mínimo 8 caracteres.";
+    return;
+  }
+  if (pwNew.value !== pwConfirm.value) {
+    pwError.value = "As senhas não coincidem.";
+    return;
+  }
+
+  pwSaving.value = true;
+  const { data: { session } } = await supabase.auth.getSession();
+  try {
+    const resp = await fetch(`${supabaseUrl}/functions/v1/create-user`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session?.access_token}`,
+      },
+      body: JSON.stringify({
+        action: "set-password",
+        userId: pwTarget.value.id,
+        password: pwNew.value,
+        mustChangePassword: pwMustChange.value,
+      }),
+    });
+    const result = await resp.json();
+    if (!resp.ok || result.error) {
+      pwError.value = result.error ?? "Erro ao alterar senha.";
+      return;
+    }
+    $q.notify({
+      type: "positive",
+      message: `Senha de ${pwTarget.value.email} atualizada.`,
+    });
+    pwDialog.value = false;
+  } catch {
+    pwError.value = "Falha de conexão ao alterar senha.";
+  } finally {
+    pwSaving.value = false;
+  }
+}
 
 onMounted(async () => {
   const { data: { user } } = await supabase.auth.getUser();

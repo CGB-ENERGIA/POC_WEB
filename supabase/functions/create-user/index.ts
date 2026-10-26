@@ -57,6 +57,30 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: true }), { status: 200, headers: CORS });
     }
 
+    if (action === "set-password") {
+      const { userId, password, mustChangePassword } = body;
+      if (!userId || !password || typeof password !== "string" || password.length < 8) {
+        return new Response(
+          JSON.stringify({ error: "userId e senha (mín. 8 caracteres) são obrigatórios" }),
+          { status: 400, headers: CORS },
+        );
+      }
+      const { error: pwErr } = await admin.auth.admin.updateUserById(userId, { password });
+      if (pwErr) {
+        return new Response(JSON.stringify({ error: pwErr.message }), { status: 400, headers: CORS });
+      }
+      // Por padrão exige troca no próximo login (senha provisória definida pelo admin).
+      const forceChange = mustChangePassword !== false;
+      const { error: profileErr } = await admin
+        .from("profiles")
+        .update({ must_change_password: forceChange })
+        .eq("id", userId);
+      if (profileErr) {
+        return new Response(JSON.stringify({ error: profileErr.message }), { status: 400, headers: CORS });
+      }
+      return new Response(JSON.stringify({ success: true }), { status: 200, headers: CORS });
+    }
+
     // action === "create"
     const { email, password, name, role } = body;
     const finalRole = role === "admin" ? "admin" : "member";
