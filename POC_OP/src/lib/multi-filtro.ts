@@ -37,6 +37,13 @@ export function alternar(sel: string | null | undefined, v: string): string {
   return juntar(atual.includes(v) ? atual.filter((x) => x !== v) : [...atual, v]);
 }
 
+/** Marca ou desmarca, mas nunca deixa vazio (ex.: o período sempre precisa de pelo menos um mês). */
+export function alternarMinimo(sel: string | null | undefined, v: string): string {
+  const atual = valores(sel);
+  if (atual.includes(v)) return atual.length > 1 ? juntar(atual.filter((x) => x !== v)) : juntar(atual);
+  return juntar([...atual, v]);
+}
+
 /** Sem filtro, tudo passa; com filtro, o valor precisa ser igual a algum dos marcados (comparação opcional, ex.: ignorar maiúsculas). */
 export function casa(
   sel: string | null | undefined,

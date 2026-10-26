@@ -22,8 +22,8 @@
             <span class="fgroup__label">Semana</span>
             <div class="pill-group">
               <button v-for="s in semanasOpts" :key="s.v"
-                :class="['pill', filters.semana === s.v && 'pill--active']"
-                @click="filters.semana = filters.semana === s.v ? 0 : s.v">{{ s.l }}</button>
+                :class="['pill', (s.v ? marcado(filters.semana, String(s.v)) : !ativo(filters.semana)) && 'pill--active']"
+                @click="filters.semana = s.v ? alternar(filters.semana, String(s.v)) : 'Todos'">{{ s.l }}</button>
             </div>
           </div>
           <div class="filter-divider" />
@@ -31,8 +31,8 @@
             <span class="fgroup__label">Mês</span>
             <div class="pill-group">
               <button v-for="m in mesesOpts" :key="m.v"
-                :class="['pill', filters.mes === m.v && 'pill--active']"
-                @click="filters.mes = filters.mes === m.v ? 0 : m.v">{{ m.l }}</button>
+                :class="['pill', (m.v ? marcado(filters.mes, String(m.v)) : !ativo(filters.mes)) && 'pill--active']"
+                @click="filters.mes = m.v ? alternar(filters.mes, String(m.v)) : 'Todos'">{{ m.l }}</button>
             </div>
           </div>
           <div class="filter-divider" />
@@ -40,8 +40,8 @@
             <span class="fgroup__label">Gerência</span>
             <div class="pill-group">
               <button v-for="g in gerenciasOpts" :key="g"
-                :class="['pill', filters.gerencia === g && 'pill--active']"
-                @click="filters.gerencia = filters.gerencia === g ? 'Todos' : g">{{ g }}</button>
+                :class="['pill', marcado(filters.gerencia, g) && 'pill--active']"
+                @click="filters.gerencia = alternar(filters.gerencia, g)">{{ g }}</button>
             </div>
           </div>
         </div>
@@ -61,16 +61,16 @@
             <span class="fgroup__label">Gerente</span>
             <div class="pill-group">
               <button v-for="g in gerentesOpts" :key="g"
-                :class="['pill', filters.gerente === g && 'pill--active']"
-                @click="filters.gerente = filters.gerente === g ? 'Todos' : g">{{ g }}</button>
+                :class="['pill', marcado(filters.gerente, g) && 'pill--active']"
+                @click="filters.gerente = alternar(filters.gerente, g)">{{ g }}</button>
             </div>
           </div>
           <div class="fgroup">
             <span class="fgroup__label">Coordenador</span>
             <div class="pill-group">
               <button v-for="g in coordenadoresOpts" :key="g"
-                :class="['pill', filters.coordenador === g && 'pill--active']"
-                @click="filters.coordenador = filters.coordenador === g ? 'Todos' : g">{{ g }}</button>
+                :class="['pill', marcado(filters.coordenador, g) && 'pill--active']"
+                @click="filters.coordenador = alternar(filters.coordenador, g)">{{ g }}</button>
             </div>
           </div>
         </div>
@@ -81,8 +81,8 @@
             <span class="fgroup__label">Base</span>
             <div class="pill-group">
               <button v-for="b in basesOpts" :key="b"
-                :class="['pill', filters.base === b && 'pill--active']"
-                @click="filters.base = filters.base === b ? 'Todos' : b">{{ b }}</button>
+                :class="['pill', marcado(filters.base, b) && 'pill--active']"
+                @click="filters.base = alternar(filters.base, b)">{{ b }}</button>
             </div>
           </div>
           <div class="filter-divider" />
@@ -90,8 +90,8 @@
             <span class="fgroup__label">Tipo de POC</span>
             <div class="pill-group">
               <button v-for="t in tiposOpts" :key="t"
-                :class="['pill', filters.tipo === t && 'pill--active']"
-                @click="filters.tipo = filters.tipo === t ? 'Todos' : t">{{ t }}</button>
+                :class="['pill', marcado(filters.tipo, t) && 'pill--active']"
+                @click="filters.tipo = alternar(filters.tipo, t)">{{ t }}</button>
             </div>
           </div>
         </div>
@@ -102,16 +102,16 @@
         <div v-if="hasActiveFilters" class="filter-summary">
           <span class="filter-summary__label">Filtros ativos:</span>
           <span class="filter-chip">{{ filters.ano }}</span>
-          <span v-if="filters.mes !== 0" class="filter-chip filter-chip--hit" @click="filters.mes = 0">{{ mesLabel }}</span>
-          <span v-if="filters.semana !== 0" class="filter-chip filter-chip--hit" @click="filters.semana = 0">{{ semanaLabel }}</span>
-          <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
-          <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ filters.gerente }}</span>
-          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ filters.coordenador }}</span>
-          <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ filters.base }}</span>
-          <span v-if="filters.tipo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.tipo = 'Todos'">{{ filters.tipo }}</span>
+          <span v-if="ativo(filters.mes)" class="filter-chip filter-chip--hit" @click="filters.mes = 'Todos'">{{ mesLabel }}</span>
+          <span v-if="ativo(filters.semana)" class="filter-chip filter-chip--hit" @click="filters.semana = 'Todos'">{{ semanaLabel }}</span>
+          <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ rotulo(filters.gerencia) }}</span>
+          <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ rotulo(filters.gerente) }}</span>
+          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ rotulo(filters.coordenador) }}</span>
+          <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ rotulo(filters.base) }}</span>
+          <span v-if="filters.tipo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.tipo = 'Todos'">{{ rotulo(filters.tipo) }}</span>
           <span v-if="viz.base && viz.base !== filters.base" class="filter-chip filter-chip--hit" @click="viz.base = null">{{ viz.base }}</span>
           <span v-if="viz.cat" class="filter-chip filter-chip--hit" @click="viz.cat = null">{{ viz.cat }}</span>
-          <span v-if="viz.mes && viz.mes !== filters.mes" class="filter-chip filter-chip--hit" @click="viz.mes = null">{{ months[viz.mes - 1] }}</span>
+          <span v-if="viz.mes && !marcado(filters.mes, String(viz.mes))" class="filter-chip filter-chip--hit" @click="viz.mes = null">{{ months[viz.mes - 1] }}</span>
           <button class="filter-clear" @click="resetSlice">
             <q-icon name="mdi-close-circle" size="14px" />
             Limpar
@@ -174,7 +174,7 @@
                       <th
                         v-for="(m, mi) in months" :key="m"
                         class="th-mes"
-                        :class="{ 'th--on': selectedMes === mi + 1 }"
+                        :class="{ 'th--on': selectedMeses.includes(mi + 1) }"
                         @click="toggleMes(mi + 1)"
                       >{{ m }}</th>
                       <th class="th-total">Total</th>
@@ -192,7 +192,7 @@
                         class="td-cell"
                         :class="{
                           'td-cell--dim': isCatDim(row.label, i + 1),
-                          'td-cell--on': viz.cat === row.label && selectedMes === i + 1,
+                          'td-cell--on': viz.cat === row.label && selectedMeses.includes(i + 1),
                         }"
                         :style="{ background: heatColor(v), color: cellTextColor(v) }"
                         @click="onCatCell(row.label, i + 1)"
@@ -240,7 +240,7 @@
                       <th
                         v-for="(m, mi) in months" :key="m"
                         class="th-mes"
-                        :class="{ 'th--on': selectedMes === mi + 1 }"
+                        :class="{ 'th--on': selectedMeses.includes(mi + 1) }"
                         @click="toggleMes(mi + 1)"
                       >{{ m }}</th>
                       <th class="th-total">Total</th>
@@ -256,7 +256,7 @@
                     <tr v-for="row in baseData" :key="row.label">
                       <td
                         class="td-label"
-                        :class="{ 'td-label--on': selectedBase === row.label }"
+                        :class="{ 'td-label--on': marcado(selectedBase, row.label) }"
                         @click="toggleBase(row.label)"
                       >{{ row.label }}</td>
                       <td
@@ -264,7 +264,7 @@
                         class="td-cell"
                         :class="{
                           'td-cell--dim': isBaseDim(row.label, i + 1),
-                          'td-cell--on': selectedBase === row.label && selectedMes === i + 1,
+                          'td-cell--on': marcado(selectedBase, row.label) && selectedMeses.includes(i + 1),
                         }"
                         :style="{ background: heatColor(v), color: cellTextColor(v) }"
                         @click="onBaseCell(row.label, i + 1)"
@@ -273,7 +273,7 @@
                       </td>
                       <td
                         class="td-row-total"
-                        :class="{ 'td-cell--dim': selectedBase && selectedBase !== row.label }"
+                        :class="{ 'td-cell--dim': ativo(selectedBase) && !marcado(selectedBase, row.label) }"
                         :style="{ background: heatColor(rowSum(row.values)), color: cellTextColor(rowSum(row.values)) }"
                       >
                         {{ rowSum(row.values) }}
@@ -299,6 +299,7 @@
 </template>
 
 <script setup lang="ts">
+import { valores, juntar, marcado, alternar, alternarMinimo, rotulo, semTodos, casa, igualCI, ativo } from "@/lib/multi-filtro";
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import {
   fetchSubmissions, fetchEmployees, fetchNcLight,
@@ -357,7 +358,7 @@ const CAT_DEFS = [
 const CAT_BASE_QTD = 7;
 
 const filters = reactive({
-  semana: 0, mes: 0, ano: String(now.getFullYear()),
+  semana: "Todos", mes: "Todos", ano: String(now.getFullYear()),
   gerencia: "Todos", gerente: "Todos", coordenador: "Todos", base: "Todos", tipo: lerTipoPoc(tiposOpts),
 });
 watch(() => filters.tipo, salvarTipoPoc);
@@ -368,12 +369,14 @@ const viz = reactive({
   mes: null as number | null,
 });
 
+/** Base(s) em destaque: a clicada na tabela ou as marcadas no filtro (texto com um ou vários, ver multi-filtro). */
 const selectedBase = computed(() =>
-  viz.base ?? (filters.base !== "Todos" ? filters.base : null),
+  viz.base ?? (ativo(filters.base) ? filters.base : null),
 );
-const selectedMes = computed(() => viz.mes ?? (filters.mes || null));
-const semanaLabel = computed(() => semanasOpts.find((s) => s.v === filters.semana)?.l ?? "");
-const mesLabel = computed(() => mesesOpts.find((s) => s.v === filters.mes)?.l ?? "");
+/** Mês(es) em destaque: o clicado na tabela ou os marcados no filtro. */
+const selectedMeses = computed<number[]>(() => (viz.mes ? [viz.mes] : valores(filters.mes).map(Number).filter(Boolean)));
+const semanaLabel = computed(() => valores(filters.semana).map((v) => semanasOpts.find((s) => String(s.v) === v)?.l ?? v).join(", "));
+const mesLabel = computed(() => valores(filters.mes).map((v) => months[Number(v) - 1] ?? v).join(", "));
 
 function toggleCat(cat: string) {
   viz.cat = viz.cat === cat ? null : cat;
@@ -403,8 +406,8 @@ function onBaseCell(base: string, mes: number) {
   viz.mes = mes;
 }
 function resetSlice() {
-  filters.semana = 0;
-  filters.mes = 0;
+  filters.semana = "Todos";
+  filters.mes = "Todos";
   filters.gerencia = "Todos";
   filters.gerente = "Todos";
   filters.coordenador = "Todos";
@@ -415,8 +418,8 @@ function resetSlice() {
   viz.mes = null;
 }
 const hasActiveFilters = computed(() =>
-  filters.semana !== 0
-  || filters.mes !== 0
+  ativo(filters.semana)
+  || ativo(filters.mes)
   || filters.gerencia !== "Todos"
   || filters.gerente !== "Todos"
   || filters.coordenador !== "Todos"
@@ -429,15 +432,15 @@ const hasActiveFilters = computed(() =>
 
 function isCatDim(cat: string, mes: number) {
   if (viz.cat && cat !== viz.cat) return true;
-  const m = selectedMes.value;
-  if (m && mes !== m) return true;
+  const m = selectedMeses.value;
+  if (m.length && !m.includes(mes)) return true;
   return false;
 }
 function isBaseDim(base: string, mes: number) {
   const b = selectedBase.value;
-  if (b && base !== b) return true;
-  const m = selectedMes.value;
-  if (m && mes !== m) return true;
+  if (ativo(b) && !marcado(b, base)) return true;
+  const m = selectedMeses.value;
+  if (m.length && !m.includes(mes)) return true;
   return false;
 }
 
@@ -461,9 +464,10 @@ watch(() => filters.base, () => { viz.base = null; });
 watch(() => filters.mes, () => { viz.mes = null; });
 
 function matchTipoPoc(auditagem: string | undefined) {
-  if (filters.tipo === "Todos") return true;
-  const allowed = TIPO_AUDITAGEM[filters.tipo];
-  if (!allowed) return true;
+  const sel = valores(filters.tipo);
+  if (!sel.length) return true;
+  const allowed = sel.flatMap((t) => TIPO_AUDITAGEM[t] ?? []);
+  if (!allowed.length) return true;
   return allowed.includes((auditagem ?? "").toUpperCase());
 }
 
@@ -491,13 +495,13 @@ function applySlice(omit: { base?: boolean; mes?: boolean } = {}) {
     s = s.filter((sub) => gerenciaDaSub(sub) === alvo);
   }
   s = s.filter((sub) => matchTipoPoc(sub.auditagem));
-  if (filters.semana) {
-    s = s.filter((sub) => semanaDaSub(sub) === filters.semana);
+  if (ativo(filters.semana)) {
+    s = s.filter((sub) => casa(filters.semana, String(semanaDaSub(sub))));
   }
   const base = selectedBase.value;
-  if (!omit.base && base) s = s.filter((sub) => baseDaSub(sub) === base);
-  const mes = selectedMes.value;
-  if (!omit.mes && mes) s = s.filter((sub) => mesDaData(sub.data) === mes);
+  if (!omit.base && ativo(base)) s = s.filter((sub) => casa(base, baseDaSub(sub), igualCI));
+  const meses = selectedMeses.value;
+  if (!omit.mes && meses.length) s = s.filter((sub) => meses.includes(mesDaData(sub.data)));
   return s;
 }
 
