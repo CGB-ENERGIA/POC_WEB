@@ -664,7 +664,7 @@ const funcoesChip = computed(() => {
 
 function applySlice(
   source: typeof submissions.value,
-  omit: { base?: boolean; gerencia?: boolean; prefixo?: boolean; tipo?: boolean; observador?: boolean } = {},
+  omit: { base?: boolean; gerencia?: boolean; prefixo?: boolean; tipo?: boolean; observador?: boolean; funcao?: boolean } = {},
 ) {
   let s = source;
   if (hierCarregada.value) {
@@ -695,7 +695,7 @@ function applySlice(
   if (!omit.prefixo && ativo(filters.prefixo)) {
     s = s.filter((sub) => casa(filters.prefixo, extractPrefixo(sub.equipe), (a, b) => chaveEquipe(a) === chaveEquipe(b)));
   }
-  if (filters.funcoesExcluidas.length) {
+  if (!omit.funcao && filters.funcoesExcluidas.length) {
     s = s.filter((sub) => !filters.funcoesExcluidas.includes(funcaoDoObservador(sub)));
   }
   return s;
@@ -920,14 +920,34 @@ const naoVisitadas = computed(() => {
   return rosterPrefixes.value.filter(p => !visited.has(p));
 });
 
-// ─── ICIT atual (mês/filtros selecionados) por prefixo, a partir dos dados já carregados ──
+// ─── Matriz ICIT por Equipe ──────────────────────────────────────────────────────────────────────
+// Não sofre o filtro de Função do observador (todas as funções entram), nem o de Prefixo (a linha clicada não esconde as outras);
+// os demais filtros valem.
+const subsMatrizIcit = computed(() => applySlice(submissions.value, { prefixo: true, funcao: true }));
+
+const visitasMatrizIcit = computed(() => {
+  const counts = new Map<string, number>();
+  for (const sub of subsMatrizIcit.value) {
+    const pref = extractPrefixo(sub.equipe);
+    if (!pref) continue;
+    // Alojamentos só entram quando o tipo escolhido é Alojamento
+    if (!modoAloj.value && /^ALOJ/i.test(pref)) continue;
+    counts.set(pref, (counts.get(pref) ?? 0) + 1);
+  }
+  return counts;
+});
+
+// ICIT atual (mês/filtros selecionados) por prefixo, a partir dos dados já carregados
 const icitAtualPorPrefixo = computed(() => {
+  const ids = new Set(subsMatrizIcit.value.map((sub) => sub.id));
   const ncPerSub = new Set<string>();
-  for (const r of filteredResps.value) {
-    if (r.resposta === "nao_conforme") ncPerSub.add(r.submission_id);
+  for (const r of responses.value) {
+    if (r.resposta !== "nao_conforme" || !ids.has(r.submission_id)) continue;
+    if (ativo(filters.categoria) && !casa(filters.categoria, r.categoria)) continue;
+    ncPerSub.add(r.submission_id);
   }
   const map = new Map<string, IcitPrefixo>();
-  for (const sub of filteredSubs.value) {
+  for (const sub of subsMatrizIcit.value) {
     const pref = extractPrefixo(sub.equipe);
     if (!pref) continue;
     if (!map.has(pref)) map.set(pref, { visitas: 0, semNc: 0 });
@@ -952,7 +972,7 @@ interface IcitRow {
 }
 
 const icitTableRows = computed<IcitRow[]>(() => {
-  return visitadasSorted.value.map(({ nome, v }) => ({
+  return [...visitasMatrizIcit.value.entries()].map(([nome, v]) => ({
     prefixo: nome,
     visitas: v,
     icitAnterior: icitPct(icitMesAnterior.value.get(nome)),
