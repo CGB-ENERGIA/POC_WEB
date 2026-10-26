@@ -35,8 +35,8 @@
             <span class="fgroup__label">Semana</span>
             <div class="pill-group">
               <button v-for="s in semanas" :key="s.value"
-                :class="['pill', { 'pill--active': filters.semana === s.value }]"
-                @click="filters.semana = filters.semana === s.value ? 0 : s.value">{{ s.label }}</button>
+                :class="['pill', { 'pill--active': s.value ? marcado(filters.semana, String(s.value)) : !ativo(filters.semana) }]"
+                @click="filters.semana = s.value ? alternar(filters.semana, String(s.value)) : 'Todos'">{{ s.label }}</button>
             </div>
           </div>
 
@@ -44,25 +44,25 @@
 
           <div class="fgroup fgroup--gerente">
             <span class="fgroup__label">Gerente</span>
-            <q-select v-model="filters.gerente"
-              :clearable="filters.gerente !== 'Todos'" @clear="filters.gerente = 'Todos'" :options="gerentes"
+            <q-select multiple :model-value="valores(filters.gerente)" @update:model-value="(v: string[]) => filters.gerente = juntar(v)" :display-value="rotulo(filters.gerente)"
+              :clearable="filters.gerente !== 'Todos'" @clear="filters.gerente = 'Todos'" :options="semTodos(gerentes)"
               dense outlined hide-bottom-space class="gerente-select"
               popup-content-class="gerente-popup">
               <template #prepend>
                 <q-icon name="mdi-account" size="16px" class="gerente-icon" />
               </template>
-            </q-select>
+            <template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
           </div>
           <div class="fgroup fgroup--gerente">
             <span class="fgroup__label">Coordenador</span>
-            <q-select v-model="filters.coordenador"
-              :clearable="filters.coordenador !== 'Todos'" @clear="filters.coordenador = 'Todos'" :options="coordenadores"
+            <q-select multiple :model-value="valores(filters.coordenador)" @update:model-value="(v: string[]) => filters.coordenador = juntar(v)" :display-value="rotulo(filters.coordenador)"
+              :clearable="filters.coordenador !== 'Todos'" @clear="filters.coordenador = 'Todos'" :options="semTodos(coordenadores)"
               dense outlined hide-bottom-space class="gerente-select"
               popup-content-class="gerente-popup">
               <template #prepend>
                 <q-icon name="mdi-account" size="16px" class="gerente-icon" />
               </template>
-            </q-select>
+            <template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
           </div>
 
         </div>
@@ -74,8 +74,9 @@
             <span class="fgroup__label">Mês</span>
             <div class="pill-group">
               <button v-for="m in meses" :key="m.value"
-                :class="['pill', { 'pill--active': filters.mes === m.value }]"
-                @click="filters.mes = m.value">{{ m.label }}</button>
+                :class="['pill', { 'pill--active': marcado(filters.mes, String(m.value)) }]"
+                :title="marcado(filters.mes, String(m.value)) ? 'Clique para tirar este mês' : 'Clique para somar este mês'"
+                @click="filters.mes = alternarMinimo(filters.mes, String(m.value))">{{ m.label }}</button>
             </div>
           </div>
 
@@ -85,8 +86,8 @@
             <span class="fgroup__label">Gerência</span>
             <div class="pill-group">
               <button v-for="g in gerencias" :key="g"
-                :class="['pill', { 'pill--active': filters.gerencia === g }]"
-                @click="filters.gerencia = filters.gerencia === g ? 'Todos' : g">{{ g }}</button>
+                :class="['pill', { 'pill--active': marcado(filters.gerencia, g) }]"
+                @click="filters.gerencia = alternar(filters.gerencia, g)">{{ g }}</button>
             </div>
           </div>
 
@@ -96,8 +97,8 @@
             <span class="fgroup__label">Base</span>
             <div class="pill-group">
               <button v-for="b in bases" :key="b"
-                :class="['pill', { 'pill--active': filters.base === b }]"
-                @click="filters.base = filters.base === b ? 'Todos' : b">{{ b }}</button>
+                :class="['pill', { 'pill--active': marcado(filters.base, b) }]"
+                @click="filters.base = alternar(filters.base, b)">{{ b }}</button>
             </div>
           </div>
 
@@ -107,8 +108,8 @@
             <span class="fgroup__label">Tipo de POC</span>
             <div class="pill-group">
               <button v-for="t in tiposPoc" :key="t"
-                :class="['pill', { 'pill--active': filters.tipoPoc === t }]"
-                @click="filters.tipoPoc = filters.tipoPoc === t ? 'Todos' : t">{{ t }}</button>
+                :class="['pill', { 'pill--active': marcado(filters.tipoPoc, t) }]"
+                @click="filters.tipoPoc = alternar(filters.tipoPoc, t)">{{ t }}</button>
             </div>
           </div>
 
@@ -120,12 +121,12 @@
           <span class="filter-summary__label">Filtros ativos:</span>
           <span class="filter-chip">{{ filters.ano }}</span>
           <span class="filter-chip">{{ mesLabel }}</span>
-          <span v-if="filters.semana" class="filter-chip filter-chip--hit" @click="filters.semana = 0">{{ semanaLabel }}</span>
-          <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ nomeBase(filters.base) }}</span>
-          <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
-          <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ filters.gerente }}</span>
-          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ filters.coordenador }}</span>
-          <span v-if="filters.tipoPoc !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.tipoPoc = 'Todos'">{{ filters.tipoPoc }}</span>
+          <span v-if="ativo(filters.semana)" class="filter-chip filter-chip--hit" @click="filters.semana = 'Todos'">{{ semanaLabel }}</span>
+          <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ valores(filters.base).map(nomeBase).join(", ") }}</span>
+          <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ rotulo(filters.gerencia) }}</span>
+          <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ rotulo(filters.gerente) }}</span>
+          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ rotulo(filters.coordenador) }}</span>
+          <span v-if="filters.tipoPoc !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.tipoPoc = 'Todos'">{{ rotulo(filters.tipoPoc) }}</span>
           <span v-if="viz.equipe" class="filter-chip filter-chip--hit" @click="viz.equipe = null">{{ viz.equipe }}</span>
           <span v-if="viz.perguntaCurta" class="filter-chip filter-chip--hit" @click="clearPergunta">{{ viz.perguntaCurta }}</span>
           <button class="filter-clear" @click="resetSlice">
@@ -240,6 +241,7 @@
 </template>
 
 <script setup lang="ts">
+import { valores, juntar, marcado, alternar, alternarMinimo, rotulo, semTodos, casa, igualCI, ativo } from "@/lib/multi-filtro";
 import { reactive, ref, shallowRef, computed, watch, onMounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
@@ -304,8 +306,8 @@ const tiposPoc  = ["Todos", "Administrativo", "Operacional"];
 const now = new Date();
 const filters = reactive({
   ano:      now.getFullYear(),
-  semana:   0,
-  mes:      now.getMonth() + 1,
+  semana:   "Todos",
+  mes:      String(now.getMonth() + 1),
   gerencia: "Todos",
   base:     "Todos",
   tipoPoc:  lerTipoPoc(tiposPoc),
@@ -356,21 +358,23 @@ function baseDaSub(sub: SubEquipe): string {
 }
 
 function passaCoordenadorGerente(sub: SubEquipe): boolean {
-  if (filters.coordenador === "Todos" && filters.gerente === "Todos") return true;
+  const coords = valores(filters.coordenador);
+  const gerentes = valores(filters.gerente);
+  if (!coords.length && !gerentes.length) return true;
   const h = hierarquiaDaEquipe(hierEquipes.value, sub.equipe ?? "");
   const coordDaEquipe = foldName(h?.coordenador ?? "");
-  if (filters.coordenador !== "Todos" && coordDaEquipe !== foldName(filters.coordenador)) return false;
-  if (filters.gerente !== "Todos") {
-    const g = h?.gerente || gerenteDoCoordenador.value.get(coordDaEquipe) || "";
-    if (foldName(g) !== foldName(filters.gerente)) return false;
+  if (coords.length && !coords.some((c) => foldName(c) === coordDaEquipe)) return false;
+  if (gerentes.length) {
+    const g = foldName(h?.gerente || gerenteDoCoordenador.value.get(coordDaEquipe) || "");
+    if (!gerentes.some((x) => foldName(x) === g)) return false;
   }
   return true;
 }
 
 /** Filtros de gerência, base, coordenador e gerente pela equipe (usado também no gráfico do ano inteiro). */
 function passaHierarquia(sub: SubEquipe): boolean {
-  if (filters.gerencia !== "Todos" && gerenciaDaSub(sub) !== filters.gerencia.toUpperCase()) return false;
-  if (filters.base !== "Todos" && baseDaSub(sub) !== filters.base.toUpperCase()) return false;
+  if (!casa(filters.gerencia, gerenciaDaSub(sub), igualCI)) return false;
+  if (!casa(filters.base, baseDaSub(sub), igualCI)) return false;
   return passaCoordenadorGerente(sub);
 }
 
@@ -401,9 +405,10 @@ function nomeBase(code: string) {
 }
 
 function matchTipoPoc(auditagem: string | undefined) {
-  if (filters.tipoPoc === "Todos") return true;
-  const allowed = TIPO_AUDITAGEM[filters.tipoPoc];
-  if (!allowed) return true;
+  const sel = valores(filters.tipoPoc);
+  if (!sel.length) return true;
+  const allowed = sel.flatMap((t) => TIPO_AUDITAGEM[t] ?? []);
+  if (!allowed.length) return true;
   return allowed.includes((auditagem ?? "").toUpperCase());
 }
 
@@ -413,7 +418,7 @@ function clearPergunta() {
 }
 
 function resetSlice() {
-  filters.semana = 0;
+  filters.semana = "Todos";
   filters.gerencia = "Todos";
   filters.base = "Todos";
   filters.tipoPoc = "Todos";
@@ -436,17 +441,17 @@ function onMesClick(p: EcClick) {
   const fromName = meses.find((m) => m.label === p.name);
   if (fromName) mes = fromName.value;
   if (mes < 1 || mes > 12) return;
-  filters.mes = mes;
+  filters.mes = alternarMinimo(filters.mes, String(mes));
 }
 
 function onBaseClick(p: EcClick) {
   if (p.componentType !== "series" || !p.name) return;
-  filters.base = filters.base === p.name ? "Todos" : p.name;
+  filters.base = alternar(filters.base, p.name);
 }
 
 function onGerenciaClick(p: EcClick) {
   if (p.componentType !== "series" || !p.name) return;
-  filters.gerencia = filters.gerencia === p.name ? "Todos" : p.name;
+  filters.gerencia = alternar(filters.gerencia, p.name);
 }
 
 function onEquipeClick(p: EcClick) {
@@ -468,10 +473,10 @@ function onRankingClick(p: EcClick) {
   viz.perguntaCurta = row.short;
 }
 
-const mesLabel = computed(() => meses.find((m) => m.value === filters.mes)?.label ?? "");
-const semanaLabel = computed(() => semanas.find((s) => s.value === filters.semana)?.label ?? "");
+const mesLabel = computed(() => valores(filters.mes).map((v) => meses.find((m) => String(m.value) === v)?.label ?? v).join(", "));
+const semanaLabel = computed(() => valores(filters.semana).map((v) => semanas.find((s) => String(s.value) === v)?.label ?? v).join(", "));
 const hasActiveFilters = computed(() =>
-  filters.semana !== 0
+  ativo(filters.semana)
   || filters.base !== "Todos"
   || filters.gerencia !== "Todos"
   || filters.gerente !== "Todos"
@@ -482,11 +487,11 @@ const hasActiveFilters = computed(() =>
 );
 
 async function recarregarMes() {
-  await load({
-    ano: filters.ano,
-    mes: filters.mes,
-    contarMeta: true,
-  });
+  const nums = valores(filters.mes).map(Number).filter(Boolean).sort((a, b) => a - b);
+  if (!nums.length) nums.push(now.getMonth() + 1);
+  await load(nums.length === 1
+    ? { ano: filters.ano, mes: nums[0]!, contarMeta: true }
+    : { ano: filters.ano, meses: nums, contarMeta: true });
 }
 
 let seqAno = 0;
@@ -494,7 +499,7 @@ async function recarregarAno() {
   const seq = ++seqAno;
   const opts: NcPorMesOpts = {
     contarMeta: true,
-    allowedAuditagens: filters.tipoPoc !== "Todos" ? TIPO_AUDITAGEM[filters.tipoPoc] : undefined,
+    allowedAuditagens: ativo(filters.tipoPoc) ? valores(filters.tipoPoc).flatMap((t) => TIPO_AUDITAGEM[t] ?? []) : undefined,
     filtro: passaHierarquia,
   };
   const resultado = await fetchNaoConformesPorMes(filters.ano, undefined, opts);
@@ -520,18 +525,18 @@ function applySlice(
 ) {
   let s = source;
   if (filters.coordenador !== "Todos" || filters.gerente !== "Todos") s = s.filter(passaCoordenadorGerente);
-  if (!omit.gerencia && filters.gerencia !== "Todos") {
-    const alvo = filters.gerencia.toUpperCase();
-    s = s.filter((sub) => gerenciaDaSub(sub) === alvo);
+  if (!omit.gerencia && ativo(filters.gerencia)) {
+    const alvo = valores(filters.gerencia).map((x) => x.toUpperCase());
+    s = s.filter((sub) => alvo.includes(gerenciaDaSub(sub)));
   }
-  if (!omit.week && filters.semana) {
-    s = s.filter((sub) => semanaDaSub(sub) === filters.semana);
+  if (!omit.week && ativo(filters.semana)) {
+    s = s.filter((sub) => casa(filters.semana, String(semanaDaSub(sub))));
   }
-  if (!omit.base && filters.base !== "Todos") {
-    const alvo = filters.base.toUpperCase();
-    s = s.filter((sub) => baseDaSub(sub) === alvo);
+  if (!omit.base && ativo(filters.base)) {
+    const alvo = valores(filters.base).map((x) => x.toUpperCase());
+    s = s.filter((sub) => alvo.includes(baseDaSub(sub)));
   }
-  if (!omit.tipo && filters.tipoPoc !== "Todos") {
+  if (!omit.tipo && ativo(filters.tipoPoc)) {
     s = s.filter((sub) => matchTipoPoc(sub.auditagem));
   }
   if (!omit.equipe && viz.equipe) {
@@ -660,10 +665,10 @@ function hBar(
         value: r.value,
         itemStyle: {
           color,
-          opacity: !selected || selected === r.name ? 1 : 0.22,
+          opacity: !ativo(selected) || marcado(selected, r.name) ? 1 : 0.22,
           borderRadius: [0, 6, 6, 0],
           shadowColor: "rgba(0,0,0,.08)",
-          shadowBlur: !selected || selected === r.name ? 4 : 0,
+          shadowBlur: !ativo(selected) || marcado(selected, r.name) ? 4 : 0,
         },
       })),
       barMaxWidth: 26,
@@ -769,7 +774,7 @@ const chartTendenciaMensal = computed(() => {
       cursor: "pointer",
       data: vals.map((v, i) => ({
         value: v,
-        itemStyle: { opacity: filters.mes === i + 1 ? 1 : 0.28 },
+        itemStyle: { opacity: marcado(filters.mes, String(i + 1)) ? 1 : 0.28 },
       })),
       smooth: false,
       symbol: "circle",
@@ -783,7 +788,7 @@ const chartTendenciaMensal = computed(() => {
         fontWeight: "bold" as const,
         color: chartInk.axis,
         formatter: (p: { value: number; dataIndex: number }) =>
-          filters.mes === p.dataIndex + 1 || p.value ? String(p.value) : "",
+          marcado(filters.mes, String(p.dataIndex + 1)) || p.value ? String(p.value) : "",
       },
       areaStyle: {
         color: {
