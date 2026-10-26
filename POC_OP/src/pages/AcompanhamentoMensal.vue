@@ -783,6 +783,7 @@ function singleBar(labels: string[], data: number[], selected?: string | number 
     name: "Realizado",
     type: "bar" as const,
     cursor: "pointer",
+    z: 3, // acima da markLine da meta — a vela cobre o traço quando ultrapassa
     data: data.map((v, i) => {
       const key = labels[i];
       const dimmed = Array.isArray(selected)
@@ -800,82 +801,32 @@ function singleBar(labels: string[], data: number[], selected?: string | number 
       fontSize: 13,
       fontWeight: "bold" as const,
       color: chartInk.ok,
-      distance: 8,
+      distance: 10,
       textBorderColor: chartInk.halo,
       textBorderWidth: 3,
     },
   }];
 }
 
-/**
- * Traço da meta por categoria; rótulo "Meta: N" só em `rotuloEm`.
- * - Realizado ≥ meta: só “orelhas” nas laterais (não corta o corpo da vela).
- * - Número perto do traço: vão no meio para o rótulo verde.
- */
-function metaTracos(metas: number[], realizados: number[], rotuloEm: number) {
+/** Linha de meta atrás das velas (z baixo): não corta o verde nem o número. */
+function metaMarkLine(meta: number) {
   return {
-    name: "Meta traço",
-    type: "custom" as const,
     silent: true,
+    symbol: "none" as const,
+    z: 1,
     animation: false,
-    z: 11,
-    data: metas.map((m, i) => [i, m]),
-    renderItem: (_p: unknown, api: { value: (d: number) => number; coord: (v: number[]) => number[]; size: (v: number[]) => number[] }) => {
-      const idx = api.value(0);
-      const meta = api.value(1);
-      const real = realizados[idx] ?? 0;
-      const [cx, cy] = api.coord([idx, meta]) as [number, number];
-      const [, ry] = api.coord([idx, real]) as [number, number];
-      const catW = (api.size([1, 0]) as [number, number])[0];
-      // Metade da vela (~barMaxWidth 48) e extensão do traço um pouco além dela
-      const barHalf = Math.min(catW * 0.22, 24);
-      const tickOuter = Math.min(catW * 0.48, 40);
-      const numY = ry - 14;
-      const labelOverlap = Math.abs(cy - numY) < 13;
-      const exceeds = real >= meta;
-
-      const stroke = { stroke: "#0ea5e9", lineWidth: 2.5, lineCap: "round" as const };
-      const children: Record<string, unknown>[] = [];
-
-      const pushStubs = (inner: number, outer: number) => {
-        if (outer <= inner + 3) return;
-        children.push(
-          { type: "line", shape: { x1: cx - outer, y1: cy, x2: cx - inner, y2: cy }, style: stroke },
-          { type: "line", shape: { x1: cx + inner, y1: cy, x2: cx + outer, y2: cy }, style: stroke },
-        );
-      };
-
-      if (exceeds) {
-        // Traço fora da vela — evita bissectar o verde quando ultrapassa a meta
-        pushStubs(barHalf + 3, tickOuter);
-      } else if (labelOverlap) {
-        pushStubs(Math.min(28, tickOuter - 2), tickOuter);
-      } else {
-        children.push({
-          type: "line",
-          shape: { x1: cx - tickOuter * 0.85, y1: cy, x2: cx + tickOuter * 0.85, y2: cy },
-          style: stroke,
-        });
-      }
-
-      if (idx === rotuloEm) {
-        const labelY = labelOverlap && !exceeds ? Math.min(cy, numY) - 18 : cy - 8;
-        children.push({
-          type: "text",
-          style: {
-            text: `Meta: ${Math.round(meta)}`,
-            x: cx,
-            y: labelY,
-            align: "center",
-            verticalAlign: "bottom",
-            fill: "#0ea5e9",
-            font: "bold 11px sans-serif",
-            stroke: chartInk.halo,
-            lineWidth: 3,
-          },
-        });
-      }
-      return { type: "group", children };
+    data: [{ yAxis: meta }],
+    lineStyle: { color: "#0ea5e9", width: 2, type: "solid" as const },
+    label: {
+      formatter: `Meta: ${Math.round(meta)}`,
+      position: "insideEndTop" as const,
+      color: "#0ea5e9",
+      fontWeight: "bold" as const,
+      fontSize: 11,
+      distance: 6,
+      backgroundColor: chartInk.halo,
+      padding: [2, 5] as [number, number],
+      borderRadius: 3,
     },
   };
 }
@@ -890,13 +841,13 @@ const chartMetaMes = computed(() => ({
         { label: "Meta", value: String(metaMensal.value), color: "#0ea5e9" },
       ], viz.observadorNome || (ativo(filters.base) ? valores(filters.base).map(nomeBase).join(", ") : undefined)),
   },
-  grid: { left: 12, right: 16, top: 52, bottom: 28 },
+  grid: { left: 12, right: 28, top: 52, bottom: 28 },
   xAxis: cleanXAxis([mesLabel.value]),
   yAxis: { show: false, min: 0, max: yPadMax([totalSubmissions.value], metaMensal.value) },
-  series: [
-    singleBar([mesLabel.value], [totalSubmissions.value])[0],
-    metaTracos([metaMensal.value], [totalSubmissions.value], 0),
-  ],
+  series: [{
+    ...singleBar([mesLabel.value], [totalSubmissions.value])[0],
+    markLine: metaMarkLine(metaMensal.value),
+  }],
 }));
 
 const WEEK_LABELS = ["1ª Sem", "2ª Sem", "3ª Sem", "4ª Sem"];
@@ -916,13 +867,13 @@ const chartMetaSemana = computed(() => {
           { label: "Meta da semana", value: String(Math.round(weekMeta)), color: "#0ea5e9" },
         ], "Clique para filtrar as outras visões"),
     },
-    grid: { left: 12, right: 16, top: 52, bottom: 28 },
+    grid: { left: 12, right: 28, top: 52, bottom: 28 },
     xAxis: cleanXAxis(WEEK_LABELS),
     yAxis: { show: false, min: 0, max: yPadMax(vals, weekMeta) },
-    series: [
-      singleBar(WEEK_LABELS, vals, semanasNum.value.length ? semanasNum.value : null)[0],
-      metaTracos(WEEK_LABELS.map(() => weekMeta), vals, WEEK_LABELS.length - 1),
-    ],
+    series: [{
+      ...singleBar(WEEK_LABELS, vals, semanasNum.value.length ? semanasNum.value : null)[0],
+      markLine: metaMarkLine(weekMeta),
+    }],
   };
 });
 
