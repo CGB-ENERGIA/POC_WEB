@@ -49,10 +49,10 @@
           <div class="fgroup fgroup--gerente">
             <span class="fgroup__label">Gerente</span>
             <q-select
-              v-model="filters.gerente"
+              multiple :model-value="valores(filters.gerente)" @update:model-value="(v: string[]) => filters.gerente = juntar(v)" :display-value="rotulo(filters.gerente)"
               :clearable="filters.gerente !== 'Todos'"
               @clear="filters.gerente = 'Todos'"
-              :options="gerentes"
+              :options="semTodos(gerentes)"
               dense outlined hide-bottom-space
               class="gerente-select"
               popup-content-class="gerente-popup"
@@ -60,15 +60,15 @@
               <template #prepend>
                 <q-icon name="mdi-account" size="16px" class="gerente-icon" />
               </template>
-            </q-select>
+            <template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
           </div>
           <div class="fgroup fgroup--gerente">
             <span class="fgroup__label">Coordenador</span>
             <q-select
-              v-model="filters.coordenador"
+              multiple :model-value="valores(filters.coordenador)" @update:model-value="(v: string[]) => filters.coordenador = juntar(v)" :display-value="rotulo(filters.coordenador)"
               :clearable="filters.coordenador !== 'Todos'"
               @clear="filters.coordenador = 'Todos'"
-              :options="coordenadores"
+              :options="semTodos(coordenadores)"
               dense outlined hide-bottom-space
               class="gerente-select"
               popup-content-class="gerente-popup"
@@ -76,7 +76,7 @@
               <template #prepend>
                 <q-icon name="mdi-account" size="16px" class="gerente-icon" />
               </template>
-            </q-select>
+            <template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
           </div>
 
         </div>
@@ -102,8 +102,8 @@
             <div class="pill-group">
               <button
                 v-for="b in bases" :key="b"
-                :class="['pill', { 'pill--active': filters.base === b }]"
-                @click="filters.base = filters.base === b ? 'Todos' : b"
+                :class="['pill', { 'pill--active': marcado(filters.base, b) }]"
+                @click="filters.base = alternar(filters.base, b)"
               >{{ b }}</button>
             </div>
           </div>
@@ -113,14 +113,14 @@
           <div class="fgroup fgroup--funcao">
             <span class="fgroup__label">Função</span>
             <q-select
-              v-model="filters.funcao"
+              multiple :model-value="valores(filters.funcao)" @update:model-value="(v: string[]) => filters.funcao = juntar(v)" :display-value="rotulo(filters.funcao)"
               :clearable="filters.funcao !== 'Todos'"
               @clear="filters.funcao = 'Todos'"
-              :options="funcoes"
+              :options="semTodos(funcoes)"
               dense outlined hide-bottom-space
               class="funcao-select"
               popup-content-class="gerente-popup"
-            />
+            ><template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
           </div>
 
           <div class="filter-divider" />
@@ -130,8 +130,8 @@
             <div class="pill-group">
               <button
                 v-for="g in gerencias" :key="g"
-                :class="['pill', { 'pill--active': filters.gerencia === g }]"
-                @click="filters.gerencia = filters.gerencia === g ? 'Todos' : g"
+                :class="['pill', { 'pill--active': marcado(filters.gerencia, g) }]"
+                @click="filters.gerencia = alternar(filters.gerencia, g)"
               >{{ g }}</button>
             </div>
           </div>
@@ -145,11 +145,11 @@
           <span class="filter-chip">{{ filters.ano }}</span>
           <span class="filter-chip">{{ mesLabel }}</span>
           <span v-if="filters.semana" class="filter-chip filter-chip--hit" @click="filters.semana = 0">{{ semanaLabel }}</span>
-          <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ nomeBase(filters.base) }}</span>
-          <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
-          <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ filters.gerente }}</span>
-          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ filters.coordenador }}</span>
-          <span v-if="filters.funcao !== 'Todos'" class="filter-chip">{{ filters.funcao }}</span>
+          <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ valores(filters.base).map(nomeBase).join(", ") }}</span>
+          <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ rotulo(filters.gerencia) }}</span>
+          <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ rotulo(filters.gerente) }}</span>
+          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ rotulo(filters.coordenador) }}</span>
+          <span v-if="filters.funcao !== 'Todos'" class="filter-chip">{{ rotulo(filters.funcao) }}</span>
           <span v-if="viz.observadorNome" class="filter-chip filter-chip--hit" @click="clearObs">{{ viz.observadorNome }}</span>
           <button class="filter-clear" @click="resetSlice">
             <q-icon name="mdi-close-circle" size="14px" />
@@ -307,6 +307,7 @@
 </template>
 
 <script setup lang="ts">
+import { valores, juntar, marcado, alternar, rotulo, semTodos, casa, igualCI, ativo, eventoDe } from "@/lib/multi-filtro";
 import { reactive, ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
@@ -458,12 +459,12 @@ function onWeekClick(p: EcClick) {
 
 function onBaseClick(p: EcClick) {
   if (p.componentType !== "series" || !p.name) return;
-  filters.base = filters.base === p.name ? "Todos" : p.name;
+  filters.base = alternar(filters.base, p.name, eventoDe(p));
 }
 
 function onGerenciaClick(p: EcClick) {
   if (p.componentType !== "series" || !p.name) return;
-  filters.gerencia = filters.gerencia === p.name ? "Todos" : p.name;
+  filters.gerencia = alternar(filters.gerencia, p.name, eventoDe(p));
 }
 
 function onObsClick(p: EcClick) {
@@ -520,12 +521,12 @@ function applySlice(
   if (!omit.week && filters.semana) {
     s = s.filter((sub) => semanaDaSub(sub) === filters.semana);
   }
-  if (!omit.base && filters.base !== "Todos") {
-    s = s.filter((sub) => sub.base === filters.base);
+  if (!omit.base && ativo(filters.base)) {
+    s = s.filter((sub) => casa(filters.base, sub.base));
   }
-  if (!omit.funcao && filters.funcao !== "Todos") {
+  if (!omit.funcao && ativo(filters.funcao)) {
     const idx = indexEmployees(employees.value);
-    s = s.filter((sub) => matchSubmissionToEmployee(sub, idx)?.funcao === filters.funcao);
+    s = s.filter((sub) => casa(filters.funcao, matchSubmissionToEmployee(sub, idx)?.funcao));
   }
   if (!omit.mat && viz.matricula) {
     const idx = indexEmployees(employees.value);
@@ -582,8 +583,8 @@ const observerRows = computed(() => {
   let roster = observerRoster.value;
   const idx = indexEmployees(employees.value);
   const slice = subsNoObs.value;
-  if (filters.base !== "Todos") {
-    roster = roster.filter((e) => e.base === filters.base);
+  if (ativo(filters.base)) {
+    roster = roster.filter((e) => casa(filters.base, e.base));
   }
   const { counts, extras } = tallyObserverRecords(roster, employees.value, slice);
   const list = extras.length ? [...roster, ...extras] : roster;
@@ -756,13 +757,15 @@ function barItem(value: number, dimmed: boolean) {
 }
 
 function singleBar(labels: string[], data: number[], selected?: string | number | null) {
+  // "selected" pode ser um texto com vários marcados (ver multi-filtro): cada barra clara se estiver entre eles
+  const marcados = typeof selected === "string" ? valores(selected) : [];
   return [{
     name: "Realizado",
     type: "bar" as const,
     cursor: "pointer",
     data: data.map((v, i) => {
       const key = labels[i];
-      const dimmed = selected != null && selected !== "" && selected !== key && selected !== i + 1;
+      const dimmed = selected != null && selected !== "" && selected !== key && selected !== i + 1 && !(key !== undefined && marcados.includes(key));
       return barItem(v, dimmed);
     }),
     barMaxWidth: 48,
@@ -820,7 +823,7 @@ const chartMetaMes = computed(() => ({
       tipHtml(`${mesLabel.value} · ${filters.ano}`, [
         { label: "Realizado", value: String(p.value), color: chartInk.ok },
         { label: "Meta", value: String(metaMensal.value), color: "#0ea5e9" },
-      ], viz.observadorNome || (filters.base !== "Todos" ? nomeBase(filters.base) : undefined)),
+      ], viz.observadorNome || (ativo(filters.base) ? valores(filters.base).map(nomeBase).join(", ") : undefined)),
   },
   grid: { left: 12, right: 16, top: 44, bottom: 28 },
   xAxis: cleanXAxis([mesLabel.value]),
