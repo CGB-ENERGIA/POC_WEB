@@ -287,11 +287,37 @@ async function entrar() {
   await router.replace("/");
 }
 
+/** Erro do link de e-mail (?error= / otp_expired) — o Supabase manda de volta para a home. */
+function lerErroDoLinkDeEmail(): string | null {
+  const qs = new URLSearchParams(window.location.search);
+  const code = qs.get("error_code") || "";
+  const desc = (qs.get("error_description") || qs.get("error") || "").replace(/\+/g, " ");
+  if (!code && !desc) return null;
+
+  if (/otp_expired|expired|invalid/i.test(`${code} ${desc}`)) {
+    return "Este link de recuperação já foi usado ou expirou. Peça um novo em Esqueci minha senha e abra o e-mail no navegador (não no preview do WhatsApp).";
+  }
+  return "Não foi possível validar o link de recuperação. Peça um novo em Esqueci minha senha.";
+}
+
+function limparParamsDeErroDaUrl() {
+  const url = new URL(window.location.href);
+  ["error", "error_code", "error_description"].forEach((k) => url.searchParams.delete(k));
+  window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+}
+
 onMounted(() => {
   try {
     const saved = localStorage.getItem(LAST_EMAIL_KEY);
     if (saved) email.value = saved;
   } catch { /* ok */ }
+
+  const linkErro = lerErroDoLinkDeEmail();
+  if (linkErro) {
+    loginErro.value = linkErro;
+    limparParamsDeErroDaUrl();
+  }
+
   nextTick(() => (email.value ? senhaRef.value : emailRef.value)?.focus());
 });
 </script>
