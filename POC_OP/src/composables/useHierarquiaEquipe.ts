@@ -7,6 +7,7 @@ import {
   type EmployeeRow,
   type EquipeHier,
 } from "@/lib/dashboard";
+import { valores } from "@/lib/multi-filtro";
 
 export { chaveEquipe };
 
@@ -55,14 +56,17 @@ export function useHierarquiaEquipe(employees: Ref<EmployeeRow[]>) {
   const baseDaSub = (sub: SubEquipe): string =>
     (hierarquiaDaEquipe(hierEquipes.value, sub.equipe ?? "")?.base || sub.base || "").toUpperCase();
 
+  /** Coordenador e gerente escolhidos (um ou vários, ver multi-filtro): a equipe do checklist precisa pertencer a algum deles. */
   function passaCoordenadorGerente(sub: SubEquipe, coordenador: string, gerente: string): boolean {
-    if (coordenador === "Todos" && gerente === "Todos") return true;
+    const coords = valores(coordenador);
+    const gerentes = valores(gerente);
+    if (!coords.length && !gerentes.length) return true;
     const h = hierarquiaDaEquipe(hierEquipes.value, sub.equipe ?? "");
     const coordDaEquipe = foldName(h?.coordenador ?? "");
-    if (coordenador !== "Todos" && coordDaEquipe !== foldName(coordenador)) return false;
-    if (gerente !== "Todos") {
-      const g = h?.gerente || gerenteDoCoordenador.value.get(coordDaEquipe) || "";
-      if (foldName(g) !== foldName(gerente)) return false;
+    if (coords.length && !coords.some((c) => foldName(c) === coordDaEquipe)) return false;
+    if (gerentes.length) {
+      const g = foldName(h?.gerente || gerenteDoCoordenador.value.get(coordDaEquipe) || "");
+      if (!gerentes.some((x) => foldName(x) === g)) return false;
     }
     return true;
   }

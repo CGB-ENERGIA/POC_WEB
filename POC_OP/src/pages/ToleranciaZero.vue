@@ -35,8 +35,8 @@
             <span class="fgroup__label">Categoria</span>
             <div class="pill-group">
               <button v-for="c in categorias" :key="c"
-                :class="['pill', filters.categoria === c && 'pill--active']"
-                @click="filters.categoria = filters.categoria === c ? 'Todos' : c">{{ c }}</button>
+                :class="['pill', marcado(filters.categoria, c) && 'pill--active']"
+                @click="filters.categoria = alternar(filters.categoria, c)">{{ c }}</button>
             </div>
           </div>
 
@@ -46,16 +46,16 @@
             <span class="fgroup__label">Gerente Final</span>
             <div class="pill-group">
               <button v-for="g in gerentesFinal" :key="g"
-                :class="['pill', filters.gerenteFinal === g && 'pill--active']"
-                @click="filters.gerenteFinal = g">{{ g }}</button>
+                :class="['pill', marcado(filters.gerenteFinal, g) && 'pill--active']"
+                @click="filters.gerenteFinal = alternar(filters.gerenteFinal, g)">{{ g }}</button>
             </div>
           </div>
           <div class="fgroup">
             <span class="fgroup__label">Coordenador</span>
             <div class="pill-group">
               <button v-for="g in coordenadoresOpts" :key="g"
-                :class="['pill', filters.coordenador === g && 'pill--active']"
-                @click="filters.coordenador = filters.coordenador === g ? 'Todos' : g">{{ g }}</button>
+                :class="['pill', marcado(filters.coordenador, g) && 'pill--active']"
+                @click="filters.coordenador = alternar(filters.coordenador, g)">{{ g }}</button>
             </div>
           </div>
 
@@ -63,11 +63,11 @@
 
           <div class="fgroup fgroup--select">
             <span class="fgroup__label">Observador</span>
-            <q-select v-model="filters.observador"
-              :clearable="filters.observador !== 'Todos'" @clear="filters.observador = 'Todos'" :options="observadoresVisiveis"
+            <q-select multiple :model-value="valores(filters.observador)" @update:model-value="(v: string[]) => filters.observador = juntar(v)" :display-value="rotulo(filters.observador)"
+              :clearable="filters.observador !== 'Todos'" @clear="filters.observador = 'Todos'" :options="semTodos(observadoresVisiveis)"
               dense outlined hide-bottom-space class="fselect"
               use-input input-debounce="0" popup-content-class="fselect-popup"
-              @filter="(v: string, update: (fn: () => void) => void) => update(() => { buscaObservador = v; })" />
+              @filter="(v: string, update: (fn: () => void) => void) => update(() => { buscaObservador = v; })" ><template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
           </div>
         </div>
 
@@ -82,10 +82,10 @@
 
           <div class="fgroup fgroup--select">
             <span class="fgroup__label">Semana</span>
-            <q-select v-model="filters.semana"
-              :clearable="filters.semana !== 'Todos'" @clear="filters.semana = 'Todos'" :options="semanasOpts"
+            <q-select multiple :model-value="valores(filters.semana)" @update:model-value="(v: string[]) => filters.semana = juntar(v)" :display-value="rotulo(filters.semana)"
+              :clearable="filters.semana !== 'Todos'" @clear="filters.semana = 'Todos'" :options="semTodos(semanasOpts)"
               dense outlined hide-bottom-space class="fselect"
-              popup-content-class="fselect-popup" />
+              popup-content-class="fselect-popup" ><template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
           </div>
 
           <div class="filter-divider" />
@@ -94,8 +94,8 @@
             <span class="fgroup__label">Base</span>
             <div class="pill-group">
               <button v-for="b in bases" :key="b"
-                :class="['pill', filters.base === b && 'pill--active']"
-                @click="filters.base = filters.base === b ? 'Todos' : b">{{ b }}</button>
+                :class="['pill', marcado(filters.base, b) && 'pill--active']"
+                @click="filters.base = alternar(filters.base, b)">{{ b }}</button>
             </div>
           </div>
 
@@ -103,19 +103,19 @@
 
           <div class="fgroup fgroup--select" style="min-width:160px">
             <span class="fgroup__label">Gerência da Equipe</span>
-            <q-select v-model="filters.gerencia"
-              :clearable="filters.gerencia !== 'Todos'" @clear="filters.gerencia = 'Todos'" :options="gerenciasOpts"
+            <q-select multiple :model-value="valores(filters.gerencia)" @update:model-value="(v: string[]) => filters.gerencia = juntar(v)" :display-value="rotulo(filters.gerencia)"
+              :clearable="filters.gerencia !== 'Todos'" @clear="filters.gerencia = 'Todos'" :options="semTodos(gerenciasOpts)"
               dense outlined hide-bottom-space class="fselect"
-              popup-content-class="fselect-popup" />
+              popup-content-class="fselect-popup" ><template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
           </div>
 
           <div class="fgroup fgroup--select" style="min-width:170px">
             <span class="fgroup__label">Prefixo da Equipe</span>
-            <q-select v-model="filters.prefixo"
-              :clearable="filters.prefixo !== 'Todos'" @clear="filters.prefixo = 'Todos'" :options="prefixoOpts"
+            <q-select multiple :model-value="valores(filters.prefixo)" @update:model-value="(v: string[]) => filters.prefixo = juntar(v)" :display-value="rotulo(filters.prefixo)"
+              :clearable="filters.prefixo !== 'Todos'" @clear="filters.prefixo = 'Todos'" :options="semTodos(prefixoOpts)"
               dense outlined hide-bottom-space class="fselect"
               use-input input-debounce="0" popup-content-class="fselect-popup"
-              @filter="filterPrefixo" />
+              @filter="filterPrefixo" ><template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
           </div>
         </div>
 
@@ -126,14 +126,14 @@
           <span class="filter-summary__label">Filtros ativos:</span>
           <span class="filter-chip">{{ filters.ano }}</span>
           <span class="filter-chip">{{ filters.mes }}</span>
-          <span v-if="filters.semana !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.semana = 'Todos'">{{ filters.semana }}</span>
-          <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ filters.base }}</span>
-          <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
-          <span v-if="filters.gerenteFinal !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerenteFinal = 'Todos'">{{ filters.gerenteFinal }}</span>
-          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ filters.coordenador }}</span>
-          <span v-if="filters.observador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.observador = 'Todos'">{{ filters.observador }}</span>
-          <span v-if="filters.categoria !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.categoria = 'Todos'">{{ filters.categoria }}</span>
-          <span v-if="filters.prefixo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.prefixo = 'Todos'">{{ filters.prefixo }}</span>
+          <span v-if="filters.semana !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.semana = 'Todos'">{{ rotulo(filters.semana) }}</span>
+          <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ rotulo(filters.base) }}</span>
+          <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ rotulo(filters.gerencia) }}</span>
+          <span v-if="filters.gerenteFinal !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerenteFinal = 'Todos'">{{ rotulo(filters.gerenteFinal) }}</span>
+          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ rotulo(filters.coordenador) }}</span>
+          <span v-if="filters.observador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.observador = 'Todos'">{{ rotulo(filters.observador) }}</span>
+          <span v-if="filters.categoria !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.categoria = 'Todos'">{{ rotulo(filters.categoria) }}</span>
+          <span v-if="filters.prefixo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.prefixo = 'Todos'">{{ rotulo(filters.prefixo) }}</span>
           <span v-if="viz.pergunta" class="filter-chip filter-chip--hit" @click="viz.pergunta = null">{{ perguntaChip }}</span>
           <button class="filter-clear" @click="resetSlice">
             <q-icon name="mdi-close-circle" size="14px" />
@@ -225,6 +225,7 @@
 </template>
 
 <script setup lang="ts">
+import { valores, juntar, marcado, alternar, rotulo, semTodos, casa, igualCI, ativo } from "@/lib/multi-filtro";
 import { ref, reactive, computed, watch, onMounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
@@ -353,13 +354,13 @@ function togglePergunta(q: string) {
 function onCategoriaClick(p: EcClick) {
   if (p.componentType && p.componentType !== "series") return;
   if (!p.name) return;
-  filters.categoria = filters.categoria === p.name ? "Todos" : p.name;
+  filters.categoria = alternar(filters.categoria, p.name);
 }
 
 function onEquipeClick(p: EcClick) {
   if (p.componentType && p.componentType !== "series") return;
   if (!p.name?.trim()) return;
-  filters.prefixo = filters.prefixo === p.name ? "Todos" : p.name;
+  filters.prefixo = alternar(filters.prefixo, p.name);
 }
 
 function resetSlice() {
@@ -401,24 +402,17 @@ function applySlice(
   if (filters.coordenador !== "Todos" || filters.gerenteFinal !== "Todos") {
     s = s.filter((sub) => passaCoordenadorGerente(sub, filters.coordenador, filters.gerenteFinal));
   }
-  if (filters.base !== "Todos") {
-    const base = filters.base.toUpperCase();
-    s = s.filter((sub) => baseDaSub(sub) === base);
+  if (ativo(filters.base)) s = s.filter((sub) => casa(filters.base, baseDaSub(sub), igualCI));
+  if (!omit.gerencia && ativo(filters.gerencia)) s = s.filter((sub) => casa(filters.gerencia, gerenciaDaSub(sub), igualCI));
+  if (!omit.week && ativo(filters.semana)) {
+    const semanas = valores(filters.semana).map((x) => Number(x.replace(/\D/g, "")) || 0).filter(Boolean);
+    if (semanas.length) s = s.filter(sub => semanas.includes(semanaDaSub(sub)));
   }
-  if (!omit.gerencia && filters.gerencia !== "Todos") {
-    const alvo = filters.gerencia.toUpperCase();
-    s = s.filter((sub) => gerenciaDaSub(sub) === alvo);
+  if (!omit.observador && ativo(filters.observador)) {
+    s = s.filter(sub => casa(filters.observador, sub.observador));
   }
-  if (!omit.week && filters.semana !== "Todos") {
-    const semNum = Number(filters.semana.replace(/\D/g, "")) || 0;
-    if (semNum) s = s.filter(sub => semanaDaSub(sub) === semNum);
-  }
-  if (!omit.observador && filters.observador !== "Todos") {
-    s = s.filter(sub => sub.observador === filters.observador);
-  }
-  if (!omit.prefixo && filters.prefixo !== "Todos") {
-    const alvo = chaveEquipe(filters.prefixo);
-    s = s.filter(sub => chaveEquipe(sub.equipe) === alvo);
+  if (!omit.prefixo && ativo(filters.prefixo)) {
+    s = s.filter(sub => casa(filters.prefixo, sub.equipe, (a, b) => chaveEquipe(a) === chaveEquipe(b)));
   }
   return s;
 }
@@ -429,9 +423,8 @@ function tzResps(
 ) {
   const ids = new Set(subs.map(s => s.id));
   let r = ocorrenciasTodas.value.filter(resp => ids.has(resp.submission_id));
-  if (!omit.cat && filters.categoria !== "Todos") {
-    const alvo = filters.categoria.toLowerCase();
-    r = r.filter(resp => (resp.categoria ?? "").toLowerCase() === alvo);
+  if (!omit.cat && ativo(filters.categoria)) {
+    r = r.filter(resp => casa(filters.categoria, resp.categoria, igualCI));
   }
   if (!omit.pergunta && viz.pergunta) {
     r = r.filter(resp => (resp.pergunta ?? "Sem descrição") === viz.pergunta);
@@ -520,7 +513,7 @@ const treemapData = computed(() => {
 const tmPalette = ["#6b1321","#8B1C2B","#a32636","#c43d52","#e8889a","#f9c5cb"];
 
 const chartTreemap = computed(() => {
-  const selected = filters.categoria !== "Todos" ? filters.categoria : null;
+  const selecionadas = valores(filters.categoria).map((x) => x.toLowerCase());
   return {
     tooltip: {
       ...tooltipSkin("item"),
@@ -550,7 +543,7 @@ const chartTreemap = computed(() => {
         value: d.value,
         itemStyle: {
           color: tmPalette[i] ?? "#f9c5cb",
-          opacity: !selected || selected === d.name ? 1 : 0.28,
+          opacity: !selecionadas.length || selecionadas.includes(d.name.toLowerCase()) ? 1 : 0.28,
         },
       })),
       itemStyle: { borderWidth: 2, borderColor: "#fff" },
@@ -599,7 +592,7 @@ function barColor(v: number): string {
 
 const chartRankingEq = computed(() => {
   const data = rankEquipes.value;
-  const selected = filters.prefixo !== "Todos" ? chaveEquipe(filters.prefixo) : null;
+  const selecionadas = valores(filters.prefixo).map((x) => chaveEquipe(x));
   const vis = Math.min(12, Math.max(data.length, 1));
   const start = Math.max(0, data.length - vis);
   const end = Math.max(0, data.length - 1);
@@ -648,7 +641,7 @@ const chartRankingEq = computed(() => {
         value: r.v,
         itemStyle: {
           color: barColor(r.v),
-          opacity: !selected || selected === r.name ? 1 : 0.22,
+          opacity: !selecionadas.length || selecionadas.includes(chaveEquipe(r.name)) ? 1 : 0.22,
           borderRadius: [0, 6, 6, 0],
         },
       })),

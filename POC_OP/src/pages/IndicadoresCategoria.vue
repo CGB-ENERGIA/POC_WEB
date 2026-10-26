@@ -31,25 +31,25 @@
           <div class="filter-divider" />
           <div class="fgroup fgroup--gerente">
             <span class="fgroup__label">Gerente</span>
-            <q-select v-model="filters.gerente"
-              :clearable="filters.gerente !== 'Todos'" @clear="filters.gerente = 'Todos'" :options="gerentesOpts"
+            <q-select multiple :model-value="valores(filters.gerente)" @update:model-value="(v: string[]) => filters.gerente = juntar(v)" :display-value="rotulo(filters.gerente)"
+              :clearable="filters.gerente !== 'Todos'" @clear="filters.gerente = 'Todos'" :options="semTodos(gerentesOpts)"
               dense outlined hide-bottom-space class="gerente-select"
               popup-content-class="gerente-popup">
               <template #prepend>
                 <q-icon name="mdi-account" size="16px" class="gerente-icon" />
               </template>
-            </q-select>
+            <template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
           </div>
           <div class="fgroup fgroup--gerente">
             <span class="fgroup__label">Coordenador</span>
-            <q-select v-model="filters.coordenador"
-              :clearable="filters.coordenador !== 'Todos'" @clear="filters.coordenador = 'Todos'" :options="coordenadoresOpts"
+            <q-select multiple :model-value="valores(filters.coordenador)" @update:model-value="(v: string[]) => filters.coordenador = juntar(v)" :display-value="rotulo(filters.coordenador)"
+              :clearable="filters.coordenador !== 'Todos'" @clear="filters.coordenador = 'Todos'" :options="semTodos(coordenadoresOpts)"
               dense outlined hide-bottom-space class="gerente-select"
               popup-content-class="gerente-popup">
               <template #prepend>
                 <q-icon name="mdi-account" size="16px" class="gerente-icon" />
               </template>
-            </q-select>
+            <template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
           </div>
         </div>
 
@@ -59,8 +59,8 @@
             <span class="fgroup__label">Base</span>
             <div class="pill-group">
               <button v-for="b in basesOpts" :key="b"
-                :class="['pill', filters.base === b && 'pill--active']"
-                @click="filters.base = filters.base === b ? 'Todos' : b">{{ b }}</button>
+                :class="['pill', marcado(filters.base, b) && 'pill--active']"
+                @click="filters.base = alternar(filters.base, b)">{{ b }}</button>
             </div>
           </div>
           <div class="filter-divider" />
@@ -68,26 +68,26 @@
             <span class="fgroup__label">Gerência</span>
             <div class="pill-group">
               <button v-for="g in gerenciasOpts" :key="g"
-                :class="['pill', filters.gerencia === g && 'pill--active']"
-                @click="filters.gerencia = filters.gerencia === g ? 'Todos' : g">{{ g }}</button>
+                :class="['pill', marcado(filters.gerencia, g) && 'pill--active']"
+                @click="filters.gerencia = alternar(filters.gerencia, g)">{{ g }}</button>
             </div>
           </div>
           <div class="filter-divider" />
           <div class="fgroup fgroup--gerente" style="min-width:170px">
             <span class="fgroup__label">Prefixo</span>
-            <q-select v-model="filters.prefixo"
-              :clearable="filters.prefixo !== 'Todos'" @clear="filters.prefixo = 'Todos'" :options="prefixoOpts"
+            <q-select multiple :model-value="valores(filters.prefixo)" @update:model-value="(v: string[]) => filters.prefixo = juntar(v)" :display-value="rotulo(filters.prefixo)"
+              :clearable="filters.prefixo !== 'Todos'" @clear="filters.prefixo = 'Todos'" :options="semTodos(prefixoOpts)"
               dense outlined hide-bottom-space class="gerente-select"
               use-input input-debounce="0" popup-content-class="gerente-popup"
-              @filter="filterPrefixo" />
+              @filter="filterPrefixo" ><template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
           </div>
           <div class="filter-divider" />
           <div class="fgroup">
             <span class="fgroup__label">Tipo de POC</span>
             <div class="pill-group">
               <button v-for="t in tiposOpts" :key="t"
-                :class="['pill', filters.tipo === t && 'pill--active']"
-                @click="filters.tipo = filters.tipo === t ? 'Todos' : t">{{ t }}</button>
+                :class="['pill', marcado(filters.tipo, t) && 'pill--active']"
+                @click="filters.tipo = alternar(filters.tipo, t)">{{ t }}</button>
             </div>
           </div>
         </div>
@@ -98,12 +98,12 @@
         <div v-if="hasActiveFilters" class="filter-summary">
           <span class="filter-summary__label">Filtros ativos:</span>
           <span class="filter-chip">{{ filters.ano }}</span>
-          <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ filters.base }}</span>
-          <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
-          <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ filters.gerente }}</span>
-          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ filters.coordenador }}</span>
-          <span v-if="filters.prefixo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.prefixo = 'Todos'">{{ filters.prefixo }}</span>
-          <span v-if="filters.tipo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.tipo = 'Todos'">{{ filters.tipo }}</span>
+          <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ rotulo(filters.base) }}</span>
+          <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ rotulo(filters.gerencia) }}</span>
+          <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ rotulo(filters.gerente) }}</span>
+          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ rotulo(filters.coordenador) }}</span>
+          <span v-if="filters.prefixo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.prefixo = 'Todos'">{{ rotulo(filters.prefixo) }}</span>
+          <span v-if="filters.tipo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.tipo = 'Todos'">{{ rotulo(filters.tipo) }}</span>
           <span v-if="viz.mes" class="filter-chip filter-chip--hit" @click="viz.mes = null">{{ months[viz.mes - 1] }}</span>
           <span v-if="viz.catKey" class="filter-chip filter-chip--hit" @click="viz.catKey = null">{{ catLabel(viz.catKey) }}</span>
           <button class="filter-clear" @click="resetSlice">
@@ -193,6 +193,7 @@
 </template>
 
 <script setup lang="ts">
+import { valores, juntar, marcado, alternar, rotulo, semTodos, casa, igualCI, ativo } from "@/lib/multi-filtro";
 import { reactive, ref, shallowRef, computed, watch, onMounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
@@ -205,70 +206,16 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { fetchRespostasPorCategoria, fetchHierarquiaEquipes, hierarquiaDaEquipe, foldName, type CatAgg, type EquipeHier } from "@/lib/dashboard";
+import { fetchRespostasPorCategoria, type CatAgg } from "@/lib/dashboard";
+import { useHierarquiaEquipe, chaveEquipe } from "@/composables/useHierarquiaEquipe";
 import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
 
 use([CanvasRenderer, BarChart, GridComponent, TooltipComponent, LegendComponent]);
 
 const { loading: loadingBase, error, submissions, employees, load, gerentesOpts } = useChecklistData();
 
-// ─── Hierarquia da EQUIPE (coordenador, gerente, gerência, base) ──────────────
-// Coordenador, gerente, gerência e base olham a equipe do checklist (as equipes vinculadas ao coordenador),
-// não o cadastro de quem observou. Mesmo critério do Índice de Conformidade.
-const hierEquipes = shallowRef(new Map<string, EquipeHier>());
-fetchHierarquiaEquipes().then((m) => { hierEquipes.value = m; });
-
-/** Coordenadores que têm equipe vinculada (sem repetir "AFONSO"/"Afonso"). */
-const coordenadoresOpts = computed(() => {
-  const nomes = new Map<string, string>();
-  for (const h of hierEquipes.value.values()) {
-    const nome = h.coordenador.trim();
-    const k = foldName(nome);
-    if (!k) continue;
-    const atual = nomes.get(k);
-    // prefere a grafia que não está toda em maiúsculas
-    if (!atual || (atual === atual.toUpperCase() && nome !== nome.toUpperCase())) nomes.set(k, nome);
-  }
-  return ["Todos", ...[...nomes.values()].sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }))];
-});
-
-/** Gerente de cada coordenador (o mais comum no cadastro), para equipes sem gerente informado. */
-const gerenteDoCoordenador = computed(() => {
-  const cont = new Map<string, Map<string, number>>();
-  for (const e of employees.value) {
-    const c = foldName(e.coordenador ?? "");
-    const g = (e.gerente ?? "").trim();
-    if (!c || !g) continue;
-    const m = cont.get(c) ?? new Map<string, number>();
-    m.set(g, (m.get(g) ?? 0) + 1);
-    cont.set(c, m);
-  }
-  const out = new Map<string, string>();
-  for (const [c, m] of cont) out.set(c, [...m.entries()].sort((a, b) => b[1] - a[1])[0]![0]);
-  return out;
-});
-
-type SubEquipe = { auditagem?: string | null; equipe?: string | null; base?: string | null };
-
-function gerenciaDaSub(sub: SubEquipe): string {
-  return (hierarquiaDaEquipe(hierEquipes.value, sub.equipe ?? "")?.gerencia || sub.auditagem || "").toUpperCase();
-}
-
-function baseDaSub(sub: SubEquipe): string {
-  return (hierarquiaDaEquipe(hierEquipes.value, sub.equipe ?? "")?.base || sub.base || "").toUpperCase();
-}
-
-function passaCoordenadorGerente(sub: SubEquipe): boolean {
-  if (filters.coordenador === "Todos" && filters.gerente === "Todos") return true;
-  const h = hierarquiaDaEquipe(hierEquipes.value, sub.equipe ?? "");
-  const coordDaEquipe = foldName(h?.coordenador ?? "");
-  if (filters.coordenador !== "Todos" && coordDaEquipe !== foldName(filters.coordenador)) return false;
-  if (filters.gerente !== "Todos") {
-    const g = h?.gerente || gerenteDoCoordenador.value.get(coordDaEquipe) || "";
-    if (foldName(g) !== foldName(filters.gerente)) return false;
-  }
-  return true;
-}
+// Coordenador, gerente, gerência e base pela EQUIPE do checklist (as equipes vinculadas), não pelo cadastro de quem observou.
+const { coordenadoresOpts, gerenciaDaSub, baseDaSub, passaCoordenadorGerente } = useHierarquiaEquipe(employees);
 
 // Conformes/não conformes por categoria de cada checklist, calculado no banco (evita baixar todas as respostas do ano).
 const catAgg = ref<CatAgg>({});
@@ -392,8 +339,10 @@ const hasActiveFilters = computed(() =>
 );
 
 function matchTipoPoc(auditagem: string | undefined) {
-  const allowed = TIPO_AUDITAGEM[filters.tipo];
-  if (!allowed) return true;
+  const sel = valores(filters.tipo);
+  if (!sel.length) return true;
+  const allowed = sel.flatMap((t) => TIPO_AUDITAGEM[t] ?? []);
+  if (!allowed.length) return true;
   return allowed.includes((auditagem ?? "").toUpperCase());
 }
 
@@ -402,18 +351,14 @@ function applySlice(
   omit: { gerencia?: boolean; prefixo?: boolean; tipo?: boolean; mes?: boolean } = {},
 ) {
   let s = source;
-  if (filters.coordenador !== "Todos" || filters.gerente !== "Todos") s = s.filter(passaCoordenadorGerente);
-  if (filters.base !== "Todos") {
-    const base = filters.base.toUpperCase();
-    s = s.filter((sub) => baseDaSub(sub) === base);
+  if (ativo(filters.coordenador) || ativo(filters.gerente)) {
+    s = s.filter((sub) => passaCoordenadorGerente(sub, filters.coordenador, filters.gerente));
   }
-  if (!omit.gerencia && filters.gerencia !== "Todos") {
-    const alvo = filters.gerencia.toUpperCase();
-    s = s.filter((sub) => gerenciaDaSub(sub) === alvo);
-  }
+  if (ativo(filters.base)) s = s.filter((sub) => casa(filters.base, baseDaSub(sub), igualCI));
+  if (!omit.gerencia && ativo(filters.gerencia)) s = s.filter((sub) => casa(filters.gerencia, gerenciaDaSub(sub), igualCI));
   if (!omit.tipo) s = s.filter((sub) => matchTipoPoc(sub.auditagem));
-  if (!omit.prefixo && filters.prefixo !== "Todos") {
-    s = s.filter((sub) => sub.equipe === filters.prefixo);
+  if (!omit.prefixo && ativo(filters.prefixo)) {
+    s = s.filter((sub) => casa(filters.prefixo, sub.equipe, (a, b) => chaveEquipe(a) === chaveEquipe(b)));
   }
   if (!omit.mes && viz.mes) {
     s = s.filter((sub) => {

@@ -4,7 +4,8 @@ const KEY = "poc_op_tipo_poc";
 export function lerTipoPoc(opcoes: string[]): string {
   try {
     const v = localStorage.getItem(KEY);
-    return v && opcoes.includes(v) ? v : "Todos";
+    // aceita vários tipos marcados ("Operacional¦Alojamento"): todos precisam existir nesta página
+    return v && v.split("¦").every((t) => opcoes.includes(t)) ? v : "Todos";
   } catch {
     return "Todos";
   }
