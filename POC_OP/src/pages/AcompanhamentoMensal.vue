@@ -808,8 +808,9 @@ function singleBar(labels: string[], data: number[], selected?: string | number 
 }
 
 /**
- * Traço da meta sobre cada vela; rótulo "Meta: N" só em `rotuloEm`.
- * Se o número do realizado cair na altura do traço, abre um vão e sobe o rótulo.
+ * Traço da meta por categoria; rótulo "Meta: N" só em `rotuloEm`.
+ * - Realizado ≥ meta: só “orelhas” nas laterais (não corta o corpo da vela).
+ * - Número perto do traço: vão no meio para o rótulo verde.
  */
 function metaTracos(metas: number[], realizados: number[], rotuloEm: number) {
   return {
@@ -825,28 +826,40 @@ function metaTracos(metas: number[], realizados: number[], rotuloEm: number) {
       const real = realizados[idx] ?? 0;
       const [cx, cy] = api.coord([idx, meta]) as [number, number];
       const [, ry] = api.coord([idx, real]) as [number, number];
-      const meio = Math.min((api.size([1, 0]) as [number, number])[0] * 0.42, 32);
-      // Topo da barra + distance 8 + metade da fonte do label (~13px)
+      const catW = (api.size([1, 0]) as [number, number])[0];
+      // Metade da vela (~barMaxWidth 48) e extensão do traço um pouco além dela
+      const barHalf = Math.min(catW * 0.22, 24);
+      const tickOuter = Math.min(catW * 0.48, 40);
       const numY = ry - 14;
-      const overlap = Math.abs(cy - numY) < 13;
+      const labelOverlap = Math.abs(cy - numY) < 13;
+      const exceeds = real >= meta;
 
-      const stroke = { stroke: "#0ea5e9", lineWidth: 2 };
+      const stroke = { stroke: "#0ea5e9", lineWidth: 2.5, lineCap: "round" as const };
       const children: Record<string, unknown>[] = [];
-      if (overlap && meio > 18) {
-        const gap = Math.min(28, meio - 2);
+
+      const pushStubs = (inner: number, outer: number) => {
+        if (outer <= inner + 3) return;
         children.push(
-          { type: "line", shape: { x1: cx - meio, y1: cy, x2: cx - gap, y2: cy }, style: stroke },
-          { type: "line", shape: { x1: cx + gap, y1: cy, x2: cx + meio, y2: cy }, style: stroke },
+          { type: "line", shape: { x1: cx - outer, y1: cy, x2: cx - inner, y2: cy }, style: stroke },
+          { type: "line", shape: { x1: cx + inner, y1: cy, x2: cx + outer, y2: cy }, style: stroke },
         );
+      };
+
+      if (exceeds) {
+        // Traço fora da vela — evita bissectar o verde quando ultrapassa a meta
+        pushStubs(barHalf + 3, tickOuter);
+      } else if (labelOverlap) {
+        pushStubs(Math.min(28, tickOuter - 2), tickOuter);
       } else {
         children.push({
           type: "line",
-          shape: { x1: cx - meio, y1: cy, x2: cx + meio, y2: cy },
+          shape: { x1: cx - tickOuter * 0.85, y1: cy, x2: cx + tickOuter * 0.85, y2: cy },
           style: stroke,
         });
       }
+
       if (idx === rotuloEm) {
-        const labelY = overlap ? Math.min(cy, numY) - 18 : cy - 6;
+        const labelY = labelOverlap && !exceeds ? Math.min(cy, numY) - 18 : cy - 8;
         children.push({
           type: "text",
           style: {
