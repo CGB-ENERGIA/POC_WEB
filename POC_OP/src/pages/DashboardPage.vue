@@ -117,7 +117,7 @@
             <div class="dash-card__header">
               <div>
                 <div class="dash-card__title">Top Observadores</div>
-                <div class="dash-card__sub">% Conformidade · mês atual</div>
+                <div class="dash-card__sub">% Conformidade · período selecionado</div>
               </div>
             </div>
             <v-chart :option="observBarOption" autoresize style="height: 260px" />
@@ -130,7 +130,7 @@
             <div class="dash-card__header">
               <div>
                 <div class="dash-card__title">Por Categoria</div>
-                <div class="dash-card__sub">Volume de observações</div>
+                <div class="dash-card__sub">Itens verificados no período</div>
               </div>
             </div>
             <v-chart :option="catBarOption" autoresize style="height: 260px" />
@@ -193,6 +193,7 @@ import {
 } from "echarts/components"
 import VChart from "vue-echarts"
 import { useChecklistData, fmtPct, fmtN } from "@/composables/useChecklistData"
+import { rotuloCategoria } from "@/lib/tolerancia-zero"
 
 use([
   CanvasRenderer, BarChart, LineChart, PieChart,
@@ -238,7 +239,9 @@ const {
 
 async function recarregar() {
   const nums = [...mesesSel.value].sort((a, b) => a - b)
-  await load(nums.length === 1 ? { ano: filters.value.ano, mes: nums[0]! } : { ano: filters.value.ano, meses: nums }, true)
+  await load(nums.length === 1
+    ? { ano: filters.value.ano, mes: nums[0]!, contarMeta: true }
+    : { ano: filters.value.ano, meses: nums, contarMeta: true }, true)
 }
 
 onMounted(recarregar)
@@ -321,7 +324,7 @@ const kpis = computed(() => [
 // ── Evolução Mensal ───────────────────────────────────────────────────────────
 const lineOption = computed(() => {
   const mesLabels = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
-  const mesData = meses.map(m => byMes.value[m.value] ?? 0)
+  const mesData = meses.map(m => byMes.value[m.value] || null)
 
   const isDark  = $q.dark.isActive
   const bg       = isDark ? "#1e293b"                 : "#ffffff"
@@ -332,7 +335,7 @@ const lineOption = computed(() => {
   const lblColor = isDark ? "#94a3b8"                 : "#475569"
   const dotBdr   = isDark ? "#0f172a"                 : "#ffffff"
 
-  const validVals = mesData.filter(v => v > 0)
+  const validVals = mesData.filter((v): v is number => v !== null && v > 0)
   const avg = validVals.length ? validVals.reduce((a, b) => a + b, 0) / validVals.length : 0
 
   return {
@@ -397,10 +400,10 @@ const lineOption = computed(() => {
         markLine: {
           silent: true,
           symbol: ["none", "none"],
-          data: [{ type: "average" as const }],
+          data: [{ yAxis: avg }],
           lineStyle: { color: BRAND, type: "dashed" as const, width: 1.5, opacity: 0.55 },
           label: {
-            formatter: (params: any) => ` Média: ${Math.round(params.value)} `,
+            formatter: () => ` Média: ${Math.round(avg)} `,
             backgroundColor: BRAND,
             color: "#fff",
             fontSize: 10,
@@ -464,7 +467,7 @@ const observBarOption = computed(() => {
       type: "value",
       max: 100,
       axisLabel: { formatter: "{value}%", color: chartInk.axis, fontSize: 10 },
-      splitLine: { lineStyle: { color: "#f3f4f6", type: "dashed" as const } },
+      splitLine: { lineStyle: { color: chartInk.split, type: "dashed" as const } },
       axisLine: { show: false },
       axisTick: { show: false },
     },
@@ -504,7 +507,15 @@ const observBarOption = computed(() => {
 
 // ── Por Categoria ─────────────────────────────────────────────────────────────
 const catBarOption = computed(() => {
-  const cats = [...byCategoria.value].sort((a, b) => a.total - b.total)
+  // "EPI, EPC e FERRAMENTAS" (GOMAN/GSTC) e "EPI, EPC e Ferramentas" (outros catálogos) são a mesma categoria
+  const juntas = new Map<string, { categoria: string; total: number }>()
+  for (const c of byCategoria.value) {
+    const nome = rotuloCategoria(c.categoria)
+    const g = juntas.get(nome.toLowerCase()) ?? { categoria: nome, total: 0 }
+    g.total += c.total
+    juntas.set(nome.toLowerCase(), g)
+  }
+  const cats = [...juntas.values()].sort((a, b) => a.total - b.total)
   return {
     backgroundColor: "transparent",
     tooltip: { trigger: "axis", axisPointer: { type: "shadow" as const } },
@@ -512,7 +523,7 @@ const catBarOption = computed(() => {
     xAxis: {
       type: "value",
       axisLabel: { color: chartInk.axis, fontSize: 10 },
-      splitLine: { lineStyle: { color: "#f3f4f6", type: "dashed" as const } },
+      splitLine: { lineStyle: { color: chartInk.split, type: "dashed" as const } },
       axisLine: { show: false },
       axisTick: { show: false },
     },

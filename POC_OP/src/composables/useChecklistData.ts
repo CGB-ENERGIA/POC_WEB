@@ -68,7 +68,7 @@ export function useChecklistData() {
       responses.value = resp;
 
       if (loadYear && (filters.mes || filters.meses?.length)) {
-        const yearSubs = await fetchSubmissions({ ano: filters.ano });
+        const yearSubs = await fetchSubmissions({ ano: filters.ano, ...(filters.contarMeta ? { contarMeta: true } : {}) });
         if (seq !== loadSeq) return;
         submissionsAno.value = yearSubs;
       } else if (loadYear) {
@@ -121,8 +121,9 @@ export function useChecklistData() {
 
   const byGerencia = computed(() => {
     const map: Record<string, number> = {};
+    const porMatricula = new Map(employees.value.map((e) => [e.matricula, e]));
     for (const s of submissions.value) {
-      const emp = employees.value.find((e) => e.matricula === s.matricula);
+      const emp = porMatricula.get(s.matricula);
       const g = emp?.gerencia ?? s.auditagem;
       map[g] = (map[g] ?? 0) + 1;
     }
