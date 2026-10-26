@@ -1,5 +1,14 @@
 // CGB Engenharia - Global styles
 
+// ─── Texto secundário ──────────────────────────────────────────────────────
+// Cinza de apoio (rótulos, subtítulos, datas): no tema claro precisa de contraste com o branco (#94a3b8 dava 2,6:1).
+:root { --poc-muted: #64748b; }
+body.body--dark { --poc-muted: #94a3b8; }
+body:not(.body--dark) {
+  .text-grey-5,
+  .text-grey-6 { color: var(--poc-muted) !important; }
+}
+
 // ─── Header ────────────────────────────────────────────────────────────────
 .app-header {
   background: linear-gradient(135deg, #7a1225 0%, #5c0e1c 55%, #3d0912 100%) !important;

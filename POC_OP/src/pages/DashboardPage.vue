@@ -601,7 +601,7 @@ $red:    #dc2626;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.6px;
-    color: #9ca3af;
+    color: var(--poc-muted);
     margin-bottom: 10px;
   }
 
@@ -653,7 +653,7 @@ $red:    #dc2626;
 
   &__sub {
     font-size: 11px;
-    color: #9ca3af;
+    color: var(--poc-muted);
     margin-top: 2px;
   }
 
@@ -736,7 +736,7 @@ $red:    #dc2626;
   }
   &__sub {
     font-size: 12px;
-    color: #9ca3af;
+    color: var(--poc-muted);
     margin-top: 2px;
   }
 }
@@ -784,7 +784,7 @@ $red:    #dc2626;
 
   &__desc {
     font-size: 10px;
-    color: #9ca3af;
+    color: var(--poc-muted);
     margin-top: 1px;
   }
 

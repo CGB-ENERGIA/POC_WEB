@@ -1085,7 +1085,7 @@ $brand-text:   #fff;
 $inactive-bg:  #f1f5f9;
 $inactive-text:#475569;
 $border:       #e2e8f0;
-$label-color:  #94a3b8;
+$label-color:  var(--poc-muted);
 
 .icit-page {
   background: #f8fafc;
@@ -1232,7 +1232,7 @@ $label-color:  #94a3b8;
 .body--dark {
   .icit-page   { background: #0f172a; }
   .filter-bar  { background: #1e293b; border-bottom-color: #334155; }
-  .pill { background: #1e293b; border-color: #334155; color: #94a3b8;
+  .pill { background: #1e293b; border-color: #334155; color: var(--poc-muted);
     &:hover:not(.pill--active) { border-color: $brand; color: #fca5a5; background: rgba($brand,.1); }
     &--active { background: $brand; color: #fff; border-color: $brand; }
   }

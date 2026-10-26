@@ -1109,7 +1109,7 @@ $border:  #e2e8f0;
 
 .cm-flabel {
   font-size: 9.5px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .8px; color: #94a3b8;
+  letter-spacing: .8px; color: var(--poc-muted);
 }
 
 .cm-pills { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -1232,7 +1232,7 @@ $border:  #e2e8f0;
     &::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   }
 
-  &__unit { font-size: 11px; color: #94a3b8; white-space: nowrap; }
+  &__unit { font-size: 11px; color: var(--poc-muted); white-space: nowrap; }
 }
 
 .cm-derived {
@@ -1241,7 +1241,7 @@ $border:  #e2e8f0;
   padding-top: 10px;
   border-top: 1px solid #f1f5f9;
 
-  &__hint { font-size: 11px; color: #94a3b8; }
+  &__hint { font-size: 11px; color: var(--poc-muted); }
 }
 
 // ── Ações ──────────────────────────────────────────────────────────────────────
@@ -1366,7 +1366,7 @@ $border:  #e2e8f0;
   }
 
   &__name   { font-size: 13px; font-weight: 700; color: #1e293b; }
-  &__periodo { font-size: 11px; color: #94a3b8; margin-top: 1px; }
+  &__periodo { font-size: 11px; color: var(--poc-muted); margin-top: 1px; }
 
   &__ctrl {
     display: flex;
@@ -1375,7 +1375,7 @@ $border:  #e2e8f0;
     flex-shrink: 0;
   }
 
-  &__unit { font-size: 11px; color: #94a3b8; }
+  &__unit { font-size: 11px; color: var(--poc-muted); }
 
   &__motivo { flex: 1; max-width: 220px; }
 }
@@ -1431,12 +1431,12 @@ $border:  #e2e8f0;
 
   &__info { flex: 1; min-width: 0; }
   &__name { font-size: 13px; font-weight: 600; color: #1e293b; }
-  &__meta { font-size: 11px; color: #94a3b8; margin-top: 1px; }
+  &__meta { font-size: 11px; color: var(--poc-muted); margin-top: 1px; }
 
   &__badge { text-align: right; flex-shrink: 0; }
   &__num   { font-size: 18px; font-weight: 700; color: $orange; line-height: 1; }
-  &__unit  { font-size: 11px; color: #94a3b8; margin-left: 1px; }
-  &__mensal{ font-size: 11px; color: #94a3b8; }
+  &__unit  { font-size: 11px; color: var(--poc-muted); margin-left: 1px; }
+  &__mensal{ font-size: 11px; color: var(--poc-muted); }
   &__sem   { color: $brand; font-weight: 600; }
 
   &--edit { flex-wrap: wrap; background: #fff7ed; }
@@ -1460,7 +1460,7 @@ $border:  #e2e8f0;
   }
 }
 
-.cm-empty { font-size: 13px; color: #94a3b8; margin-top: 4px; }
+.cm-empty { font-size: 13px; color: var(--poc-muted); margin-top: 4px; }
 
 // ── Info ───────────────────────────────────────────────────────────────────────
 .cm-info {
@@ -1501,21 +1501,21 @@ $border:  #e2e8f0;
   .cm-meta-card__head-icon { background: rgba(0, 0, 0, .30); }
 
   .cm-counter__input { background: #0f172a; color: #e2e8f0; border-color: #334155; }
-  .cm-stepper { background: #0f172a; border-color: #334155; color: #94a3b8; }
-  .cm-pill { background: #0f172a; border-color: #334155; color: #94a3b8; }
+  .cm-stepper { background: #0f172a; border-color: #334155; color: var(--poc-muted); }
+  .cm-pill { background: #0f172a; border-color: #334155; color: var(--poc-muted); }
   .cm-pill--on { background: $brand; color: #fff; border-color: $brand; }
 
-  .cm-derived { border-top-color: #334155; color: #94a3b8; }
+  .cm-derived { border-top-color: #334155; color: var(--poc-muted); }
   .cm-override-item { border-bottom-color: #334155; }
   .cm-override-item__name { color: #e2e8f0; }
   .cm-override-item--edit { background: #1c1a0a; }
-  .cm-override-item__edit { color: #94a3b8; }
+  .cm-override-item__edit { color: var(--poc-muted); }
   .cm-override-item__edit--ok { color: #4ade80; }
   .cm-override-item__edit--ok:hover { background: #14532d; color: #86efac; }
   .cm-override-item__edit:hover { background: #334155; color: #e2e8f0; }
   .cm-info__title { color: #e2e8f0; }
-  .cm-info__list { color: #94a3b8; }
-  .cm-btn--reset { background: #1e293b; border-color: #334155; color: #94a3b8; }
+  .cm-info__list { color: var(--poc-muted); }
+  .cm-btn--reset { background: #1e293b; border-color: #334155; color: var(--poc-muted); }
 
   .cm-week-panel { background: #1e293b; border-color: #334155; }
   .cm-week-panel__header { background: linear-gradient(135deg, #1e293b, #0f172a); border-color: #334155; }
@@ -1524,7 +1524,7 @@ $border:  #e2e8f0;
   .cm-fixed { background: #0f172a; border-bottom-color: #334155; }
   .cm-fixed--on { background: #1c1a0a; }
   .cm-fixed__title { color: #e2e8f0; }
-  .cm-fixed__sub { color: #94a3b8; }
+  .cm-fixed__sub { color: var(--poc-muted); }
   .cm-week-row { border-bottom-color: #334155; }
   .cm-week-row--active { background: #1c1a0a; }
   .cm-week-row__name { color: #e2e8f0; }

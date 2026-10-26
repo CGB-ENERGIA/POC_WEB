@@ -101,7 +101,7 @@
             </span>
             <span class="aud-badge">{{ auditagemLabel(item.auditagem) }}</span>
             <span class="base-badge">{{ item.base }}</span>
-            <span class="td-mono" style="font-size:11px;color:#94a3b8">{{ item.equipe }}</span>
+            <span class="td-mono" style="font-size:11px;color:var(--poc-muted)">{{ item.equipe }}</span>
 
             <!-- Badges de frequência: observador visitou a mesma equipe múltiplas vezes -->
             <span
@@ -1301,7 +1301,7 @@ $inactive-text: #475569;
   &--none { background: rgba(220,38,38,.14); color: #dc2626; }
   &--part { background: rgba(217,119,6,.15); color: #d97706; }
 }
-.analise-item__date { font-size: 11px; color: #94a3b8; white-space: nowrap; }
+.analise-item__date { font-size: 11px; color: var(--poc-muted); white-space: nowrap; }
 
 .analise-item__body { display: flex; flex-direction: column; gap: 10px; }
 .analise-item__enviado { font-size: 12px; color: #64748b; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
@@ -1471,7 +1471,7 @@ $inactive-text: #475569;
 
   &__empty-icon { color: #cbd5e1; }
   &__empty-label {
-    font-size: 11.5px; color: #94a3b8; font-weight: 500;
+    font-size: 11.5px; color: var(--poc-muted); font-weight: 500;
     text-align: center; padding: 0 8px;
     display: flex; align-items: center; gap: 3px;
   }
@@ -1528,11 +1528,11 @@ $inactive-text: #475569;
 // ── Dark mode ─────────────────────────────────────────────────────────────────
 .body--dark {
   .analise-item { background: #1e293b; border-color: #334155; &:hover { box-shadow: 0 4px 16px rgba(0,0,0,.3); } }
-  .analise-item__enviado { color: #94a3b8; }
+  .analise-item__enviado { color: var(--poc-muted); }
   .analise-item__actions { border-top-color: #334155; }
   .kpi-mini { background: #1e293b; border-color: #334155; }
-  .kpi-mini__label { color: #94a3b8; }
-  .pill { background: #1e293b; border-color: #334155; color: #94a3b8; &--active { background: $brand; color: #fff; border-color: $brand; } }
+  .kpi-mini__label { color: var(--poc-muted); }
+  .pill { background: #1e293b; border-color: #334155; color: var(--poc-muted); &--active { background: $brand; color: #fff; border-color: $brand; } }
   .ac-expand__body { background: #0f172a; }
   .ac-resp-row__pergunta { color: #e2e8f0; }
 }

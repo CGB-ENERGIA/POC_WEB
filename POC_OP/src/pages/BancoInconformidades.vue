@@ -481,7 +481,7 @@ $brand: #8B1C2E;
 
   &__datetime {
     font-size: .68rem;
-    color: #888;
+    color: var(--poc-muted);
     margin-top: 0;
   }
 
@@ -501,7 +501,7 @@ $brand: #8B1C2E;
 
   &__label {
     font-size: .72rem;
-    color: #888;
+    color: var(--poc-muted);
     white-space: nowrap;
   }
 
@@ -767,11 +767,11 @@ $brand: #8B1C2E;
   .banco-header {
     background: #1e293b;
     border-bottom-color: #334155;
-    &__datetime, &__label { color: #94a3b8; }
+    &__datetime, &__label { color: var(--poc-muted); }
   }
 
   .banco-filters { background: #1e293b; border-bottom-color: #334155; }
-  .flabel { color: #94a3b8; }
+  .flabel { color: var(--poc-muted); }
 
   .fchip {
     background: #0f172a;

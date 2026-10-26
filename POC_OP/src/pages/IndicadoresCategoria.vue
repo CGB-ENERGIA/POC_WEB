@@ -583,7 +583,7 @@ const periodoKpi = computed(() => (viz.mes ? `${months[viz.mes - 1]}/${filters.a
 $brand:        #8B1C2B;
 $brand-text:   #fff;
 $border:       #e2e8f0;
-$label-color:  #94a3b8;
+$label-color:  var(--poc-muted);
 $inactive-bg:  #f1f5f9;
 $inactive-text:#475569;
 
@@ -722,7 +722,7 @@ $inactive-text:#475569;
   font-size: 11px; font-weight: 700; text-transform: uppercase;
   letter-spacing: .6px; color: #64748b; margin-top: 4px;
 }
-.kpi-stat-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; font-weight: 500; }
+.kpi-stat-sub { font-size: 11px; color: var(--poc-muted); margin-top: 2px; font-weight: 500; }
 
 .kpi-gauge-card { overflow: hidden; }
 .kpi-gauge-section {
@@ -782,7 +782,7 @@ $inactive-text:#475569;
   .indicadores-page { background: #0f172a; }
   .filter-bar { background: #1e293b; border-bottom-color: #334155; }
   .pill {
-    background: #1e293b; border-color: #334155; color: #94a3b8;
+    background: #1e293b; border-color: #334155; color: var(--poc-muted);
     &:hover:not(.pill--active) { border-color: $brand; color: #fca5a5; background: rgba($brand,.1); }
     &--active { background: $brand; color: #fff; border-color: $brand; }
   }
@@ -790,9 +790,9 @@ $inactive-text:#475569;
   .fgroup__label { color: #64748b; }
   .gerente-select {
     :deep(.q-field__control) { background: #1e293b; border-color: #334155; }
-    :deep(.q-field__native) { color: #94a3b8; }
+    :deep(.q-field__native) { color: var(--poc-muted); }
   }
-  .kpi-stat-label { color: #94a3b8; }
+  .kpi-stat-label { color: var(--poc-muted); }
   .kpi-stat-sub { color: #64748b; }
   .cat-card { background: #1e293b; }
   .operacional-title { color: #fca5a5; }

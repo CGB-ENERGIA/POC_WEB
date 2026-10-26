@@ -1331,7 +1331,7 @@ const chartNcCat = computed(() => {
 $brand:        #8B1C2B;
 $brand-text:   #fff;
 $border:       #e2e8f0;
-$label-color:  #94a3b8;
+$label-color:  var(--poc-muted);
 $inactive-bg:  #f1f5f9;
 $inactive-text:#475569;
 
@@ -1489,7 +1489,7 @@ $inactive-text:#475569;
   letter-spacing: .6px; color: #64748b; margin-top: 4px;
 }
 .kpi-stat-sub {
-  font-size: 11px; color: #94a3b8; margin-top: 2px; font-weight: 500;
+  font-size: 11px; color: var(--poc-muted); margin-top: 2px; font-weight: 500;
 }
 
 .kpi-gauge-card { overflow: hidden; }
@@ -1561,7 +1561,7 @@ $inactive-text:#475569;
 .icit-badge--good { color: #15803d; background: #dcfce7; }
 .icit-badge--warn { color: #b45309; background: #fef3c7; }
 .icit-badge--bad  { color: #b91c1c; background: #fee2e2; }
-.icit-badge--none { color: #94a3b8; background: #f1f5f9; }
+.icit-badge--none { color: var(--poc-muted); background: #f1f5f9; }
 
 .icit-table {
   flex: 1;
@@ -1626,7 +1626,7 @@ $inactive-text:#475569;
 .body--dark {
   .relatorio-page { background: #0f172a; }
   .filter-bar { background: #1e293b; border-bottom-color: #334155; }
-  .pill { background: #1e293b; border-color: #334155; color: #94a3b8;
+  .pill { background: #1e293b; border-color: #334155; color: var(--poc-muted);
     &:hover:not(.pill--active) { border-color: $brand; color: #fca5a5; background: rgba($brand, .1); }
     &--active { background: $brand; color: #fff; border-color: $brand; }
   }
@@ -1636,13 +1636,13 @@ $inactive-text:#475569;
   .fgroup__label { color: #64748b; }
   .gerente-select {
     :deep(.q-field__control) { background: #1e293b; border-color: #334155; }
-    :deep(.q-field__native) { color: #94a3b8; }
+    :deep(.q-field__native) { color: var(--poc-muted); }
   }
   .nv-row { border-bottom-color: #334155; }
   .nv-nome { color: #e2e8f0; }
-  .kpi-stat-label { color: #94a3b8; }
+  .kpi-stat-label { color: var(--poc-muted); }
   .kpi-stat-sub { color: #64748b; }
-  .icit-table :deep(thead th) { background: #1e293b; color: #94a3b8; }
+  .icit-table :deep(thead th) { background: #1e293b; color: var(--poc-muted); }
   .icit-badge--none { color: #64748b; background: #1e293b; }
 }
 .fade-enter-active, .fade-leave-active { transition: opacity .2s; }

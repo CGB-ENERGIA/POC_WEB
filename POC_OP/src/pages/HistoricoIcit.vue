@@ -611,7 +611,7 @@ function icitClass(pct: number): "green" | "orange" {
 
 $brand:       #8B1C2B;
 $border:      #e2e8f0;
-$label-color: #94a3b8;
+$label-color: var(--poc-muted);
 $inactive-bg: #f1f5f9;
 $inactive-txt:#475569;
 
@@ -656,7 +656,7 @@ $icit-red:    #dc2626;
   line-height: 1.1;
 }
 .hist-date  { font-size: 10px; color: #64748b; }
-.date-muted { color: #94a3b8; }
+.date-muted { color: var(--poc-muted); }
 
 /* Filtrar por */
 .filtrar-por {
@@ -890,7 +890,7 @@ $icit-red:    #dc2626;
 }
 .cell-reinc { font-size: 9px; font-weight: 600; opacity: .9; white-space: nowrap; }
 .cell-pct   { font-size: 12px; font-weight: 700; }
-.total-reinc { font-size: 9px; color: #94a3b8; font-weight: 600; white-space: nowrap; }
+.total-reinc { font-size: 9px; color: var(--poc-muted); font-weight: 600; white-space: nowrap; }
 .total-pct {
   font-size: 14px; font-weight: 800;
   &--green  { color: #4ade80; }
@@ -907,7 +907,7 @@ $icit-red:    #dc2626;
   justify-content: center;
   gap: 12px;
   padding: 60px 24px;
-  color: #94a3b8;
+  color: var(--poc-muted);
 }
 .empty-label { font-size: 15px; font-weight: 600; color: #64748b; }
 .empty-hint  { font-size: 12px; }
@@ -926,7 +926,7 @@ $icit-red:    #dc2626;
   .filter-divider { background: #334155; }
 
   .pill {
-    background: #1e293b; border-color: #334155; color: #94a3b8;
+    background: #1e293b; border-color: #334155; color: var(--poc-muted);
     &:hover:not(.pill--active) { border-color: $brand; color: #fca5a5; background: rgba($brand,.1); }
     &--active { background: $brand; color: #fff; border-color: $brand; }
   }
@@ -935,7 +935,7 @@ $icit-red:    #dc2626;
     :deep(.q-field__control::before){ border-color: #334155; }
     :deep(.q-field__control:hover::before) { border-color: $brand; }
     :deep(.q-field--focused .q-field__control::before) { border-color: $brand; }
-    :deep(.q-field__native)         { color: #94a3b8; }
+    :deep(.q-field__native)         { color: var(--poc-muted); }
     :deep(.q-field__append .q-icon) { color: #475569; }
   }
 
@@ -1007,7 +1007,7 @@ $icit-red:    #dc2626;
   background: #1e293b;
   &__head { border-bottom-color: #334155; }
   &__prefixo { color: #e2e8f0; }
-  &__periodo, &__icit { color: #94a3b8; }
+  &__periodo, &__icit { color: var(--poc-muted); }
   &__acid-titulo { color: #e2e8f0; }
   &__card { background: #0f172a; border-color: #334155; }
   &__card-num { color: #e2e8f0; }

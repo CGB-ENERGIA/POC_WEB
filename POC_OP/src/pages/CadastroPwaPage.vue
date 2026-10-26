@@ -2189,7 +2189,7 @@ async function onImportFile(event: Event) {
 :global(.body--dark) .dbp-pill.--active.--sesmt    { color: #A78BFA; background: rgba(167,139,250,.14);border-color: rgba(167,139,250,.35);}
 :global(.body--dark) .dbp-pill.--active.--adm      { color: #fb7185; background: rgba(251,113,133,.14);border-color: rgba(251,113,133,.35);}
 :global(.body--dark) .dbp-pill.--active.--logistica{ color: #22d3ee; background: rgba(34,211,238,.14); border-color: rgba(34,211,238,.35); }
-:global(.body--dark) .dbp-pill.--active.--oficina  { color: #94a3b8; background: rgba(148,163,184,.14);border-color: rgba(148,163,184,.35);}
+:global(.body--dark) .dbp-pill.--active.--oficina  { color: var(--poc-muted); background: rgba(148,163,184,.14);border-color: rgba(148,163,184,.35);}
 :global(.body--dark) .dbp-pill.--active.--spot     { color: #e879f9; background: rgba(232,121,249,.14);border-color: rgba(232,121,249,.35);}
 
 // Chip off e prefixo no dark

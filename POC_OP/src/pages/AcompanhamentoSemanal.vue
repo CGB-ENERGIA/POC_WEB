@@ -1477,7 +1477,7 @@ $brand-text: #fff;
 $inactive-bg: #f1f5f9;
 $inactive-text: #475569;
 $border: #e2e8f0;
-$label-color: #94a3b8;
+$label-color: var(--poc-muted);
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 .acomp-page {
@@ -1729,7 +1729,7 @@ $label-color: #94a3b8;
   .pill {
     background: #1e293b;
     border-color: #334155;
-    color: #94a3b8;
+    color: var(--poc-muted);
 
     &:hover:not(.pill--active) {
       border-color: $brand;
