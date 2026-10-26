@@ -424,7 +424,7 @@ const filters = reactive({
   gerencia: "Todos",
   alojamento: false,
 });
-persistirFiltros("acomp-semanal", filters);
+const filtrosRestaurados = persistirFiltros("acomp-semanal", filters);
 
 const viz = reactive({
   matricula: null as string | null,
@@ -563,7 +563,8 @@ async function recarregar() {
 
 onMounted(async () => {
   await carregarSemanas();
-  filters.semana = String(semanaDeData(now)); // a semana de hoje depende do cronograma do mês
+  // a semana de hoje depende do cronograma do mês; com filtro guardado na sessão, vale o que o usuário escolheu
+  if (!filtrosRestaurados) filters.semana = String(semanaDeData(now));
   await recarregar();
 });
 watch(() => [filters.ano, filters.mes], recarregar);

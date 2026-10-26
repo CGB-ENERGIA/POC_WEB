@@ -27,8 +27,11 @@ function gravar(chave: string, valor: unknown) {
   } catch { /* sem armazenamento (aba privada, cota): a página segue funcionando sem lembrar */ }
 }
 
-/** Objeto reativo (campo a campo, só chaves que já existem e com o mesmo tipo) ou ref (valor inteiro). */
-export function persistirFiltros<T extends object>(chave: string, alvo: T | Ref<unknown>): void {
+/**
+ * Objeto reativo (campo a campo, só chaves que já existem e com o mesmo tipo) ou ref (valor inteiro).
+ * Retorna true quando havia filtro guardado e ele foi aplicado (a página então não deve recolocar o padrão).
+ */
+export function persistirFiltros<T extends object>(chave: string, alvo: T | Ref<unknown>): boolean {
   const salvo = ler(chave);
   if (salvo !== undefined) {
     if (isRef(alvo)) {
@@ -52,6 +55,7 @@ export function persistirFiltros<T extends object>(chave: string, alvo: T | Ref<
     }
   }
   watch(alvo as Ref<unknown>, (v) => gravar(chave, v), { deep: true });
+  return salvo !== undefined;
 }
 
 /** Ao sair da conta, ninguém herda os filtros do usuário anterior. */
