@@ -552,6 +552,7 @@
 <script setup lang="ts">
 import { valores, juntar, marcado, alternar, alternarMinimo, rotulo, semTodos, casa, igualCI, ativo, type CliqueEv } from "@/lib/multi-filtro";
 import { reactive, ref, computed, watch, onMounted } from "vue";
+import { persistirFiltros } from "@/lib/filtros-persistentes";
 import { useChecklistData } from "@/composables/useChecklistData";
 import {
   fetchResolucoes, inserirResolucao, reabrirResolucao, filterByGerencia, filterByGerente, semanaDaSub,
@@ -604,6 +605,7 @@ const filters = reactive({
   ano: String(new Date().getFullYear()),
   gerencia: "Todos", base: "Todos", gerente: "Todos", coordenador: "Todos",
 });
+persistirFiltros("matriz", filters);
 
 const viz = reactive({
   base: null as string | null,
@@ -612,6 +614,7 @@ const viz = reactive({
   cat: null as string | null,
   status: null as "pendente" | "resolvido" | null,
 });
+persistirFiltros("matriz-viz", viz);
 
 const selectedBase = computed(() =>
   viz.base ?? (ativo(filters.base) ? filters.base : null),

@@ -344,6 +344,7 @@
 <script setup lang="ts">
 import { valores, juntar, marcado, alternar, rotulo, semTodos, casa, igualCI, ativo, eventoDe, type CliqueEv } from "@/lib/multi-filtro";
 import { reactive, computed, ref, watch, onMounted, onBeforeUnmount } from "vue";
+import { persistirFiltros } from "@/lib/filtros-persistentes";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart } from "echarts/charts";
@@ -399,6 +400,7 @@ const filters = reactive({
   funcoesExcluidas: [...FUNCOES_FORA_PADRAO] as string[],
   tipoPoc: lerTipoPoc(tiposPoc),
 });
+persistirFiltros("relatorio-equipes", filters);
 watch(() => filters.tipoPoc, salvarTipoPoc);
 
 /** Meses escolhidos, como números (1–12) em ordem. Sempre há pelo menos um. */

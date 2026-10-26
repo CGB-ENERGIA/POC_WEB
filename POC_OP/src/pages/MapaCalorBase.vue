@@ -227,6 +227,7 @@
 <script setup lang="ts">
 import { valores, juntar, marcado, alternar, alternarMinimo, rotulo, semTodos, casa, igualCI, ativo } from "@/lib/multi-filtro";
 import { reactive, ref, computed, watch, onMounted } from "vue";
+import { persistirFiltros } from "@/lib/filtros-persistentes";
 import { useChecklistData } from "@/composables/useChecklistData";
 import { semanaDaSub } from "@/lib/dashboard";
 import { useHierarquiaEquipe } from "@/composables/useHierarquiaEquipe";
@@ -264,11 +265,13 @@ const filters = reactive({
   semana: "Todos", mes: curMesLabel, ano: String(now.getFullYear()),
   gerencia: "Todos", gerente: "Todos", coordenador: "Todos", base: "Todos",
 });
+persistirFiltros("mapa-calor-base", filters);
 
 const viz = reactive({
   base: null as string | null,
   cat: null as string | null,
 });
+persistirFiltros("mapa-calor-base-viz", viz);
 
 /** Base(s) em destaque: a clicada na matriz ou as marcadas no filtro (texto com um ou vários, ver multi-filtro). */
 const selectedBase = computed(() =>

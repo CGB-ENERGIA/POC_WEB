@@ -299,6 +299,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, reactive } from "vue";
+import { persistirFiltros } from "@/lib/filtros-persistentes";
 import { useQuasar } from "quasar";
 import {
   fetchAllByIds,
@@ -390,6 +391,7 @@ onMounted(recarregar);
 
 // ── Filtros ───────────────────────────────────────────────────────────────────
 const filtroStatus = ref<"todos" | "pendente" | "aprovado" | "reprovado">("pendente");
+persistirFiltros("analise-status", filtroStatus);
 const search = ref("");
 
 const statusOpts = [

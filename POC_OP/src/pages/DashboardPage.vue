@@ -183,6 +183,7 @@
 <script setup lang="ts">
 import { chartInk } from "@/lib/chart-ink";
 import { ref, computed, watch, onMounted } from "vue"
+import { persistirFiltros } from "@/lib/filtros-persistentes"
 import { useQuasar } from "quasar"
 import { use } from "echarts/core"
 import { CanvasRenderer } from "echarts/renderers"
@@ -210,8 +211,10 @@ const meses = [
   { label: "nov", value: 11 }, { label: "dez", value: 12 },
 ]
 const filters = ref({ ano: 2026 })
+persistirFiltros("dashboard", filters)
 /** Meses do período: clique escolhe só aquele mês; Ctrl+clique soma ou tira (sempre fica pelo menos um). */
 const mesesSel = ref<number[]>([new Date().getMonth() + 1])
+persistirFiltros("dashboard-meses", mesesSel)
 function alternarMes(v: number, ev?: MouseEvent) {
   if (!(ev?.ctrlKey || ev?.metaKey)) { mesesSel.value = [v]; return }
   if (!mesesSel.value.includes(v)) mesesSel.value = [...mesesSel.value, v].sort((a, b) => a - b)

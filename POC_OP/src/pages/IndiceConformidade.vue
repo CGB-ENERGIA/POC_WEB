@@ -243,6 +243,7 @@
 <script setup lang="ts">
 import { valores, juntar, marcado, alternar, alternarMinimo, rotulo, semTodos, casa, igualCI, ativo, eventoDe } from "@/lib/multi-filtro";
 import { reactive, ref, shallowRef, computed, watch, onMounted } from "vue";
+import { persistirFiltros } from "@/lib/filtros-persistentes";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, LineChart } from "echarts/charts";
@@ -313,6 +314,7 @@ const filters = reactive({
   tipoPoc:  lerTipoPoc(tiposPoc),
   gerente:  "Todos", coordenador: "Todos",
 });
+persistirFiltros("indice-conformidade", filters);
 watch(() => filters.tipoPoc, salvarTipoPoc);
 
 // ─── Dados reais ──────────────────────────────────────────────────────────────
@@ -385,6 +387,7 @@ const viz = reactive({
   pergunta: null as string | null,
   perguntaCurta: null as string | null,
 });
+persistirFiltros("indice-conformidade-viz", viz);
 
 const BASE_NOME: Record<string, string> = {
   BCB: "Bacabal",

@@ -310,6 +310,7 @@
 <script setup lang="ts">
 import { valores, juntar, marcado, alternar, alternarMinimo, rotulo, semTodos, casa, igualCI, ativo, eventoDe } from "@/lib/multi-filtro";
 import { reactive, ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
+import { persistirFiltros } from "@/lib/filtros-persistentes";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, LineChart, ScatterChart, CustomChart } from "echarts/charts";
@@ -383,6 +384,7 @@ const filters = reactive({
   gerencia: "Todos",
   gerente:  "Todos", coordenador: "Todos",
 });
+persistirFiltros("acomp-mensal", filters);
 
 // ─── Dados reais ──────────────────────────────────────────────────────────────
 const {
@@ -417,6 +419,7 @@ const viz = reactive({
   matricula: null as string | null,
   observadorNome: null as string | null,
 });
+persistirFiltros("acomp-mensal-viz", viz);
 
 const BASE_NOME: Record<string, string> = {
   BCB: "Bacabal",

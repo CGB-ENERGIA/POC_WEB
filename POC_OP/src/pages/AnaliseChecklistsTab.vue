@@ -587,6 +587,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, reactive, watch } from "vue";
+import { persistirFiltros } from "@/lib/filtros-persistentes";
 import { useQuasar } from "quasar";
 import {
   fetchChecklistsParaAnalise,
@@ -668,7 +669,9 @@ function slotsDe(item: ChecklistParaAnalise): number[] {
 // ── Período ───────────────────────────────────────────────────────────────────
 const hoje = new Date();
 const filtroAno = ref<number | "todos">(hoje.getFullYear());
+persistirFiltros("analise-checklists-ano", filtroAno);
 const filtroMes = ref<number | "todos">(hoje.getMonth() + 1);
+persistirFiltros("analise-checklists-mes", filtroMes);
 const anoOpts = [
   { label: "Todos os anos", value: "todos" },
   ...[2024, 2025, 2026].map((a) => ({ label: String(a), value: a })),
@@ -723,6 +726,7 @@ watch([filtroAno, filtroMes], recarregar);
 
 // ── Filtros ───────────────────────────────────────────────────────────────────
 const filtroStatus = ref<"todos" | AnaliseStatus>("pendente");
+persistirFiltros("analise-checklists-status", filtroStatus);
 const search = ref("");
 const soSemEvidencias = ref(false);
 

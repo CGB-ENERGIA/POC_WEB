@@ -301,6 +301,7 @@
 <script setup lang="ts">
 import { valores, juntar, marcado, alternar, alternarMinimo, rotulo, semTodos, casa, igualCI, ativo } from "@/lib/multi-filtro";
 import { reactive, ref, computed, watch, onMounted } from "vue";
+import { persistirFiltros } from "@/lib/filtros-persistentes";
 import {
   fetchSubmissions, fetchEmployees, fetchNcLight,
   semanaDaSub, uniqueHierarchyOpts,
@@ -361,6 +362,7 @@ const filters = reactive({
   semana: "Todos", mes: "Todos", ano: String(now.getFullYear()),
   gerencia: "Todos", gerente: "Todos", coordenador: "Todos", base: "Todos", tipo: lerTipoPoc(tiposOpts),
 });
+persistirFiltros("mapa-calor-mensal", filters);
 watch(() => filters.tipo, salvarTipoPoc);
 
 const viz = reactive({
@@ -368,6 +370,7 @@ const viz = reactive({
   base: null as string | null,
   mes: null as number | null,
 });
+persistirFiltros("mapa-calor-mensal-viz", viz);
 
 /** Base(s) em destaque: a clicada na tabela ou as marcadas no filtro (texto com um ou vários, ver multi-filtro). */
 const selectedBase = computed(() =>

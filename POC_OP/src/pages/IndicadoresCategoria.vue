@@ -195,6 +195,7 @@
 <script setup lang="ts">
 import { valores, juntar, marcado, alternar, rotulo, semTodos, casa, igualCI, ativo } from "@/lib/multi-filtro";
 import { reactive, ref, shallowRef, computed, watch, onMounted } from "vue";
+import { persistirFiltros } from "@/lib/filtros-persistentes";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart } from "echarts/charts";
@@ -274,6 +275,7 @@ const filters = reactive({
   gerencia: "Todos", gerente: "Todos", coordenador: "Todos",
   prefixo: "Todos", tipo: lerTipoPoc(tiposOpts),
 });
+persistirFiltros("indicadores-categoria", filters);
 watch(() => filters.tipo, salvarTipoPoc);
 
 let seqCarga = 0;
@@ -299,6 +301,7 @@ const viz = reactive({
   mes: null as number | null,
   catKey: null as string | null,
 });
+persistirFiltros("indicadores-categoria-viz", viz);
 
 type EcClick = { componentType?: string; dataIndex?: number; name?: string; event?: { event?: unknown } };
 

@@ -563,6 +563,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
+import { persistirFiltros } from "@/lib/filtros-persistentes";
 import { useQuasar } from "quasar";
 import { useGoals, chaveFuncao, metaRoleFrom, type IndividualOverride } from "@/composables/useGoals";
 import { supabase } from "@/lib/supabase";
@@ -591,7 +592,9 @@ const meses = [
 ];
 
 const selectedAno = ref(now.getFullYear());
+persistirFiltros("config-metas-ano", selectedAno);
 const selectedMes = ref(now.getMonth() + 1);
+persistirFiltros("config-metas-mes", selectedMes);
 
 const normaisInput   = ref(2);
 const liderancaInput = ref(4);

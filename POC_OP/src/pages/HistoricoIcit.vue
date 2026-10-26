@@ -280,6 +280,7 @@
 <script setup lang="ts">
 import { valores, juntar, marcado, alternar, rotulo, semTodos, casa, igualCI, ativo } from "@/lib/multi-filtro";
 import { reactive, computed, ref, shallowRef, watch, onMounted } from "vue";
+import { persistirFiltros } from "@/lib/filtros-persistentes";
 import { useChecklistData } from "@/composables/useChecklistData";
 import {
   uniqueHierarchyOpts, foldName, fetchHierarquiaEquipes, hierarquiaDaEquipe, type EquipeHier,
@@ -336,6 +337,7 @@ const filters = reactive({
   gerencia:   "",
   tipo:       "Geral",
 });
+persistirFiltros("historico-icit", filters);
 
 // ─── Data loading ─────────────────────────────────────────────────────────────
 const acidentes = ref<AcidenteRow[]>([]);

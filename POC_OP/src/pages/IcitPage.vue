@@ -288,6 +288,7 @@
 <script setup lang="ts">
 import { valores, juntar, marcado, alternar, alternarMinimo, rotulo, semTodos, casa, igualCI, ativo, eventoDe } from "@/lib/multi-filtro";
 import { reactive, ref, shallowRef, computed, watch, onMounted } from "vue";
+import { persistirFiltros } from "@/lib/filtros-persistentes";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, LineChart } from "echarts/charts";
@@ -380,6 +381,7 @@ const filters = reactive({
   ...lerFiltros(FILTROS_CHAVE, filtrosPadrao, (campo, v) => opcoesValidas[campo]?.(v) ?? true),
   tipoPoc: lerTipoPoc(tiposPoc),
 });
+persistirFiltros("icit", filters);
 watch(() => filters.tipoPoc, salvarTipoPoc);
 watch(
   () => ({
@@ -419,6 +421,7 @@ const viz = reactive({
   equipe: null as string | null,
   categoria: null as string | null,
 });
+persistirFiltros("icit-viz", viz);
 
 const BASE_NOME: Record<string, string> = {
   BCB: "Bacabal",

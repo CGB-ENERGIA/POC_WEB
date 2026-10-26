@@ -352,6 +352,7 @@
 <script setup lang="ts">
 import { valores, juntar, marcado, alternar, alternarMinimo, rotulo, semTodos, casa, igualCI, ativo, eventoDe } from "@/lib/multi-filtro";
 import { reactive, computed, ref, shallowRef, watch, onMounted, onBeforeUnmount } from "vue";
+import { persistirFiltros } from "@/lib/filtros-persistentes";
 import { useQuasar } from "quasar";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
@@ -423,6 +424,7 @@ const filters = reactive({
   gerencia: "Todos",
   alojamento: false,
 });
+persistirFiltros("acomp-semanal", filters);
 
 const viz = reactive({
   matricula: null as string | null,
@@ -430,6 +432,7 @@ const viz = reactive({
   base: null as string | null,
   processo: null as string | null,
 });
+persistirFiltros("acomp-semanal-viz", viz);
 
 const PROCESSO_LABEL: Record<string, string> = {
   GOMAN: "GOMAN",

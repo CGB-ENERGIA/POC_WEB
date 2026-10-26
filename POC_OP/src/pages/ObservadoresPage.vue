@@ -324,6 +324,7 @@
 <script setup lang="ts">
 import { valores, juntar, marcado, alternar, rotulo, semTodos, casa, igualCI, ativo, eventoDe, type CliqueEv } from "@/lib/multi-filtro";
 import { reactive, ref, computed, watch, onMounted } from "vue";
+import { persistirFiltros } from "@/lib/filtros-persistentes";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, PieChart } from "echarts/charts";
@@ -358,6 +359,7 @@ const filters = reactive({
   mes: "Todos", semana: "Todos", funcao: "Todos",
   gerente: "Todos", coordenador: "Todos", observador: "Todos",
 });
+persistirFiltros("observadores", filters);
 watch(() => filters.tipo, salvarTipoPoc);
 
 // ─── Dados reais ─────────────────────────────────────────────────────────────
@@ -380,6 +382,7 @@ const viz = reactive({
   prefixo: null as string | null,
   categoria: null as string | null,
 });
+persistirFiltros("observadores-viz", viz);
 
 type EcClick = { componentType?: string; dataIndex?: number; name?: string; event?: { event?: unknown } };
 

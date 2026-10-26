@@ -1,3 +1,4 @@
+import { limparFiltrosSalvos } from "@/lib/filtros-persistentes";
 import { ref, readonly } from "vue";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
@@ -19,6 +20,7 @@ export function useAuth() {
   async function signOut() {
     await supabase.auth.signOut();
     clearRoleCache();
+    limparFiltrosSalvos();
   }
 
   return {

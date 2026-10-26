@@ -311,6 +311,7 @@
 <script setup lang="ts">
 import { valores, juntar, marcado, alternar, rotulo, semTodos, casa, igualCI, ativo, eventoDe } from "@/lib/multi-filtro";
 import { ref, reactive, computed, watch, onMounted } from "vue";
+import { persistirFiltros } from "@/lib/filtros-persistentes";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, TreemapChart } from "echarts/charts";
@@ -416,6 +417,7 @@ const filters = reactive({
   observador: "Todos", mes: curMesLabel, semana: "Todos",
   base: "Todos", gerencia: "Todos", prefixo: "Todos",
 });
+persistirFiltros("tolerancia-zero", filters);
 
 async function recarregar() {
   const mesNum = MONTH_MAP[filters.mes.slice(0, 3)] ?? (now.getMonth() + 1);
@@ -428,6 +430,7 @@ onMounted(recarregar);
 watch(() => [filters.ano, filters.mes], recarregar);
 
 const viz = reactive({ pergunta: null as string | null });
+persistirFiltros("tolerancia-zero-viz", viz);
 
 type EcClick = { componentType?: string; dataIndex?: number; name?: string; event?: { event?: unknown } };
 

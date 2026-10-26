@@ -202,6 +202,7 @@
 <script setup lang="ts">
 import { valores, juntar, marcado, alternar, alternarMinimo, rotulo, semTodos, casa, igualCI, ativo, type CliqueEv } from "@/lib/multi-filtro";
 import { ref, reactive, computed, onMounted, watch } from "vue";
+import { persistirFiltros } from "@/lib/filtros-persistentes";
 import { useChecklistData, type SubmissionRow, type ResponseRow, type EmployeeRow } from "@/composables/useChecklistData";
 import { semanaDaSub, uniqueHierarchyOpts, dataReferencia } from "@/lib/dashboard";
 import { useHierarquiaEquipe } from "@/composables/useHierarquiaEquipe";
@@ -264,6 +265,7 @@ const filters = reactive({
   observador: "Todos",
   equipe:     "Todos",
 });
+persistirFiltros("banco", filters);
 
 const filtrosAbertos = ref(false);
 const filtrosAtivosCount = computed(() =>
