@@ -236,7 +236,7 @@ import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 import { semanaDaSub } from "@/lib/dashboard";
 import { useHierarquiaEquipe, chaveEquipe } from "@/composables/useHierarquiaEquipe";
-import { ocorrenciasTz, categoriasTz } from "@/lib/tolerancia-zero";
+import { ocorrenciasTz, categoriasDasOcorrencias } from "@/lib/tolerancia-zero";
 
 use([CanvasRenderer, BarChart, TreemapChart, TooltipComponent, GridComponent, DataZoomComponent]);
 
@@ -254,8 +254,8 @@ const { coordenadoresOpts, gerenciaDaSub, baseDaSub, passaCoordenadorGerente } =
 const showFilters = ref(false);
 
 const anos         = ["2024", "2025", "2026"];
-// Categorias da lista oficial de tolerância zero (tabela tolerancia_zero_perguntas)
-const categorias = computed(() => ["Todos", ...categoriasTz(mapaTz.value)]);
+// Categorias (as do próprio checklist) que têm ocorrência de tolerância zero no período
+const categorias = computed(() => ["Todos", ...categoriasDasOcorrencias(ocorrenciasTodas.value)]);
 const bases        = ["Todos", "BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const mesesOpts    = ["jan/26","fev/26","mar/26","abr/26","mai/26","jun/26","jul/26","ago/26","set/26","out/26","nov/26","dez/26"];
 const semanasOpts  = ["Todos","1ª Semana","2ª Semana","3ª Semana","4ª Semana"];
