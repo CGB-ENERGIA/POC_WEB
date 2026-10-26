@@ -60,7 +60,7 @@
             <div class="pill-group">
               <button v-for="b in basesOpts" :key="b"
                 :class="['pill', marcado(filters.base, b) && 'pill--active']"
-                @click="filters.base = alternar(filters.base, b)">{{ b }}</button>
+                @click="filters.base = alternar(filters.base, b, $event)">{{ b }}</button>
             </div>
           </div>
           <div class="filter-divider" />
@@ -69,7 +69,7 @@
             <div class="pill-group">
               <button v-for="g in gerenciasOpts" :key="g"
                 :class="['pill', marcado(filters.gerencia, g) && 'pill--active']"
-                @click="filters.gerencia = alternar(filters.gerencia, g)">{{ g }}</button>
+                @click="filters.gerencia = alternar(filters.gerencia, g, $event)">{{ g }}</button>
             </div>
           </div>
           <div class="filter-divider" />
@@ -87,7 +87,7 @@
             <div class="pill-group">
               <button v-for="t in tiposOpts" :key="t"
                 :class="['pill', marcado(filters.tipo, t) && 'pill--active']"
-                @click="filters.tipo = alternar(filters.tipo, t)">{{ t }}</button>
+                @click="filters.tipo = alternar(filters.tipo, t, $event)">{{ t }}</button>
             </div>
           </div>
         </div>
@@ -300,7 +300,7 @@ const viz = reactive({
   catKey: null as string | null,
 });
 
-type EcClick = { componentType?: string; dataIndex?: number; name?: string };
+type EcClick = { componentType?: string; dataIndex?: number; name?: string; event?: { event?: unknown } };
 
 function catLabel(key: string) {
   return CAT_DEFS.find((d) => d.key === key)?.label ?? key;

@@ -36,7 +36,7 @@
             <div class="pill-group">
               <button v-for="c in categorias" :key="c"
                 :class="['pill', marcado(filters.categoria, c) && 'pill--active']"
-                @click="filters.categoria = alternar(filters.categoria, c)">{{ c }}</button>
+                @click="filters.categoria = alternar(filters.categoria, c, $event)">{{ c }}</button>
             </div>
           </div>
 
@@ -47,7 +47,7 @@
             <div class="pill-group">
               <button v-for="g in gerentesFinal" :key="g"
                 :class="['pill', marcado(filters.gerenteFinal, g) && 'pill--active']"
-                @click="filters.gerenteFinal = alternar(filters.gerenteFinal, g)">{{ g }}</button>
+                @click="filters.gerenteFinal = alternar(filters.gerenteFinal, g, $event)">{{ g }}</button>
             </div>
           </div>
           <div class="fgroup">
@@ -55,7 +55,7 @@
             <div class="pill-group">
               <button v-for="g in coordenadoresOpts" :key="g"
                 :class="['pill', marcado(filters.coordenador, g) && 'pill--active']"
-                @click="filters.coordenador = alternar(filters.coordenador, g)">{{ g }}</button>
+                @click="filters.coordenador = alternar(filters.coordenador, g, $event)">{{ g }}</button>
             </div>
           </div>
 
@@ -95,7 +95,7 @@
             <div class="pill-group">
               <button v-for="b in bases" :key="b"
                 :class="['pill', marcado(filters.base, b) && 'pill--active']"
-                @click="filters.base = alternar(filters.base, b)">{{ b }}</button>
+                @click="filters.base = alternar(filters.base, b, $event)">{{ b }}</button>
             </div>
           </div>
 
@@ -225,7 +225,7 @@
 </template>
 
 <script setup lang="ts">
-import { valores, juntar, marcado, alternar, rotulo, semTodos, casa, igualCI, ativo } from "@/lib/multi-filtro";
+import { valores, juntar, marcado, alternar, rotulo, semTodos, casa, igualCI, ativo, eventoDe } from "@/lib/multi-filtro";
 import { ref, reactive, computed, watch, onMounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
@@ -345,7 +345,7 @@ watch(() => [filters.ano, filters.mes], recarregar);
 
 const viz = reactive({ pergunta: null as string | null });
 
-type EcClick = { componentType?: string; dataIndex?: number; name?: string };
+type EcClick = { componentType?: string; dataIndex?: number; name?: string; event?: { event?: unknown } };
 
 function togglePergunta(q: string) {
   viz.pergunta = viz.pergunta === q ? null : q;
@@ -354,13 +354,13 @@ function togglePergunta(q: string) {
 function onCategoriaClick(p: EcClick) {
   if (p.componentType && p.componentType !== "series") return;
   if (!p.name) return;
-  filters.categoria = alternar(filters.categoria, p.name);
+  filters.categoria = alternar(filters.categoria, p.name, eventoDe(p));
 }
 
 function onEquipeClick(p: EcClick) {
   if (p.componentType && p.componentType !== "series") return;
   if (!p.name?.trim()) return;
-  filters.prefixo = alternar(filters.prefixo, p.name);
+  filters.prefixo = alternar(filters.prefixo, p.name, eventoDe(p));
 }
 
 function resetSlice() {

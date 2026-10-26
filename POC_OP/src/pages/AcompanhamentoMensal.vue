@@ -443,6 +443,7 @@ type EcClick = {
   dataIndex?: number;
   seriesIndex?: number;
   name?: string;
+  event?: { event?: unknown };
 };
 
 function onWeekClick(p: EcClick) {

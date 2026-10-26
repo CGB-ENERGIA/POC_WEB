@@ -36,7 +36,7 @@
             <div class="pill-group">
               <button v-for="s in semanas" :key="s.value"
                 :class="['pill', { 'pill--active': s.value ? marcado(filters.semana, String(s.value)) : !ativo(filters.semana) }]"
-                @click="filters.semana = s.value ? alternar(filters.semana, String(s.value)) : 'Todos'">{{ s.label }}</button>
+                @click="filters.semana = s.value ? alternar(filters.semana, String(s.value), $event) : 'Todos'">{{ s.label }}</button>
             </div>
           </div>
 
@@ -75,8 +75,8 @@
             <div class="pill-group">
               <button v-for="m in meses" :key="m.value"
                 :class="['pill', { 'pill--active': marcado(filters.mes, String(m.value)) }]"
-                :title="marcado(filters.mes, String(m.value)) ? 'Clique para tirar este mês' : 'Clique para somar este mês'"
-                @click="filters.mes = alternarMinimo(filters.mes, String(m.value))">{{ m.label }}</button>
+                :title="marcado(filters.mes, String(m.value)) ? 'Ctrl+clique para tirar este mês' : 'Ctrl+clique para somar este mês'"
+                @click="filters.mes = alternarMinimo(filters.mes, String(m.value), $event)">{{ m.label }}</button>
             </div>
           </div>
 
@@ -87,7 +87,7 @@
             <div class="pill-group">
               <button v-for="g in gerencias" :key="g"
                 :class="['pill', { 'pill--active': marcado(filters.gerencia, g) }]"
-                @click="filters.gerencia = alternar(filters.gerencia, g)">{{ g }}</button>
+                @click="filters.gerencia = alternar(filters.gerencia, g, $event)">{{ g }}</button>
             </div>
           </div>
 
@@ -98,7 +98,7 @@
             <div class="pill-group">
               <button v-for="b in bases" :key="b"
                 :class="['pill', { 'pill--active': marcado(filters.base, b) }]"
-                @click="filters.base = alternar(filters.base, b)">{{ b }}</button>
+                @click="filters.base = alternar(filters.base, b, $event)">{{ b }}</button>
             </div>
           </div>
 
@@ -109,7 +109,7 @@
             <div class="pill-group">
               <button v-for="t in tiposPoc" :key="t"
                 :class="['pill', { 'pill--active': marcado(filters.tipoPoc, t) }]"
-                @click="filters.tipoPoc = alternar(filters.tipoPoc, t)">{{ t }}</button>
+                @click="filters.tipoPoc = alternar(filters.tipoPoc, t, $event)">{{ t }}</button>
             </div>
           </div>
 
@@ -241,7 +241,7 @@
 </template>
 
 <script setup lang="ts">
-import { valores, juntar, marcado, alternar, alternarMinimo, rotulo, semTodos, casa, igualCI, ativo } from "@/lib/multi-filtro";
+import { valores, juntar, marcado, alternar, alternarMinimo, rotulo, semTodos, casa, igualCI, ativo, eventoDe } from "@/lib/multi-filtro";
 import { reactive, ref, shallowRef, computed, watch, onMounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
@@ -431,8 +431,7 @@ function resetSlice() {
 type EcClick = {
   componentType?: string;
   dataIndex?: number;
-  name?: string;
-};
+  name?: string; event?: { event?: unknown } };
 
 function onMesClick(p: EcClick) {
   if (p.componentType && p.componentType !== "series") return;
@@ -441,17 +440,17 @@ function onMesClick(p: EcClick) {
   const fromName = meses.find((m) => m.label === p.name);
   if (fromName) mes = fromName.value;
   if (mes < 1 || mes > 12) return;
-  filters.mes = alternarMinimo(filters.mes, String(mes));
+  filters.mes = alternarMinimo(filters.mes, String(mes), eventoDe(p));
 }
 
 function onBaseClick(p: EcClick) {
   if (p.componentType !== "series" || !p.name) return;
-  filters.base = alternar(filters.base, p.name);
+  filters.base = alternar(filters.base, p.name, eventoDe(p));
 }
 
 function onGerenciaClick(p: EcClick) {
   if (p.componentType !== "series" || !p.name) return;
-  filters.gerencia = alternar(filters.gerencia, p.name);
+  filters.gerencia = alternar(filters.gerencia, p.name, eventoDe(p));
 }
 
 function onEquipeClick(p: EcClick) {

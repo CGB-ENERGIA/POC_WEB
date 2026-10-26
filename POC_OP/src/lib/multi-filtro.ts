@@ -32,18 +32,31 @@ export function marcado(sel: string | null | undefined, v: string): boolean {
   return valores(sel).includes(v);
 }
 
-/** Marca ou desmarca um valor. Clicar em "Todos" limpa a seleção. */
-export function alternar(sel: string | null | undefined, v: string): string {
+/** Evento do clique (basta ter ctrlKey/metaKey). */
+export type CliqueEv = { ctrlKey?: boolean; metaKey?: boolean } | null | undefined;
+/** Evento do clique em um gráfico do ECharts (params.event.event), no formato que `alternar` espera. */
+export const eventoDe = (p: { event?: { event?: unknown } }): CliqueEv => (p.event?.event ?? undefined) as CliqueEv;
+const soma = (ev: CliqueEv) => !!(ev && (ev.ctrlKey || ev.metaKey));
+
+/**
+ * Seleção por clique, como no Explorer: clique comum escolhe só aquele valor (clicar de novo no único marcado limpa);
+ * Ctrl+clique soma ou tira o valor da seleção. Clicar em "Todos" limpa.
+ */
+export function alternar(sel: string | null | undefined, v: string, ev?: CliqueEv): string {
   if (v === TODOS) return TODOS;
   const atual = valores(sel);
-  return juntar(atual.includes(v) ? atual.filter((x) => x !== v) : [...atual, v]);
+  if (soma(ev)) return juntar(atual.includes(v) ? atual.filter((x) => x !== v) : [...atual, v]);
+  return atual.length === 1 && atual[0] === v ? TODOS : v;
 }
 
-/** Marca ou desmarca, mas nunca deixa vazio (ex.: o período sempre precisa de pelo menos um mês). */
-export function alternarMinimo(sel: string | null | undefined, v: string): string {
+/** Igual a `alternar`, mas nunca deixa vazio (ex.: o período sempre precisa de pelo menos um mês). */
+export function alternarMinimo(sel: string | null | undefined, v: string, ev?: CliqueEv): string {
   const atual = valores(sel);
-  if (atual.includes(v)) return atual.length > 1 ? juntar(atual.filter((x) => x !== v)) : juntar(atual);
-  return juntar([...atual, v]);
+  if (soma(ev)) {
+    if (!atual.includes(v)) return juntar([...atual, v]);
+    return atual.length > 1 ? juntar(atual.filter((x) => x !== v)) : juntar(atual);
+  }
+  return v;
 }
 
 /** Sem filtro, tudo passa; com filtro, o valor precisa ser igual a algum dos marcados (comparação opcional, ex.: ignorar maiúsculas). */

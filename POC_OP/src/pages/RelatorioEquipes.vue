@@ -25,8 +25,8 @@
             <div class="pill-group">
               <button v-for="m in mesesOpts" :key="m"
                 :class="['pill', filters.meses.includes(m) && 'pill--active']"
-                :title="filters.meses.includes(m) ? 'Clique para tirar este mês' : 'Clique para somar este mês'"
-                @click="alternarMes(m)">{{ m }}</button>
+                :title="filters.meses.includes(m) ? 'Ctrl+clique para tirar este mês' : 'Ctrl+clique para somar este mês'"
+                @click="alternarMes(m, $event)">{{ m }}</button>
             </div>
           </div>
           <div class="filter-divider" />
@@ -44,7 +44,7 @@
             <div class="pill-group">
               <button v-for="b in basesOpts" :key="b"
                 :class="['pill', marcado(filters.base, b) && 'pill--active']"
-                @click="filters.base = alternar(filters.base, b)">{{ b }}</button>
+                @click="filters.base = alternar(filters.base, b, $event)">{{ b }}</button>
             </div>
           </div>
           <div class="filter-divider" />
@@ -79,7 +79,7 @@
             <div class="pill-group">
               <button v-for="g in gerenciasOpts" :key="g"
                 :class="['pill', marcado(filters.gerencia, g) && 'pill--active']"
-                @click="filters.gerencia = alternar(filters.gerencia, g)">{{ g }}</button>
+                @click="filters.gerencia = alternar(filters.gerencia, g, $event)">{{ g }}</button>
             </div>
           </div>
           <div class="filter-divider" />
@@ -88,7 +88,7 @@
             <div class="pill-group">
               <button v-for="t in tiposPoc" :key="t"
                 :class="['pill', marcado(filters.tipoPoc, t) && 'pill--active']"
-                @click="filters.tipoPoc = alternar(filters.tipoPoc, t)">{{ t }}</button>
+                @click="filters.tipoPoc = alternar(filters.tipoPoc, t, $event)">{{ t }}</button>
             </div>
           </div>
           <div class="filter-divider" />
@@ -255,7 +255,7 @@
                 v-for="eq in naoVisitadas" :key="eq"
                 class="nv-row"
                 :class="{ 'nv-row--on': marcado(filters.prefixo, eq) }"
-                @click="togglePrefixo(eq)"
+                @click="togglePrefixo(eq, $event)"
               >
                 <span class="nv-nome">{{ eq }}</span>
                 <span class="nv-zero">0</span>
@@ -342,7 +342,7 @@
 </template>
 
 <script setup lang="ts">
-import { valores, juntar, marcado, alternar, rotulo, semTodos, casa, igualCI, ativo } from "@/lib/multi-filtro";
+import { valores, juntar, marcado, alternar, rotulo, semTodos, casa, igualCI, ativo, eventoDe, type CliqueEv } from "@/lib/multi-filtro";
 import { reactive, computed, ref, watch, onMounted, onBeforeUnmount } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
@@ -407,13 +407,14 @@ const mesesNum = computed(() => {
   return nums.length ? nums : [now.getMonth() + 1];
 });
 
-/** Marca/desmarca um mês; o último mês marcado não pode ser desmarcado (o relatório sempre precisa de um período). */
-function alternarMes(m: string) {
-  if (!filters.meses.includes(m)) {
-    filters.meses = [...filters.meses, m].sort((a, b) => (MONTH_MAP[a.slice(0, 3)] ?? 0) - (MONTH_MAP[b.slice(0, 3)] ?? 0));
-  } else if (filters.meses.length > 1) {
-    filters.meses = filters.meses.filter((x) => x !== m);
-  }
+/** Mês(es) do período: clique escolhe só aquele mês; Ctrl+clique soma ou tira (sempre fica pelo menos um). */
+function alternarMes(m: string, ev?: CliqueEv) {
+  const ordem = (x: string) => MONTH_MAP[x.slice(0, 3)] ?? 0;
+  filters.meses = (ev?.ctrlKey || ev?.metaKey)
+    ? (filters.meses.includes(m)
+      ? (filters.meses.length > 1 ? filters.meses.filter((x) => x !== m) : filters.meses)
+      : [...filters.meses, m].sort((a, b) => ordem(a) - ordem(b)))
+    : [m];
 }
 
 /** "out/26", "jan–mar/26" (meses seguidos) ou "jan/26, mar/26". */
@@ -573,26 +574,26 @@ function extractPrefixo(equipe: string | undefined): string {
   return chaveEquipe(equipe);
 }
 
-function togglePrefixo(code: string) {
-  filters.prefixo = alternar(filters.prefixo, code);
+function togglePrefixo(code: string, ev?: CliqueEv) {
+  filters.prefixo = alternar(filters.prefixo, code, ev);
 }
 
-type EcClick = { componentType?: string; dataIndex?: number; name?: string };
+type EcClick = { componentType?: string; dataIndex?: number; name?: string; event?: { event?: unknown } };
 
 function onPrefixoClick(p: EcClick) {
   if (p.componentType && p.componentType !== "series") return;
   if (!p.name?.trim() || p.name === "Sem dados") return;
-  togglePrefixo(p.name);
+  togglePrefixo(p.name, eventoDe(p));
 }
 
 function onCategoriaClick(p: EcClick) {
   if (p.componentType && p.componentType !== "series") return;
   if (!p.name?.trim()) return;
-  filters.categoria = alternar(filters.categoria, p.name);
+  filters.categoria = alternar(filters.categoria, p.name, eventoDe(p));
 }
 
-function onIcitRow(_evt: unknown, row: { prefixo: string }) {
-  togglePrefixo(row.prefixo);
+function onIcitRow(evt: unknown, row: { prefixo: string }) {
+  togglePrefixo(row.prefixo, evt as MouseEvent);
 }
 
 function icitRowClass(row: { prefixo: string }) {

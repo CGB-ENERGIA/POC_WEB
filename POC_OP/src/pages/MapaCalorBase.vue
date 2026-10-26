@@ -23,7 +23,7 @@
             <div class="pill-group">
               <button v-for="s in semanasOpts" :key="s.v"
                 :class="['pill', (s.v ? marcado(filters.semana, String(s.v)) : !ativo(filters.semana)) && 'pill--active']"
-                @click="filters.semana = s.v ? alternar(filters.semana, String(s.v)) : 'Todos'">{{ s.l }}</button>
+                @click="filters.semana = s.v ? alternar(filters.semana, String(s.v), $event) : 'Todos'">{{ s.l }}</button>
             </div>
           </div>
           <div class="filter-divider" />
@@ -32,8 +32,8 @@
             <div class="pill-group">
               <button v-for="m in mesesOpts" :key="m"
                 :class="['pill', marcado(filters.mes, m) && 'pill--active']"
-                :title="marcado(filters.mes, m) ? 'Clique para tirar este mês' : 'Clique para somar este mês'"
-                @click="filters.mes = alternarMinimo(filters.mes, m)">{{ m }}</button>
+                :title="marcado(filters.mes, m) ? 'Ctrl+clique para tirar este mês' : 'Ctrl+clique para somar este mês'"
+                @click="filters.mes = alternarMinimo(filters.mes, m, $event)">{{ m }}</button>
             </div>
           </div>
           <div class="filter-divider" />
@@ -51,7 +51,7 @@
             <div class="pill-group">
               <button v-for="g in gerenciasOpts" :key="g"
                 :class="['pill', marcado(filters.gerencia, g) && 'pill--active']"
-                @click="filters.gerencia = alternar(filters.gerencia, g)">{{ g }}</button>
+                @click="filters.gerencia = alternar(filters.gerencia, g, $event)">{{ g }}</button>
             </div>
           </div>
         </div>
@@ -63,7 +63,7 @@
             <div class="pill-group">
               <button v-for="g in gerentesOpts" :key="g"
                 :class="['pill', marcado(filters.gerente, g) && 'pill--active']"
-                @click="filters.gerente = alternar(filters.gerente, g)">{{ g }}</button>
+                @click="filters.gerente = alternar(filters.gerente, g, $event)">{{ g }}</button>
             </div>
           </div>
           <div class="fgroup">
@@ -71,7 +71,7 @@
             <div class="pill-group">
               <button v-for="g in coordenadoresOpts" :key="g"
                 :class="['pill', marcado(filters.coordenador, g) && 'pill--active']"
-                @click="filters.coordenador = alternar(filters.coordenador, g)">{{ g }}</button>
+                @click="filters.coordenador = alternar(filters.coordenador, g, $event)">{{ g }}</button>
             </div>
           </div>
           <div class="filter-divider" />
@@ -80,7 +80,7 @@
             <div class="pill-group">
               <button v-for="b in basesOpts" :key="b"
                 :class="['pill', marcado(filters.base, b) && 'pill--active']"
-                @click="filters.base = alternar(filters.base, b)">{{ b }}</button>
+                @click="filters.base = alternar(filters.base, b, $event)">{{ b }}</button>
             </div>
           </div>
         </div>
