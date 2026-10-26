@@ -808,26 +808,32 @@ function singleBar(labels: string[], data: number[], selected?: string | number 
   }];
 }
 
-/** Linha de meta atrás das velas (z baixo): não corta o verde nem o número. */
-function metaMarkLine(meta: number) {
+/**
+ * Meta como série line (z baixo). O markLine do próprio bar fica por cima da vela;
+ * com line + z:1 a barra (z:3) cobre o traço onde ultrapassa a meta.
+ */
+function metaLineSeries(labels: string[], meta: number) {
   return {
+    name: "Meta",
+    type: "line" as const,
     silent: true,
     symbol: "none" as const,
     z: 1,
     animation: false,
-    data: [{ yAxis: meta }],
-    lineStyle: { color: "#0ea5e9", width: 2, type: "solid" as const },
-    label: {
+    data: labels.map(() => meta),
+    lineStyle: { color: "#0ea5e9", width: 2 },
+    endLabel: {
+      show: true,
       formatter: `Meta: ${Math.round(meta)}`,
-      position: "insideEndTop" as const,
       color: "#0ea5e9",
       fontWeight: "bold" as const,
       fontSize: 11,
-      distance: 6,
+      offset: [4, -10],
       backgroundColor: chartInk.halo,
       padding: [2, 5] as [number, number],
       borderRadius: 3,
     },
+    emphasis: { disabled: true },
   };
 }
 
@@ -841,13 +847,13 @@ const chartMetaMes = computed(() => ({
         { label: "Meta", value: String(metaMensal.value), color: "#0ea5e9" },
       ], viz.observadorNome || (ativo(filters.base) ? valores(filters.base).map(nomeBase).join(", ") : undefined)),
   },
-  grid: { left: 12, right: 28, top: 52, bottom: 28 },
+  grid: { left: 12, right: 36, top: 52, bottom: 28 },
   xAxis: cleanXAxis([mesLabel.value]),
   yAxis: { show: false, min: 0, max: yPadMax([totalSubmissions.value], metaMensal.value) },
-  series: [{
-    ...singleBar([mesLabel.value], [totalSubmissions.value])[0],
-    markLine: metaMarkLine(metaMensal.value),
-  }],
+  series: [
+    metaLineSeries([mesLabel.value], metaMensal.value),
+    singleBar([mesLabel.value], [totalSubmissions.value])[0],
+  ],
 }));
 
 const WEEK_LABELS = ["1ª Sem", "2ª Sem", "3ª Sem", "4ª Sem"];
@@ -867,13 +873,13 @@ const chartMetaSemana = computed(() => {
           { label: "Meta da semana", value: String(Math.round(weekMeta)), color: "#0ea5e9" },
         ], "Clique para filtrar as outras visões"),
     },
-    grid: { left: 12, right: 28, top: 52, bottom: 28 },
+    grid: { left: 12, right: 36, top: 52, bottom: 28 },
     xAxis: cleanXAxis(WEEK_LABELS),
     yAxis: { show: false, min: 0, max: yPadMax(vals, weekMeta) },
-    series: [{
-      ...singleBar(WEEK_LABELS, vals, semanasNum.value.length ? semanasNum.value : null)[0],
-      markLine: metaMarkLine(weekMeta),
-    }],
+    series: [
+      metaLineSeries(WEEK_LABELS, weekMeta),
+      singleBar(WEEK_LABELS, vals, semanasNum.value.length ? semanasNum.value : null)[0],
+    ],
   };
 });
 
