@@ -43,32 +43,32 @@
             <span class="fgroup__label">Base</span>
             <div class="pill-group">
               <button v-for="b in basesOpts" :key="b"
-                :class="['pill', filters.base === b && 'pill--active']"
-                @click="filters.base = filters.base === b ? 'Todos' : b">{{ b }}</button>
+                :class="['pill', marcado(filters.base, b) && 'pill--active']"
+                @click="filters.base = alternar(filters.base, b)">{{ b }}</button>
             </div>
           </div>
           <div class="filter-divider" />
           <div class="fgroup fgroup--gerente">
             <span class="fgroup__label">Gerente</span>
-            <q-select v-model="filters.gerente"
-              :clearable="filters.gerente !== 'Todos'" @clear="filters.gerente = 'Todos'" :options="gerentesOpts"
+            <q-select multiple :model-value="valores(filters.gerente)" @update:model-value="(v: string[]) => filters.gerente = juntar(v)" :display-value="rotulo(filters.gerente)"
+              :clearable="filters.gerente !== 'Todos'" @clear="filters.gerente = 'Todos'" :options="semTodos(gerentesOpts)"
               dense outlined hide-bottom-space class="gerente-select"
               popup-content-class="gerente-popup">
               <template #prepend>
                 <q-icon name="mdi-account" size="16px" class="gerente-icon" />
               </template>
-            </q-select>
+            <template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
           </div>
           <div class="fgroup fgroup--gerente">
             <span class="fgroup__label">Coordenador</span>
-            <q-select v-model="filters.coordenador"
-              :clearable="filters.coordenador !== 'Todos'" @clear="filters.coordenador = 'Todos'" :options="coordenadoresOpts"
+            <q-select multiple :model-value="valores(filters.coordenador)" @update:model-value="(v: string[]) => filters.coordenador = juntar(v)" :display-value="rotulo(filters.coordenador)"
+              :clearable="filters.coordenador !== 'Todos'" @clear="filters.coordenador = 'Todos'" :options="semTodos(coordenadoresOpts)"
               dense outlined hide-bottom-space class="gerente-select"
               popup-content-class="gerente-popup">
               <template #prepend>
                 <q-icon name="mdi-account" size="16px" class="gerente-icon" />
               </template>
-            </q-select>
+            <template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
           </div>
         </div>
 
@@ -78,8 +78,8 @@
             <span class="fgroup__label">Gerência</span>
             <div class="pill-group">
               <button v-for="g in gerenciasOpts" :key="g"
-                :class="['pill', filters.gerencia === g && 'pill--active']"
-                @click="filters.gerencia = filters.gerencia === g ? 'Todos' : g">{{ g }}</button>
+                :class="['pill', marcado(filters.gerencia, g) && 'pill--active']"
+                @click="filters.gerencia = alternar(filters.gerencia, g)">{{ g }}</button>
             </div>
           </div>
           <div class="filter-divider" />
@@ -87,34 +87,34 @@
             <span class="fgroup__label">Tipo de POC</span>
             <div class="pill-group">
               <button v-for="t in tiposPoc" :key="t"
-                :class="['pill', filters.tipoPoc === t && 'pill--active']"
-                @click="filters.tipoPoc = filters.tipoPoc === t ? 'Todos' : t">{{ t }}</button>
+                :class="['pill', marcado(filters.tipoPoc, t) && 'pill--active']"
+                @click="filters.tipoPoc = alternar(filters.tipoPoc, t)">{{ t }}</button>
             </div>
           </div>
           <div class="filter-divider" />
           <div class="fgroup fgroup--gerente" style="min-width:220px">
             <span class="fgroup__label">Categoria</span>
-            <q-select v-model="filters.categoria"
-              :clearable="filters.categoria !== 'Todos'" @clear="filters.categoria = 'Todos'" :options="categoriasVisiveis"
+            <q-select multiple :model-value="valores(filters.categoria)" @update:model-value="(v: string[]) => filters.categoria = juntar(v)" :display-value="rotulo(filters.categoria)"
+              :clearable="filters.categoria !== 'Todos'" @clear="filters.categoria = 'Todos'" :options="semTodos(categoriasVisiveis)"
               dense outlined hide-bottom-space class="gerente-select"
               use-input input-debounce="0" popup-content-class="gerente-popup"
-              @filter="(v: string, update: (fn: () => void) => void) => update(() => { buscaCategoria = v; })" />
+              @filter="(v: string, update: (fn: () => void) => void) => update(() => { buscaCategoria = v; })" ><template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
           </div>
           <div class="fgroup fgroup--gerente" style="min-width:160px">
             <span class="fgroup__label">Prefixo</span>
-            <q-select v-model="filters.prefixo"
-              :clearable="filters.prefixo !== 'Todos'" @clear="filters.prefixo = 'Todos'" :options="prefixoOpts"
+            <q-select multiple :model-value="valores(filters.prefixo)" @update:model-value="(v: string[]) => filters.prefixo = juntar(v)" :display-value="rotulo(filters.prefixo)"
+              :clearable="filters.prefixo !== 'Todos'" @clear="filters.prefixo = 'Todos'" :options="semTodos(prefixoOpts)"
               dense outlined hide-bottom-space class="gerente-select"
               use-input input-debounce="0" popup-content-class="gerente-popup"
-              @filter="filterPrefixo" />
+              @filter="filterPrefixo" ><template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
           </div>
           <div class="fgroup fgroup--gerente">
             <span class="fgroup__label">Observador</span>
-            <q-select v-model="filters.observador"
-              :clearable="filters.observador !== 'Todos'" @clear="filters.observador = 'Todos'" :options="observadoresVisiveis"
+            <q-select multiple :model-value="valores(filters.observador)" @update:model-value="(v: string[]) => filters.observador = juntar(v)" :display-value="rotulo(filters.observador)"
+              :clearable="filters.observador !== 'Todos'" @clear="filters.observador = 'Todos'" :options="semTodos(observadoresVisiveis)"
               dense outlined hide-bottom-space class="gerente-select"
               use-input input-debounce="0" popup-content-class="gerente-popup"
-              @filter="(v: string, update: (fn: () => void) => void) => update(() => { buscaObservador = v; })" />
+              @filter="(v: string, update: (fn: () => void) => void) => update(() => { buscaObservador = v; })" ><template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
           </div>
           <div class="fgroup fgroup--gerente" style="min-width:230px">
             <span class="fgroup__label">Função do observador</span>
@@ -147,13 +147,13 @@
           <span class="filter-chip">{{ filters.ano }}</span>
           <span class="filter-chip">{{ mesesTexto }}</span>
           <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ nomeBase(filters.base) }}</span>
-          <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ filters.gerencia }}</span>
-          <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ filters.gerente }}</span>
-          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ filters.coordenador }}</span>
-          <span v-if="filters.tipoPoc !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.tipoPoc = 'Todos'">{{ filters.tipoPoc }}</span>
-          <span v-if="filters.categoria !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.categoria = 'Todos'">{{ filters.categoria }}</span>
-          <span v-if="filters.prefixo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.prefixo = 'Todos'">{{ filters.prefixo }}</span>
-          <span v-if="filters.observador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.observador = 'Todos'">{{ filters.observador }}</span>
+          <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ rotulo(filters.gerencia) }}</span>
+          <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ rotulo(filters.gerente) }}</span>
+          <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ rotulo(filters.coordenador) }}</span>
+          <span v-if="ativo(filters.tipoPoc)" class="filter-chip filter-chip--hit" @click="filters.tipoPoc = 'Todos'">{{ rotulo(filters.tipoPoc) }}</span>
+          <span v-if="filters.categoria !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.categoria = 'Todos'">{{ rotulo(filters.categoria) }}</span>
+          <span v-if="filters.prefixo !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.prefixo = 'Todos'">{{ rotulo(filters.prefixo) }}</span>
+          <span v-if="filters.observador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.observador = 'Todos'">{{ rotulo(filters.observador) }}</span>
           <span v-if="filters.funcoesExcluidas.length" class="filter-chip filter-chip--hit" title="Clique para incluir todas as funções" @click="filters.funcoesExcluidas = []">{{ funcoesChip }}</span>
           <button class="filter-clear" @click="resetSlice">
             <q-icon name="mdi-close-circle" size="14px" />
@@ -254,7 +254,7 @@
               <div
                 v-for="eq in naoVisitadas" :key="eq"
                 class="nv-row"
-                :class="{ 'nv-row--on': filters.prefixo === eq }"
+                :class="{ 'nv-row--on': marcado(filters.prefixo, eq) }"
                 @click="togglePrefixo(eq)"
               >
                 <span class="nv-nome">{{ eq }}</span>
@@ -342,6 +342,7 @@
 </template>
 
 <script setup lang="ts">
+import { valores, juntar, marcado, alternar, rotulo, semTodos, casa, igualCI, ativo } from "@/lib/multi-filtro";
 import { reactive, computed, ref, watch, onMounted, onBeforeUnmount } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
@@ -519,13 +520,15 @@ function mesmoNome(cadastro: string, filtro: string): boolean {
 
 /** A equipe pertence aos filtros de gerência / gerente / coordenador ativos? */
 function equipeNaHierarquia(prefixo: string, gerencia = filters.gerencia): boolean {
-  const { gerente, coordenador } = filters;
-  if (gerencia === "Todos" && gerente === "Todos" && coordenador === "Todos") return true;
+  const gerencias = valores(gerencia);
+  const gerentes = valores(filters.gerente);
+  const coordenadores = valores(filters.coordenador);
+  if (!gerencias.length && !gerentes.length && !coordenadores.length) return true;
   const h = equipesHier.value.get(prefixo);
   if (!h) return false;
-  if (gerencia !== "Todos" && h.gerencia !== gerencia) return false;
-  if (coordenador !== "Todos" && !mesmoNome(h.coordenador, coordenador)) return false;
-  if (gerente !== "Todos" && !mesmoNome(h.gerente, gerente) && !mesmoNome(h.coordenador, gerente)) return false;
+  if (gerencias.length && !gerencias.includes(h.gerencia)) return false;
+  if (coordenadores.length && !coordenadores.some((c) => mesmoNome(h.coordenador, c))) return false;
+  if (gerentes.length && !gerentes.some((g) => mesmoNome(h.gerente, g) || mesmoNome(h.coordenador, g))) return false;
   return true;
 }
 
@@ -558,8 +561,10 @@ function baseDaEquipe(prefixo: string): string {
 }
 
 function matchTipoPoc(auditagem: string | undefined) {
-  const allowed = TIPO_AUDITAGEM[filters.tipoPoc];
-  if (!allowed) return true;
+  const sel = valores(filters.tipoPoc);
+  if (!sel.length) return true;
+  const allowed = sel.flatMap((t) => TIPO_AUDITAGEM[t] ?? []);
+  if (!allowed.length) return true;
   return allowed.includes((auditagem ?? "").toUpperCase());
 }
 
@@ -569,7 +574,7 @@ function extractPrefixo(equipe: string | undefined): string {
 }
 
 function togglePrefixo(code: string) {
-  filters.prefixo = filters.prefixo === code ? "Todos" : code;
+  filters.prefixo = alternar(filters.prefixo, code);
 }
 
 type EcClick = { componentType?: string; dataIndex?: number; name?: string };
@@ -583,7 +588,7 @@ function onPrefixoClick(p: EcClick) {
 function onCategoriaClick(p: EcClick) {
   if (p.componentType && p.componentType !== "series") return;
   if (!p.name?.trim()) return;
-  filters.categoria = filters.categoria === p.name ? "Todos" : p.name;
+  filters.categoria = alternar(filters.categoria, p.name);
 }
 
 function onIcitRow(_evt: unknown, row: { prefixo: string }) {
@@ -591,7 +596,7 @@ function onIcitRow(_evt: unknown, row: { prefixo: string }) {
 }
 
 function icitRowClass(row: { prefixo: string }) {
-  return filters.prefixo === row.prefixo ? "icit-row--on" : "";
+  return marcado(filters.prefixo, row.prefixo) ? "icit-row--on" : "";
 }
 
 function resetSlice() {
@@ -664,24 +669,30 @@ function applySlice(
   if (hierCarregada.value) {
     // Gerente/coordenador/gerência: só as equipes vinculadas a ele no cadastro, independente de quem visitou.
     const gerenciaAtiva = omit.gerencia ? "Todos" : filters.gerencia;
-    if (filters.gerente !== "Todos" || filters.coordenador !== "Todos" || gerenciaAtiva !== "Todos") {
+    if (ativo(filters.gerente) || ativo(filters.coordenador) || ativo(gerenciaAtiva)) {
       s = s.filter((sub) => equipeNaHierarquia(extractPrefixo(sub.equipe), gerenciaAtiva));
     }
   } else {
-    s = filterByGerente(s, employees.value, filters.gerente);
-    s = filterByCoordenador(s, employees.value, filters.coordenador);
-    if (!omit.gerencia) s = filterByGerencia(s, employees.value, filters.gerencia);
+    // sem o cadastro de equipes: pelo cadastro do observador; com vários marcados, vale quem está em qualquer um
+    const emQualquer = (sel: string, fn: (v: string) => typeof s) => {
+      const v = valores(sel);
+      if (!v.length) return s;
+      const ids = new Set(v.flatMap((x) => fn(x).map((y) => y.id)));
+      return s.filter((y) => ids.has(y.id));
+    };
+    s = emQualquer(filters.gerente, (v) => filterByGerente(s, employees.value, v));
+    s = emQualquer(filters.coordenador, (v) => filterByCoordenador(s, employees.value, v));
+    if (!omit.gerencia) s = emQualquer(filters.gerencia, (v) => filterByGerencia(s, employees.value, v));
   }
-  if (!omit.base && filters.base !== "Todos") {
-    s = s.filter((sub) => (baseDaEquipe(extractPrefixo(sub.equipe)) || sub.base) === filters.base);
+  if (!omit.base && ativo(filters.base)) {
+    s = s.filter((sub) => casa(filters.base, baseDaEquipe(extractPrefixo(sub.equipe)) || sub.base));
   }
   if (!omit.tipo) s = s.filter((sub) => matchTipoPoc(sub.auditagem));
-  if (!omit.observador && filters.observador !== "Todos") {
-    s = s.filter((sub) => sub.observador === filters.observador);
+  if (!omit.observador && ativo(filters.observador)) {
+    s = s.filter((sub) => casa(filters.observador, sub.observador));
   }
-  if (!omit.prefixo && filters.prefixo !== "Todos") {
-    const alvo = chaveEquipe(filters.prefixo);
-    s = s.filter((sub) => extractPrefixo(sub.equipe) === alvo);
+  if (!omit.prefixo && ativo(filters.prefixo)) {
+    s = s.filter((sub) => casa(filters.prefixo, extractPrefixo(sub.equipe), (a, b) => chaveEquipe(a) === chaveEquipe(b)));
   }
   if (filters.funcoesExcluidas.length) {
     s = s.filter((sub) => !filters.funcoesExcluidas.includes(funcaoDoObservador(sub)));
@@ -718,8 +729,8 @@ const categoriasVisiveis = computed(() => {
 const filteredResps = computed(() => {
   const ids = new Set(filteredSubs.value.map(s => s.id));
   let r = responses.value.filter(resp => ids.has(resp.submission_id));
-  if (filters.categoria !== "Todos") {
-    r = r.filter(resp => resp.categoria === filters.categoria);
+  if (ativo(filters.categoria)) {
+    r = r.filter(resp => casa(filters.categoria, resp.categoria));
   }
   return r;
 });
@@ -826,9 +837,13 @@ const rosterOperacional = computed<string[]>(() =>
     : allPrefixes,
 );
 
+/** Alojamento marcado: as equipes de alojamento entram; com outros tipos junto, as operacionais também. */
+const modoAloj = computed(() => marcado(filters.tipoPoc, "Alojamento"));
+const modoOper = computed(() => !modoAloj.value || valores(filters.tipoPoc).length > 1);
+
 const prefixoBaseList = computed(() =>
-  filters.tipoPoc === "Alojamento"
-    ? ALOJ_ROSTER.map(a => a.prefixo)
+  modoAloj.value
+    ? [...ALOJ_ROSTER.map(a => a.prefixo), ...(modoOper.value ? rosterOperacional.value : [])]
     : rosterOperacional.value
 );
 const prefixoOpts = ref<string[]>(["Todos", ...allPrefixes]);
@@ -837,7 +852,7 @@ watch(() => filters.tipoPoc, () => {
   prefixoOpts.value = ["Todos", ...prefixoBaseList.value];
 });
 watch(rosterOperacional, () => {
-  if (filters.tipoPoc !== "Alojamento") prefixoOpts.value = ["Todos", ...rosterOperacional.value];
+  if (!modoAloj.value) prefixoOpts.value = ["Todos", ...rosterOperacional.value];
 });
 function filterPrefixo(val: string, update: (fn: () => void) => void) {
   update(() => {
@@ -848,7 +863,7 @@ function filterPrefixo(val: string, update: (fn: () => void) => void) {
 
 const alojamentosDaBase = () =>
   ALOJ_ROSTER
-    .filter(a => filters.base === "Todos" || a.base === filters.base)
+    .filter(a => casa(filters.base, a.base))
     .map(a => a.prefixo);
 
 /** Último dia do período escolhido (AAAA-MM-DD): equipes criadas depois dele não existiam no período. */
@@ -866,11 +881,14 @@ function equipeExistiaNoPeriodo(prefixo: string): boolean {
 }
 
 const rosterListado = computed(() => {
-  if (filters.tipoPoc === "Alojamento") return alojamentosDaBase().filter((p) => equipeNaHierarquia(p));
-  return rosterOperacional.value
-    .filter(equipeExistiaNoPeriodo)
-    .filter((p) => filters.base === "Todos" || baseDaEquipe(p) === filters.base)
-    .filter((p) => equipeNaHierarquia(p));
+  const aloj = modoAloj.value ? alojamentosDaBase().filter((p) => equipeNaHierarquia(p)) : [];
+  const oper = modoOper.value
+    ? rosterOperacional.value
+      .filter(equipeExistiaNoPeriodo)
+      .filter((p) => casa(filters.base, baseDaEquipe(p)))
+      .filter((p) => equipeNaHierarquia(p))
+    : [];
+  return [...oper, ...aloj];
 });
 
 /** Equipes monitoradas: as da lista + qualquer equipe com visita que não esteja nela (assim visitadas + não visitadas = total). */
@@ -888,7 +906,7 @@ const visitadasSorted = computed(() => {
     const pref = extractPrefixo(sub.equipe);
     if (!pref) continue;
     // Alojamentos só entram quando o tipo escolhido é Alojamento
-    if (filters.tipoPoc !== "Alojamento" && /^ALOJ/i.test(pref)) continue;
+    if (!modoAloj.value && /^ALOJ/i.test(pref)) continue;
     counts[pref] = (counts[pref] ?? 0) + 1;
   }
   return Object.entries(counts)
@@ -1143,7 +1161,7 @@ function vZoom(len: number, visible: number, fromStart = false) {
 const chartVisitadas = computed(() => {
   const data = visitadasSorted.value;
   const cats = data.map(e => e.nome);
-  const selected = filters.prefixo !== "Todos" ? filters.prefixo : null;
+  const selecionadas = valores(filters.prefixo).map((x) => chaveEquipe(x));
   const lay = barLayout(data.length, availVisitadas.value, minRowParaRotulos(cats));
 
   return {
@@ -1166,7 +1184,7 @@ const chartVisitadas = computed(() => {
         value: e.v,
         itemStyle: {
           color: G.green,
-          opacity: !selected || selected === e.nome ? 1 : 0.22,
+          opacity: !selecionadas.length || selecionadas.includes(chaveEquipe(e.nome)) ? 1 : 0.22,
           borderRadius: [0, 6, 6, 0],
         },
       })),
@@ -1187,7 +1205,7 @@ const ncPerEquipe = computed(() => {
   const ncPerSub: Record<string, number> = {};
   for (const r of responses.value) {
     if (!ids.has(r.submission_id) || r.resposta !== "nao_conforme") continue;
-    if (filters.categoria !== "Todos" && r.categoria !== filters.categoria) continue;
+    if (!casa(filters.categoria, r.categoria)) continue;
     ncPerSub[r.submission_id] = (ncPerSub[r.submission_id] ?? 0) + 1;
   }
   const counts: Record<string, number> = {};
@@ -1205,7 +1223,7 @@ const ncPerEquipe = computed(() => {
 // â"€â"€â"€ Ranking NC Equipes â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const chartRankingNcEq = computed(() => {
   const data = ncPerEquipe.value;
-  const selected = filters.prefixo !== "Todos" ? filters.prefixo : null;
+  const selecionadas = valores(filters.prefixo).map((x) => chaveEquipe(x));
   const names = [AXIS_PAD, ...data.map((e) => e.name)];
   const lay = barLayout(names.length, availRanking.value, minRowParaRotulos(names));
   return {
@@ -1231,7 +1249,7 @@ const chartRankingNcEq = computed(() => {
         value: e.v,
         itemStyle: {
           color: G.brand,
-          opacity: !selected || selected === e.name ? 1 : 0.22,
+          opacity: !selecionadas.length || selecionadas.includes(chaveEquipe(e.name)) ? 1 : 0.22,
           borderRadius: [0, 6, 6, 0],
         },
       })),
@@ -1260,7 +1278,7 @@ const chartNcCat = computed(() => {
     .map(([cat, nc]) => ({ cat, nc }))
     .filter(e => e.nc > 0)
     .sort((a, b) => a.nc - b.nc);
-  const selected = filters.categoria !== "Todos" ? filters.categoria : null;
+  const selecionadasCat = valores(filters.categoria);
   const names = [AXIS_PAD, ...entries.map((e) => e.cat)];
   const lay = barLayout(names.length, availCategoria.value, minRowParaRotulos(names));
   return {
@@ -1286,7 +1304,7 @@ const chartNcCat = computed(() => {
         value: e.nc,
         itemStyle: {
           color: G.brand,
-          opacity: !selected || selected === e.cat ? 1 : 0.22,
+          opacity: !selecionadasCat.length || selecionadasCat.includes(e.cat) ? 1 : 0.22,
           borderRadius: [0, 6, 6, 0],
         },
       })),

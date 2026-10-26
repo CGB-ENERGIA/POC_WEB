@@ -26,13 +26,15 @@ export function ativo(sel: string | null | undefined): boolean {
   return valores(sel).length > 0;
 }
 
-/** O valor está marcado? (para destacar o botão) */
+/** O valor está marcado? (para destacar o botão). O botão "Todos" fica marcado quando nada mais está. */
 export function marcado(sel: string | null | undefined, v: string): boolean {
+  if (v === TODOS) return valores(sel).length === 0;
   return valores(sel).includes(v);
 }
 
-/** Marca ou desmarca um valor. */
+/** Marca ou desmarca um valor. Clicar em "Todos" limpa a seleção. */
 export function alternar(sel: string | null | undefined, v: string): string {
+  if (v === TODOS) return TODOS;
   const atual = valores(sel);
   return juntar(atual.includes(v) ? atual.filter((x) => x !== v) : [...atual, v]);
 }
