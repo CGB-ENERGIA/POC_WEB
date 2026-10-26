@@ -203,7 +203,8 @@
 import { valores, juntar, marcado, alternar, alternarMinimo, rotulo, semTodos, casa, igualCI, ativo, type CliqueEv } from "@/lib/multi-filtro";
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useChecklistData, type SubmissionRow, type ResponseRow, type EmployeeRow } from "@/composables/useChecklistData";
-import { filterByGerente, semanaDaSub, uniqueHierarchyOpts, filterByCoordenador, dataReferencia } from "@/lib/dashboard";
+import { semanaDaSub, uniqueHierarchyOpts, dataReferencia } from "@/lib/dashboard";
+import { useHierarquiaEquipe } from "@/composables/useHierarquiaEquipe";
 import { rotuloSemana } from "@/lib/semanas";
 
 const R2_PUBLIC_BASE = (import.meta.env.VITE_R2_PUBLIC_BASE_URL as string ?? "").replace(/\/$/, "");
@@ -282,7 +283,9 @@ function toggleCoordenador(v: string, ev?: CliqueEv) { filters.coordenador = alt
 
 const { loading, load, submissions, responses, employees } = useChecklistData();
 const gerentes = computed(() => uniqueHierarchyOpts(employees.value, "gerente", false));
-const coordenadores = computed(() => uniqueHierarchyOpts(employees.value, "coordenador", false));
+// Coordenador e gerente: as equipes vinculadas a eles (não os observadores), como nas demais páginas.
+const { coordenadoresOpts, passaCoordenadorGerente } = useHierarquiaEquipe(employees);
+const coordenadores = computed(() => coordenadoresOpts.value.filter((c) => c !== "Todos"));
 
 async function recarregar() {
   const nums = valores(filters.mes).map(Number).filter(Boolean).sort((a, b) => a - b);
@@ -389,18 +392,11 @@ const listaFiltrada = computed<NcRow[]>(() => {
     rows = rows.filter(r => casa(filters.gerencia, r.gerenciaEmp));
   }
 
-  if (ativo(filters.gerente)) {
-    const subIds = new Set(
-      valores(filters.gerente).flatMap(g => filterByGerente(submissions.value, employees.value, g).map(s => s.id)),
-    );
-    rows = rows.filter(r => subIds.has(r.key.split("_")[0]!));
-  }
-
-  if (ativo(filters.coordenador)) {
-    const idsCoord = new Set(
-      valores(filters.coordenador).flatMap(c => filterByCoordenador(submissions.value, employees.value, c).map(s => s.id)),
-    );
-    rows = rows.filter(r => idsCoord.has(r.key.split("_")[0]!));
+  if (ativo(filters.gerente) || ativo(filters.coordenador)) {
+    rows = rows.filter(r => {
+      const sub = subMap.value[r.key.split("_")[0]!];
+      return sub ? passaCoordenadorGerente(sub, filters.coordenador, filters.gerente) : false;
+    });
   }
 
   if (ativo(filters.observador)) {
