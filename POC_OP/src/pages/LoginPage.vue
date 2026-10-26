@@ -244,7 +244,14 @@ async function enviarRecuperacao() {
 
   forgotLoading.value = false;
   if (error) {
-    forgotErro.value = "Não foi possível enviar o e-mail. Tente novamente.";
+    const msg = error.message ?? "";
+    const status = (error as { status?: number }).status;
+    if (status === 429 || /rate limit|too many|over_email_send_rate/i.test(msg)) {
+      forgotErro.value =
+        "Muitos pedidos de recuperação em pouco tempo. Aguarde cerca de 1 hora (ou peça a um admin para definir a senha em Aprovações).";
+    } else {
+      forgotErro.value = "Não foi possível enviar o e-mail. Tente novamente.";
+    }
     return;
   }
   forgotSent.value = true;
