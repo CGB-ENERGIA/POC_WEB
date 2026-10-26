@@ -44,8 +44,8 @@
             <span class="fgroup__label">Base</span>
             <div class="pill-group">
               <button v-for="b in bases" :key="b"
-                :class="['pill', filters.base === b && 'pill--active']"
-                @click="filters.base = (filters.base === b ? '' : b)">{{ b }}</button>
+                :class="['pill', marcado(filters.base, b) && 'pill--active']"
+                @click="filters.base = alternar(filters.base, b, $event)">{{ b }}</button>
             </div>
           </div>
 
@@ -55,8 +55,8 @@
             <span class="fgroup__label">Gerente</span>
             <div class="pill-group">
               <button v-for="g in gerentesOpts" :key="g"
-                :class="['pill pill--sm', filters.gerente === g && 'pill--active']"
-                @click="filters.gerente = (filters.gerente === g ? '' : g)">{{ g }}</button>
+                :class="['pill pill--sm', marcado(filters.gerente, g) && 'pill--active']"
+                @click="filters.gerente = alternar(filters.gerente, g, $event)">{{ g }}</button>
             </div>
           </div>
 
@@ -64,8 +64,8 @@
             <span class="fgroup__label">Coordenador</span>
             <div class="pill-group">
               <button v-for="g in coordenadoresOpts" :key="g"
-                :class="['pill pill--sm', filters.coordenador === g && 'pill--active']"
-                @click="filters.coordenador = (filters.coordenador === g ? '' : g)">{{ g }}</button>
+                :class="['pill pill--sm', marcado(filters.coordenador, g) && 'pill--active']"
+                @click="filters.coordenador = alternar(filters.coordenador, g, $event)">{{ g }}</button>
             </div>
           </div>
 
@@ -74,12 +74,14 @@
 
           <div class="fgroup fgroup--prefixo">
             <span class="fgroup__label">Prefixo</span>
-            <q-select :model-value="filters.prefixo" :options="prefixoDisplayOpts"
+            <q-select multiple :model-value="valores(filters.prefixo)" :options="semTodos(prefixoDisplayOpts)" :display-value="rotulo(filters.prefixo)"
               dense outlined hide-bottom-space use-input input-debounce="0"
               :clearable="filters.prefixo !== 'Todos'" clear-icon="mdi-close-circle"
               class="prefixo-select" popup-content-class="prefixo-popup"
-              @update:model-value="(v: string | null) => (filters.prefixo = v ?? 'Todos')"
-              @filter="filterPrefixo" />
+              @update:model-value="(v: string[] | null) => (filters.prefixo = juntar(v))"
+              @filter="filterPrefixo">
+              <template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template>
+            </q-select>
           </div>
 
           <div class="filter-divider" />
@@ -88,8 +90,8 @@
             <span class="fgroup__label">Gerência</span>
             <div class="pill-group">
               <button v-for="g in gerencias" :key="g"
-                :class="['pill', filters.gerencia === g && 'pill--active']"
-                @click="filters.gerencia = (filters.gerencia === g ? '' : g)">{{ g }}</button>
+                :class="['pill', marcado(filters.gerencia, g) && 'pill--active']"
+                @click="filters.gerencia = alternar(filters.gerencia, g, $event)">{{ g }}</button>
             </div>
           </div>
 
@@ -276,6 +278,7 @@
 </template>
 
 <script setup lang="ts">
+import { valores, juntar, marcado, alternar, rotulo, semTodos, casa, igualCI, ativo } from "@/lib/multi-filtro";
 import { reactive, computed, ref, shallowRef, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
 import {
@@ -386,32 +389,32 @@ const gerenteDoCoordenador = computed(() => {
 
 /** Filtros de coordenador, gerente, gerência e base, todos pela EQUIPE (valores já normalizados). */
 const filtrosEquipe = computed(() => ({
-  coord:    filters.coordenador ? foldName(filters.coordenador) : "",
-  gerente:  filters.gerente ? foldName(filters.gerente) : "",
-  gerencia: filters.gerencia && filters.gerencia !== "Todos" ? filters.gerencia.toUpperCase() : "",
-  base:     filters.base.toUpperCase(),
+  coord:    valores(filters.coordenador).map((c) => foldName(c)),
+  gerente:  valores(filters.gerente).map((g) => foldName(g)),
+  gerencia: valores(filters.gerencia).map((g) => g.toUpperCase()),
+  base:     valores(filters.base).map((b) => b.toUpperCase()),
 }));
 
 /** A equipe passa nos filtros? (`auditagem` e `baseChecklist` só entram quando a equipe não está no cadastro.) */
 function passaFiltros(equipe: string | null | undefined, auditagem = "", baseChecklist = ""): boolean {
   const f = filtrosEquipe.value;
-  if (!f.coord && !f.gerente && !f.gerencia && !f.base) return true;
+  if (!f.coord.length && !f.gerente.length && !f.gerencia.length && !f.base.length) return true;
   const h = hierarquiaDaEquipe(hierEquipes.value, equipe);
-  if (f.base && (h?.base || baseChecklist || "").toUpperCase() !== f.base) return false;
+  if (f.base.length && !f.base.includes((h?.base || baseChecklist || "").toUpperCase())) return false;
   const coordDaEquipe = foldName(h?.coordenador ?? "");
-  if (f.coord && coordDaEquipe !== f.coord) return false;
-  if (f.gerente) {
+  if (f.coord.length && !f.coord.includes(coordDaEquipe)) return false;
+  if (f.gerente.length) {
     const g = h?.gerente || gerenteDoCoordenador.value.get(coordDaEquipe) || "";
-    if (foldName(g) !== f.gerente) return false;
+    if (!f.gerente.includes(foldName(g))) return false;
   }
-  if (f.gerencia && (h?.gerencia || auditagem || "").toUpperCase() !== f.gerencia) return false;
+  if (f.gerencia.length && !f.gerencia.includes((h?.gerencia || auditagem || "").toUpperCase())) return false;
   return true;
 }
 
 /** Checklists do ano depois dos filtros de gerente, coordenador, gerência e base (todos pela equipe). */
 const subsFiltrados = computed(() => {
   const f = filtrosEquipe.value;
-  if (!f.coord && !f.gerente && !f.gerencia && !f.base) return submissions.value;
+  if (!f.coord.length && !f.gerente.length && !f.gerencia.length && !f.base.length) return submissions.value;
   return submissions.value.filter((s) => passaFiltros(s.equipe, s.auditagem, s.base));
 });
 
@@ -506,8 +509,8 @@ const ordemOpts: { value: Ordem; label: string; icon: string }[] = [
 const filteredRows = computed<Row[]>(() => {
   let rows = rawRows.value;
 
-  if (filters.prefixo && filters.prefixo !== "Todos")
-    rows = rows.filter(r => r.prefixo === filters.prefixo);
+  if (ativo(filters.prefixo))
+    rows = rows.filter(r => casa(filters.prefixo, r.prefixo));
 
   if      (filters.tipo === ">80%")      rows = rows.filter(r => r.total.pct >= 80);
   else if (filters.tipo === "<80%")      rows = rows.filter(r => r.total.pct < 80);
