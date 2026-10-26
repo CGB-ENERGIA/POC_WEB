@@ -218,8 +218,70 @@
           </q-card>
         </div>
 
+        <!-- Lista das ocorrências, com a foto e os itens apontados -->
+        <div class="col-12">
+          <q-card flat bordered class="chart-card">
+            <q-card-section class="q-pb-xs">
+              <div class="chart-title">Ocorrências de Tolerância Zero</div>
+              <div class="chart-caption">{{ listaOcorrencias.length }} {{ listaOcorrencias.length === 1 ? 'ocorrência' : 'ocorrências' }} no recorte · clique na foto para ampliar</div>
+            </q-card-section>
+            <q-card-section class="q-pa-none">
+              <q-table
+                :rows="listaOcorrencias"
+                :columns="colunasOcorrencias"
+                row-key="key"
+                flat
+                :loading="loading"
+                :rows-per-page-options="[10, 25, 50, 0]"
+                rows-per-page-label="Por página"
+                no-data-label="Nenhuma ocorrência de tolerância zero no recorte"
+                class="oc-table"
+              >
+                <template #body-cell-inconformidade="props">
+                  <q-td :props="props" class="oc-cell">
+                    <div class="oc-inner">
+                      <img
+                        v-if="props.row.fotoSrc"
+                        :src="props.row.fotoSrc"
+                        class="oc-foto"
+                        alt=""
+                        @click.stop="fotoViewer = props.row.fotoSrc"
+                      />
+                      <div v-else class="oc-foto oc-foto--vazia" title="Sem foto">
+                        <q-icon name="mdi-image-off-outline" size="22px" />
+                      </div>
+                      <div class="oc-text">
+                        <span>{{ props.row.pergunta }}</span>
+                        <div v-if="props.row.itens && props.row.itens.length" class="oc-subitems">
+                          <span
+                            v-for="it in props.row.itens"
+                            :key="it.nome"
+                            :class="['oc-chip', it.conforme ? 'oc-chip--ok' : 'oc-chip--nc']"
+                          >
+                            <q-icon :name="it.conforme ? 'mdi-check' : 'mdi-close'" size="11px" />
+                            {{ it.nome }}
+                          </span>
+                        </div>
+                        <div v-if="props.row.observacao" class="oc-obs">{{ props.row.observacao }}</div>
+                      </div>
+                    </div>
+                  </q-td>
+                </template>
+              </q-table>
+            </q-card-section>
+          </q-card>
+        </div>
+
       </div>
     </div>
+
+    <!-- Visualizador de foto -->
+    <q-dialog v-model="fotoViewerOpen" maximized>
+      <div class="foto-viewer" @click="fotoViewer = null">
+        <img :src="fotoViewer ?? ''" class="foto-viewer__img" alt="" @click.stop />
+        <q-btn flat round icon="mdi-close" color="white" class="foto-viewer__close" @click="fotoViewer = null" />
+      </div>
+    </q-dialog>
 
   </q-page>
 </template>
@@ -234,7 +296,7 @@ import { TooltipComponent, GridComponent, DataZoomComponent } from "echarts/comp
 import VChart from "vue-echarts";
 import { chartInk, withAlpha } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { semanaDaSub } from "@/lib/dashboard";
+import { semanaDaSub, dataReferencia } from "@/lib/dashboard";
 import { useHierarquiaEquipe, chaveEquipe } from "@/composables/useHierarquiaEquipe";
 import { ocorrenciasTz, categoriasDasOcorrencias } from "@/lib/tolerancia-zero";
 
@@ -451,6 +513,59 @@ const respsNoCat = computed(() => tzResps(filteredSubs.value, { cat: true }));
 const respsNoPergunta = computed(() => tzResps(filteredSubs.value, { pergunta: true }));
 const subsNoPrefixo = computed(() => applySlice(submissions.value, { prefixo: true }));
 const respsNoPrefixo = computed(() => tzResps(subsNoPrefixo.value));
+
+// ─── Lista de ocorrências (com foto e itens apontados, como no Banco de Inconformidades) ─────────────────────────
+const R2_PUBLIC_BASE = (import.meta.env.VITE_R2_PUBLIC_BASE_URL as string ?? "").replace(/\/$/, "");
+function fotoUrl(key: string | null | undefined): string | null {
+  if (!key) return null;
+  if (key.startsWith("http")) return key;
+  return R2_PUBLIC_BASE ? `${R2_PUBLIC_BASE}/${key}` : null;
+}
+
+const fotoViewer = ref<string | null>(null);
+const fotoViewerOpen = computed({
+  get: () => fotoViewer.value !== null,
+  set: (v) => { if (!v) fotoViewer.value = null; },
+});
+
+const fmtData = (iso: string) => {
+  const [a, m, d] = iso.slice(0, 10).split("-");
+  return a && m && d ? `${d}/${m}/${a}` : iso;
+};
+
+const listaOcorrencias = computed(() => {
+  const subPorId = new Map(submissions.value.map((s) => [s.id, s]));
+  return filteredResps.value
+    .map((r, i) => {
+      const sub = subPorId.get(r.submission_id);
+      if (!sub) return null;
+      const data = dataReferencia(sub);
+      return {
+        key: `${r.submission_id}_${r.pergunta_id}_${i}`,
+        dataIso: data,
+        data: fmtData(data),
+        observador: sub.observador,
+        equipe: sub.equipe,
+        gerencia: gerenciaDaSub(sub),
+        categoria: r.categoria,
+        pergunta: r.pergunta,
+        itens: r.itens,
+        observacao: r.observacao,
+        fotoSrc: fotoUrl(r.foto_r2_key),
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+    .sort((a, b) => b.dataIso.localeCompare(a.dataIso) || a.equipe.localeCompare(b.equipe, "pt-BR"));
+});
+
+const colunasOcorrencias = [
+  { name: "data",           label: "Data",             field: "data",       align: "left" as const, sortable: true, sort: (_a: string, _b: string, ra: { dataIso: string }, rb: { dataIso: string }) => ra.dataIso.localeCompare(rb.dataIso) },
+  { name: "observador",     label: "Observador",       field: "observador", align: "left" as const, sortable: true },
+  { name: "equipe",         label: "Equipe",           field: "equipe",     align: "left" as const, sortable: true },
+  { name: "gerencia",       label: "Gerência",         field: "gerencia",   align: "left" as const, sortable: true },
+  { name: "categoria",      label: "Categoria",        field: "categoria",  align: "left" as const, sortable: true },
+  { name: "inconformidade", label: "Não conformidade", field: "pergunta",   align: "left" as const, sortable: false },
+];
 
 function tooltipSkin(trigger: "item" | "axis" = "item") {
   const bg = chartInk.tipBg;
@@ -874,6 +989,42 @@ $inactive-text:#475569;
   .rank-row td { color: #cbd5e1; border-bottom-color: #1e293b; }
   .rank-row--alt td { background: #0f172a; }
   .rank-row--on td { background: rgba($brand, .28); }
+  .oc-table { background: #1e293b; :deep(th) { background: #0f172a; color: #e2e8f0; } :deep(td) { color: #e2e8f0; border-bottom-color: #334155; } }
+  .oc-text { color: #e2e8f0; }
+  .oc-obs { color: #cbd5e1; }
+  .oc-foto { border-color: #334155; &--vazia { background: #0f172a; color: #94a3b8; } }
+}
+// ── Lista de ocorrências ──
+.oc-table {
+  :deep(th) { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: #475569; background: #f8fafc; }
+  :deep(td) { vertical-align: top; font-size: 13px; padding-top: 10px; padding-bottom: 10px; }
+}
+.oc-cell { min-width: 360px; white-space: normal; }
+.oc-inner { display: flex; align-items: flex-start; gap: 10px; }
+.oc-foto {
+  flex-shrink: 0; width: 72px; height: 72px; object-fit: cover;
+  border-radius: 8px; border: 1px solid #cbd5e1; cursor: zoom-in; transition: opacity .15s;
+  &:hover { opacity: .85; }
+  &--vazia {
+    display: flex; align-items: center; justify-content: center;
+    cursor: default; background: #f1f5f9; color: #64748b;
+    &:hover { opacity: 1; }
+  }
+}
+.oc-text { flex: 1; min-width: 0; color: #1e293b; line-height: 1.35; }
+.oc-subitems { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.oc-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 8px; border-radius: 4px; font-size: .72rem; font-weight: 600; white-space: nowrap;
+  &--ok { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+  &--nc { background: #fde8e8; color: #c62828; border: 1px solid #f5b6b6; }
+}
+.oc-obs { margin-top: 6px; font-size: 12px; color: #475569; font-style: italic; }
+.foto-viewer {
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.88); width: 100%; height: 100%; position: relative;
+  &__img { max-width: 90vw; max-height: 90vh; object-fit: contain; border-radius: 6px; }
+  &__close { position: absolute; top: 16px; right: 16px; }
 }
 .fade-enter-active, .fade-leave-active { transition: opacity .2s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
