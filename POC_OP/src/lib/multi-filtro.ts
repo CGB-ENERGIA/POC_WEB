@@ -16,8 +16,8 @@ export function valores(sel: string | null | undefined): string[] {
 }
 
 /** Monta o texto do filtro a partir dos valores marcados ("Todos" se nenhum). */
-export function juntar(v: readonly string[]): string {
-  const u = [...new Set(v.filter((x) => x && x !== TODOS))];
+export function juntar(v: readonly string[] | null | undefined): string {
+  const u = [...new Set((v ?? []).filter((x) => x && x !== TODOS))];
   return u.length ? u.join(SEP) : TODOS;
 }
 

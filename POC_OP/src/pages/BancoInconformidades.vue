@@ -37,8 +37,8 @@
               <div class="fchips">
                 <button
                   v-for="s in semanas" :key="s.value"
-                  :class="['fchip', filters.semana === s.value && 'fchip--on']"
-                  @click="toggleSemana(s.value)"
+                  :class="['fchip', marcado(filters.semana, String(s.value)) && 'fchip--on']"
+                  @click="toggleSemana(s.value, $event)"
                 >{{ s.label }}</button>
               </div>
             </div>
@@ -48,8 +48,8 @@
               <div class="fchips">
                 <button
                   v-for="m in meses" :key="m.value"
-                  :class="['fchip', filters.mes === m.value && 'fchip--on']"
-                  @click="toggleMes(m.value)"
+                  :class="['fchip', marcado(filters.mes, String(m.value)) && 'fchip--on']"
+                  @click="toggleMes(m.value, $event)"
                 >{{ m.label }}</button>
               </div>
             </div>
@@ -59,8 +59,8 @@
               <div class="fchips">
                 <button
                   v-for="g in gerencias" :key="g"
-                  :class="['fchip', filters.gerencia === g && 'fchip--on']"
-                  @click="toggleGerencia(g)"
+                  :class="['fchip', marcado(filters.gerencia, g) && 'fchip--on']"
+                  @click="toggleGerencia(g, $event)"
                 >{{ g }}</button>
               </div>
             </div>
@@ -73,8 +73,8 @@
               <div class="fchips">
                 <button
                   v-for="b in bases" :key="b"
-                  :class="['fchip', filters.base === b && 'fchip--on']"
-                  @click="toggleBase(b)"
+                  :class="['fchip', marcado(filters.base, b) && 'fchip--on']"
+                  @click="toggleBase(b, $event)"
                 >{{ b }}</button>
               </div>
             </div>
@@ -89,8 +89,8 @@
               <div class="fchips">
                 <button
                   v-for="g in gerentes" :key="g"
-                  :class="['fchip', filters.gerente === g && 'fchip--on']"
-                  @click="toggleGerente(g)"
+                  :class="['fchip', marcado(filters.gerente, g) && 'fchip--on']"
+                  @click="toggleGerente(g, $event)"
                 >{{ g }}</button>
               </div>
             </div>
@@ -99,8 +99,8 @@
               <div class="fchips">
                 <button
                   v-for="g in coordenadores" :key="g"
-                  :class="['fchip', filters.coordenador === g && 'fchip--on']"
-                  @click="toggleCoordenador(g)"
+                  :class="['fchip', marcado(filters.coordenador, g) && 'fchip--on']"
+                  @click="toggleCoordenador(g, $event)"
                 >{{ g }}</button>
               </div>
             </div>
@@ -109,21 +109,21 @@
           <!-- Observador + Equipe -->
           <div class="filter-row filter-row--selects">
             <q-select
-              v-model="filters.observador"
-              :options="observadoresOpts"
+              multiple :model-value="valores(filters.observador)" @update:model-value="(v: string[]) => filters.observador = juntar(v)" :display-value="rotulo(filters.observador)"
+              :options="semTodos(observadoresOpts)"
               label="Observador"
               outlined dense clearable
               style="min-width: 180px"
               popup-content-class="banco-popup"
-            />
+            ><template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
             <q-select
-              v-model="filters.equipe"
-              :options="equipesOpts"
+              multiple :model-value="valores(filters.equipe)" @update:model-value="(v: string[]) => filters.equipe = juntar(v)" :display-value="rotulo(filters.equipe)"
+              :options="semTodos(equipesOpts)"
               label="Equipe"
               outlined dense clearable
               style="min-width: 180px"
               popup-content-class="banco-popup"
-            />
+            ><template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
           </div>
 
         </div>
@@ -200,6 +200,7 @@
 </template>
 
 <script setup lang="ts">
+import { valores, juntar, marcado, alternar, alternarMinimo, rotulo, semTodos, casa, igualCI, ativo, type CliqueEv } from "@/lib/multi-filtro";
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useChecklistData, type SubmissionRow, type ResponseRow, type EmployeeRow } from "@/composables/useChecklistData";
 import { filterByGerente, semanaDaSub, uniqueHierarchyOpts, filterByCoordenador, dataReferencia } from "@/lib/dashboard";
@@ -216,7 +217,7 @@ function fotoUrl(key: string | null | undefined): string | null {
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
 const semanas = computed(() =>
-  [1, 2, 3, 4].map((v) => ({ value: v, label: rotuloSemana(filters.ano, filters.mes ?? new Date().getMonth() + 1, v) })),
+  [1, 2, 3, 4].map((v) => ({ value: v, label: rotuloSemana(filters.ano, Number(valores(filters.mes)[0] ?? new Date().getMonth() + 1), v) })),
 );
 
 const meses = [
@@ -253,27 +254,29 @@ onUnmounted(() => clearInterval(clockInterval));
 const now = new Date();
 const filters = reactive({
   ano:        now.getFullYear(),
-  mes:        null as number | null,
-  semana:     null as number | null,
-  base:       null as string | null,
-  gerencia:   null as string | null,
-  gerente:    null as string | null, coordenador: null as string | null,
-  observador: null as string | null,
-  equipe:     null as string | null,
+  // "Todos" = sem filtro; vários marcados ficam juntos (ver multi-filtro)
+  mes:        "Todos",
+  semana:     "Todos",
+  base:       "Todos",
+  gerencia:   "Todos",
+  gerente:    "Todos", coordenador: "Todos",
+  observador: "Todos",
+  equipe:     "Todos",
 });
 
 const filtrosAbertos = ref(false);
 const filtrosAtivosCount = computed(() =>
   [filters.semana, filters.base, filters.gerencia, filters.gerente, filters.coordenador, filters.observador, filters.equipe]
-    .filter(v => v !== null).length
+    .filter(v => ativo(v)).length
 );
 
-function toggleSemana (v: number)  { filters.semana   = filters.semana   === v    ? null : v; }
-function toggleMes    (v: number)  { filters.mes       = filters.mes      === v    ? null : v; }
-function toggleBase   (v: string)  { filters.base      = filters.base     === v    ? null : v; }
-function toggleGerencia(v: string) { filters.gerencia  = filters.gerencia === v    ? null : v; }
-function toggleGerente (v: string) { filters.gerente   = filters.gerente  === v    ? null : v; }
-function toggleCoordenador(v: string) { filters.coordenador = filters.coordenador === v ? null : v; }
+// Clique escolhe só aquele valor; Ctrl+clique soma ou tira (ver multi-filtro)
+function toggleSemana (v: number, ev?: CliqueEv)  { filters.semana   = alternar(filters.semana, String(v), ev); }
+function toggleMes    (v: number, ev?: CliqueEv)  { filters.mes      = alternar(filters.mes, String(v), ev); }
+function toggleBase   (v: string, ev?: CliqueEv)  { filters.base     = alternar(filters.base, v, ev); }
+function toggleGerencia(v: string, ev?: CliqueEv) { filters.gerencia = alternar(filters.gerencia, v, ev); }
+function toggleGerente (v: string, ev?: CliqueEv) { filters.gerente  = alternar(filters.gerente, v, ev); }
+function toggleCoordenador(v: string, ev?: CliqueEv) { filters.coordenador = alternar(filters.coordenador, v, ev); }
 
 // ─── Dados ───────────────────────────────────────────────────────────────────
 
@@ -282,8 +285,13 @@ const gerentes = computed(() => uniqueHierarchyOpts(employees.value, "gerente", 
 const coordenadores = computed(() => uniqueHierarchyOpts(employees.value, "coordenador", false));
 
 async function recarregar() {
+  const nums = valores(filters.mes).map(Number).filter(Boolean).sort((a, b) => a - b);
   await load(
-    { ano: filters.ano, mes: filters.mes ?? undefined, contarMeta: true },
+    nums.length === 0
+      ? { ano: filters.ano, contarMeta: true }
+      : nums.length === 1
+        ? { ano: filters.ano, mes: nums[0]!, contarMeta: true }
+        : { ano: filters.ano, meses: nums, contarMeta: true },
     false,
     false
   );
@@ -363,13 +371,13 @@ const todasNcs = computed<NcRow[]>(() => {
 const listaFiltrada = computed<NcRow[]>(() => {
   let rows = todasNcs.value;
 
-  if (filters.semana) {
-    rows = rows.filter(r => r.semana === filters.semana);
+  if (ativo(filters.semana)) {
+    rows = rows.filter(r => casa(filters.semana, String(r.semana)));
   }
 
-  if (filters.base) {
+  if (ativo(filters.base)) {
     const subsBase = new Set(
-      submissions.value.filter(s => s.base === filters.base).map(s => s.id)
+      submissions.value.filter(s => casa(filters.base, s.base)).map(s => s.id)
     );
     rows = rows.filter(r => {
       const sub = subMap.value[r.key.split("_")[0]];
@@ -377,30 +385,30 @@ const listaFiltrada = computed<NcRow[]>(() => {
     });
   }
 
-  if (filters.gerencia) {
-    rows = rows.filter(r => r.gerenciaEmp === filters.gerencia);
+  if (ativo(filters.gerencia)) {
+    rows = rows.filter(r => casa(filters.gerencia, r.gerenciaEmp));
   }
 
-  if (filters.gerente) {
+  if (ativo(filters.gerente)) {
     const subIds = new Set(
-      filterByGerente(submissions.value, employees.value, filters.gerente).map(s => s.id),
+      valores(filters.gerente).flatMap(g => filterByGerente(submissions.value, employees.value, g).map(s => s.id)),
     );
     rows = rows.filter(r => subIds.has(r.key.split("_")[0]!));
   }
 
-  if (filters.coordenador) {
+  if (ativo(filters.coordenador)) {
     const idsCoord = new Set(
-      filterByCoordenador(submissions.value, employees.value, filters.coordenador).map(s => s.id),
+      valores(filters.coordenador).flatMap(c => filterByCoordenador(submissions.value, employees.value, c).map(s => s.id)),
     );
     rows = rows.filter(r => idsCoord.has(r.key.split("_")[0]!));
   }
 
-  if (filters.observador) {
-    rows = rows.filter(r => r.observador === filters.observador);
+  if (ativo(filters.observador)) {
+    rows = rows.filter(r => casa(filters.observador, r.observador));
   }
 
-  if (filters.equipe) {
-    rows = rows.filter(r => r.equipe === filters.equipe);
+  if (ativo(filters.equipe)) {
+    rows = rows.filter(r => casa(filters.equipe, r.equipe));
   }
 
   return rows;
