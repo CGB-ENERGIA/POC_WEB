@@ -302,9 +302,10 @@
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import {
   fetchSubmissions, fetchEmployees, fetchNcLight,
-  filterByGerencia, filterByGerente, semanaDaSub, uniqueHierarchyOpts, filterByCoordenador,
+  semanaDaSub, uniqueHierarchyOpts,
   type SubmissionRow, type EmployeeRow, type NcLightRow,
 } from "@/lib/dashboard";
+import { useHierarquiaEquipe } from "@/composables/useHierarquiaEquipe";
 import { lerTipoPoc, salvarTipoPoc } from "@/lib/tipo-poc";
 import KpiFlame from "@/components/KpiFlame.vue";
 
@@ -328,7 +329,8 @@ const mesesOpts = [{ v: 0, l: "Todos" }, ...months.map((l, i) => ({ v: i + 1, l 
 const anosOpts      = ["2024","2025","2026"];
 const gerenciasOpts = ["Todos","ADM","GERE","GOMAN","GSTC","OFICINA","SESMT","SPOT"];
 const gerentesOpts = computed(() => uniqueHierarchyOpts(employees.value, "gerente"));
-const coordenadoresOpts = computed(() => uniqueHierarchyOpts(employees.value, "coordenador"));
+// Coordenador, gerente, gerência e base pela EQUIPE do checklist (não pelo cadastro de quem observou)
+const { coordenadoresOpts, gerenciaDaSub, baseDaSub, passaCoordenadorGerente } = useHierarquiaEquipe(employees);
 const basesOpts     = ["Todos","BCB","BDC","ITM","PDS","PDT","STI"];
 const tiposOpts     = ["Todos","Operacional","Administrativo","Alojamento"];
 
@@ -479,15 +481,21 @@ function catIndex(categoria: string | undefined) {
 }
 
 function applySlice(omit: { base?: boolean; mes?: boolean } = {}) {
-  let s = filterByGerente(submissions.value, employees.value, filters.gerente);
-  s = filterByCoordenador(s, employees.value, filters.coordenador);
-  s = filterByGerencia(s, employees.value, filters.gerencia);
+  let s: typeof submissions.value = submissions.value;
+  // Coordenador, gerente, gerência e base: as equipes vinculadas (cadastro de equipes), não os observadores
+  if (filters.coordenador !== "Todos" || filters.gerente !== "Todos") {
+    s = s.filter((sub) => passaCoordenadorGerente(sub, filters.coordenador, filters.gerente));
+  }
+  if (filters.gerencia !== "Todos") {
+    const alvo = filters.gerencia.toUpperCase();
+    s = s.filter((sub) => gerenciaDaSub(sub) === alvo);
+  }
   s = s.filter((sub) => matchTipoPoc(sub.auditagem));
   if (filters.semana) {
     s = s.filter((sub) => semanaDaSub(sub) === filters.semana);
   }
   const base = selectedBase.value;
-  if (!omit.base && base) s = s.filter((sub) => sub.base === base);
+  if (!omit.base && base) s = s.filter((sub) => baseDaSub(sub) === base);
   const mes = selectedMes.value;
   if (!omit.mes && mes) s = s.filter((sub) => mesDaData(sub.data) === mes);
   return s;
@@ -529,12 +537,12 @@ const catData = computed(() => {
 });
 
 const baseData = computed(() => {
-  const basesInData = [...new Set(baseChartSubs.value.map((s) => s.base).filter(Boolean))].sort();
+  const basesInData = [...new Set(baseChartSubs.value.map((s) => baseDaSub(s)).filter(Boolean))].sort();
   const rows = basesInData.map((label) => ({ label, values: Array(12).fill(0) as number[] }));
   const rowMap: Record<string, number[]> = {};
   rows.forEach((r) => { rowMap[r.label] = r.values; });
   const subBase: Record<string, string> = {};
-  for (const s of baseChartSubs.value) subBase[s.id] = s.base;
+  for (const s of baseChartSubs.value) subBase[s.id] = baseDaSub(s);
   const catCi = viz.cat ? CAT_DEFS.findIndex((c) => c.label === viz.cat) : -1;
   for (const r of ncLight.value) {
     const mes = baseMonthMap.value[r.submission_id];

@@ -226,10 +226,14 @@
 <script setup lang="ts">
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { useChecklistData } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDaSub, filterByCoordenador } from "@/lib/dashboard";
+import { semanaDaSub } from "@/lib/dashboard";
+import { useHierarquiaEquipe } from "@/composables/useHierarquiaEquipe";
 import KpiFlame from "@/components/KpiFlame.vue";
 
-const { loading, error, submissions, responses, employees, load, gerentesOpts, coordenadoresOpts } = useChecklistData();
+const { loading, error, submissions, responses, employees, load, gerentesOpts } = useChecklistData();
+
+// Coordenador, gerente, gerência e base pela EQUIPE do checklist (não pelo cadastro de quem observou)
+const { coordenadoresOpts, gerenciaDaSub, baseDaSub, passaCoordenadorGerente } = useHierarquiaEquipe(employees);
 
 // â"€â"€â"€ Filters â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const showFilters = ref(false);
@@ -324,14 +328,20 @@ watch(() => [filters.ano, filters.mes], recarregar);
 watch(() => filters.base, () => { viz.base = null; });
 
 function applySlice(omit: { base?: boolean } = {}) {
-  let s = filterByGerente(submissions.value, employees.value, filters.gerente);
-  s = filterByCoordenador(s, employees.value, filters.coordenador);
-  s = filterByGerencia(s, employees.value, filters.gerencia);
+  let s: typeof submissions.value = submissions.value;
+  // Coordenador, gerente, gerência e base: as equipes vinculadas (cadastro de equipes), não os observadores
+  if (filters.coordenador !== "Todos" || filters.gerente !== "Todos") {
+    s = s.filter((sub) => passaCoordenadorGerente(sub, filters.coordenador, filters.gerente));
+  }
+  if (filters.gerencia !== "Todos") {
+    const alvo = filters.gerencia.toUpperCase();
+    s = s.filter((sub) => gerenciaDaSub(sub) === alvo);
+  }
   if (filters.semana) {
     s = s.filter((sub) => semanaDaSub(sub) === filters.semana);
   }
   const base = selectedBase.value;
-  if (!omit.base && base) s = s.filter((sub) => sub.base === base);
+  if (!omit.base && base) s = s.filter((sub) => baseDaSub(sub) === base);
   return s;
 }
 
@@ -377,12 +387,12 @@ function catIndex(categoria: string | undefined) {
 // â"€â"€â"€ NC Matrix base Ã— category from real data â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const subById = computed(() => {
   const m: Record<string, { base: string }> = {};
-  for (const s of matrixSubs.value) m[s.id] = { base: s.base };
+  for (const s of matrixSubs.value) m[s.id] = { base: baseDaSub(s) };
   return m;
 });
 
 const matrixData = computed(() => {
-  const basesInData = [...new Set(matrixSubs.value.map((s) => s.base).filter(Boolean))].sort();
+  const basesInData = [...new Set(matrixSubs.value.map((s) => baseDaSub(s)).filter(Boolean))].sort();
   const rows = basesInData.map((base) => ({ base, values: categories.value.map(() => 0) }));
   const rowMap: Record<string, number[]> = {};
   rows.forEach((r) => { rowMap[r.base] = r.values; });
