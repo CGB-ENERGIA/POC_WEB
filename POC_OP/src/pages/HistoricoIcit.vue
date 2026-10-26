@@ -457,7 +457,7 @@ const rawRows = computed<Row[]>(() => {
 
   for (const s of subs) {
     const eq = normPrefixo(s.equipe);
-    const d  = new Date(s.data ?? s.created_at ?? "");
+    const d  = new Date(s.data ?? "");
     if (isNaN(d.getTime())) continue;
     const month = d.getMonth() + 1;
     if (!equipeData[eq]) equipeData[eq] = {};

@@ -336,8 +336,8 @@ function fotoUrl(key: string | null | undefined): string | null {
 
 // ── Tipos internos ────────────────────────────────────────────────────────────
 type ItemAnalise = ResolucaoRow & {
-  _sub?: { base: string; equipe: string; observador: string; auditagem: string; data: string };
-  _nc?: { pergunta: string; categoria: string; observacao: string | null; fotoUrl: string | null };
+  _sub?: { base: string; equipe: string; observador: string; auditagem: string; data: string } | undefined;
+  _nc?: { pergunta: string; categoria: string; observacao: string | null; fotoUrl: string | null } | undefined;
 };
 
 // ── Dados ─────────────────────────────────────────────────────────────────────

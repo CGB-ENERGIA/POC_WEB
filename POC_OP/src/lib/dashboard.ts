@@ -484,13 +484,13 @@ export async function fetchRespostasPorCategoria(submissionIds: string[]): Promi
 
 export interface NcPorMesOpts {
   contarMeta?: boolean;
-  allowedAuditagens?: string[];
+  allowedAuditagens?: string[] | undefined;
   employees?: EmployeeRow[];
   gerencia?: string;
   gerente?: string;
   coordenador?: string;
   /** Filtro extra sobre as submissions (ex.: hierarquia da equipe), aplicado depois dos demais. */
-  filtro?: (s: { id: string; data: string; auditagem: string; equipe: string; base: string }) => boolean;
+  filtro?: ((s: { id: string; data: string; auditagem: string; equipe: string; base: string }) => boolean) | undefined;
 }
 
 /** Contagem de não conformidades por mês, ao longo de um ano inteiro (para gráfico de tendência). */
@@ -798,8 +798,8 @@ export function conformidadePorCategoria(
   const map: Record<string, { c: number; t: number }> = {};
   for (const r of responses) {
     if (!map[r.categoria]) map[r.categoria] = { c: 0, t: 0 };
-    map[r.categoria].t++;
-    if (r.resposta === "conforme") map[r.categoria].c++;
+    map[r.categoria]!.t++;
+    if (r.resposta === "conforme") map[r.categoria]!.c++;
   }
   return Object.entries(map).map(([categoria, { c, t }]) => ({
     categoria,
@@ -844,7 +844,7 @@ export async function fetchResolucoes(submissionIds: string[]): Promise<Resoluca
 }
 
 export async function inserirResolucao(
-  row: Omit<ResolucaoRow, "id" | "status" | "comentario_analise" | "analisado_por" | "data_analise" | "observacao"> & { observacao?: string }
+  row: Omit<ResolucaoRow, "id" | "status" | "comentario_analise" | "analisado_por" | "data_analise" | "observacao"> & { observacao?: string | undefined }
 ): Promise<ResolucaoRow> {
   const { data, error } = await supabase
     .from("nc_resolucoes")
@@ -924,7 +924,7 @@ export async function reabrirResolucao(
 
 export async function editarAnalise(
   id: string,
-  updates: { resolvido_por?: string; comentario_analise?: string }
+  updates: { resolvido_por?: string | undefined; comentario_analise?: string | undefined }
 ): Promise<ResolucaoRow> {
   const { error } = await supabase
     .from("nc_resolucoes")

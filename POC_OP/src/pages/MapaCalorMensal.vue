@@ -538,7 +538,7 @@ const catData = computed(() => {
     if (!mes) continue;
     const ci = catIndex(r.categoria);
     if (ci < 0) continue;
-    rowMap[rows[ci].label][mes - 1]++;
+    rowMap[rows[ci]!.label]![mes - 1]!++;
   }
   return rows.filter((r, i) => i < CAT_BASE_QTD || r.values.some((v) => v > 0));
 });
@@ -556,17 +556,17 @@ const baseData = computed(() => {
     const base = subBase[r.submission_id];
     if (!mes || !base || !rowMap[base]) continue;
     if (catCi >= 0 && catIndex(r.categoria) !== catCi) continue;
-    rowMap[base][mes - 1]++;
+    rowMap[base]![mes - 1]!++;
   }
   return rows;
 });
 
 const colTotals = computed(() =>
-  months.map((_, mi) => catData.value.reduce((s, r) => s + r.values[mi], 0)),
+  months.map((_, mi) => catData.value.reduce((s, r) => s + r.values[mi]!, 0)),
 );
 const catGrand = computed(() => colTotals.value.reduce((s, v) => s + v, 0));
 const baseColTotals = computed(() =>
-  months.map((_, mi) => baseData.value.reduce((s, r) => s + r.values[mi], 0)),
+  months.map((_, mi) => baseData.value.reduce((s, r) => s + r.values[mi]!, 0)),
 );
 const baseTotalInc = computed(() => baseColTotals.value.reduce((s, v) => s + v, 0));
 function rowSum(values: number[]) { return values.reduce((s, v) => s + v, 0); }

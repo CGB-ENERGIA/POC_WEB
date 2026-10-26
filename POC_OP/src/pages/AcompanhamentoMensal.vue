@@ -719,7 +719,7 @@ function tooltipSkin(trigger: "axis" | "item") {
   };
 }
 
-function tipHtml(title: string, rows: { label: string; value: string; color?: string }[], foot?: string) {
+function tipHtml(title: string, rows: { label: string; value: string; color?: string | undefined }[], foot?: string) {
   const t = chartInk.tipText;
   const m = chartInk.tipMuted;
   const body = rows

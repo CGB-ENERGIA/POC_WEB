@@ -602,8 +602,8 @@ const rawRows = computed<ObsRow[]>(() => {
         inc: 0,
       };
     }
-    byMat[s.matricula].obs++;
-    if (!ncIds.has(s.id)) byMat[s.matricula].obs100++;
+    byMat[s.matricula]!.obs++;
+    if (!ncIds.has(s.id)) byMat[s.matricula]!.obs100++;
   }
   const subPorId = new Map(tableSubs.map((s) => [s.id, s]));
   for (const r of tableResps) {
@@ -611,8 +611,8 @@ const rawRows = computed<ObsRow[]>(() => {
     if (!sub || !byMat[sub.matricula]) continue;
     // Item a item nas perguntas de vários itens (Regras de Ouro), como no BI.
     const c = contagemItens(r);
-    byMat[sub.matricula].conf += c.conf;
-    byMat[sub.matricula].inc += c.nc;
+    byMat[sub.matricula]!.conf += c.conf;
+    byMat[sub.matricula]!.inc += c.nc;
   }
   return Object.values(byMat);
 });

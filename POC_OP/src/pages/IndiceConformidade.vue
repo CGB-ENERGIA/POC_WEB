@@ -751,7 +751,7 @@ const chartTendenciaMensal = computed(() => {
     tooltip: {
       ...tooltipSkin("axis"),
       formatter: (params: { name: string; value: number }[]) => {
-        const p = params[0];
+        const p = params[0]!;
         return tipHtml(`${p.name} · ${filters.ano}`, [
           { label: "Desvios no mês", value: String(p.value), color: P.inconf },
         ], "Clique para abrir o recorte daquele mês");

@@ -365,7 +365,7 @@ function applySlice(
   }
   if (!omit.mes && viz.mes) {
     s = s.filter((sub) => {
-      const d = new Date(sub.data ?? sub.created_at ?? "");
+      const d = new Date(sub.data ?? "");
       return !isNaN(d.getTime()) && d.getMonth() + 1 === viz.mes;
     });
   }
@@ -400,7 +400,7 @@ const CAT_DEFS = [
 const subMonthMap = computed(() => {
   const m: Record<string, number> = {};
   for (const s of chartSubs.value) {
-    const d = new Date(s.data ?? s.created_at ?? "");
+    const d = new Date(s.data ?? "");
     if (!isNaN(d.getTime())) m[s.id] = d.getMonth() + 1;
   }
   return m;
@@ -420,8 +420,8 @@ const rawData = computed(() => {
       const cat = categoria.toLowerCase();
       const def = CAT_DEFS.find(d => cat.includes(d.match.toLowerCase()) || d.match.toLowerCase() === cat);
       if (!def) continue;
-      result[def.key].conf[mes - 1] += conf;
-      result[def.key].inc[mes - 1] += nc;
+      result[def.key]!.conf[mes - 1]! += conf;
+      result[def.key]!.inc[mes - 1]! += nc;
     }
   }
 
@@ -449,7 +449,8 @@ function tooltipSkin() {
   };
 }
 
-function makeCatChart(data: { conf: number[]; inc: number[] }, catKey: string) {
+function makeCatChart(dados: { conf: number[]; inc: number[] } | undefined, catKey: string) {
+  const data = dados ?? { conf: [], inc: [] };
   const selMes = viz.mes;
   const dimCard = !!viz.catKey && viz.catKey !== catKey;
   return {

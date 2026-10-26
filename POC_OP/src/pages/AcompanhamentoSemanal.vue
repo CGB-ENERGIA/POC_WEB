@@ -931,8 +931,8 @@ const conformidadePorObservador = computed(() => {
     const sub = subPorId.get(r.submission_id);
     if (!sub) continue;
     if (!map[sub.matricula]) map[sub.matricula] = { nome: sub.observador, total: 0, conformes: 0 };
-    map[sub.matricula].total++;
-    if (r.resposta === "conforme") map[sub.matricula].conformes++;
+    map[sub.matricula]!.total++;
+    if (r.resposta === "conforme") map[sub.matricula]!.conformes++;
   }
   return Object.entries(map)
     .map(([matricula, d]) => ({
@@ -1385,7 +1385,7 @@ const barBase = computed(() => {
       cursor: "pointer",
       itemStyle: {
         borderRadius: [10, 10, 0, 0],
-        color: (params: { dataIndex: number }) => grad(...baseColorPalette[params.dataIndex % 5]),
+        color: (params: { dataIndex: number }) => grad(...baseColorPalette[params.dataIndex % 5]!),
         shadowColor: "rgba(139,28,43,.2)",
         shadowBlur: 8,
         shadowOffsetY: 4

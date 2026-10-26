@@ -1,4 +1,4 @@
-import { boot } from 'quasar/wrappers'
+import { defineBoot } from "#q-app"
 import type { Directive } from 'vue'
 
 const STORAGE_KEY = 'cgb-fab-pos'
@@ -101,6 +101,6 @@ const vDraggable: Directive<HTMLElement> = {
   }
 }
 
-export default boot(({ app }) => {
+export default defineBoot(({ app }) => {
   app.directive('draggable', vDraggable)
 })

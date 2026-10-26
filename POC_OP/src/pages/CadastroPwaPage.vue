@@ -455,7 +455,7 @@
               :options="['Coordenador', 'Observador', 'Supervisor', 'Gerente', 'Técnico', 'Administrativo', 'Motorista', 'Operador']"
               label="Função *" dense outlined class="col"
               use-input input-debounce="0" new-value-mode="add"
-              @filter="(val, update) => update()"
+              @filter="(_val, update) => update(() => {})"
             />
             <q-toggle v-model="empForm.ativo" label="Ativo" color="positive" />
           </div>
@@ -1152,7 +1152,7 @@ async function upsertBatches<T extends Record<string, unknown>>(
 ) {
   for (let i = 0; i < rows.length; i += 50) {
     const batch = rows.slice(i, i + 50);
-    const { error } = await supabase.from(table).upsert(batch, { onConflict });
+    const { error } = await supabase.from(table).upsert(batch as never, { onConflict });
     if (error) throw new Error(`Erro ao gravar ${table}: ${error.message}`);
   }
 }
@@ -1219,13 +1219,13 @@ async function onImportFile(event: Event) {
           (eqPayload.length ? `• ${eqPayload.length} equipes (prefixo, base, gerência, coordenador, gerente)\n` : "") +
           (empPayload.length ? `• ${empPayload.length} observadores (chapa, coordenador, gerente, processo)\n` : "") +
           "\nPrefixo ou matrícula iguais são substituídos.",
-        options: eqPayload.length
-          ? {
+        ...(eqPayload.length
+          ? { options: {
               type: "checkbox",
               model: [] as string[],
               items: [{ label: "Apagar equipes que não estão nesta planilha", value: "purge" }],
-            }
-          : undefined,
+            } }
+          : {}),
         cancel: { label: "Cancelar", flat: true },
         persistent: true,
         ok: { label: "Atualizar", color: "primary" },

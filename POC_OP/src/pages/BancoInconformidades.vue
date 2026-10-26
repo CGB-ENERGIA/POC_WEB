@@ -385,7 +385,7 @@ const listaFiltrada = computed<NcRow[]>(() => {
       submissions.value.filter(s => casa(filters.base, s.base)).map(s => s.id)
     );
     rows = rows.filter(r => {
-      const sub = subMap.value[r.key.split("_")[0]];
+      const sub = subMap.value[r.key.split("_")[0]!];
       return sub ? subsBase.has(sub.id) : false;
     });
   }

@@ -1,6 +1,6 @@
-import { boot } from "quasar/wrappers";
+import { defineBoot } from "#q-app";
 
-export default boot(() => {
+export default defineBoot(() => {
   const loader = document.getElementById("app-loader");
   if (!loader) return;
   loader.classList.add("fade");

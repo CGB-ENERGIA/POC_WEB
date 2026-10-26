@@ -141,8 +141,8 @@ export function useChecklistData() {
       const sub = subPorId.get(r.submission_id);
       if (!sub) continue;
       if (!map[sub.matricula]) map[sub.matricula] = { nome: sub.observador, total: 0, conformes: 0 };
-      map[sub.matricula].total++;
-      if (r.resposta === "conforme") map[sub.matricula].conformes++;
+      map[sub.matricula]!.total++;
+      if (r.resposta === "conforme") map[sub.matricula]!.conformes++;
     }
     return Object.entries(map)
       .map(([matricula, d]) => ({

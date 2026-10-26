@@ -197,11 +197,11 @@
                     v-for="(val, i) in row.values" :key="i"
                     class="td-cell"
                     :class="{
-                      'td-cell--dim': isDim(row.base, categories[i]),
+                      'td-cell--dim': isDim(row.base, categories[i]!),
                       'td-cell--on': marcado(selectedBase, row.base) && viz.cat === categories[i],
                     }"
                     :style="{ background: heatColor(val), color: cellTextColor(val) }"
-                    @click="onCell(row.base, categories[i])"
+                    @click="onCell(row.base, categories[i]!)"
                   >
                     {{ val }}
                   </td>
@@ -324,8 +324,8 @@ async function recarregar() {
   const nums = valores(filters.mes).map((m) => MONTH_MAP[m.slice(0, 3)] ?? 0).filter(Boolean).sort((a, b) => a - b);
   if (!nums.length) nums.push(now.getMonth() + 1);
   await load(nums.length === 1
-    ? { ano: Number(filters.ano), mes: nums[0]!, base: undefined, contarMeta: true }
-    : { ano: Number(filters.ano), meses: nums, base: undefined, contarMeta: true });
+    ? { ano: Number(filters.ano), mes: nums[0]!, contarMeta: true }
+    : { ano: Number(filters.ano), meses: nums, contarMeta: true });
 }
 onMounted(recarregar);
 watch(() => [filters.ano, filters.mes], recarregar);
@@ -409,16 +409,16 @@ const matrixData = computed(() => {
     if (ci < 0) continue;
     if (!rowMap[sub.base]) {
       rowMap[sub.base] = categories.value.map(() => 0);
-      rows.push({ base: sub.base, values: rowMap[sub.base] });
+      rows.push({ base: sub.base, values: rowMap[sub.base]! });
     }
-    rowMap[sub.base][ci]++;
+    rowMap[sub.base]![ci]!++;
   }
   return rows;
 });
 
 // â"€â"€â"€ Computed â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const colTotals = computed(() =>
-  categories.value.map((_, ci) => matrixData.value.reduce((s, r) => s + r.values[ci], 0))
+  categories.value.map((_, ci) => matrixData.value.reduce((s, r) => s + r.values[ci]!, 0))
 );
 
 const totalInc = computed(() => {
