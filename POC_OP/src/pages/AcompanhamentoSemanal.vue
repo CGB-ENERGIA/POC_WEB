@@ -40,10 +40,10 @@
           <div class="fgroup fgroup--gerente">
             <span class="fgroup__label">Gerente</span>
             <q-select
-              v-model="filters.gerente"
+              multiple :model-value="valores(filters.gerente)" @update:model-value="(v: string[]) => filters.gerente = juntar(v)" :display-value="rotulo(filters.gerente)"
               :clearable="filters.gerente !== 'Todos'"
               @clear="filters.gerente = 'Todos'"
-              :options="gerentes"
+              :options="semTodos(gerentes)"
               dense
               outlined
               hide-bottom-space
@@ -53,15 +53,15 @@
               <template #prepend>
                 <q-icon name="mdi-account" size="16px" class="gerente-icon" />
               </template>
-            </q-select>
+            <template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
           </div>
           <div class="fgroup fgroup--gerente">
             <span class="fgroup__label">Coordenador</span>
             <q-select
-              v-model="filters.coordenador"
+              multiple :model-value="valores(filters.coordenador)" @update:model-value="(v: string[]) => filters.coordenador = juntar(v)" :display-value="rotulo(filters.coordenador)"
               :clearable="filters.coordenador !== 'Todos'"
               @clear="filters.coordenador = 'Todos'"
-              :options="coordenadores"
+              :options="semTodos(coordenadores)"
               dense
               outlined
               hide-bottom-space
@@ -71,7 +71,7 @@
               <template #prepend>
                 <q-icon name="mdi-account" size="16px" class="gerente-icon" />
               </template>
-            </q-select>
+            <template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
           </div>
 
         </div>
@@ -115,8 +115,8 @@
               <button
                 v-for="g in gerencias"
                 :key="g"
-                :class="['pill', { 'pill--active': filters.gerencia === g }]"
-                @click="filters.gerencia = filters.gerencia === g ? 'Todos' : g"
+                :class="['pill', { 'pill--active': marcado(filters.gerencia, g) }]"
+                @click="filters.gerencia = alternar(filters.gerencia, g)"
               >{{ g }}</button>
             </div>
           </div>
@@ -138,9 +138,9 @@
           <span class="filter-chip">{{ filters.ano }}</span>
           <span class="filter-chip">{{ mesLabel }}</span>
           <span class="filter-chip">{{ semanaLabel }}</span>
-          <span v-if="filters.gerente && filters.gerente !== 'Todos'" class="filter-chip">{{ filters.gerente }}</span>
-          <span v-if="filters.coordenador && filters.coordenador !== 'Todos'" class="filter-chip">{{ filters.coordenador }}</span>
-          <span v-if="filters.gerencia !== 'Todos'" class="filter-chip">{{ filters.gerencia }}</span>
+          <span v-if="filters.gerente && filters.gerente !== 'Todos'" class="filter-chip">{{ rotulo(filters.gerente) }}</span>
+          <span v-if="filters.coordenador && filters.coordenador !== 'Todos'" class="filter-chip">{{ rotulo(filters.coordenador) }}</span>
+          <span v-if="filters.gerencia !== 'Todos'" class="filter-chip">{{ rotulo(filters.gerencia) }}</span>
           <span v-if="viz.observadorNome" class="filter-chip filter-chip--hit" @click="viz.matricula = null; viz.observadorNome = null">{{ viz.observadorNome }}</span>
           <span v-if="viz.base" class="filter-chip filter-chip--hit" @click="viz.base = null">{{ viz.base }}</span>
           <span v-if="viz.processo" class="filter-chip filter-chip--hit" @click="toggleProcesso(viz.processo)">{{ labelProcesso(viz.processo) }}</span>
@@ -348,6 +348,7 @@
 </template>
 
 <script setup lang="ts">
+import { valores, juntar, marcado, alternar, rotulo, semTodos, casa, igualCI, ativo } from "@/lib/multi-filtro";
 import { reactive, computed, ref, shallowRef, watch, onMounted, onBeforeUnmount } from "vue";
 import { useQuasar } from "quasar";
 import { use } from "echarts/core";
@@ -669,12 +670,12 @@ function mesmoNome(a: string | null | undefined, b: string | null | undefined): 
 }
 
 function passaFiltrosTabela(r: MetaSemanalRow): boolean {
-  if (filters.gerencia !== "Todos" && (r.gerencia ?? "").toUpperCase() !== filters.gerencia.toUpperCase()) return false;
-  if (filters.gerente !== "Todos" && !mesmoNome(r.gerente, filters.gerente)) return false;
+  if (ativo(filters.gerencia) && !valores(filters.gerencia).some((g) => (r.gerencia ?? "").toUpperCase() === g.toUpperCase())) return false;
+  if (ativo(filters.gerente) && !valores(filters.gerente).some((g) => mesmoNome(r.gerente, g))) return false;
   if (viz.base && r.base !== viz.base) return false;
-  if (filters.coordenador !== "Todos") {
+  if (ativo(filters.coordenador)) {
     const emp = indexEmployees(employees.value).byMat.get(normMatricula(r.matricula));
-    if (!emp || !mesmoNome(emp.coordenador, filters.coordenador)) return false;
+    if (!emp || !valores(filters.coordenador).some((c) => mesmoNome(emp.coordenador, c))) return false;
   }
   return true;
 }
@@ -785,9 +786,9 @@ function periodoTexto() {
 
 function filtrosTexto() {
   const f: string[] = [];
-  if (filters.gerencia !== "Todos") f.push(`Gerência ${filters.gerencia}`);
-  if (filters.gerente !== "Todos") f.push(`Gerente ${filters.gerente}`);
-  if (filters.coordenador !== "Todos") f.push(`Coord. ${filters.coordenador}`);
+  if (ativo(filters.gerencia)) f.push(`Gerência ${rotulo(filters.gerencia)}`);
+  if (ativo(filters.gerente)) f.push(`Gerente ${rotulo(filters.gerente)}`);
+  if (ativo(filters.coordenador)) f.push(`Coord. ${rotulo(filters.coordenador)}`);
   if (viz.base) f.push(`Base ${viz.base}`);
   if (viz.processo) f.push(labelProcesso(viz.processo));
   return f;

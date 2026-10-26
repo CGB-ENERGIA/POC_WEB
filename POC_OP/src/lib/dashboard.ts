@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { semanaDeIso, faixaDaSemana } from "./semanas";
+import { valores } from "./multi-filtro";
 
 export { semanaDeData, rotuloSemana } from "./semanas";
 
@@ -694,18 +695,15 @@ export function filterObserverRoster(
     const ini = opts.periodoInicio;
     list = list.filter((e) => !e.desligado_em || e.desligado_em >= ini);
   }
-  if (opts.gerencia && opts.gerencia !== "Todos") {
-    list = list.filter((e) => e.gerencia === opts.gerencia);
-  }
-  if (opts.funcao && opts.funcao !== "Todos") {
-    list = list.filter((e) => e.funcao === opts.funcao);
-  }
-  if (opts.base && opts.base !== "Todos") {
-    list = list.filter((e) => e.base === opts.base);
-  }
-  if (opts.coordenador && opts.coordenador !== "Todos") {
-    const c = foldName(opts.coordenador);
-    list = list.filter((e) => {
+  const gerencias = valores(opts.gerencia);
+  if (gerencias.length) list = list.filter((e) => gerencias.includes(e.gerencia));
+  const funcoes = valores(opts.funcao);
+  if (funcoes.length) list = list.filter((e) => funcoes.includes(e.funcao));
+  const bases = valores(opts.base);
+  if (bases.length) list = list.filter((e) => bases.includes(e.base));
+  const coordenadores = valores(opts.coordenador).map((c) => foldName(c));
+  if (coordenadores.length) {
+    list = list.filter((e) => coordenadores.some((c) => {
       if (foldName(e.coordenador) === c) return true;
       const nome = foldName(e.nome);
       const full = foldName(e.nome_completo);
@@ -714,18 +712,18 @@ export function filterObserverRoster(
       // quem já tem outro coordenador (ex.: Paulo Cesar -> Luis C.) não vira do "Paulo"
       if (foldName(e.coordenador)) return false;
       return full.startsWith(`${c} `) || nome.startsWith(`${c} `);
-    });
+    }));
   }
-  if (opts.gerente && opts.gerente !== "Todos") {
-    const g = foldName(opts.gerente);
-    list = list.filter((e) => {
+  const gerentes = valores(opts.gerente).map((g) => foldName(g));
+  if (gerentes.length) {
+    list = list.filter((e) => gerentes.some((g) => {
       if (foldName(e.coordenador) === g || foldName(e.gerente) === g) return true;
       const nome = foldName(e.nome);
       const full = foldName(e.nome_completo);
       if (nome === g || full === g) return true; // o próprio gerente
       if (foldName(e.coordenador) || foldName(e.gerente)) return false;
       return full.startsWith(`${g} `) || nome.startsWith(`${g} `);
-    });
+    }));
   }
   return list;
 }
@@ -1192,13 +1190,14 @@ export function filterByGerencia(
 ): SubmissionRow[] {
   if (!gerencia || gerencia === "Todos") return subs;
   const idx = indexEmployees(employees);
+  const alvo = valores(gerencia);
   const mats = new Set(
-    employees.filter((e) => e.gerencia === gerencia).map((e) => normMatricula(e.matricula)),
+    employees.filter((e) => alvo.includes(e.gerencia)).map((e) => normMatricula(e.matricula)),
   );
   return subs.filter((s) => {
     if (mats.has(normMatricula(s.matricula))) return true;
     const emp = matchSubmissionToEmployee(s, idx);
-    return emp?.gerencia === gerencia;
+    return !!emp && alvo.includes(emp.gerencia);
   });
 }
 
@@ -1312,12 +1311,12 @@ export function filterByCoordenador(
     filterObserverRoster(employees, { coordenador }).map((e) => normMatricula(e.matricula)),
   );
   const idx = indexEmployees(employees);
-  const c = foldName(coordenador);
+  const cs = valores(coordenador).map((x) => foldName(x));
   return subs.filter((s) => {
     const emp = matchSubmissionToEmployee(s, idx);
     if (emp) return allowed.has(normMatricula(emp.matricula));
     const obs = foldName(s.observador);
-    return obs === c || obs.startsWith(`${c} `);
+    return cs.some((c) => obs === c || obs.startsWith(`${c} `));
   });
 }
 
@@ -1331,11 +1330,11 @@ export function filterByGerente(
     filterObserverRoster(employees, { gerente }).map((e) => normMatricula(e.matricula)),
   );
   const idx = indexEmployees(employees);
-  const g = foldName(gerente);
+  const gs = valores(gerente).map((x) => foldName(x));
   return subs.filter((s) => {
     const emp = matchSubmissionToEmployee(s, idx);
     if (emp) return allowed.has(normMatricula(emp.matricula));
     const obs = foldName(s.observador);
-    return obs === g || obs.startsWith(`${g} `);
+    return gs.some((g) => obs === g || obs.startsWith(`${g} `));
   });
 }
