@@ -67,7 +67,7 @@ export function useChecklistData() {
       if (seq !== loadSeq) return;
       responses.value = resp;
 
-      if (loadYear && filters.mes) {
+      if (loadYear && (filters.mes || filters.meses?.length)) {
         const yearSubs = await fetchSubmissions({ ano: filters.ano });
         if (seq !== loadSeq) return;
         submissionsAno.value = yearSubs;

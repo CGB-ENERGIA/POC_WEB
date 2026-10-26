@@ -30,8 +30,9 @@
               <span class="fgroup__label">Mês</span>
               <div class="pill-group">
                 <button v-for="m in meses" :key="m.value"
-                  :class="['pill', { 'pill--active': filters.mes === m.value }]"
-                  @click="filters.mes = m.value">{{ m.label }}</button>
+                  :class="['pill', { 'pill--active': mesesSel.includes(m.value) }]"
+                  :title="mesesSel.includes(m.value) ? 'Ctrl+clique para tirar este mês' : 'Ctrl+clique para somar este mês'"
+                  @click="alternarMes(m.value, $event)">{{ m.label }}</button>
               </div>
             </div>
           </div>
@@ -208,7 +209,14 @@ const meses = [
   { label: "set", value: 9 },  { label: "out", value: 10 },
   { label: "nov", value: 11 }, { label: "dez", value: 12 },
 ]
-const filters = ref({ ano: 2026, mes: new Date().getMonth() + 1 })
+const filters = ref({ ano: 2026 })
+/** Meses do período: clique escolhe só aquele mês; Ctrl+clique soma ou tira (sempre fica pelo menos um). */
+const mesesSel = ref<number[]>([new Date().getMonth() + 1])
+function alternarMes(v: number, ev?: MouseEvent) {
+  if (!(ev?.ctrlKey || ev?.metaKey)) { mesesSel.value = [v]; return }
+  if (!mesesSel.value.includes(v)) mesesSel.value = [...mesesSel.value, v].sort((a, b) => a - b)
+  else if (mesesSel.value.length > 1) mesesSel.value = mesesSel.value.filter((x) => x !== v)
+}
 
 // ── Dados do banco ────────────────────────────────────────────────────────────
 const {
@@ -226,11 +234,12 @@ const {
 } = useChecklistData()
 
 async function recarregar() {
-  await load(filters.value, true)
+  const nums = [...mesesSel.value].sort((a, b) => a - b)
+  await load(nums.length === 1 ? { ano: filters.value.ano, mes: nums[0]! } : { ano: filters.value.ano, meses: nums }, true)
 }
 
 onMounted(recarregar)
-watch(filters, recarregar, { deep: true })
+watch([filters, mesesSel], recarregar, { deep: true })
 
 const $q = useQuasar()
 
