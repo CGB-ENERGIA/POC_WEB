@@ -61,3 +61,18 @@ export function applyChartInk(dark: boolean) {
 if (typeof localStorage !== "undefined") {
   applyChartInk(localStorage.getItem("darkMode") === "true");
 }
+
+/**
+ * Esmaece só a cor (a opacidade do item também apagaria o rótulo ao lado, que vira cinza ilegível no fundo branco).
+ * Aceita #rrggbb e rgba(...); qualquer outro formato volta como veio.
+ */
+export function withAlpha(cor: string, a: number): string {
+  const hex = /^#([0-9a-f]{6})$/i.exec(cor);
+  if (hex) {
+    const n = parseInt(hex[1]!, 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+  }
+  const rgba = /^rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)$/.exec(cor);
+  if (rgba) return `rgba(${rgba[1]},${rgba[2]},${rgba[3]},${(Number(rgba[4]) * a).toFixed(3)})`;
+  return cor;
+}

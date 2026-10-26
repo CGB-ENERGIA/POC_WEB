@@ -744,7 +744,7 @@ const chartEquipes = computed(() => {
         itemStyle: { color: G.green, opacity: !selected || selected === nome ? 1 : 0.22, borderRadius: [0, 4, 4, 0] },
       })),
       barMaxWidth: 16,
-      label: { show: true, position: "right" as const, fontSize: 10, fontWeight: "bold" as const, color: G.green },
+      label: { opacity: 1, show: true, position: "right" as const, fontSize: 10, fontWeight: "bold" as const, color: G.green },
     }],
   };
 });
@@ -823,7 +823,7 @@ const chartIncCat = computed(() => {
         itemStyle: { color: G.brand, opacity: !selected || selected === cat ? 1 : 0.22, borderRadius: [0, 4, 4, 0] },
       })),
       barMaxWidth: 16,
-      label: { show: true, position: "right" as const, fontSize: 10, fontWeight: "bold" as const, color: G.brand },
+      label: { opacity: 1, show: true, position: "right" as const, fontSize: 10, fontWeight: "bold" as const, color: G.brand },
     }],
   };
 });

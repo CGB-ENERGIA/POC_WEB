@@ -232,7 +232,7 @@ import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, TreemapChart } from "echarts/charts";
 import { TooltipComponent, GridComponent, DataZoomComponent } from "echarts/components";
 import VChart from "vue-echarts";
-import { chartInk } from "@/lib/chart-ink";
+import { chartInk, withAlpha } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 import { semanaDaSub } from "@/lib/dashboard";
 import { useHierarquiaEquipe, chaveEquipe } from "@/composables/useHierarquiaEquipe";
@@ -538,14 +538,18 @@ const chartTreemap = computed(() => {
         textBorderColor: "rgba(0,0,0,.2)",
         textBorderWidth: 1,
       },
-      data: treemapData.value.map((d, i) => ({
-        name: d.name,
-        value: d.value,
-        itemStyle: {
-          color: tmPalette[i] ?? "#f9c5cb",
-          opacity: !selecionadas.length || selecionadas.includes(d.name.toLowerCase()) ? 1 : 0.28,
-        },
-      })),
+      data: treemapData.value.map((d, i) => {
+        const cor = tmPalette[i] ?? "#f9c5cb";
+        const apagado = selecionadas.length > 0 && !selecionadas.includes(d.name.toLowerCase());
+        // tons claros e blocos apagados levam texto escuro (o branco some no rosa claro)
+        const claro = i >= 4 || apagado;
+        return {
+          name: d.name,
+          value: d.value,
+          itemStyle: { color: apagado ? withAlpha(cor, 0.3) : cor },
+          label: claro ? { color: "#4a0e18", textBorderWidth: 0 } : undefined,
+        };
+      }),
       itemStyle: { borderWidth: 2, borderColor: "#fff" },
     }],
   };
@@ -648,6 +652,7 @@ const chartRankingEq = computed(() => {
       barMaxWidth: 20,
       emphasis: { itemStyle: { opacity: .8 } },
       label: {
+        opacity: 1, // o número não esmaece com a barra (ficaria cinza no fundo branco)
         show: true, position: "right" as const,
         fontSize: 11, fontWeight: "bold" as const, color: "#8B1C2B",
       },

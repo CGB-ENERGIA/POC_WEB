@@ -254,7 +254,7 @@ import {
   DataZoomComponent
 } from "echarts/components";
 import VChart from "vue-echarts";
-import { chartInk } from "@/lib/chart-ink";
+import { chartInk, withAlpha } from "@/lib/chart-ink";
 import { useChecklistData, fmtN, fmtPct } from "@/composables/useChecklistData";
 import {
   fetchNaoConformesPorMes, semanaDaSub, foldName, fetchHierarquiaEquipes, hierarquiaDaEquipe,
@@ -663,8 +663,7 @@ function hBar(
       data: rows.map((r) => ({
         value: r.value,
         itemStyle: {
-          color,
-          opacity: !ativo(selected) || marcado(selected, r.name) ? 1 : 0.22,
+          color: !ativo(selected) || marcado(selected, r.name) ? color : withAlpha(color, 0.25),
           borderRadius: [0, 6, 6, 0],
           shadowColor: "rgba(0,0,0,.08)",
           shadowBlur: !ativo(selected) || marcado(selected, r.name) ? 4 : 0,
@@ -771,10 +770,19 @@ const chartTendenciaMensal = computed(() => {
     series: [{
       type: "line" as const,
       cursor: "pointer",
-      data: vals.map((v, i) => ({
-        value: v,
-        itemStyle: { opacity: marcado(filters.mes, String(i + 1)) ? 1 : 0.28 },
-      })),
+      data: vals.map((v, i) => {
+        const filtrado = ativo(filters.mes);
+        const sel = filtrado && marcado(filters.mes, String(i + 1));
+        const apagado = filtrado && !sel;
+        return {
+          value: v,
+          // só o ponto esmaece; o número continua em cor escura e o mês escolhido ganha destaque
+          itemStyle: apagado ? { color: withAlpha(P.inconf, 0.35) } : undefined,
+          label: sel
+            ? { color: P.inconf, fontSize: 13, fontWeight: "bold" as const }
+            : { color: chartInk.axis, fontSize: 11, fontWeight: "bold" as const },
+        };
+      }),
       smooth: false,
       symbol: "circle",
       symbolSize: 7,
@@ -786,8 +794,7 @@ const chartTendenciaMensal = computed(() => {
         fontSize: 11,
         fontWeight: "bold" as const,
         color: chartInk.axis,
-        formatter: (p: { value: number; dataIndex: number }) =>
-          marcado(filters.mes, String(p.dataIndex + 1)) || p.value ? String(p.value) : "",
+        formatter: (p: { value: number }) => (p.value ? String(p.value) : ""),
       },
       areaStyle: {
         color: {
@@ -875,10 +882,12 @@ const chartRanking = computed(() => {
       data: rows.map((r, i) => ({
         value: r.value,
         itemStyle: {
-          color: i === n - 1 ? P.inconf
-            : i >= n - 3 ? P.inconfLt
-            : `rgba(139,28,43,${0.55 + (i / Math.max(n, 1)) * 0.45})`,
-          opacity: !viz.pergunta || viz.pergunta === r.pergunta ? 1 : 0.22,
+          color: (() => {
+            const base = i === n - 1 ? P.inconf
+              : i >= n - 3 ? P.inconfLt
+              : `rgba(139,28,43,${0.55 + (i / Math.max(n, 1)) * 0.45})`;
+            return !viz.pergunta || viz.pergunta === r.pergunta ? base : withAlpha(base, 0.25);
+          })(),
           borderRadius: [0, 6, 6, 0],
         },
       })),

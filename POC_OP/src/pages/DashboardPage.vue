@@ -326,7 +326,7 @@ const lineOption = computed(() => {
   const textSub  = isDark ? "#94a3b8"                 : "#6b7280"
   const splitLn  = isDark ? "rgba(255,255,255,0.06)"  : "#f1f5f9"
   const axisLn   = isDark ? "rgba(255,255,255,0.1)"   : "#e5e7eb"
-  const lblColor = isDark ? "#64748b"                 : "#9ca3af"
+  const lblColor = isDark ? "#94a3b8"                 : "#475569"
   const dotBdr   = isDark ? "#0f172a"                 : "#ffffff"
 
   const validVals = mesData.filter(v => v > 0)
@@ -460,7 +460,7 @@ const observBarOption = computed(() => {
     xAxis: {
       type: "value",
       max: 100,
-      axisLabel: { formatter: "{value}%", color: "#9ca3af", fontSize: 10 },
+      axisLabel: { formatter: "{value}%", color: chartInk.axis, fontSize: 10 },
       splitLine: { lineStyle: { color: "#f3f4f6", type: "dashed" as const } },
       axisLine: { show: false },
       axisTick: { show: false },
@@ -508,7 +508,7 @@ const catBarOption = computed(() => {
     grid: { top: 8, right: 48, bottom: 8, left: 128 },
     xAxis: {
       type: "value",
-      axisLabel: { color: "#9ca3af", fontSize: 10 },
+      axisLabel: { color: chartInk.axis, fontSize: 10 },
       splitLine: { lineStyle: { color: "#f3f4f6", type: "dashed" as const } },
       axisLine: { show: false },
       axisTick: { show: false },

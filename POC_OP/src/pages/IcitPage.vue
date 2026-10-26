@@ -963,6 +963,7 @@ const chartCategoria = computed(() => {
       barMaxWidth: 28,
       emphasis: { itemStyle: { opacity: 0.8 } },
       label: {
+        opacity: 1, // o número não esmaece com a barra (ficaria cinza no fundo branco)
         show: true, position: "right" as const,
         fontSize: 12, fontWeight: "bold" as const,
         formatter: (p: { value: number }) => `${p.value}`,
@@ -1067,6 +1068,7 @@ const chartEquipe = computed(() => {
       barMaxWidth: 18,
       emphasis: { itemStyle: { opacity: 0.8 } },
       label: {
+        opacity: 1, // o número não esmaece com a barra (ficaria cinza no fundo branco)
         show: true, position: "right" as const,
         fontSize: 10, fontWeight: "bold" as const,
         formatter: (p: { value: number }) => `${p.value}%`,

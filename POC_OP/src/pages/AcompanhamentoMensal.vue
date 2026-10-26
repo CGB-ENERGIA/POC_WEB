@@ -789,6 +789,7 @@ function singleBar(labels: string[], data: number[], selected?: string | number 
     clip: false,
     emphasis: { itemStyle: { color: chartInk.okHi, shadowBlur: 12 } },
     label: {
+      opacity: 1, // o número não esmaece com a barra (ficaria cinza no fundo branco)
       show: true,
       position: "top" as const,
       fontSize: 13,
@@ -998,6 +999,7 @@ const chartObservador = computed(() => {
       barMaxWidth: 22,
       emphasis: { itemStyle: { shadowBlur: 10 } },
       label: {
+        opacity: 1, // o número não esmaece com a barra (ficaria cinza no fundo branco)
         show: true,
         position: "top" as const,
         fontSize: 11,
@@ -1161,7 +1163,7 @@ const chartRanking = computed(() => {
       })),
       barMaxWidth: 22,
       emphasis: { itemStyle: { shadowBlur: 8, shadowColor: "rgba(0,0,0,.15)" } },
-      label: { show: true, position: "right" as const, fontSize: 12, fontWeight: "bold" as const, color: chartInk.axis }
+      label: { opacity: 1, show: true, position: "right" as const, fontSize: 12, fontWeight: "bold" as const, color: chartInk.axis }
     }]
   };
 });

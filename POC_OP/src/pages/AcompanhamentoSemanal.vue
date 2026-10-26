@@ -1141,6 +1141,7 @@ const barObservadores = computed(() => {
       barMaxWidth: 22,
       cursor: "pointer",
       label: {
+        opacity: 1, // o número não esmaece com a barra (ficaria cinza no fundo branco)
         show: true,
         position: "top" as const,
         distance: 2,
@@ -1293,6 +1294,7 @@ const lineWeekly = computed(() => {
       itemStyle: { color: C.p, borderColor: "#fff", borderWidth: 3, shadowColor: "rgba(139,28,43,.45)", shadowBlur: 10 },
       areaStyle: { color: grad(C.p + "50", C.p + "06") },
       label: {
+        opacity: 1, // o número não esmaece com a barra (ficaria cinza no fundo branco)
         show: true, position: "top" as const,
         fontSize: 13, fontWeight: "bold" as const,
         color: C.p, distance: 12,
@@ -1348,7 +1350,7 @@ const barBase = computed(() => {
         shadowOffsetY: 4
       },
       emphasis: { itemStyle: { shadowBlur: 18, shadowColor: "rgba(139,28,43,.4)" } },
-      label: { show: true, position: "top" as const, fontSize: 13, fontWeight: "bold" as const, color: C.p, distance: 6 }
+      label: { opacity: 1, show: true, position: "top" as const, fontSize: 13, fontWeight: "bold" as const, color: C.p, distance: 6 }
     }]
   };
 });
@@ -1405,7 +1407,7 @@ const barProcesso = computed(() => {
         shadowOffsetY: 4
       },
       emphasis: { itemStyle: { shadowBlur: 20, shadowColor: "rgba(139,28,43,.45)" } },
-      label: { show: true, position: "top" as const, fontSize: 14, fontWeight: "bold" as const, color: C.p, distance: 8 }
+      label: { opacity: 1, show: true, position: "top" as const, fontSize: 14, fontWeight: "bold" as const, color: C.p, distance: 8 }
     }]
   };
 });

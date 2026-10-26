@@ -1192,6 +1192,7 @@ const chartVisitadas = computed(() => {
       barMaxWidth: lay.barWidth,
       emphasis: { itemStyle: { opacity: .8 } },
       label: {
+        opacity: 1, // o número não esmaece com a barra (ficaria cinza no fundo branco)
         show: true, position: "right" as const,
         fontSize: 10, fontWeight: "bold" as const, color: G.green,
         formatter: (p: { value: number }) => `${p.value}`,
@@ -1259,6 +1260,7 @@ const chartRankingNcEq = computed(() => {
       barCategoryGap: "36%",
       emphasis: { itemStyle: { opacity: .8 } },
       label: {
+        opacity: 1, // o número não esmaece com a barra (ficaria cinza no fundo branco)
         show: true, position: "right" as const,
         fontSize: 11, fontWeight: "bold" as const, color: G.brand,
         formatter: (p: { value: number }) => `${p.value}`,
@@ -1314,6 +1316,7 @@ const chartNcCat = computed(() => {
       barCategoryGap: "36%",
       emphasis: { itemStyle: { opacity: .8 } },
       label: {
+        opacity: 1, // o número não esmaece com a barra (ficaria cinza no fundo branco)
         show: true, position: "right" as const,
         fontSize: 11, fontWeight: "bold" as const, color: G.brand,
         formatter: (p: { value: number }) => `${p.value}`,

@@ -495,6 +495,7 @@ function makeCatChart(data: { conf: number[]; inc: number[] }, catKey: string) {
       },
       itemStyle: { color: G.brand, borderRadius: [4, 4, 0, 0] },
       label: {
+        opacity: 1, // o número não esmaece com a barra (ficaria cinza no fundo branco)
         show: true,
         position: "top" as const,
         color: chartInk.axis,
