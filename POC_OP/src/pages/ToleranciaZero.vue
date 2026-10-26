@@ -191,6 +191,28 @@
                     >
                       <td class="rd-q">{{ r.q }}</td>
                       <td class="rd-v">{{ r.v }}</td>
+                      <q-tooltip
+                        anchor="center middle" self="top middle" :offset="[0, 6]" :delay="150"
+                        max-width="420px" class="tz-tip"
+                      >
+                        <div class="tz-tip__sec">Itens não conformes</div>
+                        <div v-if="r.itens.length" class="tz-tip__chips">
+                          <span v-for="it in r.itens" :key="it.nome" class="tz-tip__chip">
+                            <q-icon name="mdi-close" size="11px" />
+                            {{ it.nome }}<b v-if="it.qtd > 1"> ×{{ it.qtd }}</b>
+                          </span>
+                        </div>
+                        <div v-else class="tz-tip__vazio">A pergunta não foi desmembrada em itens.</div>
+                        <div class="tz-tip__sec">Observação do apontamento</div>
+                        <ul v-if="r.obs.length" class="tz-tip__obs">
+                          <li v-for="(o, k) in r.obs" :key="k">
+                            <span class="tz-tip__quem">{{ o.equipe }} · {{ o.data }}</span>
+                            {{ o.texto }}
+                          </li>
+                        </ul>
+                        <div v-else class="tz-tip__vazio">Sem observação registrada.</div>
+                        <div v-if="r.obsExtra > 0" class="tz-tip__vazio">+ {{ r.obsExtra }} observação(ões) não exibida(s)</div>
+                      </q-tooltip>
                     </tr>
                   </tbody>
                   <tfoot>
@@ -534,10 +556,9 @@ const fmtData = (iso: string) => {
 };
 
 const listaOcorrencias = computed(() => {
-  const subPorId = new Map(submissions.value.map((s) => [s.id, s]));
   return filteredResps.value
     .map((r, i) => {
-      const sub = subPorId.get(r.submission_id);
+      const sub = subPorId.value.get(r.submission_id);
       if (!sub) return null;
       const data = dataReferencia(sub);
       return {
@@ -671,14 +692,42 @@ const chartTreemap = computed(() => {
 });
 
 // â"€â"€â"€ Ranking NC table â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+const subPorId = computed(() => new Map(submissions.value.map((x) => [x.id, x])));
+
+/** Item não conforme da ocorrência: nas Regras de Ouro a própria etapa (vem no fim da pergunta); nas demais, os itens marcados. */
+function itensNaoConformes(r: { pergunta: string; itens: { nome: string; conforme: boolean }[] | null }): string[] {
+  const etapa = /^Cumpriu a etapa da Regra de Ouro:\s*(.+?)\s*\?*$/i.exec(r.pergunta);
+  if (etapa) return [etapa[1]!];
+  return (r.itens ?? []).filter((it) => !it.conforme).map((it) => it.nome);
+}
+
+const OBS_NA_DICA = 5;
+
 const rankingNc = computed(() => {
-  const counts: Record<string, number> = {};
+  type Grupo = { v: number; itens: Map<string, number>; obs: { equipe: string; data: string; texto: string }[]; vistas: Set<string> };
+  const grupos = new Map<string, Grupo>();
   for (const r of respsNoPergunta.value) {
     const key = r.pergunta ?? "Sem descrição";
-    counts[key] = (counts[key] ?? 0) + 1;
+    const g: Grupo = grupos.get(key) ?? { v: 0, itens: new Map<string, number>(), obs: [], vistas: new Set<string>() };
+    g.v++;
+    for (const nome of itensNaoConformes(r)) g.itens.set(nome, (g.itens.get(nome) ?? 0) + 1);
+    const texto = (r.observacao ?? "").trim();
+    const marca = `${r.submission_id}|${texto}`;
+    if (texto && !g.vistas.has(marca)) {
+      g.vistas.add(marca);
+      const sub = subPorId.value.get(r.submission_id);
+      g.obs.push({ equipe: sub?.equipe ?? "—", data: sub ? fmtData(dataReferencia(sub)) : "", texto });
+    }
+    grupos.set(key, g);
   }
-  return Object.entries(counts)
-    .map(([q, v]) => ({ q, v }))
+  return [...grupos.entries()]
+    .map(([q, g]) => ({
+      q,
+      v: g.v,
+      itens: [...g.itens.entries()].map(([nome, qtd]) => ({ nome, qtd })).sort((x, y) => y.qtd - x.qtd),
+      obs: g.obs.slice(0, OBS_NA_DICA),
+      obsExtra: Math.max(0, g.obs.length - OBS_NA_DICA),
+    }))
     .sort((a, b) => b.v - a.v);
 });
 
@@ -994,6 +1043,25 @@ $inactive-text:#475569;
   .oc-obs { color: #cbd5e1; }
   .oc-foto { border-color: #334155; &--vazia { background: #0f172a; color: #94a3b8; } }
 }
+// ── Dica do ranking (o q-tooltip vai para o body, por isso :global) ──
+:global(.tz-tip) {
+  background: #0f172a !important; color: #e2e8f0 !important;
+  border: 1px solid #334155; border-radius: 10px; padding: 10px 12px; font-size: 12px; line-height: 1.4;
+  box-shadow: 0 12px 32px rgba(0,0,0,.35);
+}
+:global(.tz-tip .tz-tip__sec) {
+  font-size: 10px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: #cbd5e1; margin: 8px 0 4px;
+}
+:global(.tz-tip .tz-tip__sec:first-child) { margin-top: 0; }
+:global(.tz-tip .tz-tip__chips) { display: flex; flex-wrap: wrap; gap: 4px; }
+:global(.tz-tip .tz-tip__chip) {
+  display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 4px;
+  background: #fde8e8; color: #b91c1c; border: 1px solid #f5b6b6; font-size: 11.5px; font-weight: 700;
+}
+:global(.tz-tip .tz-tip__obs) { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+:global(.tz-tip .tz-tip__quem) { display: block; font-size: 10.5px; color: #94a3b8; font-weight: 700; }
+:global(.tz-tip .tz-tip__vazio) { color: #94a3b8; font-style: italic; margin-top: 2px; }
+
 // ── Lista de ocorrências ──
 .oc-table {
   :deep(th) { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: #475569; background: #f8fafc; }
