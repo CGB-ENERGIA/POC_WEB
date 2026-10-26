@@ -317,7 +317,7 @@ import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, TreemapChart } from "echarts/charts";
 import { TooltipComponent, GridComponent, DataZoomComponent } from "echarts/components";
 import VChart from "vue-echarts";
-import { chartInk, withAlpha } from "@/lib/chart-ink";
+import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 import { semanaDaSub, dataReferencia } from "@/lib/dashboard";
 import { useHierarquiaEquipe, chaveEquipe } from "@/composables/useHierarquiaEquipe";
@@ -685,15 +685,21 @@ const chartTreemap = computed(() => {
       },
       data: treemapData.value.map((d, i) => {
         const cor = tmPalette[i] ?? "#f9c5cb";
-        const apagado = selecionadas.length > 0 && !selecionadas.includes(d.name.toLowerCase());
-        // tons claros e blocos apagados levam texto escuro (o branco some no rosa claro)
-        const claro = i >= 4 || apagado;
+        const comFiltro = selecionadas.length > 0;
+        const escolhida = comFiltro && selecionadas.includes(d.name.toLowerCase());
+        const apagado = comFiltro && !escolhida;
+        // Com categoria escolhida: ela vira o bloco vinho cheio e as demais ficam num rosa quase branco, para o filtro ser visível.
+        // Sem filtro, os tons claros da paleta levam texto escuro (o branco some no rosa claro).
+        const cheio = escolhida ? tmPalette[1]! : cor;
+        const claro = apagado || (!comFiltro && i >= 4);
         return {
           name: d.name,
           value: Math.max(d.value, piso),
           real: d.value,
-          itemStyle: { color: apagado ? withAlpha(cor, 0.3) : cor },
-          label: claro ? { color: "#4a0e18", textBorderWidth: 0 } : undefined,
+          itemStyle: apagado
+            ? { color: "#f3e6e8" }
+            : { color: cheio, ...(escolhida ? { borderColor: "#4a0e18", borderWidth: 3 } : {}) },
+          label: claro ? { color: "#7a5a60", textBorderWidth: 0 } : undefined,
         };
       }),
       itemStyle: { borderWidth: 2, borderColor: "#fff" },
