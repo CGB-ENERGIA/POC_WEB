@@ -1,5 +1,6 @@
 import { ref } from "vue";
 import { supabase } from "@/lib/supabase";
+import { faixaDaSemana } from "@/lib/semanas";
 
 const STORAGE_KEY      = "cgb_metas_v2";
 const OVERRIDES_KEY    = "cgb_metas_overrides_v1";
@@ -302,7 +303,13 @@ export function useGoals() {
     writeFunc(next);
   }
 
-  // Meta com override individual — use este nas páginas de acompanhamento
+  /**
+   * Meta com ajuste individual — use este nas páginas de acompanhamento.
+   *
+   * Ordem por semana: ajuste da semana (página de Metas) > desligamento (a semana em que a pessoa saiu e as seguintes
+   * ficam com meta 0, sem precisar lançar ajuste) > meta do mês / fixa / padrão da gerência.
+   * Sem `semana` (mês todo), `mensal` é a soma das 4 semanas, cada uma com o seu ajuste; sem nenhum ajuste, é a meta mensal de sempre.
+   */
   function goalForColaborador(
     matricula: string | undefined,
     gerencia: string | undefined,
@@ -310,27 +317,44 @@ export function useGoals() {
     mes: number,
     semana?: number,
     funcao?: string,
+    desligadoEm?: string | null,
   ): { semanal: number; mensal: number; isOverride: boolean } {
+    // Meta de base: ajuste do mês (todas as semanas) > meta fixa do colaborador > padrão da gerência/função
+    let base: { semanal: number; mensal: number; isOverride: boolean } | null = null;
     if (matricula) {
-      // Override de semana específica tem prioridade
-      if (semana && semana > 0) {
-        const weekOv = overrides.value[overrideKey(matricula, ano, mes, semana)];
-        if (weekOv !== undefined) {
-          return { semanal: weekOv.meta_semanal, mensal: weekOv.meta_semanal * 4, isOverride: true };
-        }
-      }
-      // Override mensal (todas as semanas)
       const monthOv = overrides.value[overrideKey(matricula, ano, mes, 0)];
       if (monthOv !== undefined) {
-        return { semanal: monthOv.meta_semanal, mensal: monthOv.meta_semanal * 4, isOverride: true };
-      }
-      // Meta fixa do colaborador (a partir do mês de início)
-      const fixa = fixaStore.value[matricula];
-      if (fixa !== undefined && fixaVigente(fixa, ano, mes)) {
-        return { semanal: fixa.meta_semanal, mensal: fixa.meta_semanal * 4, isOverride: true };
+        base = { semanal: monthOv.meta_semanal, mensal: monthOv.meta_semanal * 4, isOverride: true };
+      } else {
+        // Meta fixa do colaborador (a partir do mês de início)
+        const fixa = fixaStore.value[matricula];
+        if (fixa !== undefined && fixaVigente(fixa, ano, mes)) {
+          base = { semanal: fixa.meta_semanal, mensal: fixa.meta_semanal * 4, isOverride: true };
+        }
       }
     }
-    return { ...goalForGerencia(gerencia, ano, mes, funcao), isOverride: false };
+    const meta = base ?? { ...goalForGerencia(gerencia, ano, mes, funcao), isOverride: false };
+
+    // Meta de uma semana quando ela foge da base: ajuste da semana, ou desligamento
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const metaDaSemana = (w: number): { valor: number; ajuste: boolean } | undefined => {
+      const ov = matricula ? overrides.value[overrideKey(matricula, ano, mes, w)] : undefined;
+      if (ov !== undefined) return { valor: ov.meta_semanal, ajuste: true };
+      if (desligadoEm) {
+        const fimSemana = `${ano}-${pad(mes)}-${pad(faixaDaSemana(ano, mes, w).fim)}`;
+        if (fimSemana >= desligadoEm) return { valor: 0, ajuste: false };
+      }
+      return undefined;
+    };
+
+    if (semana && semana > 0) {
+      const x = metaDaSemana(semana);
+      return x ? { semanal: x.valor, mensal: x.valor * 4, isOverride: x.ajuste } : meta;
+    }
+    const porSemana = [1, 2, 3, 4].map(metaDaSemana);
+    if (porSemana.every((x) => x === undefined)) return meta;
+    const mensal = porSemana.reduce((total, x) => total + (x ? x.valor : meta.semanal), 0);
+    return { semanal: meta.semanal, mensal, isOverride: porSemana.some((x) => x?.ajuste) || meta.isOverride };
   }
 
   function hasGoalDefined(ano: number, mes: number): boolean {

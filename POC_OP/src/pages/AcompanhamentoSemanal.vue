@@ -650,7 +650,7 @@ const bySemana = computed(() => {
       for (const emp of extras.length ? [...roster, ...extras] : roster) {
         const key = normMatricula(emp.matricula);
         if (viz.matricula && key !== viz.matricula) continue;
-        const meta = goalForColaborador(emp.matricula, emp.gerencia, filters.ano, mes, w, emp.funcao).semanal;
+        const meta = goalForColaborador(emp.matricula, emp.gerencia, filters.ano, mes, w, emp.funcao, emp.desligado_em).semanal;
         total += Math.min(counts.get(key) ?? 0, meta);
       }
       m[w] = (m[w] ?? 0) + total;
@@ -753,7 +753,7 @@ const observerRows = computed(() => {
       const { counts, extras } = tallyObserverRecords(roster, employees.value, slice);
       for (const emp of extras.length ? [...roster, ...extras] : roster) {
         const key = normMatricula(emp.matricula);
-        const g = goalForColaborador(emp.matricula, emp.gerencia, filters.ano, mes, w, emp.funcao);
+        const g = goalForColaborador(emp.matricula, emp.gerencia, filters.ano, mes, w, emp.funcao, emp.desligado_em);
         const real = counts.get(key) ?? 0;
         const a = total.get(key) ?? { emp, realizado: 0, contado: 0, meta: 0 };
         a.realizado += real;

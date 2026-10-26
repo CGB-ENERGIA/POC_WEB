@@ -605,9 +605,9 @@ const observerRows = computed(() => {
     let meta = 0;
     for (const mes of mesesNum.value) {
       if (semanasNum.value.length) {
-        for (const w of semanasNum.value) meta += goalForColaborador(emp.matricula, emp.gerencia, filters.ano, mes, w, emp.funcao).semanal;
+        for (const w of semanasNum.value) meta += goalForColaborador(emp.matricula, emp.gerencia, filters.ano, mes, w, emp.funcao, emp.desligado_em).semanal;
       } else {
-        meta += goalForColaborador(emp.matricula, emp.gerencia, filters.ano, mes, undefined, emp.funcao).mensal;
+        meta += goalForColaborador(emp.matricula, emp.gerencia, filters.ano, mes, undefined, emp.funcao, emp.desligado_em).mensal;
       }
     }
     const key = normMatricula(emp.matricula);
