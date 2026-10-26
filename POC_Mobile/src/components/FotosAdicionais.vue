@@ -67,7 +67,7 @@ const props = defineProps<{
   modelValue: string[];
   equipe: string;
   observador: string;
-  matricula?: string;
+  matricula?: string | undefined;
 }>();
 const emit = defineEmits<{ (e: "update:modelValue", v: string[]): void }>();
 

@@ -9,7 +9,7 @@ export interface TrustedTime {
   date: Date;
   source: TimeSource;
   /** Origem da última sincronização online (informativo). */
-  provider?: "supabase" | "cloudflare";
+  provider?: "supabase" | "cloudflare" | undefined;
 }
 
 export type ServerTimeErrorCode = "no_sync" | "sync_expired" | "fetch_failed";

@@ -8,7 +8,7 @@ export function extrairItensPergunta(texto: string): string[] | null {
   const match = texto.match(/\(([^)]+)\)/);
   if (!match) return null;
 
-  const itens = match[1]
+  const itens = match[1]!
     .split(",")
     .map((s) => s.trim().replace(/\.{2,}$/, "").replace(/\s*etc\.?$/i, "").trim())
     .filter((s) => s.length > 0 && !/^etc\.?$/i.test(s))

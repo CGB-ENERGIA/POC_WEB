@@ -119,8 +119,8 @@ import { getSupabase } from "@/lib/supabase";
 
 const props = defineProps<{
   mode: "enroll" | "scan";
-  matricula?: string;
-  nome?: string;
+  matricula?: string | undefined;
+  nome?: string | undefined;
   credentialIds?: string[];
 }>();
 
@@ -158,7 +158,7 @@ function b64urlToBuf(b64: string): ArrayBuffer {
   return buf.buffer;
 }
 
-function randomChallenge(): Uint8Array {
+function randomChallenge(): Uint8Array<ArrayBuffer> {
   return crypto.getRandomValues(new Uint8Array(32));
 }
 
@@ -263,7 +263,7 @@ async function scan() {
     const assertion = await navigator.credentials.get({
       publicKey: {
         challenge: randomChallenge(),
-        allowCredentials: allowCredentials.length ? allowCredentials : undefined,
+        ...(allowCredentials.length ? { allowCredentials } : {}),
         userVerification: "required",
         timeout: 60000,
       },

@@ -164,7 +164,8 @@
         <q-expansion-item
           v-for="cat in gstcChecklist"
           :key="cat.id"
-          v-model="expandedCategories[cat.id]"
+          :model-value="expandedCategories[cat.id] ?? false"
+          @update:model-value="expandedCategories[cat.id] = $event"
           expand-separator
           class="mobile-card checklist-category"
           header-class="q-pa-md"
@@ -253,17 +254,17 @@
                 @click="abrirModalNaoConforme(pergunta)"
               >
                 <img
-                  :src="detalhesMap[pergunta.id].foto"
+                  :src="detalhesMap[pergunta.id]!.foto"
                   alt="Evidência"
                   class="nc-resumo__foto q-mr-sm"
                 />
                 <div class="col">
                   <div class="text-caption text-weight-bold text-negative">Registrado</div>
                   <div class="text-caption text-grey-8 nc-resumo__texto">
-                    {{ detalhesMap[pergunta.id].observacao }}
+                    {{ detalhesMap[pergunta.id]!.observacao }}
                   </div>
-                  <div v-if="detalhesMap[pergunta.id].itens" class="text-caption text-negative">
-                    {{ detalhesMap[pergunta.id].itens!.filter(i => !i.conforme).length }} de {{ detalhesMap[pergunta.id].itens!.length }} itens não conformes
+                  <div v-if="detalhesMap[pergunta.id]!.itens" class="text-caption text-negative">
+                    {{ detalhesMap[pergunta.id]!.itens!.filter(i => !i.conforme).length }} de {{ detalhesMap[pergunta.id]!.itens!.length }} itens não conformes
                   </div>
                 </div>
                 <q-btn
@@ -673,15 +674,15 @@ function filtrarColaborador(val: string, update: (fn: () => void) => void) {
 
 function onMembroDigitado(idx: number, val: string) {
   if (val.includes(" — ")) return;
-  membros.value[idx].nome = val;
-  membros.value[idx].matricula = /^\d+$/.test(val.trim()) ? val.trim() : "";
+  membros.value[idx]!.nome = val;
+  membros.value[idx]!.matricula = /^\d+$/.test(val.trim()) ? val.trim() : "";
 }
 
 function aplicarColaboradorSelecionado(idx: number, valorSelecionado: string | null) {
   const parsed = parseMembroSugestao(valorSelecionado);
   if (!parsed) return;
-  membros.value[idx].nome = parsed.nome;
-  membros.value[idx].matricula = parsed.matricula;
+  membros.value[idx]!.nome = parsed.nome;
+  membros.value[idx]!.matricula = parsed.matricula;
 }
 
 const respostas = reactive<Record<string, Exclude<RespostaChecklist, null>>>({});
@@ -1131,7 +1132,7 @@ function avisarSeIncompleto(): boolean {
     });
     nextTick(() => {
       window.setTimeout(
-        () => scrollToElement(`pergunta-${pendentes[0].primeiraPerguntaId}`),
+        () => scrollToElement(`pergunta-${pendentes[0]!.primeiraPerguntaId}`),
         280
       );
     });

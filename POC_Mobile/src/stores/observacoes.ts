@@ -626,7 +626,7 @@ export const useObservacoesStore = defineStore("observacoes", {
       dataFoto?: string;
       employee: Employee;
       status?: "finalizado" | "em_andamento";
-      id?: string;
+      id?: string | undefined;
     }) {
       const emAndamento = payload.status === "em_andamento";
       const resumo: ChecklistResumo = {
@@ -707,7 +707,7 @@ export const useObservacoesStore = defineStore("observacoes", {
 
     /** Um rascunho por colaborador+auditagem: atualiza o existente em vez de criar outro. */
     saveEmAndamento(payload: {
-      id?: string;
+      id?: string | undefined;
       auditagem: AuditagemCategoria;
       matricula: string;
       observador: string;

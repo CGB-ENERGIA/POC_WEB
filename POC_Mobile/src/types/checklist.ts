@@ -28,9 +28,9 @@ export interface ObservacaoChecklist {
   fotosLocal: string[];
   respostas: RespostaSalva[];
   resumo: ChecklistResumo;
-  syncStatus?: "pending" | "synced" | "failed";
+  syncStatus?: "pending" | "synced" | "failed" | undefined;
   syncAttempts?: number;
-  syncError?: string | null;
+  syncError?: string | null | undefined;
   /** Epoch ms: antes disso o reenvio automático periódico não tenta de novo (backoff). */
   syncNextAt?: number;
   analiseStatus?: "aprovado" | "reprovado" | "pendente";

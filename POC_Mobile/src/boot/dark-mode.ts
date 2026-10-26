@@ -4,7 +4,7 @@ import { THEME_STORAGE_KEY } from "@/constants/theme";
 import { applyThemeColor } from "@/utils/theme";
 
 export default defineBoot(() => {
-  const saved = LocalStorage.getItem<boolean | null>(THEME_STORAGE_KEY);
+  const saved = LocalStorage.getItem(THEME_STORAGE_KEY);
   if (typeof saved === "boolean") {
     Dark.set(saved);
   }

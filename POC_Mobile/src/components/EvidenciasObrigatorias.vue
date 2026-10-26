@@ -37,8 +37,8 @@
     <div class="foto-sheet">
       <div class="foto-sheet__handle" />
       <div class="foto-sheet__title">
-        <q-icon :name="slotAtivo !== null ? SLOTS[slotAtivo].icon : 'mdi-image'" size="18px" class="q-mr-sm" />
-        {{ slotAtivo !== null ? SLOTS[slotAtivo].label : '' }}
+        <q-icon :name="slotAtivo !== null ? (SLOTS[slotAtivo]?.icon ?? 'mdi-image') : 'mdi-image'" size="18px" class="q-mr-sm" />
+        {{ slotAtivo !== null ? (SLOTS[slotAtivo]?.label ?? '') : '' }}
       </div>
       <div class="foto-sheet__actions">
         <button class="foto-sheet__btn" @click="escolher('camera')">
@@ -80,8 +80,8 @@ const props = defineProps<{
   modelValue: (string | null)[];
   equipe: string;
   observador: string;
-  matricula?: string;
-  slots?: { icon: string; label: string }[];
+  matricula?: string | undefined;
+  slots?: { icon: string; label: string }[] | undefined;
 }>();
 
 const SLOTS = computed(() => props.slots ?? SLOTS_PADRAO);

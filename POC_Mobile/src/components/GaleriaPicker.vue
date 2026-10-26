@@ -64,7 +64,7 @@
 import { ref, watch, onMounted, onBeforeUnmount } from "vue";
 import { useGaleriaStore, type FotoEntry } from "@/stores/galeria";
 
-const props = defineProps<{ matricula?: string }>();
+const props = defineProps<{ matricula?: string | undefined }>();
 const emit = defineEmits<{
   (e: "selected", blob: Blob, dataHora?: string): void;
 }>();

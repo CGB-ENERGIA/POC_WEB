@@ -70,7 +70,7 @@
           v-for="item in emAndamentoList"
           :key="item.route"
           class="hp-quick"
-          @click="$router.push({ name: item.route, query: item.continuarId ? { continuarId: item.continuarId } : undefined })"
+          @click="$router.push({ name: item.route, ...(item.continuarId ? { query: { continuarId: item.continuarId } } : {}) })"
         >
           <div class="hp-quick__icon">
             <q-icon :name="item.icon" size="22px" color="white" />
@@ -292,7 +292,7 @@ import CameraCapture from "@/components/CameraCapture.vue";
 type PeriodoVisao = "semana" | "mes";
 
 function loadPeriodoSalvo(): PeriodoVisao {
-  const saved = LocalStorage.getItem<string | null>(PERIODO_VISAO_STORAGE_KEY);
+  const saved = LocalStorage.getItem(PERIODO_VISAO_STORAGE_KEY);
   return saved === "semana" || saved === "mes" ? saved : "mes";
 }
 

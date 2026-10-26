@@ -111,8 +111,8 @@ const supabase = getSupabase();
 
 const props = defineProps<{
   mode: "scan" | "enroll";
-  matricula?: string;
-  nome?: string;
+  matricula?: string | undefined;
+  nome?: string | undefined;
 }>();
 
 const emit = defineEmits<{
@@ -287,9 +287,10 @@ async function handleScanFrame(result: Awaited<ReturnType<typeof detectOnce>>) {
 }
 
 async function tryMatch(descriptor: Float32Array) {
-  const { data, error } = await supabase.rpc("mobile_face_match", {
+  const { data: bruto, error } = await supabase.rpc("mobile_face_match", {
     p_descriptor: Array.from(descriptor),
   });
+  const data = bruto as { error?: string; matricula?: string; nome?: string } | null;
 
   if (error || !data || data.error || !data.matricula) {
     progress.value = 0;
@@ -387,6 +388,7 @@ function handleEnrollFrame(result: Awaited<ReturnType<typeof detectOnce>>) {
 }
 
 async function submitEnrollment() {
+  if (!props.matricula || !props.nome) return;
   submitting.value = true;
   try {
     const { error } = await supabase.from("mobile_face_pending").insert({
