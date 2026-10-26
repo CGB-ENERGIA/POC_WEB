@@ -7,7 +7,7 @@ import {
 } from "vue-router";
 
 import routes from "./routes";
-import { supabase } from "@/lib/supabase";
+import { supabase, exchangeRecoveryCodeFromUrl } from "@/lib/supabase";
 import { getProfile } from "@/lib/role";
 import { ehErroDeArquivo, recarregarPorVersaoNova } from "@/boot/versao-nova";
 
@@ -89,7 +89,11 @@ export default defineRouter((/* { store, ssrContext } */) => {
     return true;
   });
 
-  // Redireciona para /reset-password quando o usuário clica no link do e-mail de recuperação
+  // Troca o ?code= do e-mail e manda para a tela de nova senha.
+  void exchangeRecoveryCodeFromUrl().then((r) => {
+    if (r.ok) Router.replace("/reset-password");
+  });
+
   supabase.auth.onAuthStateChange((event) => {
     if (event === "PASSWORD_RECOVERY") {
       Router.replace("/reset-password");

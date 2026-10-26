@@ -145,23 +145,29 @@ interface ChecklistOficial {
 }
 
 /**
- * Busca, para os itens sincronizados, o checklist oficial (data, equipe, resumo e situação) e as não conformidades
- * (checklist_responses): user_observations é só uma cópia e pode ficar diferente do oficial (ex.: rascunho retomado
- * dias depois). Retorna mapas por client_id (= id em user_observations).
+ * Busca, para os itens sincronizados, o checklist oficial (data, equipe, resumo e situação),
+ * as não conformidades (checklist_responses) e as fotos de local/evidências (checklist_photos).
+ * user_observations é só uma cópia e pode ficar diferente do oficial.
+ * Retorna mapas por client_id (= id em user_observations).
  */
 async function fetchNaoConformesParaItens(
   clientIds: string[],
-): Promise<{ respostas: Map<string, RespostaSalva[]>; oficial: Map<string, ChecklistOficial> }> {
+): Promise<{
+  respostas: Map<string, RespostaSalva[]>;
+  oficial: Map<string, ChecklistOficial>;
+  fotosLocal: Map<string, string[]>;
+}> {
   const result = new Map<string, RespostaSalva[]>();
   const oficial = new Map<string, ChecklistOficial>();
-  if (!clientIds.length) return { respostas: result, oficial };
+  const fotosLocal = new Map<string, string[]>();
+  if (!clientIds.length) return { respostas: result, oficial, fotosLocal };
   const supabase = getSupabase();
 
   const { data: subs } = await supabase
     .from("checklist_submissions")
     .select("id,client_id,data,base,equipe,resumo,status,comentario_analise,analisado_por")
     .in("client_id", clientIds);
-  if (!subs?.length) return { respostas: result, oficial };
+  if (!subs?.length) return { respostas: result, oficial, fotosLocal };
   for (const s of subs) {
     if (!s.client_id) continue;
     oficial.set(s.client_id, {
@@ -179,33 +185,59 @@ async function fetchNaoConformesParaItens(
   for (const s of subs) if (s.client_id) subToClient.set(s.id, s.client_id);
   const subIds = subs.map((s) => s.id);
 
-  const { data: resps } = await supabase
-    .from("checklist_responses")
-    .select("submission_id,pergunta_id,categoria,pergunta,gravidade,peso,resposta,observacao,foto_r2_key,resolvido,itens")
-    .in("submission_id", subIds)
-    .eq("resposta", "nao_conforme");
-  if (!resps) return { respostas: result, oficial };
+  const [{ data: resps }, { data: photos }] = await Promise.all([
+    supabase
+      .from("checklist_responses")
+      .select("submission_id,pergunta_id,categoria,pergunta,gravidade,peso,resposta,observacao,foto_r2_key,resolvido,itens")
+      .in("submission_id", subIds)
+      .eq("resposta", "nao_conforme"),
+    supabase
+      .from("checklist_photos")
+      .select("submission_id,r2_key,sort_order,tipo")
+      .in("submission_id", subIds)
+      .eq("tipo", "local")
+      .order("sort_order"),
+  ]);
 
-  for (const r of resps) {
-    const clientId = subToClient.get(r.submission_id);
-    if (!clientId) continue;
-    const list = result.get(clientId) ?? [];
-    const foto = resolveFotoUrl(r.foto_r2_key);
-    list.push({
-      perguntaId: r.pergunta_id,
-      categoria: r.categoria,
-      pergunta: r.pergunta,
-      gravidade: r.gravidade,
-      peso: r.peso,
-      resposta: "nao_conforme",
-      ...(r.observacao ? { observacao: r.observacao } : {}),
-      ...(foto ? { foto } : {}),
-      ...(typeof r.resolvido === "boolean" ? { resolvido: r.resolvido } : {}),
-      ...(r.itens ? { itens: r.itens as unknown as ItemVerificado[] } : {}),
-    });
-    result.set(clientId, list);
+  if (resps) {
+    for (const r of resps) {
+      const clientId = subToClient.get(r.submission_id);
+      if (!clientId) continue;
+      const list = result.get(clientId) ?? [];
+      const foto = resolveFotoUrl(r.foto_r2_key);
+      list.push({
+        perguntaId: r.pergunta_id,
+        categoria: r.categoria,
+        pergunta: r.pergunta,
+        gravidade: r.gravidade,
+        peso: r.peso,
+        resposta: "nao_conforme",
+        ...(r.observacao ? { observacao: r.observacao } : {}),
+        ...(foto ? { foto } : {}),
+        ...(typeof r.resolvido === "boolean" ? { resolvido: r.resolvido } : {}),
+        ...(r.itens ? { itens: r.itens as unknown as ItemVerificado[] } : {}),
+      });
+      result.set(clientId, list);
+    }
   }
-  return { respostas: result, oficial };
+
+  if (photos?.length) {
+    const byClient = new Map<string, { sort: number; url: string }[]>();
+    for (const p of photos) {
+      const clientId = subToClient.get(p.submission_id);
+      const url = resolveFotoUrl(p.r2_key);
+      if (!clientId || !url) continue;
+      const list = byClient.get(clientId) ?? [];
+      list.push({ sort: p.sort_order, url });
+      byClient.set(clientId, list);
+    }
+    for (const [clientId, list] of byClient) {
+      list.sort((a, b) => a.sort - b.sort);
+      fotosLocal.set(clientId, list.map((x) => x.url));
+    }
+  }
+
+  return { respostas: result, oficial, fotosLocal };
 }
 
 export const useObservacoesStore = defineStore("observacoes", {
@@ -396,7 +428,11 @@ export const useObservacoesStore = defineStore("observacoes", {
       const finalizados = data.filter(
         (row) => (row as { sync_status?: string }).sync_status !== "em_andamento"
       );
-      const { respostas: respostasPorItem, oficial } = await fetchNaoConformesParaItens(finalizados.map((row) => row.id));
+      const {
+        respostas: respostasPorItem,
+        oficial,
+        fotosLocal: fotosPorItem,
+      } = await fetchNaoConformesParaItens(finalizados.map((row) => row.id));
       // Quando o checklist oficial existe, ele manda (data, equipe, resumo e situação): a cópia em user_observations
       // pode ter ficado com valores do rascunho.
       this.syncedItems = finalizados.map((row) => {
@@ -410,7 +446,7 @@ export const useObservacoesStore = defineStore("observacoes", {
           base: of?.base ?? row.base,
           equipe: of?.equipe ?? row.equipe,
           membros: [],
-          fotosLocal: [],
+          fotosLocal: fotosPorItem.get(row.id) ?? [],
           respostas: respostasPorItem.get(row.id) ?? [],
           resumo: of?.resumo ?? (row.resumo as unknown as ChecklistResumo),
           syncStatus: "synced",

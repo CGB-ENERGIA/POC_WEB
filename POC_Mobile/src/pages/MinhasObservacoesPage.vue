@@ -167,6 +167,7 @@
                       :src="nc.foto"
                       alt="Evidência"
                       class="nc-evidencia-foto q-mt-sm"
+                      @click="abrirGaleria(obs, `nc-${nc.perguntaId}`)"
                     />
                   </div>
                 </div>
@@ -174,6 +175,16 @@
 
               <!-- ações -->
               <div class="row q-gutter-sm q-mt-md">
+                  <q-btn
+                    v-if="totalFotos(obs) > 0"
+                    outline
+                    dense
+                    no-caps
+                    color="primary"
+                    icon="mdi-image-multiple-outline"
+                    :label="`Fotos (${totalFotos(obs)})`"
+                    @click="abrirGaleria(obs)"
+                  />
                   <q-btn
                     v-if="obs.syncStatus !== 'synced' && obs.analiseStatus !== 'reprovado'"
                     outline
@@ -195,10 +206,17 @@
                     label="Editar"
                     @click="editar(obs)"
                   />
-                  <div v-else-if="obs.analiseStatus !== 'reprovado'" class="text-caption text-grey-5 row items-center">
+                  <div v-else-if="obs.analiseStatus !== 'reprovado' && totalFotos(obs) === 0" class="text-caption text-grey-5 row items-center">
                     <q-icon name="mdi-lock-outline" size="14px" class="q-mr-xs" />
                     Edição disponível só até 24h após o envio
                   </div>
+              </div>
+              <div
+                v-if="!podeEditar(obs) && obs.analiseStatus !== 'reprovado' && totalFotos(obs) > 0"
+                class="text-caption text-grey-5 row items-center q-mt-sm"
+              >
+                <q-icon name="mdi-lock-outline" size="14px" class="q-mr-xs" />
+                Edição disponível só até 24h após o envio
               </div>
             </div>
           </div>
@@ -240,6 +258,88 @@
         </div>
       </section>
     </div>
+
+    <!-- Galeria de fotos do checklist -->
+    <q-dialog v-model="galeriaAberta" position="bottom">
+      <q-card class="fotos-dlg">
+        <div class="fotos-dlg__head">
+          <div>
+            <div class="fotos-dlg__title">Fotos do checklist</div>
+            <div class="fotos-dlg__sub">
+              {{ galeriaObs?.equipe || "—" }} · {{ galeriaObs ? formatDate(galeriaObs.data) : "" }}
+            </div>
+          </div>
+          <q-btn flat round dense icon="mdi-close" v-close-popup />
+        </div>
+
+        <div v-if="!galeriaItens.length" class="fotos-dlg__empty">
+          Nenhuma foto neste checklist.
+        </div>
+
+        <template v-else>
+          <div class="fotos-dlg__actions">
+            <q-btn
+              outline
+              dense
+              no-caps
+              color="primary"
+              icon="mdi-download-multiple"
+              :label="baixandoTodos ? 'Baixando…' : 'Baixar todas'"
+              :loading="baixandoTodos"
+              :disable="baixandoTodos"
+              @click="baixarTodas"
+            />
+          </div>
+
+          <div class="fotos-dlg__grid">
+            <button
+              v-for="item in galeriaItens"
+              :key="item.id"
+              type="button"
+              class="fotos-card"
+              :class="{ 'fotos-card--focus': item.id === galeriaFoco }"
+              @click="abrirZoom(item)"
+            >
+              <img :src="item.url" :alt="item.label" class="fotos-card__img" />
+              <div class="fotos-card__meta">
+                <span class="fotos-card__badge" :class="item.tipo === 'nc' ? 'fotos-card__badge--nc' : ''">
+                  {{ item.tipo === 'nc' ? 'NC' : item.ordem }}
+                </span>
+                <span class="fotos-card__label">{{ item.label }}</span>
+              </div>
+              <div v-if="item.pergunta" class="fotos-card__perg">{{ item.pergunta }}</div>
+            </button>
+          </div>
+        </template>
+      </q-card>
+    </q-dialog>
+
+    <!-- Zoom / download de uma foto -->
+    <q-dialog v-model="zoomAberto" maximized>
+      <div class="foto-zoom" v-if="zoomItem">
+        <div class="foto-zoom__bar">
+          <div class="foto-zoom__info">
+            <div class="foto-zoom__title">{{ zoomItem.label }}</div>
+            <div v-if="zoomItem.pergunta" class="foto-zoom__perg">{{ zoomItem.pergunta }}</div>
+          </div>
+          <div class="row items-center no-wrap q-gutter-xs">
+            <q-btn
+              flat
+              round
+              dense
+              color="white"
+              icon="mdi-download"
+              :loading="baixandoUma === zoomItem.id"
+              @click="baixarFoto(zoomItem)"
+            />
+            <q-btn flat round dense color="white" icon="mdi-close" v-close-popup />
+          </div>
+        </div>
+        <div class="foto-zoom__body">
+          <img :src="zoomItem.url" :alt="zoomItem.label" class="foto-zoom__img" />
+        </div>
+      </div>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -433,6 +533,156 @@ function naoConformidades(obs: ObservacaoChecklist): RespostaSalva[] {
       };
     });
 }
+
+// ── Galeria de fotos ─────────────────────────────────────────────────────────
+
+const FOTO_LOCAL_LABELS = [
+  "Selfie com a equipe",
+  "Foto da viatura (prefixo)",
+  "Colaboradores em atividade",
+];
+
+interface FotoGaleriaItem {
+  id: string;
+  url: string;
+  tipo: "local" | "nc";
+  ordem: string;
+  label: string;
+  pergunta?: string;
+  fileBase: string;
+}
+
+const galeriaAberta = ref(false);
+const galeriaObs = ref<ObservacaoChecklist | null>(null);
+const galeriaItens = ref<FotoGaleriaItem[]>([]);
+const galeriaFoco = ref<string | null>(null);
+const zoomAberto = ref(false);
+const zoomItem = ref<FotoGaleriaItem | null>(null);
+const baixandoUma = ref<string | null>(null);
+const baixandoTodos = ref(false);
+
+function totalFotos(obs: ObservacaoChecklist): number {
+  const locais = (obs.fotosLocal ?? []).filter(Boolean).length;
+  const nc = (obs.respostas ?? []).filter((r) => r.resposta === "nao_conforme" && r.foto).length;
+  return locais + nc;
+}
+
+function montarGaleria(obs: ObservacaoChecklist): FotoGaleriaItem[] {
+  const itens: FotoGaleriaItem[] = [];
+  const equipe = (obs.equipe || "checklist").replace(/[^\w\-]+/g, "_");
+
+  (obs.fotosLocal ?? []).forEach((url, i) => {
+    if (!url) return;
+    const label = FOTO_LOCAL_LABELS[i] ?? (i < 3 ? `Evidência ${i + 1}` : `Outra foto ${i - 2}`);
+    itens.push({
+      id: `local-${i}`,
+      url,
+      tipo: "local",
+      ordem: `${i + 1}º`,
+      label,
+      fileBase: `${equipe}_${i + 1}_${label.replace(/[^\w\-]+/g, "_")}`,
+    });
+  });
+
+  for (const nc of naoConformidades(obs)) {
+    if (!nc.foto) continue;
+    itens.push({
+      id: `nc-${nc.perguntaId}`,
+      url: nc.foto,
+      tipo: "nc",
+      ordem: "NC",
+      label: nc.categoria || "Não conformidade",
+      pergunta: nc.pergunta,
+      fileBase: `${equipe}_NC_${(nc.perguntaId || "foto").replace(/[^\w\-]+/g, "_")}`,
+    });
+  }
+  return itens;
+}
+
+function abrirGaleria(obs: ObservacaoChecklist, focoId?: string) {
+  galeriaObs.value = obs;
+  galeriaItens.value = montarGaleria(obs);
+  galeriaFoco.value = focoId ?? null;
+  galeriaAberta.value = true;
+  if (focoId) {
+    const hit = galeriaItens.value.find((f) => f.id === focoId);
+    if (hit) abrirZoom(hit);
+  }
+}
+
+function abrirZoom(item: FotoGaleriaItem) {
+  zoomItem.value = item;
+  zoomAberto.value = true;
+}
+
+async function baixarFoto(item: FotoGaleriaItem) {
+  baixandoUma.value = item.id;
+  try {
+    await salvarArquivo(item.url, `${item.fileBase}.jpg`);
+  } catch {
+    $q.notify({ type: "warning", message: "Não foi possível baixar a foto.", position: "top" });
+  } finally {
+    baixandoUma.value = null;
+  }
+}
+
+async function baixarTodas() {
+  if (!galeriaItens.value.length) return;
+  baixandoTodos.value = true;
+  let ok = 0;
+  try {
+    for (const item of galeriaItens.value) {
+      try {
+        await salvarArquivo(item.url, `${item.fileBase}.jpg`);
+        ok++;
+        // Espaça cliques de download: alguns Android bloqueiam vários seguidos.
+        await new Promise((r) => setTimeout(r, 350));
+      } catch {
+        /* segue para a próxima */
+      }
+    }
+    $q.notify({
+      type: ok === galeriaItens.value.length ? "positive" : "warning",
+      message: ok === galeriaItens.value.length
+        ? `${ok} foto${ok > 1 ? "s" : ""} baixada${ok > 1 ? "s" : ""}.`
+        : `${ok} de ${galeriaItens.value.length} fotos baixadas.`,
+      position: "top",
+    });
+  } finally {
+    baixandoTodos.value = false;
+  }
+}
+
+async function salvarArquivo(url: string, filename: string) {
+  let href = url;
+  let revoke: string | null = null;
+  try {
+    if (url.startsWith("data:")) {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      return;
+    }
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    href = URL.createObjectURL(blob);
+    revoke = href;
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = filename;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    if (revoke) URL.revokeObjectURL(revoke);
+  }
+}
 </script>
 
 <style scoped>
@@ -527,5 +777,149 @@ function naoConformidades(obs: ObservacaoChecklist): RespostaSalva[] {
   max-height: 200px;
   object-fit: cover;
   border-radius: 8px;
+  cursor: pointer;
+}
+
+.fotos-dlg {
+  width: 100%;
+  max-width: 560px;
+  border-radius: 18px 18px 0 0;
+  padding: 16px 16px max(16px, env(safe-area-inset-bottom));
+}
+.fotos-dlg__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.fotos-dlg__title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #1c1917;
+  line-height: 1.2;
+}
+.fotos-dlg__sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #64748b;
+}
+.fotos-dlg__empty {
+  padding: 28px 8px;
+  text-align: center;
+  color: #64748b;
+  font-size: 14px;
+}
+.fotos-dlg__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+.fotos-dlg__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  max-height: min(62vh, 520px);
+  overflow-y: auto;
+  padding-bottom: 4px;
+}
+.fotos-card {
+  appearance: none;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 0;
+  overflow: hidden;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+}
+.fotos-card--focus {
+  outline: 2px solid #7a1225;
+  outline-offset: 1px;
+}
+.fotos-card__img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+  background: #e2e8f0;
+}
+.fotos-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 8px 4px;
+}
+.fotos-card__badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 800;
+  color: #7a1225;
+  background: rgba(122, 18, 37, 0.1);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+.fotos-card__badge--nc {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+.fotos-card__label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #334155;
+  line-height: 1.25;
+}
+.fotos-card__perg {
+  padding: 0 8px 8px;
+  font-size: 10px;
+  color: #64748b;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.foto-zoom {
+  width: 100%;
+  height: 100%;
+  background: #0c0a09;
+  display: flex;
+  flex-direction: column;
+  color: #fff;
+}
+.foto-zoom__bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: max(10px, env(safe-area-inset-top)) 12px 10px;
+  background: rgba(0, 0, 0, 0.72);
+}
+.foto-zoom__title {
+  font-size: 14px;
+  font-weight: 700;
+}
+.foto-zoom__perg {
+  margin-top: 2px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.35;
+}
+.foto-zoom__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+.foto-zoom__img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
 }
 </style>

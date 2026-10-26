@@ -235,9 +235,11 @@ async function enviarRecuperacao() {
   forgotLoading.value = true;
   forgotErro.value    = null;
 
+  // redirectTo = origem do painel (sem hash). A rota #/reset-password é aberta
+  // pelo evento PASSWORD_RECOVERY depois que o ?code= do PKCE vira sessão.
   const { error } = await supabase.auth.resetPasswordForEmail(
     forgotEmail.value.trim(),
-    { redirectTo: window.location.origin },
+    { redirectTo: `${window.location.origin}/` },
   );
 
   forgotLoading.value = false;

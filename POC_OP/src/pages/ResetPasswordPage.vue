@@ -16,7 +16,6 @@
     <main class="rp-main">
       <div class="rp-card">
 
-        <!-- Ícone -->
         <div class="rp-icon">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
@@ -32,10 +31,19 @@
           <button class="rp-btn" @click="router.replace('/login')">Ir para o login</button>
         </template>
 
+        <!-- Ainda processando o link do e-mail -->
+        <template v-else-if="aguardando">
+          <p class="rp-title">Validando link…</p>
+          <p class="rp-sub">Aguarde enquanto confirmamos o link de recuperação.</p>
+          <span class="rp-spin rp-spin--lg" />
+        </template>
+
         <!-- Sessão expirada / sem token -->
         <template v-else-if="!hasSession">
           <p class="rp-title">Link expirado</p>
-          <p class="rp-sub">Este link de recuperação não é mais válido. Solicite um novo.</p>
+          <p class="rp-sub">
+            {{ erroLink || "Este link de recuperação não é mais válido. Solicite um novo em Esqueci minha senha." }}
+          </p>
           <button class="rp-btn" @click="router.replace('/login')">Voltar ao login</button>
         </template>
 
@@ -109,9 +117,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, defineComponent, h } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick, defineComponent, h } from "vue";
 import { useRouter } from "vue-router";
-import { supabase } from "@/lib/supabase";
+import { supabase, exchangeRecoveryCodeFromUrl } from "@/lib/supabase";
 
 const router = useRouter();
 
@@ -136,10 +144,14 @@ const show1  = ref(false);
 const show2  = ref(false);
 const loading   = ref(false);
 const erro      = ref<string | null>(null);
+const erroLink  = ref<string | null>(null);
 const done      = ref(false);
 const hasSession = ref(false);
+const aguardando = ref(true);
 const pw1Ref = ref<HTMLInputElement | null>(null);
 const pw2Ref = ref<HTMLInputElement | null>(null);
+
+let unsubAuth: (() => void) | null = null;
 
 const strength = computed(() => {
   const p = pw1.value;
@@ -159,10 +171,67 @@ const canSubmit = computed(() =>
   pw1.value.length >= 8 && pw1.value === pw2.value
 );
 
+function lerErroDaUrl(): string | null {
+  const qs = new URLSearchParams(window.location.search);
+  const hashQs = new URLSearchParams(window.location.hash.replace(/^#/, "").replace(/^\/[^?]*/, "").replace(/^\?/, ""));
+  const err = qs.get("error_description") || qs.get("error") || hashQs.get("error_description") || hashQs.get("error");
+  if (!err) return null;
+  return decodeURIComponent(err.replace(/\+/g, " "));
+}
+
+async function liberarFormulario() {
+  hasSession.value = true;
+  aguardando.value = false;
+  await nextTick();
+  pw1Ref.value?.focus();
+}
+
 onMounted(async () => {
+  erroLink.value = lerErroDaUrl();
+  if (erroLink.value) {
+    aguardando.value = false;
+    hasSession.value = false;
+    return;
+  }
+
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    if (event === "PASSWORD_RECOVERY" || (session && aguardando.value)) {
+      void liberarFormulario();
+    }
+  });
+  unsubAuth = () => subscription.unsubscribe();
+
+  const exchanged = await exchangeRecoveryCodeFromUrl();
+  if (exchanged.error) {
+    erroLink.value = exchanged.error;
+    aguardando.value = false;
+    hasSession.value = false;
+    return;
+  }
+
   const { data } = await supabase.auth.getSession();
-  hasSession.value = !!data.session;
-  if (hasSession.value) nextTick(() => pw1Ref.value?.focus());
+  if (data.session) {
+    await liberarFormulario();
+    return;
+  }
+
+  // O client ainda pode estar processando o link; espera até ~4s
+  const deadline = Date.now() + 4000;
+  while (Date.now() < deadline && !hasSession.value) {
+    await new Promise((r) => setTimeout(r, 250));
+    const again = await supabase.auth.getSession();
+    if (again.data.session) {
+      await liberarFormulario();
+      return;
+    }
+  }
+
+  aguardando.value = false;
+  hasSession.value = false;
+});
+
+onUnmounted(() => {
+  unsubAuth?.();
 });
 
 async function submit() {
@@ -299,6 +368,7 @@ async function submit() {
   border: 2px solid rgba(255,255,255,.25); border-top-color: #fff;
   border-radius: 50%; animation: spin .65s linear infinite;
 }
+.rp-spin--lg { width: 28px; height: 28px; margin-bottom: 8px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 :global(.fade-enter-active), :global(.fade-leave-active) { transition: opacity .18s; }
