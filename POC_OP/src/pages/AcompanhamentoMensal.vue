@@ -25,8 +25,9 @@
             <div class="pill-group">
               <button
                 v-for="m in meses" :key="m.value"
-                :class="['pill', { 'pill--active': filters.mes === m.value }]"
-                @click="filters.mes = m.value"
+                :class="['pill', { 'pill--active': marcado(filters.mes, String(m.value)) }]"
+                :title="marcado(filters.mes, String(m.value)) ? 'Ctrl+clique para tirar este mês' : 'Ctrl+clique para somar este mês'"
+                @click="filters.mes = alternarMinimo(filters.mes, String(m.value), $event)"
               >{{ m.label }}</button>
             </div>
           </div>
@@ -38,8 +39,8 @@
             <div class="pill-group">
               <button
                 v-for="s in semanas" :key="s.value"
-                :class="['pill', { 'pill--active': filters.semana === s.value }]"
-                @click="filters.semana = filters.semana === s.value ? 0 : s.value"
+                :class="['pill', { 'pill--active': s.value ? marcado(filters.semana, String(s.value)) : !ativo(filters.semana) }]"
+                @click="filters.semana = s.value ? alternar(filters.semana, String(s.value), $event) : 'Todos'"
               >{{ s.label }}</button>
             </div>
           </div>
@@ -144,7 +145,7 @@
           <span class="filter-summary__label">Filtros ativos:</span>
           <span class="filter-chip">{{ filters.ano }}</span>
           <span class="filter-chip">{{ mesLabel }}</span>
-          <span v-if="filters.semana" class="filter-chip filter-chip--hit" @click="filters.semana = 0">{{ semanaLabel }}</span>
+          <span v-if="ativo(filters.semana)" class="filter-chip filter-chip--hit" @click="filters.semana = 'Todos'">{{ semanaLabel }}</span>
           <span v-if="filters.base !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.base = 'Todos'">{{ valores(filters.base).map(nomeBase).join(", ") }}</span>
           <span v-if="filters.gerencia !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerencia = 'Todos'">{{ rotulo(filters.gerencia) }}</span>
           <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ rotulo(filters.gerente) }}</span>
@@ -307,7 +308,7 @@
 </template>
 
 <script setup lang="ts">
-import { valores, juntar, marcado, alternar, rotulo, semTodos, casa, igualCI, ativo, eventoDe } from "@/lib/multi-filtro";
+import { valores, juntar, marcado, alternar, alternarMinimo, rotulo, semTodos, casa, igualCI, ativo, eventoDe } from "@/lib/multi-filtro";
 import { reactive, ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
@@ -374,8 +375,8 @@ const gerencias = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT", 
 // ─── Filter state ─────────────────────────────────────────────────────────────
 const now = new Date();
 const filters = reactive({
-  mes:      now.getMonth() + 1,
-  semana:   0,
+  mes:      String(now.getMonth() + 1),
+  semana:   "Todos",
   ano:      now.getFullYear(),
   base:     "Todos",
   funcao:   "Todos",
@@ -394,13 +395,19 @@ const {
   coordenadoresOpts: coordenadores,
 } = useChecklistData();
 
+/** Meses e semanas escolhidos (um ou vários; semana vazia = o mês todo). */
+const mesesNum = computed(() => {
+  const n = valores(filters.mes).map(Number).filter(Boolean).sort((a, b) => a - b);
+  return n.length ? n : [now.getMonth() + 1];
+});
+const semanasNum = computed(() => valores(filters.semana).map(Number).filter((n) => n >= 1 && n <= 4).sort((a, b) => a - b));
+
 async function recarregar() {
   clearObs();
-  await load({
-    ano: filters.ano,
-    mes: filters.mes,
-    contarMeta: true,
-  });
+  const nums = mesesNum.value;
+  await load(nums.length === 1
+    ? { ano: filters.ano, mes: nums[0]!, contarMeta: true }
+    : { ano: filters.ano, meses: nums, contarMeta: true });
 }
 
 onMounted(recarregar);
@@ -430,7 +437,7 @@ function clearObs() {
 }
 
 function resetSlice() {
-  filters.semana = 0;
+  filters.semana = "Todos";
   filters.base = "Todos";
   filters.funcao = "Todos";
   filters.gerencia = "Todos";
@@ -454,7 +461,7 @@ function onWeekClick(p: EcClick) {
   if (fromName) n = Number(fromName[1]);
   else if (typeof p.dataIndex === "number") n = p.dataIndex + 1;
   if (n < 1 || n > 4) return;
-  filters.semana = filters.semana === n ? 0 : n;
+  filters.semana = alternar(filters.semana, String(n), eventoDe(p));
 }
 
 function onBaseClick(p: EcClick) {
@@ -493,9 +500,9 @@ function onRankingClick(p: EcClick) {
   viz.observadorNome = row.nome.split(" ")[0] || row.nome;
 }
 
-const semanaLabel = computed(() => semanas.find((s) => s.value === filters.semana)?.label ?? "");
+const semanaLabel = computed(() => valores(filters.semana).map((v) => semanas.find((s) => String(s.value) === v)?.label ?? v).join(", "));
 const hasActiveFilters = computed(() =>
-  filters.semana !== 0
+  ativo(filters.semana)
   || filters.base !== "Todos"
   || filters.gerencia !== "Todos"
   || filters.gerente !== "Todos"
@@ -518,8 +525,8 @@ function applySlice(
 ) {
   let s = source;
   if (!omit.gerencia) s = filterByGerencia(s, employees.value, filters.gerencia);
-  if (!omit.week && filters.semana) {
-    s = s.filter((sub) => semanaDaSub(sub) === filters.semana);
+  if (!omit.week && ativo(filters.semana)) {
+    s = s.filter((sub) => casa(filters.semana, String(semanaDaSub(sub))));
   }
   if (!omit.base && ativo(filters.base)) {
     s = s.filter((sub) => casa(filters.base, sub.base));
@@ -565,8 +572,10 @@ const bySemana = computed(() => {
 
 /** Primeiro dia do período em análise (a semana escolhida ou o mês): quem saiu antes dele não entra na lista. */
 const inicioPeriodo = computed(() => {
-  const dia = filters.semana ? faixaDaSemana(filters.ano, filters.mes, filters.semana).ini : 1;
-  return `${filters.ano}-${String(filters.mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+  const mes = mesesNum.value[0]!;
+  const primeiraSemana = semanasNum.value[0];
+  const dia = primeiraSemana ? faixaDaSemana(filters.ano, mes, primeiraSemana).ini : 1;
+  return `${filters.ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
 });
 
 const observerRoster = computed(() =>
@@ -592,16 +601,22 @@ const observerRows = computed(() => {
     list.map((e) => e.nome || e.nome_completo.split(/\s+/)[0] || e.matricula),
   );
   return list.map((emp, i) => {
-    const g = goalForColaborador(
-      emp.matricula, emp.gerencia, filters.ano, filters.mes, filters.semana || undefined, emp.funcao,
-    );
+    // Meta do período: soma dos meses escolhidos; com semanas escolhidas, soma das metas dessas semanas em cada mês
+    let meta = 0;
+    for (const mes of mesesNum.value) {
+      if (semanasNum.value.length) {
+        for (const w of semanasNum.value) meta += goalForColaborador(emp.matricula, emp.gerencia, filters.ano, mes, w, emp.funcao).semanal;
+      } else {
+        meta += goalForColaborador(emp.matricula, emp.gerencia, filters.ano, mes, undefined, emp.funcao).mensal;
+      }
+    }
     const key = normMatricula(emp.matricula);
     return {
       matricula: key,
       nome: emp.nome_completo || emp.nome,
       short: shorts[i]!,
       realizado: counts.get(key) ?? 0,
-      meta: filters.semana ? g.semanal : g.mensal,
+      meta,
       funcao: emp.funcao || "—",
     };
     // Quem está com meta 0 (atestado, férias…) e não observou nada não entra na lista.
@@ -658,7 +673,7 @@ const conformidadePorObservador = computed(() => {
     .sort((a, b) => b.totalObs - a.totalObs);
 });
 
-const mesLabel = computed(() => meses.find(m => m.value === filters.mes)?.label ?? "");
+const mesLabel = computed(() => mesesNum.value.map((n) => meses.find((m) => m.value === n)?.label ?? String(n)).join(", "));
 
 const scopedObservers = computed(() =>
   viz.matricula
@@ -756,7 +771,7 @@ function barItem(value: number, dimmed: boolean) {
   };
 }
 
-function singleBar(labels: string[], data: number[], selected?: string | number | null) {
+function singleBar(labels: string[], data: number[], selected?: string | number | number[] | null) {
   // "selected" pode ser um texto com vários marcados (ver multi-filtro): cada barra clara se estiver entre eles
   const marcados = typeof selected === "string" ? valores(selected) : [];
   return [{
@@ -765,7 +780,9 @@ function singleBar(labels: string[], data: number[], selected?: string | number 
     cursor: "pointer",
     data: data.map((v, i) => {
       const key = labels[i];
-      const dimmed = selected != null && selected !== "" && selected !== key && selected !== i + 1 && !(key !== undefined && marcados.includes(key));
+      const dimmed = Array.isArray(selected)
+        ? selected.length > 0 && !selected.includes(i + 1)
+        : selected != null && selected !== "" && selected !== key && selected !== i + 1 && !(key !== undefined && marcados.includes(key));
       return barItem(v, dimmed);
     }),
     barMaxWidth: 48,
@@ -838,7 +855,10 @@ const WEEK_LABELS = ["1ª Sem", "2ª Sem", "3ª Sem", "4ª Sem"];
 
 const chartMetaSemana = computed(() => {
   const vals = [1, 2, 3, 4].map((s) => bySemana.value[s] ?? 0);
-  const weekMeta = filters.semana ? metaMensal.value : metaMensal.value / 4;
+  // meta de cada semana: com semanas escolhidas, a soma dividida por elas; sem, o total dividido pelas 4 semanas de cada mês
+  const weekMeta = semanasNum.value.length
+    ? metaMensal.value / (semanasNum.value.length * mesesNum.value.length)
+    : metaMensal.value / (4 * mesesNum.value.length);
   return {
     tooltip: {
       ...tooltipSkin("item"),
@@ -852,7 +872,7 @@ const chartMetaSemana = computed(() => {
     xAxis: cleanXAxis(WEEK_LABELS),
     yAxis: { show: false, min: 0, max: yPadMax([...vals, weekMeta]) },
     series: [
-      singleBar(WEEK_LABELS, vals, filters.semana || null)[0],
+      singleBar(WEEK_LABELS, vals, semanasNum.value.length ? semanasNum.value : null)[0],
       metaTracos(WEEK_LABELS.map(() => weekMeta), WEEK_LABELS.length - 1),
     ],
   };

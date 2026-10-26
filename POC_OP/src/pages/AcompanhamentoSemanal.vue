@@ -27,8 +27,9 @@
               <button
                 v-for="s in semanas"
                 :key="s.value"
-                :class="['pill', { 'pill--active': filters.semana === s.value }]"
-                @click="filters.semana = s.value"
+                :class="['pill', { 'pill--active': marcado(filters.semana, String(s.value)) }]"
+                :title="marcado(filters.semana, String(s.value)) ? 'Ctrl+clique para tirar esta semana' : 'Ctrl+clique para somar esta semana'"
+                @click="filters.semana = alternarMinimo(filters.semana, String(s.value), $event)"
               >{{ s.label }}</button>
             </div>
           </div>
@@ -99,8 +100,9 @@
               <button
                 v-for="m in meses"
                 :key="m.value"
-                :class="['pill', { 'pill--active': filters.mes === m.value }]"
-                @click="filters.mes = m.value"
+                :class="['pill', { 'pill--active': marcado(filters.mes, String(m.value)) }]"
+                :title="marcado(filters.mes, String(m.value)) ? 'Ctrl+clique para tirar este mês' : 'Ctrl+clique para somar este mês'"
+                @click="filters.mes = alternarMinimo(filters.mes, String(m.value), $event)"
               >{{ m.label }}</button>
             </div>
           </div>
@@ -348,7 +350,7 @@
 </template>
 
 <script setup lang="ts">
-import { valores, juntar, marcado, alternar, rotulo, semTodos, casa, igualCI, ativo } from "@/lib/multi-filtro";
+import { valores, juntar, marcado, alternar, alternarMinimo, rotulo, semTodos, casa, igualCI, ativo, eventoDe } from "@/lib/multi-filtro";
 import { reactive, computed, ref, shallowRef, watch, onMounted, onBeforeUnmount } from "vue";
 import { useQuasar } from "quasar";
 import { use } from "echarts/core";
@@ -366,7 +368,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { filterByGerencia, filterByGerente, semanaDaSub, filterObserverRoster, uniqueChartLabels, tallyObserverRecords, normMatricula, indexEmployees, matchSubmissionToEmployee, filterByCoordenador, fetchMetasSemanais, foldName, type MetaSemanalRow } from "@/lib/dashboard";
+import { filterByGerencia, filterByGerente, semanaDaSub, filterObserverRoster, uniqueChartLabels, tallyObserverRecords, normMatricula, indexEmployees, matchSubmissionToEmployee, filterByCoordenador, fetchMetasSemanais, foldName, dataReferencia, type MetaSemanalRow } from "@/lib/dashboard";
 import { semanaDeData, rotuloSemana, carregarSemanas, faixaDaSemana } from "@/lib/semanas";
 import { useGoals } from "@/composables/useGoals";
 import { gerarRankingPng, coordenadoresDe, SEM_COORDENADOR } from "@/lib/ranking-imagem";
@@ -381,8 +383,20 @@ use([
 ]);
 
 // ─── Filter options ──────────────────────────────────────────────────────────
+/** Meses e semanas escolhidos (um ou vários; sempre há pelo menos um de cada). */
+const mesesNum = computed(() => {
+  const n = valores(filters.mes).map(Number).filter(Boolean).sort((a, b) => a - b);
+  return n.length ? n : [now.getMonth() + 1];
+});
+const semanasNum = computed(() => {
+  const n = valores(filters.semana).map(Number).filter((x) => x >= 1 && x <= 4).sort((a, b) => a - b);
+  return n.length ? n : [semanaDeData(now)];
+});
+/** Mês de um checklist (pela data de referência, a da foto quando houver). */
+const mesDaSub = (sub: { data: string; resumo?: { dataFoto?: string } | null }) => Number(dataReferencia(sub).slice(5, 7));
+
 const semanas = computed(() =>
-  [1, 2, 3, 4].map((v) => ({ value: v, label: rotuloSemana(filters.ano, filters.mes, v) })),
+  [1, 2, 3, 4].map((v) => ({ value: v, label: rotuloSemana(filters.ano, mesesNum.value[0]!, v) })),
 );
 
 const showFilters = ref(false);
@@ -402,9 +416,9 @@ const gerencias = ["Todos", "ADM", "GERE", "GOMAN", "GSTC", "OFICINA", "SESMT", 
 // ─── Filter state ────────────────────────────────────────────────────────────
 const now = new Date();
 const filters = reactive({
-  semana: semanaDeData(now) as number,
+  semana: String(semanaDeData(now)),
   ano: now.getFullYear(),
-  mes: now.getMonth() + 1,
+  mes: String(now.getMonth() + 1),
   gerente: "Todos", coordenador: "Todos",
   gerencia: "Todos",
   alojamento: false,
@@ -443,9 +457,9 @@ function resetViz() {
 }
 
 function resetFilters() {
-  filters.semana = semanaDeData(now);
+  filters.semana = String(semanaDeData(now));
   filters.ano = now.getFullYear();
-  filters.mes = now.getMonth() + 1;
+  filters.mes = String(now.getMonth() + 1);
   filters.gerente = "Todos";
   filters.coordenador = "Todos";
   filters.gerencia = "Todos";
@@ -500,11 +514,11 @@ function onWeekClick(p: EcClick) {
   const fromName = p.name?.match(/(\d)/);
   if (fromName) n = Number(fromName[1]);
   else if (typeof p.dataIndex === "number") n = p.dataIndex + 1;
-  if (n >= 1 && n <= 4) filters.semana = n;
+  if (n >= 1 && n <= 4) filters.semana = alternarMinimo(filters.semana, String(n), eventoDe(p));
 }
 
-const semanaLabel = computed(() => semanas.value.find(s => s.value === filters.semana)?.label ?? "");
-const mesLabel = computed(() => meses.find(m => m.value === filters.mes)?.label ?? "");
+const semanaLabel = computed(() => semanasNum.value.map((n) => semanas.value.find((s) => s.value === n)?.label ?? String(n)).join(", "));
+const mesLabel = computed(() => mesesNum.value.map((n) => meses.find((m) => m.value === n)?.label ?? String(n)).join(", "));
 const hasActiveFilters = computed(() =>
   filters.gerente !== "Todos"
   || filters.coordenador !== "Todos"
@@ -531,20 +545,22 @@ let seqMetas = 0;
 async function carregarMetasMes() {
   const seq = ++seqMetas;
   let linhas: MetaSemanalRow[] = [];
-  try { linhas = await fetchMetasSemanais(filters.ano, filters.mes); } catch { /* sem a tabela: usa as regras do sistema */ }
+  try { linhas = (await Promise.all(mesesNum.value.map((m) => fetchMetasSemanais(filters.ano, m)))).flat(); } catch { /* sem a tabela: usa as regras do sistema */ }
   if (seq === seqMetas) metasMes.value = linhas;
 }
 
 async function recarregar() {
   await Promise.all([
-    load({ ano: filters.ano, mes: filters.mes, contarMeta: true }, false, false),
+    load(mesesNum.value.length === 1
+      ? { ano: filters.ano, mes: mesesNum.value[0]!, contarMeta: true }
+      : { ano: filters.ano, meses: mesesNum.value, contarMeta: true }, false, false),
     carregarMetasMes(),
   ]);
 }
 
 onMounted(async () => {
   await carregarSemanas();
-  filters.semana = semanaDeData(now); // a semana de hoje depende do cronograma do mês
+  filters.semana = String(semanaDeData(now)); // a semana de hoje depende do cronograma do mês
   await recarregar();
 });
 watch(() => [filters.ano, filters.mes], recarregar);
@@ -567,7 +583,7 @@ function applySlice(
   omit: { week?: boolean; base?: boolean; processo?: boolean; mat?: boolean } = {},
 ) {
   let s = source;
-  if (!omit.week) s = s.filter((sub) => semanaDaSub(sub) === filters.semana);
+  if (!omit.week) s = s.filter((sub) => semanasNum.value.includes(semanaDaSub(sub)));
   if (!omit.base && viz.base) s = s.filter((sub) => sub.base === viz.base);
   if (!omit.processo && viz.processo) s = s.filter((sub) => auditagemKey(sub) === viz.processo);
   if (!omit.mat && viz.matricula) {
@@ -601,51 +617,53 @@ const byBase = computed(() => {
  * meta da semana, o mesmo critério do cartão "Total de Observações" e do gráfico de observadores.
  */
 const bySemana = computed(() => {
+  const m: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
   if (usaTabela.value) {
-    const m: Record<number, number> = {};
     for (const w of [1, 2, 3, 4]) {
       m[w] = tabelaAba.value
-        .filter((r) => r.semana === w && passaFiltrosTabela(r))
+        .filter((r) => r.semana === w && mesesNum.value.includes(r.mes) && passaFiltrosTabela(r))
         .reduce((total, r) => total + r.real, 0);
     }
     return m;
   }
   const idx = indexEmployees(employees.value);
-  const doMes = applySlice(barraGerencia.value, { week: true, mat: true });
-  const m: Record<number, number> = {};
-  for (const w of [1, 2, 3, 4]) {
-    const slice = doMes.filter((s) => semanaDaSub(s) === w);
-    const dia = faixaDaSemana(filters.ano, filters.mes, w).ini;
-    let roster = filterObserverRoster(employees.value, {
-      gerencia: filters.gerencia,
-      gerente: filters.gerente,
-      coordenador: filters.coordenador,
-      periodoInicio: `${filters.ano}-${String(filters.mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`,
-    });
-    if (viz.base) roster = roster.filter((e) => e.base === viz.base);
-    if (viz.processo) {
-      const presentes = new Set(
-        slice.map((sub) => normMatricula(matchSubmissionToEmployee(sub, idx)?.matricula ?? sub.matricula)),
-      );
-      roster = roster.filter((e) => presentes.has(normMatricula(e.matricula)));
+  const doPeriodo = applySlice(barraGerencia.value, { week: true, mat: true });
+  for (const mes of mesesNum.value) {
+    for (const w of [1, 2, 3, 4]) {
+      const slice = doPeriodo.filter((s) => semanaDaSub(s) === w && mesDaSub(s) === mes);
+      const dia = faixaDaSemana(filters.ano, mes, w).ini;
+      let roster = filterObserverRoster(employees.value, {
+        gerencia: filters.gerencia,
+        gerente: filters.gerente,
+        coordenador: filters.coordenador,
+        periodoInicio: `${filters.ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`,
+      });
+      if (viz.base) roster = roster.filter((e) => e.base === viz.base);
+      if (viz.processo) {
+        const presentes = new Set(
+          slice.map((sub) => normMatricula(matchSubmissionToEmployee(sub, idx)?.matricula ?? sub.matricula)),
+        );
+        roster = roster.filter((e) => presentes.has(normMatricula(e.matricula)));
+      }
+      const { counts, extras } = tallyObserverRecords(roster, employees.value, slice);
+      let total = 0;
+      for (const emp of extras.length ? [...roster, ...extras] : roster) {
+        const key = normMatricula(emp.matricula);
+        if (viz.matricula && key !== viz.matricula) continue;
+        const meta = goalForColaborador(emp.matricula, emp.gerencia, filters.ano, mes, w, emp.funcao).semanal;
+        total += Math.min(counts.get(key) ?? 0, meta);
+      }
+      m[w] = (m[w] ?? 0) + total;
     }
-    const { counts, extras } = tallyObserverRecords(roster, employees.value, slice);
-    let total = 0;
-    for (const emp of extras.length ? [...roster, ...extras] : roster) {
-      const key = normMatricula(emp.matricula);
-      if (viz.matricula && key !== viz.matricula) continue;
-      const meta = goalForColaborador(emp.matricula, emp.gerencia, filters.ano, filters.mes, w, emp.funcao).semanal;
-      total += Math.min(counts.get(key) ?? 0, meta);
-    }
-    m[w] = total;
   }
   return m;
 });
 
 /** Primeiro dia do período em análise (a semana escolhida ou o mês): quem saiu antes dele não entra na lista. */
 const inicioPeriodo = computed(() => {
-  const dia = filters.semana ? faixaDaSemana(filters.ano, filters.mes, filters.semana).ini : 1;
-  return `${filters.ano}-${String(filters.mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+  const mes = mesesNum.value[0]!;
+  const dia = faixaDaSemana(filters.ano, mes, semanasNum.value[0]!).ini;
+  return `${filters.ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
 });
 
 const observerRoster = computed(() =>
@@ -686,10 +704,10 @@ function semMetaSemRealizado(r: { meta: number; realizado: number }): boolean {
 }
 
 /** Observadores da semana pela tabela: quem estava na lista, com a meta e o realizado dela (mesmos números do BI). */
-function linhasDaTabela(semana: number) {
+function linhasDaTabela(semanasEsc: number[]) {
   const agr = new Map<string, { nome: string; funcao: string; gerente: string; realizado: number; meta: number; real: number }>();
   for (const r of tabelaAba.value) {
-    if (r.semana !== semana || !passaFiltrosTabela(r)) continue;
+    if (!semanasEsc.includes(r.semana) || !mesesNum.value.includes(r.mes) || !passaFiltrosTabela(r)) continue;
     const k = normMatricula(r.matricula) || foldName(r.nome);
     const a = agr.get(k) ?? { nome: r.nome, funcao: r.funcao ?? "", gerente: r.gerente ?? "", realizado: 0, meta: 0, real: 0 };
     a.realizado += r.realizado; a.meta += r.meta; a.real += r.real;
@@ -711,43 +729,54 @@ function linhasDaTabela(semana: number) {
 }
 
 const observerRows = computed(() => {
-  if (usaTabela.value) return linhasDaTabela(filters.semana);
-  let roster = observerRoster.value;
+  if (usaTabela.value) return linhasDaTabela(semanasNum.value);
   const idx = indexEmployees(employees.value);
-  const slice = subsWeekNoObs.value;
-  if (viz.base) {
-    roster = roster.filter((e) => e.base === viz.base);
-  }
-  if (viz.processo) {
-    const fromSlice = new Set<string>();
-    for (const s of slice) {
-      const emp = matchSubmissionToEmployee(s, idx);
-      fromSlice.add(normMatricula(emp?.matricula ?? s.matricula));
+  const doPeriodo = applySlice(barraGerencia.value, { week: true, mat: true });
+  // cada (mês, semana) escolhido entra com a sua meta e o seu realizado; quem fez mais que a meta conta só até a meta daquela semana
+  const total = new Map<string, { emp: typeof employees.value[number]; realizado: number; contado: number; meta: number }>();
+  for (const mes of mesesNum.value) {
+    for (const w of semanasNum.value) {
+      const slice = doPeriodo.filter((sub) => semanaDaSub(sub) === w && mesDaSub(sub) === mes);
+      const dia = faixaDaSemana(filters.ano, mes, w).ini;
+      let roster = filterObserverRoster(employees.value, {
+        gerencia: filters.gerencia,
+        gerente: filters.gerente,
+        coordenador: filters.coordenador,
+        periodoInicio: `${filters.ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`,
+      });
+      if (viz.base) roster = roster.filter((e) => e.base === viz.base);
+      if (viz.processo) {
+        const presentes = new Set<string>();
+        for (const sub of slice) presentes.add(normMatricula(matchSubmissionToEmployee(sub, idx)?.matricula ?? sub.matricula));
+        roster = roster.filter((e) => presentes.has(normMatricula(e.matricula)));
+      }
+      const { counts, extras } = tallyObserverRecords(roster, employees.value, slice);
+      for (const emp of extras.length ? [...roster, ...extras] : roster) {
+        const key = normMatricula(emp.matricula);
+        const g = goalForColaborador(emp.matricula, emp.gerencia, filters.ano, mes, w, emp.funcao);
+        const real = counts.get(key) ?? 0;
+        const a = total.get(key) ?? { emp, realizado: 0, contado: 0, meta: 0 };
+        a.realizado += real;
+        a.contado += Math.min(real, g.semanal);
+        a.meta += g.semanal;
+        total.set(key, a);
+      }
     }
-    roster = roster.filter((e) => fromSlice.has(normMatricula(e.matricula)));
   }
-  const { counts, extras } = tallyObserverRecords(roster, employees.value, slice);
-  const list = extras.length ? [...roster, ...extras] : roster;
+  const lista = [...total.entries()];
   const shorts = uniqueChartLabels(
-    list.map((e) => e.nome || e.nome_completo.split(/\s+/)[0] || e.matricula),
+    lista.map(([, a]) => a.emp.nome || a.emp.nome_completo.split(/\s+/)[0] || a.emp.matricula),
   );
-  return list.map((emp, i) => {
-    const g = goalForColaborador(
-      emp.matricula, emp.gerencia, filters.ano, filters.mes, filters.semana, emp.funcao,
-    );
-    const key = normMatricula(emp.matricula);
-    return {
-      matricula: key,
-      nome: emp.nome_completo || emp.nome,
-      short: shorts[i]!,
-      realizado: counts.get(key) ?? 0,
-      // Só conta até a meta: quem fez 5 com meta 2 aparece com 2
-      contado: Math.min(counts.get(key) ?? 0, g.semanal),
-      meta: g.semanal,
-      funcao: emp.funcao || "—",
-      coordenador: emp.coordenador?.trim() || "",
-    };
-  }).filter(semMetaSemRealizado);
+  return lista.map(([key, a], i) => ({
+    matricula: key,
+    nome: a.emp.nome_completo || a.emp.nome,
+    short: shorts[i]!,
+    realizado: a.realizado,
+    contado: a.contado,
+    meta: a.meta,
+    funcao: a.emp.funcao || "—",
+    coordenador: a.emp.coordenador?.trim() || "",
+  })).filter(semMetaSemRealizado);
 });
 
 // Ordenação do gráfico "Observações Realizadas na Semana" (null = ordem do cadastro)
@@ -780,8 +809,8 @@ function limparImagens() {
 }
 
 function periodoTexto() {
-  const mes = meses.find((m) => m.value === filters.mes)?.label ?? "";
-  return `${filters.semana}ª semana · ${mes}/${filters.ano}`;
+  const semanasTxt = semanasNum.value.map((n) => `${n}ª`).join(", ");
+  return `${semanasTxt} ${semanasNum.value.length > 1 ? "semanas" : "semana"} · ${mesLabel.value}/${filters.ano}`;
 }
 
 function filtrosTexto() {
@@ -803,8 +832,8 @@ async function gerarImagens() {
   try {
     const filtros = filtrosTexto();
     const base = { titulo: "Observações da Semana", periodo: periodoTexto(), ordem: ordemImg.value };
-    const mes = String(filters.mes).padStart(2, "0");
-    const prefixo = `observacoes-${filters.ano}-${mes}-sem${filters.semana}`;
+    const mes = mesesNum.value.map((m) => String(m).padStart(2, "0")).join("-");
+    const prefixo = `observacoes-${filters.ano}-${mes}-sem${semanasNum.value.join("-")}`;
     const chipCoord = (c: string) => (filtros.includes(`Coord. ${c}`) ? filtros : [...filtros, `Coord. ${c}`]);
     const nova: { blob: Blob; nome: string }[] = [];
     const empilhar = (blobs: Blob[], sufixo: string) =>
@@ -1254,7 +1283,7 @@ const lineWeekly = computed(() => {
       type: "line" as const,
       data: weekData.map((v, i) => ({
         value: v,
-        itemStyle: { opacity: filters.semana === i + 1 ? 1 : 0.35 },
+        itemStyle: { opacity: semanasNum.value.includes(i + 1) ? 1 : 0.35 },
       })),
       smooth: 0.3,
       symbol: "circle",
@@ -1389,7 +1418,7 @@ const donutWeekly = computed(() => {
     name: `${s}ª Semana`,
     itemStyle: {
       color: semColors[i],
-      opacity: filters.semana === s ? 1 : 0.35,
+      opacity: semanasNum.value.includes(s) ? 1 : 0.35,
     },
   }));
   const donutTotal = donutData.reduce((sum, d) => sum + d.value, 0);
