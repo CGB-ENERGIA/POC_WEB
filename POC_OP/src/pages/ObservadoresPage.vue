@@ -276,8 +276,21 @@
             <div class="col-6">
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pa-xs">
-                  <div class="chart-card-title">Obs 100% por Função</div>
-                  <div class="chart-caption">Clique para filtrar</div>
+                  <div class="chart-card-head">
+                    <div>
+                      <div class="chart-card-title">Obs 100% por Função</div>
+                      <div class="chart-caption">Clique para filtrar · amplie se os rótulos apertarem</div>
+                    </div>
+                    <q-btn
+                      flat dense round size="sm"
+                      icon="mdi-arrow-expand"
+                      color="primary"
+                      aria-label="Ampliar gráfico"
+                      @click.stop="abrirDonutExpand('funcao')"
+                    >
+                      <q-tooltip>Ampliar</q-tooltip>
+                    </q-btn>
+                  </div>
                   <v-chart class="chart-hit" :option="chartFuncao" autoresize :style="{ height: alturaGraficos }" @click="onFuncaoClick" />
                 </q-card-section>
               </q-card>
@@ -286,8 +299,21 @@
             <div class="col-6">
               <q-card flat bordered class="chart-card">
                 <q-card-section class="q-pa-xs">
-                  <div class="chart-card-title">Obs 100% por Gerência</div>
-                  <div class="chart-caption">Clique para filtrar</div>
+                  <div class="chart-card-head">
+                    <div>
+                      <div class="chart-card-title">Obs 100% por Gerência</div>
+                      <div class="chart-caption">Clique para filtrar · amplie se os rótulos apertarem</div>
+                    </div>
+                    <q-btn
+                      flat dense round size="sm"
+                      icon="mdi-arrow-expand"
+                      color="primary"
+                      aria-label="Ampliar gráfico"
+                      @click.stop="abrirDonutExpand('gerencia')"
+                    >
+                      <q-tooltip>Ampliar</q-tooltip>
+                    </q-btn>
+                  </div>
                   <v-chart class="chart-hit" :option="chartGerencia" autoresize :style="{ height: alturaGraficos }" @click="onGerenciaClick" />
                 </q-card-section>
               </q-card>
@@ -318,6 +344,28 @@
 
       </div>
     </div>
+
+    <q-dialog v-model="donutExpandOpen" maximized>
+      <q-card class="donut-expand-card">
+        <q-card-section class="row items-center q-pb-none">
+          <div>
+            <div class="text-subtitle1 text-weight-bold q-mb-none">{{ donutExpandTitle }}</div>
+            <div class="text-caption text-grey-6">Clique numa fatia para filtrar · Esc ou ✕ para fechar</div>
+          </div>
+          <q-space />
+          <q-btn flat round dense icon="mdi-close" v-close-popup aria-label="Fechar" />
+        </q-card-section>
+        <q-card-section class="donut-expand-body">
+          <v-chart
+            class="chart-hit"
+            :option="donutExpandOption"
+            autoresize
+            style="height: min(78vh, 640px); width: 100%"
+            @click="onDonutExpandClick"
+          />
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -643,7 +691,76 @@ function pieData(entries: { name: string; value: number }[], selected: string | 
   }));
 }
 
-const chartFuncao = computed(() => {
+type DonutMode = "compact" | "expand";
+
+/** Compacto: só fatias grandes têm rótulo (evita atropelo). Expandido: todos + legenda. */
+function buildDonutOption(
+  entries: { name: string; value: number }[],
+  selected: string | null,
+  mode: DonutMode,
+) {
+  const data = entries.length ? entries : [{ name: "Sem dados", value: 1 }];
+  const total = data.reduce((s, d) => s + d.value, 0) || 1;
+  const minPct = mode === "compact" ? 7 : 0;
+  const expanded = mode === "expand";
+
+  return {
+    tooltip: { ...tooltipSkin(), formatter: "{b}: {c} ({d}%)" },
+    legend: expanded
+      ? {
+          show: true,
+          type: "scroll" as const,
+          orient: "vertical" as const,
+          right: 12,
+          top: "middle",
+          height: "86%",
+          itemWidth: 10,
+          itemHeight: 10,
+          textStyle: { fontSize: 12, color: chartInk.axis },
+          pageIconColor: "#8B1C2B",
+          formatter: (name: string) => {
+            const item = data.find((d) => d.name === name);
+            if (!item) return name;
+            const pct = ((item.value / total) * 100).toFixed(1).replace(".", ",");
+            return `${name}  ${item.value.toLocaleString("pt-BR")} (${pct}%)`;
+          },
+        }
+      : { show: false },
+    color: donPalette,
+    series: [{
+      type: "pie" as const,
+      cursor: "pointer",
+      radius: expanded ? ["42%", "70%"] : ["48%", "76%"],
+      center: expanded ? ["36%", "50%"] : ["50%", "52%"],
+      avoidLabelOverlap: true,
+      minShowLabelAngle: expanded ? 2 : 10,
+      label: {
+        fontSize: expanded ? 12 : 9.5,
+        fontWeight: "bold" as const,
+        color: chartInk.axis,
+        formatter: (p: { name: string; value: number; percent: number }) =>
+          `${p.name}\n${p.value} (${p.percent.toFixed(1)}%)`,
+      },
+      labelLine: {
+        length: expanded ? 16 : 6,
+        length2: expanded ? 12 : 6,
+      },
+      labelLayout: { hideOverlap: true, moveOverlap: "shiftY" as const },
+      data: pieData(data, selected).map((e) => {
+        const pct = (e.value / total) * 100;
+        const showLabel = expanded || pct >= minPct;
+        return {
+          ...e,
+          label: { show: showLabel },
+          labelLine: { show: showLabel },
+        };
+      }),
+      itemStyle: { borderRadius: 3, borderColor: chartInk.halo, borderWidth: 1 },
+    }],
+  };
+}
+
+const dataFuncao = computed(() => {
   const idx = indexEmployees(employees.value);
   const ncIds = new Set(
     respsOf(subsNoFuncao.value).filter((r) => r.resposta === "nao_conforme").map((r) => r.submission_id),
@@ -655,32 +772,12 @@ const chartFuncao = computed(() => {
     if (fn === "—") continue;
     byFuncao[fn] = (byFuncao[fn] ?? 0) + 1;
   }
-  const data = Object.entries(byFuncao)
+  return Object.entries(byFuncao)
     .sort((a, b) => b[1] - a[1])
     .map(([name, value]) => ({ name, value }));
-  const selected = filters.funcao !== "Todos" ? filters.funcao : null;
-  return {
-    tooltip: { ...tooltipSkin(), formatter: "{b}: {c} ({d}%)" },
-    legend: { show: false },
-    color: donPalette,
-    series: [{
-      type: "pie" as const,
-      cursor: "pointer",
-      radius: ["48%", "76%"],
-      center: ["50%", "52%"],
-      label: {
-        fontSize: 9.5, fontWeight: "bold" as const, color: chartInk.axis,
-        formatter: (p: { name: string; value: number; percent: number }) =>
-          `${p.name}\n${p.value} (${p.percent.toFixed(1)}%)`,
-      },
-      labelLine: { length: 6, length2: 6 },
-      data: pieData(data.length ? data : [{ name: "Sem dados", value: 1 }], selected),
-      itemStyle: { borderRadius: 3, borderColor: chartInk.halo, borderWidth: 1 },
-    }],
-  };
 });
 
-const chartGerencia = computed(() => {
+const dataGerencia = computed(() => {
   const idx = indexEmployees(employees.value);
   const ncIds = new Set(
     respsOf(subsNoGerencia.value).filter((r) => r.resposta === "nao_conforme").map((r) => r.submission_id),
@@ -691,30 +788,59 @@ const chartGerencia = computed(() => {
     const g = matchSubmissionToEmployee(s, idx)?.gerencia ?? s.auditagem ?? "—";
     map[g] = (map[g] ?? 0) + 1;
   }
-  const data = Object.entries(map)
+  return Object.entries(map)
     .sort((a, b) => b[1] - a[1])
     .map(([name, value]) => ({ name, value }));
-  const selected = filters.gerencia !== "Todos" ? filters.gerencia : null;
-  return {
-    tooltip: { ...tooltipSkin(), formatter: "{b}: {c} ({d}%)" },
-    legend: { show: false },
-    color: donPalette,
-    series: [{
-      type: "pie" as const,
-      cursor: "pointer",
-      radius: ["48%", "76%"],
-      center: ["50%", "52%"],
-      label: {
-        fontSize: 9.5, fontWeight: "bold" as const, color: chartInk.axis,
-        formatter: (p: { name: string; value: number; percent: number }) =>
-          `${p.name}\n${p.value} (${p.percent.toFixed(1)}%)`,
-      },
-      labelLine: { length: 6, length2: 6 },
-      data: pieData(data.length ? data : [{ name: "Sem dados", value: 1 }], selected),
-      itemStyle: { borderRadius: 3, borderColor: chartInk.halo, borderWidth: 1 },
-    }],
-  };
 });
+
+const chartFuncao = computed(() =>
+  buildDonutOption(
+    dataFuncao.value,
+    filters.funcao !== "Todos" ? filters.funcao : null,
+    "compact",
+  ),
+);
+
+const chartGerencia = computed(() =>
+  buildDonutOption(
+    dataGerencia.value,
+    filters.gerencia !== "Todos" ? filters.gerencia : null,
+    "compact",
+  ),
+);
+
+type DonutKind = "funcao" | "gerencia";
+const donutExpandOpen = ref(false);
+const donutExpandKind = ref<DonutKind>("funcao");
+
+const donutExpandTitle = computed(() =>
+  donutExpandKind.value === "funcao" ? "Obs 100% por Função" : "Obs 100% por Gerência",
+);
+
+const donutExpandOption = computed(() => {
+  if (donutExpandKind.value === "funcao") {
+    return buildDonutOption(
+      dataFuncao.value,
+      filters.funcao !== "Todos" ? filters.funcao : null,
+      "expand",
+    );
+  }
+  return buildDonutOption(
+    dataGerencia.value,
+    filters.gerencia !== "Todos" ? filters.gerencia : null,
+    "expand",
+  );
+});
+
+function abrirDonutExpand(kind: DonutKind) {
+  donutExpandKind.value = kind;
+  donutExpandOpen.value = true;
+}
+
+function onDonutExpandClick(p: EcClick) {
+  if (donutExpandKind.value === "funcao") onFuncaoClick(p);
+  else onGerenciaClick(p);
+}
 
 const chartEquipes = computed(() => {
   const counts: Record<string, number> = {};
@@ -925,6 +1051,15 @@ $inactive-text:#475569;
 }
 .chart-hit { cursor: pointer; }
 .chart-caption { font-size: 10px; color: $label-color; text-align: center; margin: 0 0 2px; }
+.chart-card-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 4px;
+  .chart-caption { text-align: left; }
+}
+.donut-expand-card {
+  background: #fff;
+  display: flex; flex-direction: column;
+}
+.donut-expand-body { flex: 1; min-height: 0; padding-top: 8px; }
 
 // ── KPI cards (compactos) ─────────────────────────────────────────────────────
 .kpi-card {
@@ -1044,6 +1179,7 @@ $inactive-text:#475569;
   .filter-clear { border-color: #334155; color: #64748b; }
   .chart-caption { color: #64748b; }
   .obs-table tbody tr.obs-row--on td { background: rgba($brand,.28); }
+  .donut-expand-card { background: #0f172a; color: #e2e8f0; }
 }
 .chip-bar-enter-active { transition: opacity .22s cubic-bezier(0.16, 1, 0.3, 1), transform .22s cubic-bezier(0.16, 1, 0.3, 1); }
 .chip-bar-leave-active { transition: opacity .16s ease, transform .16s ease; }

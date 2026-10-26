@@ -1263,10 +1263,37 @@ const barObservadores = computed(() => {
   };
 });
 
+/**
+ * Posição do número na Evolução Semanal: vale → abaixo (a curva suave sobe e cortaria o topo);
+ * rampa → desloca para o lado oposto à diagonal da linha.
+ */
+function rotuloLinhaSemana(data: number[], i: number): {
+  position: "top" | "bottom";
+  distance: number;
+  offset: [number, number];
+} {
+  const v = data[i] ?? 0;
+  const prev = data[i - 1] ?? v;
+  const next = data[i + 1] ?? v;
+  const isValley = v < prev && v < next;
+  const rising = prev < v;
+  const falling = prev > v;
+
+  if (isValley) {
+    return { position: "bottom", distance: 16, offset: [0, 0] };
+  }
+  // Em subida a linha vem da esquerda/baixo → empurra o número para a direita;
+  // em descida, para a esquerda — evita o traço atravessar o dígito.
+  if (rising && !falling) return { position: "top", distance: 18, offset: [12, -2] };
+  if (falling) return { position: "top", distance: 18, offset: [-12, -2] };
+  return { position: "top", distance: 18, offset: [0, 0] };
+}
+
 // ─── Evolução Semanal ────────────────────────────────────────────────────────
 const lineWeekly = computed(() => {
   const weekData = [1, 2, 3, 4].map(s => bySemana.value[s] ?? 0);
   const weekAvg = Math.round(weekData.reduce((a, b) => a + b, 0) / Math.max(weekData.filter(Boolean).length, 1));
+  const temVale = weekData.some((_, i) => rotuloLinhaSemana(weekData, i).position === "bottom");
   return {
     tooltip: {
       ...tooltipSkin("axis"),
@@ -1280,15 +1307,23 @@ const lineWeekly = computed(() => {
         ], "Clique para abrir esta semana");
       },
     },
-    grid: { left: 12, right: 20, top: 44, bottom: 32 },
+    grid: { left: 12, right: 28, top: 52, bottom: temVale ? 44 : 32 },
     xAxis: { ...cleanXAxis(["1ª Semana","2ª Semana","3ª Semana","4ª Semana"]), axisLine: { show: false } },
     yAxis: { ...silentYAxis, min: 0 },
     series: [{
       type: "line" as const,
-      data: weekData.map((v, i) => ({
-        value: v,
-        itemStyle: { opacity: semanasNum.value.includes(i + 1) ? 1 : 0.35 },
-      })),
+      data: weekData.map((v, i) => {
+        const rotulo = rotuloLinhaSemana(weekData, i);
+        return {
+          value: v,
+          itemStyle: { opacity: semanasNum.value.includes(i + 1) ? 1 : 0.35 },
+          label: {
+            position: rotulo.position,
+            distance: rotulo.distance,
+            offset: rotulo.offset,
+          },
+        };
+      }),
       smooth: 0.3,
       symbol: "circle",
       symbolSize: 14,
@@ -1297,11 +1332,14 @@ const lineWeekly = computed(() => {
       itemStyle: { color: C.p, borderColor: "#fff", borderWidth: 3, shadowColor: "rgba(139,28,43,.45)", shadowBlur: 10 },
       areaStyle: { color: grad(C.p + "50", C.p + "06") },
       label: {
-        opacity: 1, // o número não esmaece com a barra (ficaria cinza no fundo branco)
-        show: true, position: "top" as const,
-        fontSize: 13, fontWeight: "bold" as const,
-        color: C.p, distance: 12,
-        formatter: (p: { value: number }) => String(p.value)
+        opacity: 1,
+        show: true,
+        fontSize: 13,
+        fontWeight: "bold" as const,
+        color: C.p,
+        textBorderColor: chartInk.halo,
+        textBorderWidth: 3,
+        formatter: (p: { value: number }) => String(p.value),
       },
       markLine: {
         silent: true,
