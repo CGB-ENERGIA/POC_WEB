@@ -112,13 +112,22 @@ export function chaveEquipe(equipe: string | null | undefined): string {
   return ((equipe ?? "").split(/\s+[–-]\s+/)[0] ?? "").trim().toUpperCase();
 }
 
+// Chamada milhares de vezes por filtro (cada checklist x cada coordenador): guarda o resultado dos nomes já vistos.
+const foldCache = new Map<string, string>();
+
 export function foldName(s: string | undefined | null): string {
-  return (s ?? "")
+  const bruto = s ?? "";
+  const guardado = foldCache.get(bruto);
+  if (guardado !== undefined) return guardado;
+  const r = bruto
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
+  if (foldCache.size > 20000) foldCache.clear();
+  foldCache.set(bruto, r);
+  return r;
 }
 
 export interface ObserverIndex {
@@ -493,26 +502,61 @@ export interface NcPorMesOpts {
   filtro?: ((s: { id: string; data: string; auditagem: string; equipe: string; base: string }) => boolean) | undefined;
 }
 
+type SubLight = Pick<SubmissionRow, "id" | "data" | "auditagem" | "matricula" | "observador" | "equipe" | "base">;
+
+/**
+ * Checklists do ano (versão leve) e quantas não conformidades cada um tem. É a parte pesada do gráfico de tendência (milhares de
+ * checklists e centenas de requisições); guardada por alguns minutos para que trocar filtro (gerência, base, coordenador...) seja
+ * só filtrar em memória, sem ir ao banco de novo.
+ */
+const CACHE_NC_ANO_MS = 5 * 60 * 1000;
+const cacheNcAno = new Map<string, { quando: number; dados: Promise<{ subs: SubLight[]; ncPorSub: Map<string, number> }> }>();
+
+function baseNcDoAno(ano: number, contarMeta: boolean, base?: string) {
+  const chave = `${ano}|${contarMeta ? 1 : 0}|${base ?? ""}`;
+  const guardado = cacheNcAno.get(chave);
+  if (guardado && Date.now() - guardado.quando < CACHE_NC_ANO_MS) return guardado.dados;
+
+  const dados = (async () => {
+    const start = new Date(ano, 0, 1).toISOString();
+    const end = new Date(ano + 1, 0, 1).toISOString();
+    const subs = await allPages<SubLight>(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let q: any = supabase.from("checklist_submissions")
+        .select("id,data,auditagem,matricula,observador,equipe,base")
+        .gte("data", start).lt("data", end);
+      q = contarMeta ? q.in("status", ["aprovado", "pendente"]) : q.eq("status", "aprovado");
+      if (base && base !== "Todos") q = q.eq("base", base);
+      return q;
+    });
+    const ncPorSub = new Map<string, number>();
+    if (subs.length) {
+      const lotes = await mapLimit(chunked(subs.map((x) => x.id), 300), 3, (chunk) =>
+        allPages<{ submission_id: string }>(
+          () => supabase.from("checklist_responses").select("submission_id")
+            .eq("resposta", "nao_conforme").in("submission_id", chunk),
+          ORD_RESP,
+        ),
+      );
+      for (const r of lotes.flat()) ncPorSub.set(r.submission_id, (ncPorSub.get(r.submission_id) ?? 0) + 1);
+    }
+    return { subs, ncPorSub };
+  })();
+  cacheNcAno.set(chave, { quando: Date.now(), dados });
+  dados.catch(() => { cacheNcAno.delete(chave); }); // falha não fica guardada
+  return dados;
+}
+
 /** Contagem de não conformidades por mês, ao longo de um ano inteiro (para gráfico de tendência). */
 export async function fetchNaoConformesPorMes(
   ano: number,
   base?: string,
   opts?: NcPorMesOpts,
 ): Promise<Record<number, number>> {
-  const start = new Date(ano, 0, 1).toISOString();
-  const end = new Date(ano + 1, 0, 1).toISOString();
   const { contarMeta, allowedAuditagens, employees = [], gerencia, gerente, coordenador, filtro } = opts ?? {};
 
-  type SubLight = Pick<SubmissionRow, "id" | "data" | "auditagem" | "matricula" | "observador" | "equipe" | "base">;
-  let subs = await allPages<SubLight>(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let q: any = supabase.from("checklist_submissions")
-      .select("id,data,auditagem,matricula,observador,equipe,base")
-      .gte("data", start).lt("data", end);
-    q = contarMeta ? q.in("status", ["aprovado", "pendente"]) : q.eq("status", "aprovado");
-    if (base && base !== "Todos") q = q.eq("base", base);
-    return q;
-  });
+  const { subs: todas, ncPorSub } = await baseNcDoAno(ano, !!contarMeta, base);
+  let subs = todas;
   if (!subs.length) return {};
 
   if (allowedAuditagens?.length) {
@@ -530,26 +574,14 @@ export async function fetchNaoConformesPorMes(
     }
   }
   if (filtro) subs = subs.filter((s) => filtro(s as never));
-  if (!subs.length) return {};
 
-  const mesPorSubmissao = new Map<string, number>();
-  for (const s of subs) {
-    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s.data);
-    mesPorSubmissao.set(s.id, m ? Number(m[2]) : new Date(s.data).getMonth() + 1);
-  }
-
-  const ids = subs.map((s) => s.id);
   const map: Record<number, number> = {};
-  const lotes = await mapLimit(chunked(ids, 300), 3, (chunk) =>
-    allPages<{ submission_id: string }>(
-      () => supabase.from("checklist_responses").select("submission_id")
-        .eq("resposta", "nao_conforme").in("submission_id", chunk),
-      ORD_RESP,
-    ),
-  );
-  for (const r of lotes.flat()) {
-    const mes = mesPorSubmissao.get(r.submission_id);
-    if (mes) map[mes] = (map[mes] ?? 0) + 1;
+  for (const s of subs) {
+    const nc = ncPorSub.get(s.id);
+    if (!nc) continue;
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s.data);
+    const mes = m ? Number(m[2]) : new Date(s.data).getMonth() + 1;
+    map[mes] = (map[mes] ?? 0) + nc;
   }
   return map;
 }
