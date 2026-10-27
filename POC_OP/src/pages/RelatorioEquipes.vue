@@ -883,10 +883,24 @@ function equipeExistiaNoPeriodo(prefixo: string): boolean {
   return !criada || criada <= fimDoPeriodo.value;
 }
 
+/** Gerências cujas equipes são do POC Administrativo; as demais (GOMAN, GSTC, GERE, SPOT...) são Operacionais. */
+const GERENCIAS_ADMINISTRATIVAS = new Set(["ADM", "LOGISTICA", "OFICINA", "ALOJAMENTO"]);
+
+/** O tipo de POC escolhido (Administrativo e/ou Operacional) permite esta equipe do cadastro? Sem escolha, todas. */
+function tipoPermiteEquipe(prefixo: string): boolean {
+  const escolhidos = valores(filters.tipoPoc).filter((t) => t !== "Alojamento");
+  if (!escolhidos.length) return true;
+  const gerencia = (equipesHier.value.get(prefixo)?.gerencia ?? "").toUpperCase();
+  if (!gerencia) return true; // sem cadastro não dá para saber: mantém
+  const tipo = GERENCIAS_ADMINISTRATIVAS.has(gerencia) ? "Administrativo" : "Operacional";
+  return escolhidos.includes(tipo);
+}
+
 const rosterListado = computed(() => {
   const aloj = modoAloj.value ? alojamentosDaBase().filter((p) => equipeNaHierarquia(p)) : [];
   const oper = modoOper.value
     ? rosterOperacional.value
+      .filter(tipoPermiteEquipe)
       .filter(equipeExistiaNoPeriodo)
       .filter((p) => casa(filters.base, baseDaEquipe(p)))
       .filter((p) => equipeNaHierarquia(p))
