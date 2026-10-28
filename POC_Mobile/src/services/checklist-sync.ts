@@ -41,15 +41,17 @@ async function uploadFotosRascunho(id: string, matricula: string, fotosLocal: st
 
 /** Salva o rascunho em_andamento no user_observations para sobreviver a limpeza de localStorage.
  *  Fotos de evidência são upadas para Storage e as URLs salvas no rascunho. */
-export async function syncEmAndamentoToRemote(entry: ObservacaoChecklist): Promise<void> {
-  if (!isSupabaseSyncEnabled() || !navigator.onLine) return;
+export async function syncEmAndamentoToRemote(entry: ObservacaoChecklist): Promise<boolean> {
+  if (!isSupabaseSyncEnabled() || !navigator.onLine) return false;
   const supabase = getSupabase();
 
   const fotosUrls = await uploadFotosRascunho(entry.id, entry.matricula, entry.fotosLocal);
   const respostasSemFoto = entry.respostas.map(({ foto: _f, ...r }) => r);
+  // foto que não subiu (sinal ruim) volta vazia: o rascunho fica "pendente" e tenta de novo depois
+  const fotosCompletas = entry.fotosLocal.every((f, i) => !f || !!fotosUrls[i]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await supabase.from("user_observations").upsert({
+  const { error } = await supabase.from("user_observations").upsert({
     id: entry.id,
     matricula: entry.matricula,
     observador: entry.observador,
@@ -67,6 +69,8 @@ export async function syncEmAndamentoToRemote(entry: ObservacaoChecklist): Promi
     sync_status: "em_andamento",
     status: "pendente",
   } as any, { onConflict: "id" });
+  if (error) return false;
+  return fotosCompletas;
 }
 
 /** Remove o rascunho do remote. As fotos no Storage são mantidas: o checklist

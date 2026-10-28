@@ -37,4 +37,6 @@ export interface ObservacaoChecklist {
   analiseMotivo?: string | null;
   analisadoPor?: string | null;
   status?: "finalizado" | "em_andamento";
+  /** Rascunho: a cópia no servidor está em dia ("ok") ou ainda precisa ser enviada ("pendente", ex.: salvo offline). */
+  rascunhoRemoto?: "ok" | "pendente" | undefined;
 }

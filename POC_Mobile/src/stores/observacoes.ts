@@ -312,12 +312,6 @@ export const useObservacoesStore = defineStore("observacoes", {
         storageMode = "local";
       }
       this.hydrated = true;
-      const matriculas = new Set(
-        this.items
-          .filter((o): o is ObservacaoChecklist => isChecklist(o) && o.status === "em_andamento")
-          .map((o) => o.matricula)
-      );
-      for (const matricula of matriculas) this.dedupeEmAndamento(matricula);
     },
 
     persist() {
@@ -417,12 +411,12 @@ export const useObservacoesStore = defineStore("observacoes", {
             ...(resumoRaw?.dataFoto ? { dataFoto: resumoRaw.dataFoto } : {}),
           },
           status: "em_andamento",
+          rascunhoRemoto: "ok",
         };
         this.items.push(restorado);
         persistNeeded = true;
       }
       if (persistNeeded) this.persist();
-      this.dedupeEmAndamento(matricula);
 
       // Itens finalizados (excluindo rascunhos)
       const finalizados = data.filter(
@@ -610,6 +604,30 @@ export const useObservacoesStore = defineStore("observacoes", {
       if (!this.hydrated || !navigator.onLine) return;
       await this.reconcileOnce();
       await this.syncQueue(opts);
+      await this.syncRascunhosPendentes();
+    },
+
+    /** Envia ao servidor um rascunho e marca se a cópia remota ficou em dia. */
+    async enviarRascunho(id: string): Promise<boolean> {
+      const item = this.items.find((o) => o.id === id);
+      if (!item || !isChecklist(item) || item.status !== "em_andamento") return false;
+      const ok = await syncEmAndamentoToRemote(item).catch(() => false);
+      // o rascunho pode ter sido finalizado ou apagado enquanto o envio rodava
+      const atual = this.items.find((o) => o.id === id);
+      if (atual && isChecklist(atual) && atual.status === "em_andamento") {
+        atual.rascunhoRemoto = ok ? "ok" : "pendente";
+        this.persist();
+      }
+      return ok;
+    },
+
+    /** Rascunhos salvos offline (ou cujo envio falhou) sobem para o servidor assim que houver internet. */
+    async syncRascunhosPendentes() {
+      if (!navigator.onLine) return;
+      const pendentes = this.items.filter(
+        (o): o is ObservacaoChecklist => isChecklist(o) && o.status === "em_andamento" && o.rascunhoRemoto !== "ok",
+      );
+      for (const rascunho of pendentes) await this.enviarRascunho(rascunho.id);
     },
 
     addChecklist(payload: {
@@ -662,10 +680,12 @@ export const useObservacoesStore = defineStore("observacoes", {
         if (emAndamento) {
           delete existing.syncStatus;
           delete existing.syncError;
-          void syncEmAndamentoToRemote(existing).catch(() => {});
+          existing.rascunhoRemoto = "pendente";
+          void this.enviarRascunho(existing.id);
           return existing;
         }
-        this.removeOutrosRascunhos(existing.matricula, existing.auditagem, existing.id);
+        // Enviar um checklist não mexe nos outros rascunhos: cada um é de uma equipe e só some quando for concluído ou descartado.
+        delete existing.rascunhoRemoto;
         this.kickItemSync(existing, payload.employee, payload.matricula);
         return existing;
       }
@@ -679,11 +699,12 @@ export const useObservacoesStore = defineStore("observacoes", {
       this.persist();
 
       if (emAndamento) {
-        void syncEmAndamentoToRemote(entry).catch(() => {});
+        entry.rascunhoRemoto = "pendente";
+        this.persist();
+        void this.enviarRascunho(entry.id);
         return entry;
       }
 
-      this.removeOutrosRascunhos(entry.matricula, entry.auditagem, entry.id);
       this.kickItemSync(entry, payload.employee, payload.matricula);
       return entry;
     },
@@ -719,9 +740,8 @@ export const useObservacoesStore = defineStore("observacoes", {
       dataFoto?: string;
       employee: Employee;
     }): ObservacaoChecklist {
-      const existing =
-        (payload.id ? this.items.find((o) => o.id === payload.id) : undefined) ??
-        this.findEmAndamento(payload.matricula, payload.auditagem);
+      // Cada rascunho é identificado pelo id (um por checklist iniciado); salvar um novo nunca substitui o de outra equipe.
+      const existing = payload.id ? this.items.find((o) => o.id === payload.id) : undefined;
 
       const saved = this.addChecklist({
         ...payload,
@@ -729,44 +749,7 @@ export const useObservacoesStore = defineStore("observacoes", {
         data: existing && isChecklist(existing) ? existing.data : new Date().toISOString(),
         status: "em_andamento",
       });
-      this.removeOutrosRascunhos(payload.matricula, payload.auditagem, saved.id);
       return saved;
-    },
-
-    removeOutrosRascunhos(matricula: string, auditagem: string, keepId: string) {
-      const extras = this.items.filter(
-        (o): o is ObservacaoChecklist =>
-          isChecklist(o) &&
-          o.status === "em_andamento" &&
-          o.matricula === matricula &&
-          o.auditagem === auditagem &&
-          o.id !== keepId
-      );
-      for (const extra of extras) this.remove(extra.id);
-    },
-
-    /** Mantém só o rascunho mais recente por auditagem (remove duplicatas locais e remotas). */
-    dedupeEmAndamento(matricula: string) {
-      const drafts = this.items.filter(
-        (o): o is ObservacaoChecklist =>
-          isChecklist(o) && o.status === "em_andamento" && o.matricula === matricula
-      );
-      const groups = new Map<string, ObservacaoChecklist[]>();
-      for (const d of drafts) {
-        const list = groups.get(d.auditagem) ?? [];
-        list.push(d);
-        groups.set(d.auditagem, list);
-      }
-      for (const list of groups.values()) {
-        if (list.length <= 1) continue;
-        list.sort((a, b) => {
-          const ra = a.respostas?.length ?? 0;
-          const rb = b.respostas?.length ?? 0;
-          if (rb !== ra) return rb - ra;
-          return b.data.localeCompare(a.data);
-        });
-        for (const extra of list.slice(1)) this.remove(extra.id);
-      }
     },
 
     kickItemSync(entry: ObservacaoChecklist, employee: Employee, matricula: string) {
