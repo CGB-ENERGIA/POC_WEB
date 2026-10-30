@@ -63,6 +63,27 @@ export function detectarQuedaDaCamera(): boolean {
   return true;
 }
 
+/**
+ * Celular ou tablet: o <input capture> abre direto a câmera. Em computador o navegador ignora o "capture" e abre o seletor
+ * de arquivos, por onde entraria qualquer foto da pasta (fraude), por isso o computador só usa a câmera dentro do app.
+ */
+export function aparelhoComCapture(): boolean {
+  if (typeof navigator === "undefined") return true;
+  const ua = navigator.userAgent;
+  const movel = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  let toque = false;
+  try { toque = window.matchMedia("(pointer: coarse)").matches; } catch { /* sem matchMedia */ }
+  return movel || toque;
+}
+
+/** Usa a câmera dentro do app: escolha do aparelho (queda do navegador) ou obrigatória no computador. */
+export function usarCameraInterna(): boolean {
+  return cameraNoAppDisponivel() && (cameraNoApp.value || !aparelhoComCapture());
+}
+
+export const MSG_SEM_CAMERA_COMPUTADOR =
+  "Este computador não tem câmera disponível para o app. As fotos do checklist precisam ser tiradas na hora: use o celular.";
+
 /** O navegador permite a câmera dentro do app (exige HTTPS e getUserMedia). */
 export function cameraNoAppDisponivel(): boolean {
   return typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia;

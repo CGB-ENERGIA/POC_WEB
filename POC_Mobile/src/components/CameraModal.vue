@@ -54,7 +54,7 @@
 import { ref, watch, nextTick } from "vue";
 import CameraInterna from "@/components/CameraInterna.vue";
 import { abrirCameraNativa, redimensionarParaBlob } from "@/utils/native-camera";
-import { cameraNoApp, cameraNoAppDisponivel, cameraNativaRetornou } from "@/utils/camera-mode";
+import { cameraNoApp, usarCameraInterna, aparelhoComCapture, cameraNativaRetornou, MSG_SEM_CAMERA_COMPUTADOR } from "@/utils/camera-mode";
 
 /**
  * Abre a câmera nativa do celular (zoom, foco, flash, rotação e selfie do próprio
@@ -77,8 +77,13 @@ const internaAberta = ref(false);
 
 function abrir() {
   erro.value = "";
-  if (cameraNoApp.value && cameraNoAppDisponivel()) {
+  if (usarCameraInterna()) {
     internaAberta.value = true;
+    return;
+  }
+  // Computador sem câmera: nada de seletor de arquivos (qualquer foto da pasta passaria).
+  if (!aparelhoComCapture()) {
+    erro.value = MSG_SEM_CAMERA_COMPUTADOR;
     return;
   }
   abrirCameraNativa(inputEl.value);
@@ -86,7 +91,7 @@ function abrir() {
 
 watch(internaAberta, (aberta) => {
   // Fechou a câmera interna sem trocar para a nativa: encerra a sessão de fotos.
-  if (!aberta && cameraNoApp.value) isOpen.value = false;
+  if (!aberta && (cameraNoApp.value || !aparelhoComCapture())) isOpen.value = false;
 });
 
 function onCapturaInterna(blob: Blob) {

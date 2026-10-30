@@ -198,7 +198,7 @@ import { equipesAtivas } from "@/data/equipes";
 import { todosAlojamentos } from "@/data/alojamentos";
 import { getTrustedTime, ServerTimeError } from "@/utils/server-time";
 import { abrirCameraNativa, processarFotoComCarimbo, FotoAntigaError } from "@/utils/native-camera";
-import { cameraNoApp, cameraNoAppDisponivel, cameraNativaRetornou } from "@/utils/camera-mode";
+import { usarCameraInterna, aparelhoComCapture, cameraNativaRetornou, MSG_SEM_CAMERA_COMPUTADOR } from "@/utils/camera-mode";
 import CameraInterna from "@/components/CameraInterna.vue";
 
 const props = defineProps<{
@@ -280,8 +280,13 @@ const internaAberta = ref(false);
 
 function abrirCamera() {
   erroMsg.value = null;
-  if (cameraNoApp.value && cameraNoAppDisponivel()) {
+  if (usarCameraInterna()) {
     internaAberta.value = true;
+    return;
+  }
+  // Computador sem câmera: nada de seletor de arquivos (qualquer foto da pasta passaria).
+  if (!aparelhoComCapture()) {
+    erroMsg.value = MSG_SEM_CAMERA_COMPUTADOR;
     return;
   }
   // O input só existe no passo 2; quando vem do botão do passo 1, espera o render.

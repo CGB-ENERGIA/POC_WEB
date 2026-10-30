@@ -44,7 +44,7 @@
         </div>
       </div>
 
-      <button class="ci-nativa" @click="trocarParaNativa">
+      <button v-if="aparelhoComCapture()" class="ci-nativa" @click="trocarParaNativa">
         Usar a câmera do celular
       </button>
     </div>
@@ -53,7 +53,7 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, onBeforeUnmount } from "vue";
-import { usarCameraNoApp } from "@/utils/camera-mode";
+import { usarCameraNoApp, aparelhoComCapture } from "@/utils/camera-mode";
 
 /**
  * Câmera dentro do app (getUserMedia). Usada nos aparelhos em que o Android encerra o
