@@ -259,6 +259,10 @@
                 no-data-label="Nenhuma ocorrência de tolerância zero no recorte"
                 class="oc-table"
               >
+                <template #body-cell-data="props">
+                  <q-td :props="props" :title="`Enviado em ${props.row.enviadoEm}`">{{ props.value }}</q-td>
+                </template>
+
                 <template #body-cell-inconformidade="props">
                   <q-td :props="props" class="oc-cell">
                     <div class="oc-inner">
@@ -319,10 +323,10 @@ import { TooltipComponent, GridComponent, DataZoomComponent } from "echarts/comp
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
-import { semanaDaSub, dataReferencia } from "@/lib/dashboard";
+import { semanaDaSub, dataDaFoto } from "@/lib/dashboard";
 import { useHierarquiaEquipe, chaveEquipe } from "@/composables/useHierarquiaEquipe";
 import { ocorrenciasTz, categoriasDasOcorrencias } from "@/lib/tolerancia-zero";
-import { diaLocalISO } from "@/lib/semanas";
+import { diaLocalISO, formatarDataHora } from "@/lib/semanas";
 
 use([CanvasRenderer, BarChart, TreemapChart, TooltipComponent, GridComponent, DataZoomComponent]);
 
@@ -564,11 +568,12 @@ const listaOcorrencias = computed(() => {
     .map((r, i) => {
       const sub = subPorId.value.get(r.submission_id);
       if (!sub) return null;
-      const data = dataReferencia(sub);
+      const data = dataDaFoto(sub);
       return {
         key: `${r.submission_id}_${r.pergunta_id}_${i}`,
         dataIso: data,
-        data: fmtData(data),
+        data: formatarDataHora(data),
+        enviadoEm: formatarDataHora(sub.data),
         observador: sub.observador,
         equipe: sub.equipe,
         gerencia: gerenciaDaSub(sub),
@@ -584,7 +589,7 @@ const listaOcorrencias = computed(() => {
 });
 
 const colunasOcorrencias = [
-  { name: "data",           label: "Data",             field: "data",       align: "left" as const, sortable: true, sort: (_a: string, _b: string, ra: { dataIso: string }, rb: { dataIso: string }) => ra.dataIso.localeCompare(rb.dataIso) },
+  { name: "data",           label: "Data da foto",     field: "data",       align: "left" as const, sortable: true, sort: (_a: string, _b: string, ra: { dataIso: string }, rb: { dataIso: string }) => ra.dataIso.localeCompare(rb.dataIso) },
   { name: "observador",     label: "Observador",       field: "observador", align: "left" as const, sortable: true },
   { name: "equipe",         label: "Equipe",           field: "equipe",     align: "left" as const, sortable: true },
   { name: "gerencia",       label: "Gerência",         field: "gerencia",   align: "left" as const, sortable: true },
@@ -733,7 +738,7 @@ const rankingNc = computed(() => {
     if (texto && !g.vistas.has(marca)) {
       g.vistas.add(marca);
       const sub = subPorId.value.get(r.submission_id);
-      g.obs.push({ equipe: sub?.equipe ?? "—", data: sub ? fmtData(dataReferencia(sub)) : "", texto });
+      g.obs.push({ equipe: sub?.equipe ?? "—", data: sub ? fmtData(dataDaFoto(sub)) : "", texto });
     }
     grupos.set(key, g);
   }

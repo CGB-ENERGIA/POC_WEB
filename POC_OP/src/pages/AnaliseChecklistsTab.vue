@@ -179,7 +179,12 @@
               {{ evidenciasDe(item) === 0 ? "Sem evidências" : `Evidências ${evidenciasDe(item)}/${exigidas(item)}` }}
             </span>
           </div>
-          <div class="analise-item__date">{{ fmtDate(dataEnvioReal(item)) }}</div>
+          <div class="analise-item__date">
+            {{ fmtDate(dataEnvioReal(item)) }}
+            <div v-if="fotoEmOutroDia(item)" class="analise-item__date-foto" :title="`Data da foto: define a semana do checklist`">
+              <q-icon name="mdi-camera-outline" size="11px" /> foto {{ formatarDataHora(dataDaFoto(item)) }}
+            </div>
+          </div>
         </div>
 
         <!-- Corpo -->
@@ -651,6 +656,7 @@ import {
   direcionarMesChecklist,
   reverterChecklistParaPendente,
   dataEnvioReal,
+  dataDaFoto,
   mesQueConta,
   semanaDaSub,
   dataReferencia,
@@ -661,7 +667,7 @@ import {
 } from "@/lib/dashboard";
 import { carregarColaboradores, sugerirColaboradores, type ColaboradorSugestao } from "@/lib/colaboradores-geral";
 import { useAuth } from "@/composables/useAuth";
-import { rotuloSemana, partesLocais, diaLocalISO } from "@/lib/semanas";
+import { rotuloSemana, partesLocais, diaLocalISO, formatarDataHora } from "@/lib/semanas";
 import AvisoCoordenadorDialog from "@/components/AvisoCoordenadorDialog.vue";
 import AvisosPendentesDialog from "@/components/AvisosPendentesDialog.vue";
 import {
@@ -1300,6 +1306,11 @@ function weekKey(iso: string): string {
   d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
   return d.toISOString().slice(0, 10);
 }
+/** A foto foi tirada num dia diferente do envio (é a data dela que define a semana). */
+function fotoEmOutroDia(item: ChecklistParaAnalise): boolean {
+  const foto = dataDaFoto(item);
+  return foto !== item.data && diaLocalISO(foto) !== diaLocalISO(dataEnvioReal(item));
+}
 function monthKey(iso: string): string { return diaLocalISO(iso).slice(0, 7); }
 
 const frequenciaMap = computed<Record<string, { semana: number; mes: number }>>(() => {
@@ -1443,7 +1454,8 @@ $inactive-text: #475569;
   &--none { background: rgba(220,38,38,.14); color: #dc2626; }
   &--part { background: rgba(217,119,6,.15); color: #d97706; }
 }
-.analise-item__date { font-size: 11px; color: var(--poc-muted); white-space: nowrap; }
+.analise-item__date { font-size: 11px; color: var(--poc-muted); white-space: nowrap; text-align: right; }
+.analise-item__date-foto { margin-top: 2px; font-weight: 700; color: #1d4ed8; }
 
 .analise-item__body { display: flex; flex-direction: column; gap: 10px; }
 .analise-item__enviado { font-size: 12px; color: #64748b; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }

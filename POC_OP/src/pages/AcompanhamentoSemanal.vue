@@ -369,6 +369,7 @@ import {
 import VChart from "vue-echarts";
 import { chartInk } from "@/lib/chart-ink";
 import { useChecklistData, fmtN } from "@/composables/useChecklistData";
+import { partesLocais } from "@/lib/semanas";
 import { filterByGerencia, filterByGerente, semanaDaSub, filterObserverRoster, uniqueChartLabels, tallyObserverRecords, normMatricula, indexEmployees, matchSubmissionToEmployee, filterByCoordenador, fetchMetasSemanais, foldName, dataReferencia, type MetaSemanalRow } from "@/lib/dashboard";
 import { semanaDeData, rotuloSemana, carregarSemanas, faixaDaSemana } from "@/lib/semanas";
 import { useGoals } from "@/composables/useGoals";
@@ -394,7 +395,7 @@ const semanasNum = computed(() => {
   return n.length ? n : [semanaDeData(now)];
 });
 /** Mês de um checklist (pela data de referência, a da foto quando houver). */
-const mesDaSub = (sub: { data: string; resumo?: { dataFoto?: string } | null }) => Number(dataReferencia(sub).slice(5, 7));
+const mesDaSub = (sub: { data: string; resumo?: { dataFoto?: string } | null }) => partesLocais(dataReferencia(sub)).mes;
 
 const semanas = computed(() =>
   [1, 2, 3, 4].map((v) => ({ value: v, label: rotuloSemana(filters.ano, mesesNum.value[0]!, v) })),

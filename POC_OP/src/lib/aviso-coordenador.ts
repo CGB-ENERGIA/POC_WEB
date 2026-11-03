@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import { allPages, dataReferencia, type ChecklistParaAnalise } from "@/lib/dashboard";
+import { allPages, dataDaFoto, type ChecklistParaAnalise } from "@/lib/dashboard";
 
 /**
  * Aviso ao coordenador quando um checklist é reprovado.
@@ -157,7 +157,7 @@ function observadorComMatricula(item: ChecklistParaAnalise): string {
 
 /** Data da inspeção (foto) quando difere do dia do envio: é ela que define a semana do checklist. */
 function inspecao(item: ChecklistParaAnalise): string | null {
-  const ref = dataReferencia(item);
+  const ref = dataDaFoto(item);
   return soData(ref) !== soData(item.data) ? soData(ref) : null;
 }
 
