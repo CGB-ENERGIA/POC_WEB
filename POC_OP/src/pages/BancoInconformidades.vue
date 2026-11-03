@@ -149,6 +149,10 @@
           <q-td :props="props" class="num-cell">{{ props.rowIndex + 1 }}</q-td>
         </template>
 
+        <template #body-cell-dataFoto="props">
+          <q-td :props="props" :title="`Enviado em ${props.row.enviadoEm}`">{{ props.value }}</q-td>
+        </template>
+
         <template #body-cell-inconformidade="props">
           <q-td :props="props" class="inconformidade-cell">
             <div class="nc-cell-inner">
@@ -204,7 +208,8 @@ import { valores, juntar, marcado, alternar, alternarMinimo, rotulo, semTodos, c
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { persistirFiltros } from "@/lib/filtros-persistentes";
 import { useChecklistData, type SubmissionRow, type ResponseRow, type EmployeeRow } from "@/composables/useChecklistData";
-import { semanaDaSub, uniqueHierarchyOpts, dataReferencia } from "@/lib/dashboard";
+import { semanaDaSub, uniqueHierarchyOpts, dataReferencia, dataDaFoto } from "@/lib/dashboard";
+import { partesLocais, formatarDataHora } from "@/lib/semanas";
 import { useHierarquiaEquipe } from "@/composables/useHierarquiaEquipe";
 import { rotuloSemana } from "@/lib/semanas";
 
@@ -319,6 +324,10 @@ interface NcRow {
   key: string;
   mes: string;
   data: string;
+  /** Data da foto (ou a do envio, sem foto registrada) e quando foi enviado, já formatadas. */
+  dataFoto: string;
+  dataFotoIso: string;
+  enviadoEm: string;
   semana: number;
   observador: string;
   equipe: string;
@@ -346,14 +355,16 @@ const todasNcs = computed<NcRow[]>(() => {
       const sub = subMap.value[r.submission_id];
       if (!sub) return null;
       const emp = empMap.value[sub.matricula];
-      const d   = new Date(sub.data);
       const atrib = r.atribuido_nome
         ? (r.atribuido_tipo === "equipe" ? `Equipe · ${r.atribuido_nome}` : r.atribuido_nome)
         : null;
       return {
         key:            `${r.submission_id}_${r.pergunta_id}`,
-        mes:            mesesAbrev[d.getMonth()] ?? "",
+        mes:            mesesAbrev[partesLocais(sub.data).mes - 1] ?? "",
         data:           dataReferencia(sub),
+        dataFoto:       formatarDataHora(dataDaFoto(sub)),
+        dataFotoIso:    dataDaFoto(sub),
+        enviadoEm:      formatarDataHora(sub.data),
         semana:         semanaDaSub(sub),
         observador:     sub.observador,
         equipe:         sub.equipe,
@@ -434,6 +445,8 @@ const equipesOpts = computed(() =>
 const colunas = [
   { name: "num",           label: "#",              field: "num",           align: "center" as const, sortable: false },
   { name: "mes",           label: "Mês",           field: "mes",           align: "center" as const, sortable: true  },
+  { name: "dataFoto",      label: "Data da foto",   field: "dataFoto",      align: "center" as const, sortable: true,
+    sort: (_a: string, _b: string, ra: { dataFotoIso: string }, rb: { dataFotoIso: string }) => ra.dataFotoIso.localeCompare(rb.dataFotoIso) },
   { name: "observador",    label: "Observador",     field: "observador",    align: "center" as const, sortable: true  },
   { name: "equipe",        label: "Equipe",         field: "equipe",        align: "center" as const, sortable: true  },
   { name: "gerencia",      label: "Gerência",       field: "gerencia",      align: "center" as const, sortable: true  },

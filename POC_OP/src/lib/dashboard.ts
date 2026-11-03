@@ -89,6 +89,12 @@ export function dataReferencia(sub: { data: string; resumo?: { dataFoto?: string
   return sub.data;
 }
 
+/** Data que as tabelas mostram: a da foto (quando o checklist a registrou e ela é anterior ao envio); senão a do envio. */
+export function dataDaFoto(sub: { data: string; resumo?: { dataFoto?: string } | null }): string {
+  const foto = sub.resumo?.dataFoto;
+  return foto && foto < sub.data ? foto : sub.data;
+}
+
 /**
  * Semana (1–4) do checklist. Vale primeiro a semana que o analista direcionou ao validar (resumo.semanaManual);
  * sem ela, a da data de referência (a da foto, quando houver).

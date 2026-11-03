@@ -62,6 +62,19 @@ export function diaLocalISO(data: string): string {
   return `${p.ano}-${String(p.mes).padStart(2, "0")}-${String(p.dia).padStart(2, "0")}`;
 }
 
+/** Data e hora no horário de Fortaleza ("30/10/2026 16:33"). Só dia ou meia-noite exata em UTC (importações) saem sem hora. */
+export function formatarDataHora(data: string): string {
+  const dt = new Date(data);
+  if (Number.isNaN(dt.getTime())) return data;
+  const p = partesLocais(data);
+  const dia = `${String(p.dia).padStart(2, "0")}/${String(p.mes).padStart(2, "0")}/${p.ano}`;
+  const semHora = /^\d{4}-\d{2}-\d{2}$/.test(data)
+    || (dt.getUTCHours() === 0 && dt.getUTCMinutes() === 0 && dt.getUTCSeconds() === 0 && dt.getUTCMilliseconds() === 0);
+  if (semHora) return dia;
+  const l = new Date(dt.getTime() - 3 * 3600_000);
+  return `${dia} ${String(l.getUTCHours()).padStart(2, "0")}:${String(l.getUTCMinutes()).padStart(2, "0")}`;
+}
+
 /** Semana de uma data ISO, pelo dia no horário de Fortaleza. */
 export function semanaDeIso(data: string): 1 | 2 | 3 | 4 {
   const p = partesLocais(data);

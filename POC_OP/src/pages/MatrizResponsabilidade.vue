@@ -576,7 +576,8 @@ import { valores, juntar, marcado, alternar, alternarMinimo, rotulo, semTodos, c
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { persistirFiltros } from "@/lib/filtros-persistentes";
 import { baixarCsv } from "@/lib/csv";
-import { partesLocais } from "@/lib/semanas";
+import { formatarDataHora as fmtData } from "@/lib/semanas";
+import { dataDaFoto } from "@/lib/dashboard";
 import { useChecklistData } from "@/composables/useChecklistData";
 import {
   fetchResolucoes, inserirResolucao, reabrirResolucao, filterByGerencia, filterByGerente, semanaDaSub,
@@ -689,24 +690,6 @@ const hasActiveFilters = computed(() =>
   || !!viz.cat
   || !!viz.status,
 );
-
-/** Data e hora no horário de Fortaleza (o banco guarda em UTC). Datas só com o dia e meia-noite exata (importações) saem sem hora. */
-function fmtData(data: string) {
-  const dt = new Date(data);
-  if (Number.isNaN(dt.getTime())) return data;
-  const p = partesLocais(data);
-  const dia = `${String(p.dia).padStart(2, "0")}/${String(p.mes).padStart(2, "0")}/${p.ano}`;
-  const semHora = /^\d{4}-\d{2}-\d{2}$/.test(data) || (dt.getUTCHours() === 0 && dt.getUTCMinutes() === 0 && dt.getUTCSeconds() === 0 && dt.getUTCMilliseconds() === 0);
-  if (semHora) return dia;
-  const l = new Date(dt.getTime() - 3 * 3600_000);
-  return `${dia} ${String(l.getUTCHours()).padStart(2, "0")}:${String(l.getUTCMinutes()).padStart(2, "0")}`;
-}
-
-/** Data que a tabela mostra: a da foto (quando o checklist a registrou e ela é anterior ao envio); senão a do envio. */
-function dataDaFoto(sub: { data: string; resumo?: { dataFoto?: string } | null }): string {
-  const foto = sub.resumo?.dataFoto;
-  return foto && foto < sub.data ? foto : sub.data;
-}
 
 // ─── Dados reais ──────────────────────────────────────────────────────────────
 const { loading, load, submissions, responses, employees, gerentesOpts, coordenadoresOpts } = useChecklistData();
