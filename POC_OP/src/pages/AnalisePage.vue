@@ -154,6 +154,14 @@
               <span v-if="item._sub?.observador"> · Observador: <strong>{{ item._sub.observador }}</strong></span>
             </div>
 
+            <!-- Quem analisou e quando -->
+            <div v-if="item.status !== 'pendente'" class="analise-item__enviado">
+              <q-icon :name="item.status === 'aprovado' ? 'mdi-check-decagram-outline' : 'mdi-close-octagon-outline'" size="14px" color="grey-5" class="q-mr-xs" />
+              {{ item.status === 'aprovado' ? 'Aprovado' : 'Reprovado' }} por
+              <strong>{{ item.analisado_por || 'não registrado' }}</strong>
+              <span v-if="item.data_analise"> em {{ fmtDate(item.data_analise) }}</span>
+            </div>
+
             <!-- Comentário da análise (se reprovado) -->
             <div v-if="item.comentario_analise" class="analise-item__comentario" :class="`analise-item__comentario--${item.status}`">
               <q-icon name="mdi-message-text-outline" size="14px" class="q-mr-xs" />
@@ -177,6 +185,13 @@
                 @click="abrirAcao(item)"
               />
             </template>
+            <q-btn
+              v-if="item.status !== 'pendente'"
+              flat icon="mdi-undo-variant" label="Voltar para pendente"
+              size="sm" color="grey-8" class="q-mr-sm"
+              :loading="loadingId === item.id"
+              @click="voltarParaPendente(item)"
+            />
             <q-btn
               flat icon="mdi-pencil-outline" label="Editar"
               size="sm" color="grey-7"
@@ -305,6 +320,7 @@ import {
   fetchAllByIds,
   fetchAnalisePendentes,
   atualizarStatusAnalise,
+  reverterResolucaoParaPendente,
   editarAnalise,
   deletarResolucao,
   type ResolucaoRow,
@@ -449,6 +465,29 @@ function catClass(cat?: string): string {
 
 // ── Aprovação direta (sem dialog) ─────────────────────────────────────────────
 const loadingId = ref<string | null>(null);
+
+/** Desfaz a aprovação (ou reprovação) feita por engano: volta a resolução para a fila de análise. */
+function voltarParaPendente(item: ItemAnalise) {
+  $q.dialog({
+    title: "Voltar para pendente?",
+    message: `Esta resolução ${item.status === "aprovado" ? "aprovada" : "reprovada"} volta para a fila de análise e some o registro de quem analisou.`,
+    cancel: { label: "Cancelar", flat: true },
+    ok: { label: "Voltar para pendente", color: "primary" },
+    persistent: true,
+  }).onOk(async () => {
+    loadingId.value = item.id;
+    try {
+      const updated = await reverterResolucaoParaPendente(item.id);
+      const idx = itens.value.findIndex((i) => i.id === updated.id);
+      if (idx >= 0) itens.value[idx] = { ...itens.value[idx], ...updated };
+      $q.notify({ type: "positive", message: "Resolução voltou para pendente.", position: "top", timeout: 3000 });
+    } catch (e) {
+      $q.notify({ type: "negative", message: `Erro: ${(e as Error).message}`, position: "top", timeout: 6000 });
+    } finally {
+      loadingId.value = null;
+    }
+  });
+}
 
 async function aprovarDireto(item: ItemAnalise) {
   loadingId.value = item.id;

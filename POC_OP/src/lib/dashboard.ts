@@ -954,6 +954,23 @@ export async function reabrirResolucao(
   return (data ?? { id, status: "pendente" as AnaliseStatus, resolvido_por: resolvidoPor, foto_r2_key: fotoR2Key }) as ResolucaoRow;
 }
 
+/** Desfaz uma aprovação ou reprovação: volta a resolução para pendente e apaga quem analisou, a data e o comentário. */
+export async function reverterResolucaoParaPendente(id: string): Promise<ResolucaoRow> {
+  const { error } = await supabase
+    .from("nc_resolucoes")
+    .update({ status: "pendente", analisado_por: null, comentario_analise: null, data_analise: null })
+    .eq("id", id);
+  if (error) throw error;
+
+  const { data, error: selErr } = await supabase
+    .from("nc_resolucoes")
+    .select(RESOLUCAO_FIELDS)
+    .eq("id", id)
+    .maybeSingle();
+  if (selErr) throw selErr;
+  return (data ?? { id, status: "pendente" as AnaliseStatus, analisado_por: null, comentario_analise: null, data_analise: null }) as ResolucaoRow;
+}
+
 export async function editarAnalise(
   id: string,
   updates: { resolvido_por?: string | undefined; comentario_analise?: string | undefined }
