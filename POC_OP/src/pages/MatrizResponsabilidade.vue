@@ -178,7 +178,29 @@
             <div class="col">
               <div class="matriz-card-title">Matriz de Responsabilidade</div>
             </div>
-            <div class="col-auto">
+            <div class="col-auto row items-center no-wrap q-gutter-sm">
+              <q-btn-dropdown
+                outline dense no-caps icon="mdi-file-delimited-outline" label="Exportar CSV"
+                color="grey-7" :disable="!filteredData.length"
+              >
+                <q-list dense style="min-width:290px">
+                  <q-item-label header>Exporta o que está na tabela agora (filtros e busca aplicados)</q-item-label>
+                  <q-item clickable v-close-popup @click="exportarCsv('tabela')">
+                    <q-item-section avatar style="min-width:32px"><q-icon name="mdi-table" size="18px" /></q-item-section>
+                    <q-item-section>
+                      Tabela
+                      <q-item-label caption>{{ filteredData.length }} checklist{{ filteredData.length !== 1 ? 's' : '' }}, uma linha por checklist</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="exportarCsv('detalhado')">
+                    <q-item-section avatar style="min-width:32px"><q-icon name="mdi-table-large" size="18px" /></q-item-section>
+                    <q-item-section>
+                      Detalhado
+                      <q-item-label caption>{{ totalNcFiltradas }} não conformidade{{ totalNcFiltradas !== 1 ? 's' : '' }}, uma linha por não conformidade</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-btn-dropdown>
               <q-input v-model="search" dense outlined placeholder="Buscar..."
                 class="search-input" style="min-width:220px">
                 <template #prepend>
@@ -553,6 +575,7 @@
 import { valores, juntar, marcado, alternar, alternarMinimo, rotulo, semTodos, casa, igualCI, ativo, type CliqueEv } from "@/lib/multi-filtro";
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { persistirFiltros } from "@/lib/filtros-persistentes";
+import { baixarCsv } from "@/lib/csv";
 import { useChecklistData } from "@/composables/useChecklistData";
 import {
   fetchResolucoes, inserirResolucao, reabrirResolucao, filterByGerencia, filterByGerente, semanaDaSub,
@@ -863,6 +886,48 @@ const filteredData = computed<SubRow[]>(() => {
   if (viz.status === "resolvido") return dadosSemStatus.value.filter((s) => s.totalNc - s.naoResolvidos > 0);
   return dadosSemStatus.value;
 });
+
+// ─── Exportar CSV ─────────────────────────────────────────────────────────────
+const totalNcFiltradas = computed(() => filteredData.value.reduce((soma, s) => soma + s.ncs.length, 0));
+
+function statusDaSub(sub: SubRow): string {
+  return sub.naoResolvidos > 0 ? `${sub.naoResolvidos} pendente${sub.naoResolvidos !== 1 ? "s" : ""}` : "Resolvido";
+}
+
+function statusDaNc(nc: NcRow): string {
+  const st = nc.resolucao?.status;
+  if (!st) return "Pendente (sem resolução enviada)";
+  return st === "aprovado" ? "Resolvido" : st === "reprovado" ? "Reprovado" : "Em análise";
+}
+
+/** Exporta as linhas que estão na tabela (com os filtros e a busca atuais), para abrir no Excel. */
+function exportarCsv(tipo: "tabela" | "detalhado") {
+  const hoje = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Fortaleza" });
+  if (tipo === "tabela") {
+    baixarCsv(
+      `matriz-responsabilidade_${hoje}.csv`,
+      ["Data", "Base", "Observador", "Coordenador", "Equipe", "Não Conformidades", "Pendentes", "Status"],
+      filteredData.value.map((sub) => [
+        sub.data, sub.base, sub.observador, sub.coordenador, sub.equipe, sub.totalNc, sub.naoResolvidos, statusDaSub(sub),
+      ]),
+    );
+  } else {
+    baixarCsv(
+      `matriz-responsabilidade-detalhada_${hoje}.csv`,
+      [
+        "Data", "Base", "Observador", "Coordenador", "Equipe", "Categoria", "Não conformidade", "Observação", "Responsável",
+        "Status", "Resolvido por", "Data da resolução", "Analisado por", "Comentário da análise",
+      ],
+      filteredData.value.flatMap((sub) =>
+        sub.ncs.map((nc) => [
+          sub.data, sub.base, sub.observador, sub.coordenador, sub.equipe, nc.categoria, nc.pergunta, nc.observacao ?? "",
+          nc.responsavel ?? "", statusDaNc(nc), nc.resolucao?.resolvidoPor ?? "", nc.resolucao?.dataResolucao ?? "",
+          nc.resolucao?.analisadoPor ?? "", nc.resolucao?.comentario ?? "",
+        ]),
+      ),
+    );
+  }
+}
 
 // ─── Histórico de resoluções ──────────────────────────────────────────────────
 const historicoResolvidos = computed(() => {
