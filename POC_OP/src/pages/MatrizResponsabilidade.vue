@@ -216,7 +216,7 @@
               <thead>
                 <tr>
                   <th class="col-toggle"></th>
-                  <th class="col-data">Data</th>
+                  <th class="col-data" title="Data da foto do checklist; sem foto registrada, a do envio">Data da foto</th>
                   <th class="col-base">Base</th>
                   <th class="col-obs">Observador</th>
                   <th class="col-coord">Coordenador</th>
@@ -239,7 +239,7 @@
                         size="18px" color="grey-6"
                       />
                     </td>
-                    <td class="col-data td-mono">{{ sub.data }}</td>
+                    <td class="col-data td-mono" :title="`Enviado em ${sub.enviadoEm}`">{{ sub.data }}</td>
                     <td class="col-base" @click.stop="toggleBase(sub.base)">
                       <span class="base-badge" :class="{ 'hit--on': marcado(selectedBase, sub.base) }">{{ sub.base }}</span>
                     </td>
@@ -393,7 +393,7 @@
         <q-card-section class="row items-center q-pb-none">
           <div class="col">
             <div class="text-subtitle1 text-weight-bold" style="color:#8B1C2B">Detalhe da Não Conformidade</div>
-            <div class="text-caption text-grey-6">{{ detalhe.sub.data }} · {{ detalhe.sub.base }} · {{ detalhe.sub.equipe }}</div>
+            <div class="text-caption text-grey-6">Foto: {{ detalhe.sub.data }} · enviado em {{ detalhe.sub.enviadoEm }} · {{ detalhe.sub.base }} · {{ detalhe.sub.equipe }}</div>
           </div>
           <q-btn flat round dense icon="mdi-close" v-close-popup />
         </q-card-section>
@@ -576,6 +576,7 @@ import { valores, juntar, marcado, alternar, alternarMinimo, rotulo, semTodos, c
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { persistirFiltros } from "@/lib/filtros-persistentes";
 import { baixarCsv } from "@/lib/csv";
+import { partesLocais } from "@/lib/semanas";
 import { useChecklistData } from "@/composables/useChecklistData";
 import {
   fetchResolucoes, inserirResolucao, reabrirResolucao, filterByGerencia, filterByGerente, semanaDaSub,
@@ -689,15 +690,22 @@ const hasActiveFilters = computed(() =>
   || !!viz.status,
 );
 
+/** Data e hora no horário de Fortaleza (o banco guarda em UTC). Datas só com o dia e meia-noite exata (importações) saem sem hora. */
 function fmtData(data: string) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/.exec(data);
-  if (m) {
-    const d = `${m[3]}/${m[2]}/${m[1]}`;
-    return m[4] ? `${d} ${m[4]}:${m[5]}` : d;
-  }
   const dt = new Date(data);
   if (Number.isNaN(dt.getTime())) return data;
-  return `${dt.toLocaleDateString("pt-BR")} ${dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  const p = partesLocais(data);
+  const dia = `${String(p.dia).padStart(2, "0")}/${String(p.mes).padStart(2, "0")}/${p.ano}`;
+  const semHora = /^\d{4}-\d{2}-\d{2}$/.test(data) || (dt.getUTCHours() === 0 && dt.getUTCMinutes() === 0 && dt.getUTCSeconds() === 0 && dt.getUTCMilliseconds() === 0);
+  if (semHora) return dia;
+  const l = new Date(dt.getTime() - 3 * 3600_000);
+  return `${dia} ${String(l.getUTCHours()).padStart(2, "0")}:${String(l.getUTCMinutes()).padStart(2, "0")}`;
+}
+
+/** Data que a tabela mostra: a da foto (quando o checklist a registrou e ela é anterior ao envio); senão a do envio. */
+function dataDaFoto(sub: { data: string; resumo?: { dataFoto?: string } | null }): string {
+  const foto = sub.resumo?.dataFoto;
+  return foto && foto < sub.data ? foto : sub.data;
 }
 
 // ─── Dados reais ──────────────────────────────────────────────────────────────
@@ -752,6 +760,8 @@ type SubRow = {
   matricula: string;
   data: string;
   dataIso: string;
+  /** Quando o checklist foi enviado (a coluna Data mostra a da foto). */
+  enviadoEm: string;
   base: string;
   gerencia: string;
   observador: string;
@@ -801,8 +811,9 @@ const allData = computed<SubRow[]>(() => {
     subMap.set(sub.id, {
       submissionId: sub.id,
       matricula: sub.matricula,
-      data: fmtData(sub.data),
-      dataIso: sub.data,
+      data: fmtData(dataDaFoto(sub)),
+      dataIso: dataDaFoto(sub),
+      enviadoEm: fmtData(sub.data),
       base: sub.base,
       gerencia: emp?.gerencia ?? sub.auditagem ?? "",
       observador: sub.observador,
@@ -906,21 +917,21 @@ function exportarCsv(tipo: "tabela" | "detalhado") {
   if (tipo === "tabela") {
     baixarCsv(
       `matriz-responsabilidade_${hoje}.csv`,
-      ["Data", "Base", "Observador", "Coordenador", "Equipe", "Não Conformidades", "Pendentes", "Status"],
+      ["Data da foto", "Enviado em", "Base", "Observador", "Coordenador", "Equipe", "Não Conformidades", "Pendentes", "Status"],
       filteredData.value.map((sub) => [
-        sub.data, sub.base, sub.observador, sub.coordenador, sub.equipe, sub.totalNc, sub.naoResolvidos, statusDaSub(sub),
+        sub.data, sub.enviadoEm, sub.base, sub.observador, sub.coordenador, sub.equipe, sub.totalNc, sub.naoResolvidos, statusDaSub(sub),
       ]),
     );
   } else {
     baixarCsv(
       `matriz-responsabilidade-detalhada_${hoje}.csv`,
       [
-        "Data", "Base", "Observador", "Coordenador", "Equipe", "Categoria", "Não conformidade", "Observação", "Responsável",
+        "Data da foto", "Enviado em", "Base", "Observador", "Coordenador", "Equipe", "Categoria", "Não conformidade", "Observação", "Responsável",
         "Status", "Resolvido por", "Data da resolução", "Analisado por", "Comentário da análise",
       ],
       filteredData.value.flatMap((sub) =>
         sub.ncs.map((nc) => [
-          sub.data, sub.base, sub.observador, sub.coordenador, sub.equipe, nc.categoria, nc.pergunta, nc.observacao ?? "",
+          sub.data, sub.enviadoEm, sub.base, sub.observador, sub.coordenador, sub.equipe, nc.categoria, nc.pergunta, nc.observacao ?? "",
           nc.responsavel ?? "", statusDaNc(nc), nc.resolucao?.resolvidoPor ?? "", nc.resolucao?.dataResolucao ?? "",
           nc.resolucao?.analisadoPor ?? "", nc.resolucao?.comentario ?? "",
         ]),
