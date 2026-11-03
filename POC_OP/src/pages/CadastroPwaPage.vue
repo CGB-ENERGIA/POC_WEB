@@ -2019,7 +2019,25 @@ async function onImportFile(event: Event) {
 }
 
 // ── Dialog ────────────────────────────────────────────────────────────────────
+// O q-dialog vai para o <body>, fora de .dbp-page: sem isto as variáveis (borda, texto, cores das gerências) ficariam indefinidas.
 .dbp-dlg {
+  --dbp-surface:    #ffffff;
+  --dbp-border:     rgba(0,0,0,0.09);
+  --dbp-border2:    rgba(0,0,0,0.055);
+  --dbp-txt:        #1c1917;
+  --dbp-muted:      rgba(28,25,23,0.48);
+  --dbp-accent-rgb: 153,27,27;
+  --dbp-hover:      rgba(0,0,0,0.05);
+  --c-goman:  #b45309;
+  --c-gstc:   #1d4ed8;
+  --c-gere:   #047857;
+  --c-sesmt:  #7c3aed;
+  --c-adm:    #be123c;
+  --c-log:    #0e7490;
+  --c-ofic:   #64748b;
+  --c-spot:   #a21caf;
+  color: var(--dbp-txt);
+
   min-width: 390px;
   max-width: 460px;
   border-radius: 16px !important;
@@ -2224,10 +2242,15 @@ async function onImportFile(event: Event) {
   .dbp-dlg__cancel, .dbp-dlg__save { flex: 1; justify-content: center; min-height: 46px; }
 }
 
+</style>
+
+<style lang="scss">
+// Tema escuro da página (bloco sem escopo: `body.body--dark` é de fora do componente; o Quasar liga a classe no <body>).
 // ── Dark mode override ────────────────────────────────────────────────────────
 // Quasar adiciona .body--dark ao body quando dark mode está ativo.
 // Vue scoped compila para: .body--dark .dbp-page[data-v-xxx] — funciona corretamente.
-:global(.body--dark) .dbp-page {
+body.body--dark .dbp-page,
+body.body--dark .dbp-dlg {
   --dbp-bg:         #0b0e18;
   --dbp-bg1:        #10141f;
   --dbp-bg2:        #161b29;
@@ -2252,19 +2275,19 @@ async function onImportFile(event: Event) {
 }
 
 // Ícones dos stats — fundos mais vivos no dark
-:global(.body--dark) .dbp-stat__icon--emp  { background: rgba(220,38,38,.18);  color: #f87171; }
-:global(.body--dark) .dbp-stat__icon--eq   { background: rgba(59,130,246,.18); color: #60a5fa; }
-:global(.body--dark) .dbp-stat__icon--aloj { background: rgba(16,185,129,.18); color: #34d399; }
-:global(.body--dark) .dbp-stat__icon--col  { background: rgba(245,158,11,.18); color: #fbbf24; }
+body.body--dark .dbp-stat__icon--emp  { background: rgba(220,38,38,.18);  color: #f87171; }
+body.body--dark .dbp-stat__icon--eq   { background: rgba(59,130,246,.18); color: #60a5fa; }
+body.body--dark .dbp-stat__icon--aloj { background: rgba(16,185,129,.18); color: #34d399; }
+body.body--dark .dbp-stat__icon--col  { background: rgba(245,158,11,.18); color: #fbbf24; }
 
 // Hbtn export/import — cores claras no dark
-:global(.body--dark) .dbp-hbtn--export {
+body.body--dark .dbp-hbtn--export {
   color: #60a5fa;
   border-color: rgba(96,165,250,.22);
   background: rgba(59,130,246,.08);
   &:hover { background: rgba(59,130,246,.16); }
 }
-:global(.body--dark) .dbp-hbtn--import {
+body.body--dark .dbp-hbtn--import {
   color: #34d399;
   border-color: rgba(52,211,153,.22);
   background: rgba(16,185,129,.08);
@@ -2272,17 +2295,32 @@ async function onImportFile(event: Event) {
 }
 
 // Pill ativo — cores saturadas no dark
-:global(.body--dark) .dbp-pill.--active.--goman    { color: #F59E0B; background: rgba(245,158,11,.14); border-color: rgba(245,158,11,.35); }
-:global(.body--dark) .dbp-pill.--active.--gstc     { color: #3B82F6; background: rgba(59,130,246,.14); border-color: rgba(59,130,246,.35); }
-:global(.body--dark) .dbp-pill.--active.--gere     { color: #10B981; background: rgba(16,185,129,.14); border-color: rgba(16,185,129,.35); }
-:global(.body--dark) .dbp-pill.--active.--sesmt    { color: #A78BFA; background: rgba(167,139,250,.14);border-color: rgba(167,139,250,.35);}
-:global(.body--dark) .dbp-pill.--active.--adm      { color: #fb7185; background: rgba(251,113,133,.14);border-color: rgba(251,113,133,.35);}
-:global(.body--dark) .dbp-pill.--active.--logistica{ color: #22d3ee; background: rgba(34,211,238,.14); border-color: rgba(34,211,238,.35); }
-:global(.body--dark) .dbp-pill.--active.--oficina  { color: var(--poc-muted); background: rgba(148,163,184,.14);border-color: rgba(148,163,184,.35);}
-:global(.body--dark) .dbp-pill.--active.--spot     { color: #e879f9; background: rgba(232,121,249,.14);border-color: rgba(232,121,249,.35);}
+body.body--dark .dbp-pill.--active.--goman    { color: #F59E0B; background: rgba(245,158,11,.14); border-color: rgba(245,158,11,.35); }
+body.body--dark .dbp-pill.--active.--gstc     { color: #3B82F6; background: rgba(59,130,246,.14); border-color: rgba(59,130,246,.35); }
+body.body--dark .dbp-pill.--active.--gere     { color: #10B981; background: rgba(16,185,129,.14); border-color: rgba(16,185,129,.35); }
+body.body--dark .dbp-pill.--active.--sesmt    { color: #A78BFA; background: rgba(167,139,250,.14);border-color: rgba(167,139,250,.35);}
+body.body--dark .dbp-pill.--active.--adm      { color: #fb7185; background: rgba(251,113,133,.14);border-color: rgba(251,113,133,.35);}
+body.body--dark .dbp-pill.--active.--logistica{ color: #22d3ee; background: rgba(34,211,238,.14); border-color: rgba(34,211,238,.35); }
+body.body--dark .dbp-pill.--active.--oficina  { color: var(--poc-muted); background: rgba(148,163,184,.14);border-color: rgba(148,163,184,.35);}
+body.body--dark .dbp-pill.--active.--spot     { color: #e879f9; background: rgba(232,121,249,.14);border-color: rgba(232,121,249,.35);}
 
 // Chip off e prefixo no dark
-:global(.body--dark) .dbp-chip--off     { color: #f87171; background: rgba(248,113,113,.1); }
-:global(.body--dark) .dbp-chip--prefixo { color: #34d399; background: rgba(52,211,153,.1); }
-:global(.body--dark) .dbp-chip--rateio  { color: #818cf8; background: rgba(99,102,241,.14); }
+body.body--dark .dbp-chip--off     { color: #f87171; background: rgba(248,113,113,.1); }
+body.body--dark .dbp-chip--prefixo { color: #34d399; background: rgba(52,211,153,.1); }
+body.body--dark .dbp-chip--rateio  { color: #818cf8; background: rgba(99,102,241,.14); }
+
+// Itens com fundo/borda escuros fixos (feitos para o tema claro)
+body.body--dark .dbp-mat,
+body.body--dark .dbp-chip--base,
+body.body--dark .dbp-chip--loc { background: rgba(255,255,255,.07); }
+body.body--dark .dbp-tab__ct { background: rgba(255,255,255,.08); }
+body.body--dark .dbp-tab.--active .dbp-tab__ct { color: #fca5a5; background: rgba(220,38,38,.2); border-color: rgba(220,38,38,.4); }
+body.body--dark .dbp-stat:hover { border-color: rgba(255,255,255,.2); }
+body.body--dark .dbp-pill:hover { border-color: rgba(255,255,255,.22); }
+body.body--dark .dbp-pill.--active { border-color: rgba(255,255,255,.2); }
+body.body--dark .dbp-dlg__x:hover { background: rgba(255,255,255,.1); }
+body.body--dark .dbp-record__av--geral[data-base="ADM"],
+body.body--dark .dbp-chip--base-colored[data-base="ADM"] { background: rgba(255,255,255,.08); }
+body.body--dark .dbp-chip--rateio { color: #a5b4fc; }
+body.body--dark .dbp-dlg { background: #151a28; }
 </style>
