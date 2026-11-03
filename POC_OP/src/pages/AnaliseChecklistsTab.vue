@@ -137,6 +137,18 @@
                     <q-item-section avatar style="min-width:28px"><q-icon :name="o.atual ? 'mdi-check' : ''" size="16px" /></q-item-section>
                     <q-item-section>{{ o.label }}</q-item-section>
                   </q-item>
+                  <q-separator />
+                  <q-item-label header class="text-weight-bold">Contar no mês</q-item-label>
+                  <q-item
+                    v-for="o in opcoesMes(item)" :key="`${o.ano}-${o.mes}`" clickable :active="o.atual" active-class="text-primary"
+                    @click="direcionarMes(item, o.ano, o.mes)"
+                  >
+                    <q-item-section avatar style="min-width:28px"><q-icon :name="o.atual ? 'mdi-check' : ''" size="16px" /></q-item-section>
+                    <q-item-section>
+                      {{ o.label }}
+                      <q-item-label v-if="o.envio" caption>mês do envio</q-item-label>
+                    </q-item-section>
+                  </q-item>
                   <template v-if="semanaManual(item)">
                     <q-separator />
                     <q-item clickable @click="direcionar(item, null)">
@@ -149,6 +161,16 @@
             </button>
 
             <span
+              v-if="mesDirecionado(item)"
+              class="sem-badge sem-badge--manual"
+              style="cursor:default"
+              :title="`Enviado em ${fmtDate(dataEnvioReal(item))}; conta em ${rotuloMes(mesQueConta(item))} por decisão de quem validou. Mude pelo selo da semana.`"
+            >
+              <q-icon name="mdi-calendar-month" size="12px" />
+              Conta em {{ rotuloMes(mesQueConta(item)) }}
+            </span>
+
+            <span
               v-if="faltamEvidencias(item) > 0"
               class="ev-badge"
               :class="evidenciasDe(item) === 0 ? 'ev-badge--none' : 'ev-badge--part'"
@@ -157,7 +179,7 @@
               {{ evidenciasDe(item) === 0 ? "Sem evidências" : `Evidências ${evidenciasDe(item)}/${exigidas(item)}` }}
             </span>
           </div>
-          <div class="analise-item__date">{{ fmtDate(item.data) }}</div>
+          <div class="analise-item__date">{{ fmtDate(dataEnvioReal(item)) }}</div>
         </div>
 
         <!-- Corpo -->
@@ -355,6 +377,18 @@
                   <q-item-section>
                     {{ o.label }}
                     <q-item-label v-if="o.atual" caption>{{ semanaManual(item) ? "direcionada" : "pela data da foto" }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+                <q-separator />
+                <q-item-label header class="text-weight-bold">Aprovar contando no mês</q-item-label>
+                <q-item
+                  v-for="o in opcoesMes(item)" :key="`a-${o.ano}-${o.mes}`" clickable v-close-popup :active="o.atual" active-class="text-primary"
+                  @click="aprovarNoMes(item, o.ano, o.mes)"
+                >
+                  <q-item-section avatar style="min-width:28px"><q-icon :name="o.atual ? 'mdi-check' : ''" size="16px" /></q-item-section>
+                  <q-item-section>
+                    {{ o.label }}
+                    <q-item-label v-if="o.envio" caption>mês do envio</q-item-label>
                   </q-item-section>
                 </q-item>
               </q-list>
@@ -600,6 +634,9 @@ import {
   fetchContagemEvidencias,
   evidenciasExigidas,
   direcionarSemanaChecklist,
+  direcionarMesChecklist,
+  dataEnvioReal,
+  mesQueConta,
   semanaDaSub,
   dataReferencia,
   type ChecklistParaAnalise,
@@ -892,6 +929,71 @@ function opcoesSemana(item: ChecklistParaAnalise): { n: 1 | 2 | 3 | 4; label: st
   const mes = m ? Number(m[2]) : new Date().getMonth() + 1;
   const atual = semanaDoItem(item);
   return ([1, 2, 3, 4] as const).map((n) => ({ n, label: `${rotuloSemana(ano, mes, n)} · ${MESES_CURTO[mes - 1] ?? ""}`, atual: n === atual }));
+}
+
+// ── Direcionar a observação para um mês ───────────────────────────────────────
+// Observações da última semana do mês anterior lançadas no mês seguinte: quem valida escolhe em qual mês elas contam.
+const MESES_NOME = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+
+function rotuloMes(m: { ano: number; mes: number }): string {
+  return `${MESES_NOME[m.mes - 1] ?? m.mes}/${m.ano}`;
+}
+function mesDirecionado(item: ChecklistParaAnalise): boolean {
+  return !!(item.resumo as { dataEnvioOriginal?: unknown } | null)?.dataEnvioOriginal;
+}
+/** O mês do envio e os 3 anteriores. */
+function opcoesMes(item: ChecklistParaAnalise): { ano: number; mes: number; label: string; atual: boolean; envio: boolean }[] {
+  const envio = mesQueConta({ data: dataEnvioReal(item) });
+  const atual = mesQueConta(item);
+  return [0, 1, 2, 3].map((voltar) => {
+    const d = new Date(envio.ano, envio.mes - 1 - voltar, 1);
+    const ano = d.getFullYear();
+    const mes = d.getMonth() + 1;
+    return { ano, mes, label: rotuloMes({ ano, mes }), atual: ano === atual.ano && mes === atual.mes, envio: voltar === 0 };
+  });
+}
+
+async function gravarMes(item: ChecklistParaAnalise, ano: number, mes: number): Promise<ChecklistParaAnalise> {
+  const atualizado = await direcionarMesChecklist(item.id, item.data, item.resumo as unknown as Record<string, unknown>, ano, mes);
+  const idx = itens.value.findIndex((i) => i.id === atualizado.id);
+  if (idx >= 0) itens.value[idx] = { ...itens.value[idx], ...atualizado };
+  return idx >= 0 ? itens.value[idx]! : atualizado;
+}
+
+async function direcionarMes(item: ChecklistParaAnalise, ano: number, mes: number) {
+  const atual = mesQueConta(item);
+  if (atual.ano === ano && atual.mes === mes) return;
+  loadingId.value = item.id;
+  try {
+    await gravarMes(item, ano, mes);
+    $q.notify({
+      type: "positive", position: "top", timeout: 4000,
+      message: `Observação passa a contar em ${rotuloMes({ ano, mes })}.`,
+      caption: "Ela sai desta lista se o filtro de mês for outro; a data de envio real continua no cartão.",
+    });
+  } catch (e) {
+    $q.notify({ type: "negative", message: `Erro: ${(e as Error).message}`, position: "top", timeout: 6000 });
+  } finally {
+    loadingId.value = null;
+  }
+}
+
+/** Aprova e já faz a observação contar no mês escolhido. */
+async function aprovarNoMes(item: ChecklistParaAnalise, ano: number, mes: number) {
+  if (faltamEvidencias(item) > 0) { void abrirAcao(item, "aprovado"); return; } // mesmo bloqueio da aprovação direta
+  loadingId.value = item.id;
+  try {
+    const atual = mesQueConta(item);
+    const comMes = atual.ano === ano && atual.mes === mes ? item : await gravarMes(item, ano, mes);
+    const updated = await atualizarStatusChecklist(comMes.id, "aprovado", nomeAnalista(), undefined);
+    const idx = itens.value.findIndex((i) => i.id === updated.id);
+    if (idx >= 0) itens.value[idx] = { ...itens.value[idx], ...updated };
+    $q.notify({ type: "positive", message: `Checklist aprovado e contado em ${rotuloMes({ ano, mes })}.`, position: "top", timeout: 3000 });
+  } catch (e) {
+    $q.notify({ type: "negative", message: `Erro: ${(e as Error).message}`, position: "top", timeout: 6000 });
+  } finally {
+    loadingId.value = null;
+  }
 }
 
 /** Grava a semana escolhida (null = volta ao automático) e atualiza o cartão. Devolve o checklist atualizado. */

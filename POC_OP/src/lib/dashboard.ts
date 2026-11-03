@@ -245,7 +245,7 @@ export interface SubmissionRow {
   base: string;
   equipe: string;
   membros: { nome: string; matricula: string }[];
-  resumo: { total: number; conformes: number; naoConformes: number; dataFoto?: string; semanaManual?: number };
+  resumo: { total: number; conformes: number; naoConformes: number; dataFoto?: string; semanaManual?: number; dataEnvioOriginal?: string };
 }
 
 /** Perguntas com vários itens que o BI conta um a um (Regras de Ouro: 6 itens). */
@@ -1050,6 +1050,63 @@ export async function atualizarStatusChecklist(
     }).eq("id", row.client_id);
   }
   return row;
+}
+
+/** Data/hora em que o checklist foi realmente enviado (guardada quando o analista o direciona para outro mês). */
+export function dataEnvioReal(sub: { data: string; resumo?: { dataEnvioOriginal?: string } | null }): string {
+  return sub.resumo?.dataEnvioOriginal ?? sub.data;
+}
+
+/** Ano e mês (fuso de Fortaleza, UTC-3) de uma data ISO. */
+function anoMesFortaleza(iso: string): { ano: number; mes: number } {
+  const d = new Date(new Date(iso).getTime() - 3 * 3600_000);
+  return { ano: d.getUTCFullYear(), mes: d.getUTCMonth() + 1 };
+}
+
+/** Mês em que o checklist conta hoje (o da `data` guardada). */
+export function mesQueConta(sub: { data: string }): { ano: number; mes: number } {
+  return anoMesFortaleza(sub.data);
+}
+
+/**
+ * Faz o checklist contar em outro mês (ex.: observações da última semana de outubro lançadas em novembro).
+ * A data de envio real fica em resumo.dataEnvioOriginal; `data` passa para dentro do mês escolhido (fim do mês se for anterior ao envio,
+ * começo se for posterior), e com isso todas as telas (filtros de mês e semana, metas, relatórios) o contam ali. Escolher o mês do envio
+ * real desfaz. A semana direcionada à mão é descartada: ela era do mês anterior.
+ */
+export async function direcionarMesChecklist(
+  id: string,
+  dataAtual: string,
+  resumoAtual: Record<string, unknown> | null | undefined,
+  ano: number,
+  mes: number,
+): Promise<ChecklistParaAnalise> {
+  const resumo: Record<string, unknown> = { ...(resumoAtual ?? {}) };
+  const original = (typeof resumo.dataEnvioOriginal === "string" && resumo.dataEnvioOriginal) || dataAtual;
+  const orig = anoMesFortaleza(original);
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  let novaData: string;
+  if (orig.ano === ano && orig.mes === mes) {
+    novaData = original; // volta ao mês do envio
+    delete resumo.dataEnvioOriginal;
+  } else {
+    // meio-dia: o mês fica o mesmo em UTC e em Fortaleza
+    const anterior = ano < orig.ano || (ano === orig.ano && mes < orig.mes);
+    const dia = anterior ? new Date(ano, mes, 0).getDate() : 1;
+    novaData = `${ano}-${pad(mes)}-${pad(dia)}T12:00:00-03:00`;
+    resumo.dataEnvioOriginal = original;
+  }
+  delete resumo.semanaManual;
+
+  const { data, error } = await supabase
+    .from("checklist_submissions")
+    .update({ data: novaData, resumo })
+    .eq("id", id)
+    .select(CHECKLIST_ANALISE_FIELDS)
+    .single();
+  if (error) throw error;
+  return data as ChecklistParaAnalise;
 }
 
 /** Direciona o checklist para uma semana do mês (1–4) ou, com null, devolve ao cálculo automático pela data. */
