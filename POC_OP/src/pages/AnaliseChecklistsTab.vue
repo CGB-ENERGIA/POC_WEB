@@ -205,6 +205,14 @@
             </div>
           </div>
 
+          <!-- Quem analisou e quando (antes só aparecia quando havia comentário) -->
+          <div v-if="item.status !== 'pendente'" class="analise-item__enviado">
+            <q-icon :name="item.status === 'aprovado' ? 'mdi-check-decagram-outline' : 'mdi-close-octagon-outline'" size="14px" color="grey-5" class="q-mr-xs" />
+            {{ item.status === 'aprovado' ? 'Aprovado' : 'Reprovado' }} por
+            <strong>{{ item.analisado_por || 'não registrado' }}</strong>
+            <span v-if="item.data_analise"> em {{ fmtDate(item.data_analise) }}</span>
+          </div>
+
           <!-- Comentário da análise -->
           <div v-if="item.comentario_analise" class="analise-item__comentario" :class="`analise-item__comentario--${item.status}`">
             <q-icon name="mdi-message-text-outline" size="14px" class="q-mr-xs" />
