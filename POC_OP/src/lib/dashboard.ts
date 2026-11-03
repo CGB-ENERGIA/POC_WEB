@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import { semanaDeIso, faixaDaSemana } from "./semanas";
+import { semanaDeIso, faixaDaSemana, partesLocais } from "./semanas";
 import { valores } from "./multi-filtro";
 
 export { semanaDeData, rotuloSemana } from "./semanas";
@@ -65,12 +65,9 @@ function intervalosDeMeses(ano: number, meses: number[]): { start: string; end: 
   }));
 }
 
-/** Dia do mês a partir do campo `data`, sem deslocar fuso. */
+/** Dia do mês a partir do campo `data`, no horário de Fortaleza. */
 export function diaDoMes(data: string): number {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(data);
-  if (m) return Number(m[3]);
-  const d = new Date(data);
-  return Number.isNaN(d.getTime()) ? 0 : d.getDate();
+  return partesLocais(data).dia;
 }
 
 /** Semana (1–4) de uma data, conforme o cronograma do mês (configurável em Metas). */
@@ -84,7 +81,11 @@ export function semanaDaData(data: string): 1 | 2 | 3 | 4 {
  */
 export function dataReferencia(sub: { data: string; resumo?: { dataFoto?: string } | null }): string {
   const f = sub.resumo?.dataFoto;
-  if (f && f < sub.data && f.slice(0, 7) === sub.data.slice(0, 7)) return f;
+  if (f && f < sub.data) {
+    const pf = partesLocais(f);
+    const pd = partesLocais(sub.data);
+    if (pf.ano === pd.ano && pf.mes === pd.mes) return f;
+  }
   return sub.data;
 }
 
@@ -579,8 +580,7 @@ export async function fetchNaoConformesPorMes(
   for (const s of subs) {
     const nc = ncPorSub.get(s.id);
     if (!nc) continue;
-    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s.data);
-    const mes = m ? Number(m[2]) : new Date(s.data).getMonth() + 1;
+    const mes = partesLocais(s.data).mes;
     map[mes] = (map[mes] ?? 0) + nc;
   }
   return map;

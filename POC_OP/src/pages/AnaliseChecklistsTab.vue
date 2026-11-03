@@ -654,7 +654,7 @@ import {
 } from "@/lib/dashboard";
 import { carregarColaboradores, sugerirColaboradores, type ColaboradorSugestao } from "@/lib/colaboradores-geral";
 import { useAuth } from "@/composables/useAuth";
-import { rotuloSemana } from "@/lib/semanas";
+import { rotuloSemana, partesLocais, diaLocalISO } from "@/lib/semanas";
 import AvisoCoordenadorDialog from "@/components/AvisoCoordenadorDialog.vue";
 import AvisosPendentesDialog from "@/components/AvisosPendentesDialog.vue";
 import {
@@ -932,9 +932,7 @@ function semanaDoItem(item: ChecklistParaAnalise): 1 | 2 | 3 | 4 {
   return semanaDaSub(item);
 }
 function opcoesSemana(item: ChecklistParaAnalise): { n: 1 | 2 | 3 | 4; label: string; atual: boolean }[] {
-  const m = /^(\d{4})-(\d{2})/.exec(dataReferencia(item));
-  const ano = m ? Number(m[1]) : new Date().getFullYear();
-  const mes = m ? Number(m[2]) : new Date().getMonth() + 1;
+  const { ano, mes } = partesLocais(dataReferencia(item));
   const atual = semanaDoItem(item);
   return ([1, 2, 3, 4] as const).map((n) => ({ n, label: `${rotuloSemana(ano, mes, n)} · ${MESES_CURTO[mes - 1] ?? ""}`, atual: n === atual }));
 }
@@ -1266,13 +1264,13 @@ async function salvarEdicao() {
 
 // ── Frequência: mesmo observador + mesma equipe na semana / no mês ────────────
 function weekKey(iso: string): string {
-  const d = new Date(iso.slice(0, 10));
+  const d = new Date(diaLocalISO(iso));
   const day = d.getDay();
   // recua até segunda-feira (day 1); domingo (0) recua 6
   d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
   return d.toISOString().slice(0, 10);
 }
-function monthKey(iso: string): string { return iso.slice(0, 7); }
+function monthKey(iso: string): string { return diaLocalISO(iso).slice(0, 7); }
 
 const frequenciaMap = computed<Record<string, { semana: number; mes: number }>>(() => {
   const sc: Record<string, number> = {};

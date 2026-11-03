@@ -41,12 +41,31 @@ export function semanaDoDia(ano: number, mes: number, dia: number): 1 | 2 | 3 | 
   return 4;
 }
 
-/** Semana de uma data ISO (usa o dia gravado, sem deslocar fuso, como o resto do painel). */
-export function semanaDeIso(data: string): 1 | 2 | 3 | 4 {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(data);
-  if (m) return semanaDoDia(Number(m[1]), Number(m[2]), Number(m[3]));
+/**
+ * Ano, mês e dia de uma data ISO no horário de Fortaleza (UTC-3). O banco guarda em UTC: um checklist de 31/10 às 23:11 fica
+ * "2026-11-01T02:11Z", e ler o dia direto da string o jogaria para novembro (e para a 1ª semana). Datas só com o dia
+ * ("2026-10-07") e a meia-noite exata em UTC (importações) ficam como foram gravadas.
+ */
+export function partesLocais(data: string): { ano: number; mes: number; dia: number } {
+  const soDia = /^(\d{4})-(\d{2})-(\d{2})$/.exec(data);
+  if (soDia) return { ano: Number(soDia[1]), mes: Number(soDia[2]), dia: Number(soDia[3]) };
   const d = new Date(data);
-  return Number.isNaN(d.getTime()) ? 1 : semanaDoDia(d.getFullYear(), d.getMonth() + 1, d.getDate());
+  if (Number.isNaN(d.getTime())) return { ano: 1970, mes: 1, dia: 1 };
+  const meiaNoiteUtc = d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0 && d.getUTCMilliseconds() === 0;
+  const l = new Date(meiaNoiteUtc ? d.getTime() : d.getTime() - 3 * 3600_000);
+  return { ano: l.getUTCFullYear(), mes: l.getUTCMonth() + 1, dia: l.getUTCDate() };
+}
+
+/** Dia local (AAAA-MM-DD) de uma data ISO, no horário de Fortaleza. */
+export function diaLocalISO(data: string): string {
+  const p = partesLocais(data);
+  return `${p.ano}-${String(p.mes).padStart(2, "0")}-${String(p.dia).padStart(2, "0")}`;
+}
+
+/** Semana de uma data ISO, pelo dia no horário de Fortaleza. */
+export function semanaDeIso(data: string): 1 | 2 | 3 | 4 {
+  const p = partesLocais(data);
+  return semanaDoDia(p.ano, p.mes, p.dia);
 }
 
 /** Semana de um Date no horário local (ex.: "hoje"). */

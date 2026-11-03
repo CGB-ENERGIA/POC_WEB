@@ -322,6 +322,7 @@ import { useChecklistData, fmtN } from "@/composables/useChecklistData";
 import { semanaDaSub, dataReferencia } from "@/lib/dashboard";
 import { useHierarquiaEquipe, chaveEquipe } from "@/composables/useHierarquiaEquipe";
 import { ocorrenciasTz, categoriasDasOcorrencias } from "@/lib/tolerancia-zero";
+import { diaLocalISO } from "@/lib/semanas";
 
 use([CanvasRenderer, BarChart, TreemapChart, TooltipComponent, GridComponent, DataZoomComponent]);
 
@@ -554,7 +555,7 @@ const fotoViewerOpen = computed({
 });
 
 const fmtData = (iso: string) => {
-  const [a, m, d] = iso.slice(0, 10).split("-");
+  const [a, m, d] = diaLocalISO(iso).split("-");
   return a && m && d ? `${d}/${m}/${a}` : iso;
 };
 
