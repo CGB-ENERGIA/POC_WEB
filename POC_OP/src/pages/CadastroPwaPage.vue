@@ -410,10 +410,10 @@
                   <span class="dbp-chip dbp-chip--rateio">{{ f.rateio }}</span>
                 </div>
                 <div class="dbp-record__acts">
-                  <button class="dbp-act-btn" title="Editar" @click="openColabDialog(f)">
+                  <button class="dbp-act" title="Editar" @click="openColabDialog(f)">
                     <q-icon name="mdi-pencil-outline" size="15px" />
                   </button>
-                  <button class="dbp-act-btn dbp-act-btn--del" title="Remover" @click="deleteColaborador(f)">
+                  <button class="dbp-act dbp-act--del" title="Remover" @click="deleteColaborador(f)">
                     <q-icon name="mdi-trash-can-outline" size="15px" />
                   </button>
                 </div>
@@ -431,7 +431,7 @@
     </div>
 
     <!-- ══ DIALOG FUNCIONÁRIO ══════════════════════════════════════════════════ -->
-    <q-dialog v-model="empDialog" persistent transition-show="scale" transition-hide="scale">
+    <q-dialog v-model="empDialog" persistent :maximized="$q.screen.lt.sm" transition-show="scale" transition-hide="scale">
       <q-card class="dbp-dlg">
         <div class="dbp-dlg__bar" :data-g="empForm.gerencia || 'GOMAN'" />
         <div class="dbp-dlg__head">
@@ -480,7 +480,7 @@
     </q-dialog>
 
     <!-- ══ DIALOG COLABORADOR (GERAL) ══════════════════════════════════════════ -->
-    <q-dialog v-model="colabDialog" persistent transition-show="scale" transition-hide="scale">
+    <q-dialog v-model="colabDialog" persistent :maximized="$q.screen.lt.sm" transition-show="scale" transition-hide="scale">
       <q-card class="dbp-dlg">
         <div class="dbp-dlg__bar" data-g="GOMAN" />
         <div class="dbp-dlg__head">
@@ -511,7 +511,7 @@
     </q-dialog>
 
     <!-- ══ DIALOG EQUIPE ════════════════════════════════════════════════════════ -->
-    <q-dialog v-model="eqDialog" persistent transition-show="scale" transition-hide="scale">
+    <q-dialog v-model="eqDialog" persistent :maximized="$q.screen.lt.sm" transition-show="scale" transition-hide="scale">
       <q-card class="dbp-dlg">
         <div class="dbp-dlg__bar" :data-g="eqForm.gerencia || 'GOMAN'" />
         <div class="dbp-dlg__head">
@@ -1859,7 +1859,6 @@ async function onImportFile(event: Event) {
   gap: 5px;
   flex-shrink: 0;
   flex-wrap: nowrap;
-  @media (max-width: 600px) { display: none; }
 }
 
 .dbp-chip {
@@ -1969,6 +1968,8 @@ async function onImportFile(event: Event) {
   opacity: 0;
   transition: opacity .14s;
   flex-shrink: 0;
+
+  @media (hover: none) { opacity: 1; }
 }
 
 .dbp-act {
@@ -2131,8 +2132,96 @@ async function onImportFile(event: Event) {
   &:disabled { opacity: .45; cursor: not-allowed; }
 }
 
-@media (max-width: 500px) {
-  .dbp-dlg { min-width: calc(100vw - 32px); }
+// ── Celular ───────────────────────────────────────────────────────────────────
+@media (max-width: 640px) {
+  .dbp-page { min-height: 100dvh; }
+
+  .dbp-header { padding: 20px 16px 16px; gap: 14px; }
+  .dbp-header__left { width: 100%; }
+  .dbp-eyebrow { margin-bottom: 6px; }
+  .dbp-title { font-size: 28px; margin-bottom: 14px; }
+  .dbp-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+  .dbp-stat { width: auto; padding: 9px 11px; gap: 9px; min-width: 0; }
+  .dbp-stat__icon { width: 34px; height: 34px; min-width: 34px; min-height: 34px; }
+  .dbp-stat__n { font-size: 19px; }
+  .dbp-stat__label { font-size: 9.5px; }
+  .dbp-header__right { width: 100%; padding-top: 0; }
+  .dbp-header__right .dbp-hbtn { flex: 1; justify-content: center; min-height: 42px; }
+  .dbp-header__right .dbp-hbtn--ghost { flex: 0 0 44px; }
+
+  // abas: uma linha que rola para o lado, sem estourar a largura da tela
+  .dbp-tabs-wrap { padding: 0; }
+  .dbp-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+    &::-webkit-scrollbar { display: none; }
+  }
+  .dbp-tab { flex: 0 0 auto; min-height: 48px; padding: 14px 16px 12px; white-space: nowrap; scroll-snap-align: start; }
+
+  .dbp-body { padding: 14px 14px calc(32px + env(safe-area-inset-bottom)); }
+
+  // busca, botões e filtros
+  .dbp-toolbar-top { gap: 8px; }
+  .dbp-toolbar { gap: 8px; margin-bottom: 10px; }
+  .dbp-search-shell { min-width: 0; flex: 1 1 100%; }
+  .dbp-toolbar-top .dbp-search-shell { flex: 1 1 0; }
+  .dbp-search { font-size: 16px; } // 16px: abaixo disso o iPhone dá zoom ao tocar no campo
+  .dbp-add-btn { min-height: 42px; padding: 0 14px; }
+  .dbp-toolbar .dbp-add-btn { flex: 1 1 auto; justify-content: center; }
+  .dbp-pills {
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin: 0 -14px;
+    padding: 2px 14px 6px;
+    &::-webkit-scrollbar { display: none; }
+  }
+  .dbp-pill { flex: 0 0 auto; min-height: 36px; padding: 6px 14px; }
+
+  .dbp-sync { flex-wrap: wrap; gap: 10px; }
+  .dbp-sync .dbp-hbtn { width: 100%; justify-content: center; min-height: 42px; }
+
+  // registros: o nome pode quebrar, os chips descem para uma segunda linha e as ações ficam à mão
+  .dbp-record { flex-wrap: wrap; align-items: flex-start; gap: 8px 10px; padding: 12px 8px 12px 14px; }
+  .dbp-record__av { order: 0; }
+  .dbp-record__main { order: 1; }
+  .dbp-record__acts { order: 2; opacity: 1; }
+  .dbp-record__chips { order: 3; flex: 1 1 100%; flex-wrap: wrap; padding-left: 46px; }
+  .dbp-record__name { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+  .dbp-record__sub { flex-wrap: wrap; row-gap: 2px; }
+  .dbp-record__addr { white-space: normal; overflow: visible; }
+  .dbp-act { width: 40px; height: 40px; }
+  .dbp-collapse-row { min-height: 40px; }
+  .dbp-empty { padding: 40px 16px; }
+}
+
+// diálogos: tela cheia no celular, campos em coluna e botões grandes no rodapé
+@media (max-width: 599px) {
+  .dbp-dlg {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
+    border-radius: 0 !important;
+    border: none !important;
+    display: flex;
+    flex-direction: column;
+  }
+  .dbp-dlg__head { padding: 16px 16px 12px; }
+  .dbp-dlg__body {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px;
+    // pares de campos lado a lado viram uma coluna (a grade desliga as margens do q-gutter)
+    .row { display: grid; grid-template-columns: 1fr; gap: 12px; margin: 0; }
+    .row > * { margin: 0 !important; padding: 0 !important; min-width: 0; }
+  }
+  .dbp-dlg__foot { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+  .dbp-dlg__cancel, .dbp-dlg__save { flex: 1; justify-content: center; min-height: 46px; }
 }
 
 // ── Dark mode override ────────────────────────────────────────────────────────
