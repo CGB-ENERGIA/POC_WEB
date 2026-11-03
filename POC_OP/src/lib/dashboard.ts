@@ -1069,6 +1069,27 @@ export async function atualizarStatusChecklist(
   return row;
 }
 
+/** Desfaz uma aprovação ou reprovação: o checklist volta a pendente e some o registro de quem analisou, a data e o comentário. */
+export async function reverterChecklistParaPendente(id: string): Promise<ChecklistParaAnalise> {
+  const { data, error } = await supabase
+    .from("checklist_submissions")
+    .update({ status: "pendente", analisado_por: null, data_analise: null, comentario_analise: null })
+    .eq("id", id)
+    .select(CHECKLIST_ANALISE_FIELDS)
+    .single();
+  if (error) throw error;
+
+  const row = data as ChecklistParaAnalise;
+  if (row.client_id) {
+    await supabase.from("user_observations").update({
+      status: "pendente",
+      analisado_por: null,
+      comentario_analise: null,
+    }).eq("id", row.client_id);
+  }
+  return row;
+}
+
 /** Data/hora em que o checklist foi realmente enviado (guardada quando o analista o direciona para outro mês). */
 export function dataEnvioReal(sub: { data: string; resumo?: { dataEnvioOriginal?: string } | null }): string {
   return sub.resumo?.dataEnvioOriginal ?? sub.data;

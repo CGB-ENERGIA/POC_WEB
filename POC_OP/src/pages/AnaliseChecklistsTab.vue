@@ -417,6 +417,12 @@
               @click="avisarItem(item)"
             />
             <q-btn
+              flat size="sm" color="grey-8" icon="mdi-undo-variant" label="Voltar para pendente"
+              :loading="loadingId === item.id"
+              :disable="loadingId !== null && loadingId !== item.id"
+              @click="voltarParaPendente(item)"
+            />
+            <q-btn
               flat size="sm" color="grey-7"
               :icon="item.status === 'aprovado' ? 'mdi-close' : 'mdi-check'"
               :label="item.status === 'aprovado' ? 'Reverter p/ reprovado' : 'Reverter p/ aprovado'"
@@ -643,6 +649,7 @@ import {
   evidenciasExigidas,
   direcionarSemanaChecklist,
   direcionarMesChecklist,
+  reverterChecklistParaPendente,
   dataEnvioReal,
   mesQueConta,
   semanaDaSub,
@@ -935,6 +942,29 @@ function opcoesSemana(item: ChecklistParaAnalise): { n: 1 | 2 | 3 | 4; label: st
   const { ano, mes } = partesLocais(dataReferencia(item));
   const atual = semanaDoItem(item);
   return ([1, 2, 3, 4] as const).map((n) => ({ n, label: `${rotuloSemana(ano, mes, n)} · ${MESES_CURTO[mes - 1] ?? ""}`, atual: n === atual }));
+}
+
+/** Desfaz a aprovação (ou reprovação) feita por engano: o checklist volta para a fila de validação. */
+function voltarParaPendente(item: ChecklistParaAnalise) {
+  $q.dialog({
+    title: "Voltar para pendente?",
+    message: `Este checklist ${item.status === "aprovado" ? "aprovado" : "reprovado"} volta para a fila de validação e some o registro de quem analisou.`,
+    cancel: { label: "Cancelar", flat: true },
+    ok: { label: "Voltar para pendente", color: "primary" },
+    persistent: true,
+  }).onOk(async () => {
+    loadingId.value = item.id;
+    try {
+      const updated = await reverterChecklistParaPendente(item.id);
+      const idx = itens.value.findIndex((i) => i.id === updated.id);
+      if (idx >= 0) itens.value[idx] = { ...itens.value[idx], ...updated };
+      $q.notify({ type: "positive", message: "Checklist voltou para pendente.", position: "top", timeout: 3000 });
+    } catch (e) {
+      $q.notify({ type: "negative", message: `Erro: ${(e as Error).message}`, position: "top", timeout: 6000 });
+    } finally {
+      loadingId.value = null;
+    }
+  });
 }
 
 // ── Direcionar a observação para um mês ───────────────────────────────────────
