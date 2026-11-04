@@ -13,21 +13,57 @@ const MODO_KEY = "cgb-camera-modo";
 const PENDENTE_KEY = "cgb-camera-pendente";
 const JANELA_QUEDA_MS = 15 * 60 * 1000;
 
+/**
+ * O que ficou decidido precisa sobreviver a quando o Android encerra o navegador, e há aparelhos em que o localStorage falha ou é limpo
+ * ao reiniciar. Por isso cada valor também vai para um cookie (vale 1 ano; a marca de "câmera aberta" vale 20 minutos).
+ */
+function lerCookie(key: string): string | null {
+  try {
+    const m = document.cookie.split("; ").find((c) => c.startsWith(`${key}=`));
+    return m ? decodeURIComponent(m.slice(key.length + 1)) : null;
+  } catch { return null; }
+}
+function gravarCookie(key: string, valor: string | null, segundos: number) {
+  try {
+    document.cookie = valor === null
+      ? `${key}=; max-age=0; path=/; SameSite=Lax`
+      : `${key}=${encodeURIComponent(valor)}; max-age=${segundos}; path=/; SameSite=Lax`;
+  } catch { /* sem cookie */ }
+}
 function ler(key: string): string | null {
-  try { return localStorage.getItem(key); } catch { return null; }
+  try {
+    const v = localStorage.getItem(key);
+    if (v !== null) return v;
+  } catch { /* cai para o cookie */ }
+  return lerCookie(key);
 }
 function gravar(key: string, valor: string | null) {
   try {
     if (valor === null) localStorage.removeItem(key);
     else localStorage.setItem(key, valor);
   } catch { /* sem storage */ }
+  gravarCookie(key, valor, key === PENDENTE_KEY ? JANELA_QUEDA_MS / 1000 : 365 * 86400);
 }
 
-export const cameraNoApp = ref(ler(MODO_KEY) === "app");
+/** Aparelho com pouca memória (Chrome informa 2 GB ou menos): a câmera nativa derruba o navegador com facilidade. */
+function aparelhoDePoucaMemoria(): boolean {
+  const gb = (navigator as unknown as { deviceMemory?: number }).deviceMemory;
+  return typeof gb === "number" && gb <= 2;
+}
+
+/** "app" = câmera dentro do app; "nativa" = o usuário escolheu a do celular; sem escolha, o aparelho de pouca memória já começa no app. */
+function modoInicial(): boolean {
+  const salvo = ler(MODO_KEY);
+  if (salvo === "app") return true;
+  if (salvo === "nativa") return false;
+  return aparelhoDePoucaMemoria();
+}
+
+export const cameraNoApp = ref(modoInicial());
 
 export function usarCameraNoApp(ativo: boolean) {
   cameraNoApp.value = ativo;
-  gravar(MODO_KEY, ativo ? "app" : null);
+  gravar(MODO_KEY, ativo ? "app" : "nativa");
 }
 
 function limparPendente() {

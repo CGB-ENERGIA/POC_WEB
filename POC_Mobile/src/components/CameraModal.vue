@@ -37,6 +37,9 @@
           <q-icon name="mdi-camera" size="22px" />
           Abrir câmera
         </button>
+        <button v-if="podeTrocarParaCameraDoApp" class="cm-link" @click="usarCameraDoApp">
+          O app fecha quando abro a câmera? Usar a câmera do app
+        </button>
         <button class="cm-cancel" @click="isOpen = false">Cancelar</button>
       </template>
     </div>
@@ -51,10 +54,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from "vue";
+import { ref, computed, watch, nextTick } from "vue";
 import CameraInterna from "@/components/CameraInterna.vue";
 import { abrirCameraNativa, redimensionarParaBlob } from "@/utils/native-camera";
-import { cameraNoApp, usarCameraInterna, aparelhoComCapture, cameraNativaRetornou, MSG_SEM_CAMERA_COMPUTADOR } from "@/utils/camera-mode";
+import { cameraNoApp, usarCameraInterna, usarCameraNoApp, cameraNoAppDisponivel, aparelhoComCapture, cameraNativaRetornou, MSG_SEM_CAMERA_COMPUTADOR } from "@/utils/camera-mode";
 
 /**
  * Abre a câmera nativa do celular (zoom, foco, flash, rotação e selfie do próprio
@@ -74,6 +77,14 @@ const inputEl = ref<HTMLInputElement | null>(null);
 const processando = ref(false);
 const erro = ref("");
 const internaAberta = ref(false);
+
+/** Celular que ainda usa a câmera nativa e consegue abrir a do app: o colaborador pode trocar por conta própria. */
+const podeTrocarParaCameraDoApp = computed(() => !cameraNoApp.value && aparelhoComCapture() && cameraNoAppDisponivel());
+
+function usarCameraDoApp() {
+  usarCameraNoApp(true);
+  abrir();
+}
 
 function abrir() {
   erro.value = "";
@@ -187,6 +198,19 @@ async function onArquivo(e: Event) {
   cursor: pointer;
 }
 .cm-btn:active { background: var(--brand-deep, #5c0e1c); }
+.cm-link {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  color: #991b1b;
+  text-decoration: underline;
+  cursor: pointer;
+}
 .cm-cancel {
   appearance: none;
   border: 0;
