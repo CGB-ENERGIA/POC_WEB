@@ -18,7 +18,7 @@
           unelevated color="primary" no-caps icon="mdi-image-search-outline" label="Procurar"
           :loading="carregando" :disable="calculando" @click="procurar"
         />
-        <q-toggle v-model="mostrarReenvios" dense label="Mostrar reenvios (mesma equipe e dia)" />
+        <q-toggle v-model="mostrarReenvios" dense label="Mostrar reenvios (mesma equipe e dia, ou após reprovação)" />
       </q-card-section>
 
       <q-card-section v-if="erro" class="af__erro">{{ erro }}</q-card-section>
@@ -54,7 +54,7 @@
         <div v-for="(g, gi) in gruposVisiveis" :key="gi" class="af__grupo">
           <div class="af__grupo-topo">
             <span class="af__chip" :class="g.reenvio ? 'af__chip--neutro' : 'af__chip--alerta'">
-              {{ g.reenvio ? "Reenvio?" : "Reaproveitada" }}
+              {{ g.reenvio ? (g.aposReprovacao ? "Reenvio após reprovação" : "Reenvio?") : "Reaproveitada" }}
             </span>
             <span class="af__chip af__chip--info">{{ g.checklists }} checklists</span>
             <span v-if="g.temParecida" class="af__chip af__chip--info">parecida</span>

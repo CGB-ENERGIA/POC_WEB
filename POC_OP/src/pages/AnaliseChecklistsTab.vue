@@ -200,7 +200,7 @@
               :class="repetidaDe(item)!.soReenvio ? 'rep-badge--reenvio' : 'rep-badge--real'"
               :disabled="comparandoId === item.id"
               :title="repetidaDe(item)!.soReenvio
-                ? 'Foto igual à de outro checklist da mesma equipe no mesmo dia: provável reenvio. Clique para comparar.'
+                ? 'Foto igual à de outro checklist da mesma equipe (mesmo dia ou reenvio após reprovação): provável reenvio. Clique para comparar.'
                 : 'Foto igual à de outro checklist (outra data ou equipe). Clique para comparar lado a lado.'"
               @click="compararChecklist(item)"
             >
@@ -972,6 +972,8 @@ async function montarCasos(
       data: item.data,
       dataTexto: formatarDataHora(item.data),
       enviadoTexto,
+      enviadoEm: envio,
+      status: item.status,
       codigo: codigoDaFoto(f),
     };
     casos.push({ atual, matches });

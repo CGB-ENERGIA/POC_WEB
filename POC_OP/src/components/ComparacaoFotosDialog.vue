@@ -24,9 +24,9 @@
           <q-icon :name="par.tipo === 'identica' ? 'mdi-content-duplicate' : 'mdi-image-multiple-outline'" size="14px" />
           {{ par.tipo === "identica" ? "Mesma foto (arquivo idêntico)" : `Muito parecida (diferença ${par.distancia}/64)` }}
         </span>
-        <span class="cf__selo" :class="reenvio ? 'cf__selo--neutro' : 'cf__selo--alerta'">
-          <q-icon :name="reenvio ? 'mdi-send-clock-outline' : 'mdi-alert-outline'" size="14px" />
-          {{ reenvio ? "Mesma equipe, mesmo dia: provável reenvio" : "Outra data ou equipe: possível reaproveitamento" }}
+        <span class="cf__selo" :class="motivo ? 'cf__selo--neutro' : 'cf__selo--alerta'">
+          <q-icon :name="motivo ? 'mdi-send-clock-outline' : 'mdi-alert-outline'" size="14px" />
+          {{ textoMotivo }}
         </span>
         <div v-if="matches.length > 1" class="cf__nav">
           <q-btn flat round dense icon="mdi-chevron-left" :disable="indice === 0" aria-label="Anterior" @click="indice--" />
@@ -69,7 +69,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import type { FotoRepetida } from "@/lib/foto-repetida";
-import { provavelReenvio } from "@/lib/foto-repetida";
+import { motivoReenvio } from "@/lib/foto-repetida";
 import { formatarDataHora, diaLocalISO } from "@/lib/semanas";
 
 export interface FotoAtual {
@@ -81,6 +81,9 @@ export interface FotoAtual {
   dataTexto: string;
   /** Horário real de envio, quando difere do dia do checklist. */
   enviadoTexto?: string | null;
+  /** Horário real de envio (ISO) e situação da análise, para reconhecer reenvio. */
+  enviadoEm?: string | undefined;
+  status?: string | undefined;
   codigo: string | null;
 }
 
@@ -113,7 +116,12 @@ const envioDoPar = computed(() => {
   if (!p?.enviadoEm || diaLocalISO(p.enviadoEm) === diaLocalISO(p.data)) return "";
   return formatarDataHora(p.enviadoEm);
 });
-const reenvio = computed(() => !!par.value && !!atual.value && provavelReenvio(atual.value, par.value));
+const motivo = computed(() => (par.value && atual.value ? motivoReenvio(atual.value, par.value) : null));
+const textoMotivo = computed(() => {
+  if (motivo.value === "mesmo-dia") return "Mesma equipe, mesmo dia: provável reenvio";
+  if (motivo.value === "apos-reprovacao") return "Reenvio após reprovação: o checklist anterior da equipe foi reprovado";
+  return "Outra data ou equipe: possível reaproveitamento";
+});
 </script>
 
 <style scoped>

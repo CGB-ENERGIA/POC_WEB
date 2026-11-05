@@ -23,6 +23,8 @@ export interface FotoRepetida {
   distancia: number;
   /** Quando o checklist foi realmente enviado (a data do checklist segue a data da foto). */
   enviadoEm?: string | undefined;
+  /** Situação da análise do checklist (pendente, aprovado, reprovado). */
+  status?: string | undefined;
 }
 
 /** Código curto da foto (6 primeiros caracteres do SHA), o mesmo que o app mostra ao observador. */
@@ -36,6 +38,28 @@ export function provavelReenvio(
   b: { equipe: string; data: string },
 ): boolean {
   return a.equipe === b.equipe && diaLocalISO(a.data) === diaLocalISO(b.data);
+}
+
+export interface DadosEnvio {
+  equipe: string;
+  data: string;
+  enviadoEm?: string | undefined;
+  status?: string | undefined;
+}
+
+export type MotivoReenvio = "mesmo-dia" | "apos-reprovacao";
+
+/**
+ * Por que a mesma foto em dois checklists provavelmente NÃO é fraude:
+ *  - mesma equipe no mesmo dia (reenvio do mesmo checklist);
+ *  - mesma equipe, e o checklist mais antigo foi reprovado (o observador corrigiu e reenviou, mantendo as fotos válidas).
+ */
+export function motivoReenvio(a: DadosEnvio, b: DadosEnvio): MotivoReenvio | null {
+  if (a.equipe !== b.equipe) return null;
+  if (diaLocalISO(a.data) === diaLocalISO(b.data)) return "mesmo-dia";
+  const quando = (x: DadosEnvio) => new Date(x.enviadoEm ?? x.data).getTime();
+  const maisAntigo = quando(a) <= quando(b) ? a : b;
+  return maisAntigo.status === "reprovado" ? "apos-reprovacao" : null;
 }
 
 interface LinhaRpc {
@@ -91,9 +115,12 @@ async function preencherEnvio(fotos: FotoRepetida[]): Promise<void> {
   const ids = [...new Set(fotos.map((f) => f.submissionId))];
   if (!ids.length) return;
   try {
-    const linhas = await fetchAllByIds<{ id: string; created_at: string }>("checklist_submissions", "id,created_at", "id", ids);
-    const envio = new Map(linhas.map((l) => [l.id, l.created_at]));
-    for (const f of fotos) f.enviadoEm = envio.get(f.submissionId);
+    const linhas = await fetchAllByIds<{ id: string; created_at: string; status: string | null }>("checklist_submissions", "id,created_at,status", "id", ids);
+    const info = new Map(linhas.map((l) => [l.id, l]));
+    for (const f of fotos) {
+      f.enviadoEm = info.get(f.submissionId)?.created_at;
+      f.status = info.get(f.submissionId)?.status ?? undefined;
+    }
   } catch { /* sem o horário de envio a tela mostra só a data do checklist */ }
 }
 
@@ -125,6 +152,7 @@ export async function fetchSubmissionsComFotoRepetida(ids: string[]): Promise<Ma
 
 export interface FotoAuditoria {
   enviadoEm?: string | undefined;
+  status?: string | undefined;
   id: string;
   submissionId: string;
   sortOrder: number;
@@ -141,19 +169,21 @@ export interface GrupoRepetido {
   fotos: FotoAuditoria[];
   /** Quantos checklists diferentes usam a imagem. */
   checklists: number;
-  /** Todos os checklists são da mesma equipe no mesmo dia (provável reenvio). */
+  /** Todos os checklists são da mesma equipe e se explicam por reenvio (mesmo dia ou depois de reprovação). */
   reenvio: boolean;
+  /** O reenvio inclui checklist reenviado depois de reprovação. */
+  aposReprovacao: boolean;
   /** Há foto só parecida (não é o mesmo arquivo). */
   temParecida: boolean;
 }
 
 /** Fotos de evidência dos checklists enviados desde `desdeISO` (AAAA-MM-DD), com data/equipe/observador. */
 export async function fetchFotosParaAuditoria(desdeISO: string): Promise<{ fotos: FotoAuditoria[]; semMarcador: number }> {
-  const subs: { id: string; data: string; created_at: string; equipe: string; observador: string; base: string }[] = [];
+  const subs: { id: string; data: string; created_at: string; status: string | null; equipe: string; observador: string; base: string }[] = [];
   for (let de = 0; ; de += 1000) {
     const { data, error } = await supabase
       .from("checklist_submissions")
-      .select("id,data,created_at,equipe,observador,base")
+      .select("id,data,created_at,status,equipe,observador,base")
       .gte("data", `${desdeISO}T00:00:00-03:00`)
       .order("data", { ascending: false })
       .range(de, de + 999);
@@ -173,7 +203,7 @@ export async function fetchFotosParaAuditoria(desdeISO: string): Promise<{ fotos
     if (!l.sha256) semMarcador++;
     fotos.push({
       id: l.id, submissionId: l.submission_id, sortOrder: l.sort_order, r2Key: l.r2_key, sha256: l.sha256, dhash: l.dhash,
-      data: s.data, enviadoEm: s.created_at, equipe: s.equipe, observador: s.observador, base: s.base,
+      data: s.data, enviadoEm: s.created_at, status: s.status ?? undefined, equipe: s.equipe, observador: s.observador, base: s.base,
     });
   }
   return { fotos, semMarcador };
@@ -234,11 +264,14 @@ export function agruparRepeticoes(fotos: FotoAuditoria[]): GrupoRepetido[] {
     const membros = indices.map((i) => fotos[i]!);
     const subs = new Set(membros.map((m) => m.submissionId));
     if (subs.size < 2) continue; // repetição dentro do mesmo checklist não é o caso aqui
-    const base = membros[0]!;
+    const quando = (m: FotoAuditoria) => new Date(m.enviadoEm ?? m.data).getTime();
+    const maisNovo = membros.reduce((x, y) => (quando(y) > quando(x) ? y : x));
+    const motivos = membros.filter((m) => m.submissionId !== maisNovo.submissionId).map((m) => motivoReenvio(m, maisNovo));
     out.push({
       fotos: membros.sort((p, q) => q.data.localeCompare(p.data)),
       checklists: subs.size,
-      reenvio: membros.every((m) => provavelReenvio(m, base)),
+      reenvio: motivos.every((m) => m !== null),
+      aposReprovacao: motivos.includes("apos-reprovacao"),
       temParecida: indices.some((i) => parecida.has(i)),
     });
   }
