@@ -731,9 +731,16 @@ async function deleteColaborador(colab: { chapa: string; nome: string }) {
     ok: { label: "Remover", color: "negative", unelevated: true },
     cancel: { label: "Cancelar", flat: true },
   }).onOk(async () => {
-    const { error } = await supabase.from("pwa_colaboradores").delete().eq("chapa", colab.chapa);
+    // .select() devolve as linhas apagadas: o banco responde "ok" mesmo quando a regra de segurança não deixa apagar nada
+    const { data: apagadas, error } = await supabase.from("pwa_colaboradores").delete().eq("chapa", colab.chapa).select("chapa");
     if (error) { $q.notify({ type: "negative", message: error.message }); return; }
-    // Atualiza localmente para evitar que seedColaboradoresSeVazio re-insira o registro deletado
+    if (!apagadas?.length) {
+      $q.notify({
+        type: "negative", timeout: 7000,
+        message: "O banco não apagou este colaborador (sem permissão de exclusão). Nada foi alterado.",
+      });
+      return;
+    }
     colaboradores.value = colaboradores.value.filter(c => c.chapa !== colab.chapa);
     $q.notify({ type: "positive", message: "Colaborador removido." });
   });
@@ -977,7 +984,8 @@ async function seedColaboradoresSeVazio() {
   const { count } = await supabase
     .from("pwa_colaboradores")
     .select("chapa", { count: "exact", head: true });
-  if ((count ?? 0) >= FUNCIONARIOS.length) return;
+  // Só semeia a tabela vazia. Antes recolocava todo colaborador da lista embutida que faltasse, o que desfazia as exclusões.
+  if ((count ?? 0) > 0) return;
   const payload = FUNCIONARIOS.map((f) => ({
     chapa: f.chapa,
     nome: f.nome,
