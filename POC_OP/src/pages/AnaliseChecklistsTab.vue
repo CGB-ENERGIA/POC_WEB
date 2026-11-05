@@ -62,6 +62,20 @@
         Sem evidências
         <q-badge v-if="totalSemEvidencias > 0" color="negative" :label="totalSemEvidencias" class="q-ml-xs" />
       </button>
+      <button
+        v-if="totalRepetidas > 0 || soRepetidas"
+        :class="['pill', soRepetidas && 'pill--active']"
+        title="Checklists com foto igual à de outro checklist"
+        @click="soRepetidas = !soRepetidas"
+      >
+        <q-icon name="mdi-content-duplicate" size="14px" class="q-mr-xs" />
+        Foto repetida
+        <q-badge v-if="totalRepetidas > 0" color="deep-orange" :label="totalRepetidas" class="q-ml-xs" />
+      </button>
+      <button class="pill" title="Procurar fotos repetidas em todo o período" @click="auditoriaAberta = true">
+        <q-icon name="mdi-image-search-outline" size="14px" class="q-mr-xs" />
+        Auditar fotos
+      </button>
       <q-input v-model="search" dense outlined placeholder="Buscar..." class="search-input q-ml-auto" style="min-width:200px">
         <template #prepend><q-icon name="mdi-magnify" size="18px" color="grey-6" /></template>
       </q-input>
@@ -178,6 +192,18 @@
               <q-icon name="mdi-camera-off-outline" size="13px" class="q-mr-xs" />
               {{ evidenciasDe(item) === 0 ? "Sem evidências" : `Evidências ${evidenciasDe(item)}/${exigidas(item)}` }}
             </span>
+
+            <span
+              v-if="repetidaDe(item)"
+              class="rep-badge"
+              :class="repetidaDe(item)!.soReenvio ? 'rep-badge--reenvio' : 'rep-badge--real'"
+              :title="repetidaDe(item)!.soReenvio
+                ? 'Foto igual à de outro checklist da mesma equipe no mesmo dia: provável reenvio'
+                : 'Foto igual à de outro checklist (outra data ou equipe): abra as respostas e compare'"
+            >
+              <q-icon name="mdi-content-duplicate" size="13px" class="q-mr-xs" />
+              {{ repetidaDe(item)!.soReenvio ? "Foto repetida (reenvio?)" : "Foto repetida" }}
+            </span>
           </div>
           <div class="analise-item__date">
             {{ fmtDate(dataEnvioReal(item)) }}
@@ -276,6 +302,19 @@
                         <div class="ac-ev-card__badge ac-ev-card__badge--ok">
                           <q-icon name="mdi-check" size="11px" />
                         </div>
+                        <div
+                          v-if="fotoSlot(slot)?.sha256"
+                          class="ac-ev-card__code"
+                          title="Código da foto: o mesmo código em dois checklists indica a mesma imagem"
+                        >#{{ codigoDaFoto(fotoSlot(slot)!) }}</div>
+                        <button
+                          v-if="repeticoesDoSlot(slot).length"
+                          class="ac-ev-card__rep"
+                          @click.stop="abrirComparacao(item, slot)"
+                        >
+                          <q-icon name="mdi-content-duplicate" size="12px" />
+                          Foto repetida: comparar
+                        </button>
                       </template>
                       <template v-else>
                         <q-icon :name="FOTO_LABELS[slot]?.icon ?? 'mdi-image-off-outline'" size="30px" class="ac-ev-card__empty-icon" />
@@ -596,6 +635,19 @@
       </q-card>
     </q-dialog>
 
+    <!-- Comparação lado a lado de foto repetida -->
+    <ComparacaoFotosDialog
+      v-if="comparacao.atual"
+      v-model="comparacao.open"
+      :atual="comparacao.atual"
+      :matches="comparacao.matches"
+      :url-de="fotoUrl"
+      @abrir="abrirFoto"
+    />
+
+    <!-- Auditoria de fotos repetidas no período -->
+    <AuditoriaFotosDialog v-model="auditoriaAberta" :url-de="fotoUrl" @abrir="abrirFoto" @calculadas="recarregar" />
+
     <!-- Dialog confirmação de apagar -->
     <q-dialog v-model="deleteDialog.open" persistent>
       <q-card style="min-width:320px;max-width:440px;width:100%">
@@ -668,6 +720,11 @@ import {
 import { carregarColaboradores, sugerirColaboradores, type ColaboradorSugestao } from "@/lib/colaboradores-geral";
 import { useAuth } from "@/composables/useAuth";
 import { rotuloSemana, partesLocais, diaLocalISO, formatarDataHora } from "@/lib/semanas";
+import ComparacaoFotosDialog, { type FotoAtual } from "@/components/ComparacaoFotosDialog.vue";
+import AuditoriaFotosDialog from "@/components/AuditoriaFotosDialog.vue";
+import {
+  codigoDaFoto, fetchRepeticoesDoChecklist, fetchSubmissionsComFotoRepetida, type FotoRepetida,
+} from "@/lib/foto-repetida";
 import AvisoCoordenadorDialog from "@/components/AvisoCoordenadorDialog.vue";
 import AvisosPendentesDialog from "@/components/AvisosPendentesDialog.vue";
 import {
@@ -707,6 +764,17 @@ const loading = ref(false);
 const loadError = ref<string | null>(null);
 const itens = ref<ChecklistParaAnalise[]>([]);
 const evidenciasMap = ref<Record<string, number>>({});
+/** Checklists com foto igual à de outro checklist (soReenvio: só repete com a mesma equipe no mesmo dia). */
+const repetidasMap = ref<Map<string, { soReenvio: boolean }>>(new Map());
+function repetidaDe(item: ChecklistParaAnalise) { return repetidasMap.value.get(item.id) ?? null; }
+/** Repetição que merece atenção: não é só o mesmo checklist reenviado. */
+function repetidaReal(item: ChecklistParaAnalise): boolean {
+  const r = repetidaDe(item);
+  return !!r && !r.soReenvio;
+}
+const soRepetidas = ref(false);
+const totalRepetidas = computed(() => itens.value.filter((i) => repetidaDe(i)).length);
+const auditoriaAberta = ref(false);
 
 function exigidas(item: ChecklistParaAnalise) { return evidenciasExigidas(item.auditagem); }
 /** Evidências enviadas (do checklist expandido usa a lista completa; senão, a contagem em lote). */
@@ -767,6 +835,9 @@ async function recarregar() {
     void carregarAvisos(lista, seq);
     const contagem = await fetchContagemEvidencias(lista.filter((i) => !ehLegado(i))).catch(() => ({}));
     if (seq === seqCarga) evidenciasMap.value = contagem;
+    // Selo "Foto repetida": falha ou banco sem a função = sem selo, nunca trava a tela
+    const repetidas = await fetchSubmissionsComFotoRepetida(lista.filter((i) => !ehLegado(i)).map((i) => i.id));
+    if (seq === seqCarga) repetidasMap.value = repetidas;
   } catch (e) {
     if (seq === seqCarga) loadError.value = (e as Error).message;
   } finally {
@@ -817,6 +888,7 @@ const totalSemEvidencias = computed(() => itens.value.filter((i) => faltamEviden
 const listaFiltrada = computed(() => {
   let lista = filtroStatus.value === "todos" ? itens.value : itens.value.filter((i) => i.status === filtroStatus.value);
   if (soSemEvidencias.value) lista = lista.filter((i) => faltamEvidencias(i) > 0);
+  if (soRepetidas.value) lista = lista.filter((i) => repetidaDe(i));
   const q = search.value.toLowerCase().trim();
   if (!q) return lista;
   return lista.filter((i) =>
@@ -853,13 +925,56 @@ async function toggleExpand(id: string) {
   loadingResp.value = true;
   respostasExpand.value = [];
   fotosExpand.value = [];
+  repeticoesExpand.value = new Map();
   try {
     const [respostas, fotos] = await Promise.all([fetchResponses([id]), fetchFotosChecklist(id)]);
     respostasExpand.value = respostas;
     fotosExpand.value = fotos;
+    repeticoesExpand.value = await fetchRepeticoesDoChecklist(id, fotos);
   } finally {
     loadingResp.value = false;
   }
+}
+
+/** Foto de cada slot de evidência do checklist aberto, e as repetições dela em outros checklists. */
+const repeticoesExpand = ref<Map<string, FotoRepetida[]>>(new Map());
+function fotoSlot(slot: number): FotoChecklistRow | undefined {
+  return fotosExpand.value.find((f) => f.sort_order === slot && f.tipo === "local");
+}
+function repeticoesDoSlot(slot: number): FotoRepetida[] {
+  const f = fotoSlot(slot);
+  return f ? repeticoesExpand.value.get(f.id) ?? [] : [];
+}
+
+const comparacao = reactive({ open: false, atual: null as FotoAtual | null, matches: [] as FotoRepetida[] });
+function abrirComparacao(item: ChecklistParaAnalise, slot: number) {
+  const f = fotoSlot(slot);
+  if (!f) return;
+  comparacao.atual = {
+    rotulo: FOTO_LABELS[slot]?.label ?? `foto ${slot + 1}`,
+    url: fotoUrl(f.r2_key),
+    equipe: item.equipe,
+    observador: item.observador,
+    data: item.data,
+    dataTexto: formatarDataHora(item.data),
+    codigo: codigoDaFoto(f),
+  };
+  comparacao.matches = repeticoesDoSlot(slot);
+  comparacao.open = true;
+}
+
+/** Aprovar um checklist com foto reaproveitada de outro dia/equipe pede uma confirmação a mais (só avisa, não bloqueia). */
+function confirmarRepetida(item: ChecklistParaAnalise): Promise<boolean> {
+  if (!repetidaReal(item)) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    $q.dialog({
+      title: "Foto repetida",
+      message: "Este checklist tem foto igual à de outro checklist (outra data ou equipe). "
+        + "Abra as respostas e use “Foto repetida: comparar” antes de aprovar. Aprovar mesmo assim?",
+      ok: { label: "Aprovar mesmo assim", color: "primary", unelevated: true, noCaps: true },
+      cancel: { label: "Voltar", flat: true, noCaps: true },
+    }).onOk(() => resolve(true)).onCancel(() => resolve(false)).onDismiss(() => resolve(false));
+  });
 }
 
 // ── Aprovação direta (sem dialog) ─────────────────────────────────────────────
@@ -889,7 +1004,8 @@ async function abrirAcao(item: ChecklistParaAnalise, tipo: AnaliseStatus) {
     });
     return;
   }
-  // aprovado: executa direto
+  // aprovado: executa direto (foto reaproveitada de outro dia/equipe pede confirmação antes)
+  if (tipo === "aprovado" && !(await confirmarRepetida(item))) return;
   loadingId.value = item.id;
   try {
     const updated = await atualizarStatusChecklist(item.id, tipo, nomeAnalista(), undefined);
@@ -1023,6 +1139,7 @@ async function direcionarMes(item: ChecklistParaAnalise, ano: number, mes: numbe
 /** Aprova e já faz a observação contar no mês escolhido. */
 async function aprovarNoMes(item: ChecklistParaAnalise, ano: number, mes: number) {
   if (faltamEvidencias(item) > 0) { void abrirAcao(item, "aprovado"); return; } // mesmo bloqueio da aprovação direta
+  if (!(await confirmarRepetida(item))) return;
   loadingId.value = item.id;
   try {
     const atual = mesQueConta(item);
@@ -1064,6 +1181,7 @@ async function direcionar(item: ChecklistParaAnalise, semana: 1 | 2 | 3 | 4 | nu
 /** Aprova e já direciona para a semana escolhida. Se a aprovação falhar depois de gravar a semana, a semana fica salva. */
 async function aprovarNaSemana(item: ChecklistParaAnalise, semana: 1 | 2 | 3 | 4) {
   if (faltamEvidencias(item) > 0) { void abrirAcao(item, "aprovado"); return; } // mesmo bloqueio da aprovação direta
+  if (!(await confirmarRepetida(item))) return;
   loadingId.value = item.id;
   try {
     const comSemana = semana === semanaDoItem(item) && !semanaManual(item) ? item : await gravarSemana(item, semana);
@@ -1454,6 +1572,13 @@ $inactive-text: #475569;
   &--none { background: rgba(220,38,38,.14); color: #dc2626; }
   &--part { background: rgba(217,119,6,.15); color: #d97706; }
 }
+.rep-badge {
+  display: inline-flex; align-items: center;
+  font-size: 11px; font-weight: 700;
+  padding: 2px 8px; border-radius: 999px;
+  &--real { background: rgba(234,88,12,.15); color: #c2410c; }
+  &--reenvio { background: rgba(100,116,139,.16); color: #475569; }
+}
 .analise-item__date { font-size: 11px; color: var(--poc-muted); white-space: nowrap; text-align: right; }
 .analise-item__date-foto { margin-top: 2px; font-weight: 700; color: #1d4ed8; }
 
@@ -1621,6 +1746,20 @@ $inactive-text: #475569;
     box-shadow: 0 1px 4px rgba(0,0,0,.25);
     &--ok   { background: #16a34a; color: #fff; }
     &--miss { background: #d97706; color: #fff; }
+  }
+
+  &__code {
+    position: absolute; top: 7px; left: 7px;
+    background: rgba(0,0,0,.62); color: #fff;
+    font: 700 10.5px ui-monospace, monospace; letter-spacing: .03em;
+    padding: 2px 6px; border-radius: 6px; pointer-events: none;
+  }
+  &__rep {
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    width: 100%; border: 0; border-top: 1.5px solid rgba(217,119,6,.35);
+    background: rgba(217,119,6,.14); color: #92400e;
+    font: 700 11.5px inherit; padding: 6px 8px; cursor: pointer;
+    &:hover { background: rgba(217,119,6,.24); }
   }
 
   &__empty-icon { color: #cbd5e1; }

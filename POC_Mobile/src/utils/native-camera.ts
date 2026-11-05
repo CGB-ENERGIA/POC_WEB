@@ -9,6 +9,9 @@
 import { getTrustedTime } from "@/utils/server-time";
 import { type PhotoStampMeta, desenharCarimboNoCanvas } from "@/utils/photo-stamp";
 import { marcarCameraNativaAberta } from "@/utils/camera-mode";
+import {
+  type Marcador, calcularMarcadorComCanvas, embutirMarcador, lerMarcadorDeBlob,
+} from "@/utils/foto-marcador";
 
 const MAX_LADO = 1280;
 const QUALIDADE = 0.72;
@@ -294,14 +297,23 @@ export function processarFotoComCarimbo(
           ctx.drawImage(src, 0, 0, cw, ch);
           // Libera a fonte antes de desenhar o texto, para reduzir o pico de memória
           release();
+          // Marcador da foto ORIGINAL (antes de faixa e carimbo): é ele que identifica foto repetida
+          let marcador: Pick<Marcador, "s" | "d"> | null = null;
+          try {
+            marcador = (await lerMarcadorDeBlob(file)) ?? (await calcularMarcadorComCanvas(file, canvas));
+          } catch {
+            marcador = null; // sem marcador a foto segue normalmente: é só um recurso de auditoria
+          }
           if (frescor && !frescor.ok) {
             desenharFaixa(ctx, cw, ["ATENÇÃO: FOTO FORA DO HORÁRIO", descreverQuando(frescor)]);
           }
           // Carimbo de auditoria no mesmo canvas (sem segunda alocação)
           desenharCarimboNoCanvas(ctx, cw, ch, stamp);
           canvas.toBlob((blob) => {
-            if (blob) resolve(blob);
-            else reject(new Error("Falha ao gerar Blob da imagem"));
+            if (!blob) { reject(new Error("Falha ao gerar Blob da imagem")); return; }
+            if (!marcador) { resolve(blob); return; }
+            const m = marcador;
+            embutirMarcador(blob, { c: m.s.slice(0, 6).toUpperCase(), s: m.s, d: m.d }).then(resolve, () => resolve(blob));
           }, "image/jpeg", QUALIDADE);
         } finally {
           release();

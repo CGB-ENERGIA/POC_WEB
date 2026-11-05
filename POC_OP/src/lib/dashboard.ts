@@ -1280,6 +1280,9 @@ export interface FotoChecklistRow {
   pergunta_id: string | null;
   r2_key: string;
   sort_order: number;
+  /** Impressão digital da foto (ver lib/foto-marcador.ts). Ausente nas fotos antigas e enquanto o banco não tiver as colunas. */
+  sha256?: string | null;
+  dhash?: string | null;
 }
 
 /** Quantas evidências obrigatórias o app exige: 2 em Administrativo/Alojamento/Logística/Oficina, 3 nos demais. */
@@ -1306,13 +1309,18 @@ export async function fetchContagemEvidencias(
 }
 
 export async function fetchFotosChecklist(submissionId: string): Promise<FotoChecklistRow[]> {
-  const { data, error } = await supabase
+  const consulta = (campos: string) => supabase
     .from("checklist_photos")
-    .select("id,submission_id,tipo,pergunta_id,r2_key,sort_order")
+    .select(campos)
     .eq("submission_id", submissionId)
     .order("sort_order");
+  let { data, error } = await consulta("id,submission_id,tipo,pergunta_id,r2_key,sort_order,sha256,dhash");
+  // Banco sem as colunas do marcador: a tela segue sem a detecção de foto repetida
+  if (error && /sha256|dhash|column/i.test(error.message)) {
+    ({ data, error } = await consulta("id,submission_id,tipo,pergunta_id,r2_key,sort_order"));
+  }
   if (error) throw error;
-  return (data ?? []) as FotoChecklistRow[];
+  return (data ?? []) as unknown as FotoChecklistRow[];
 }
 
 /** Filtra gerência de employee lookup. */

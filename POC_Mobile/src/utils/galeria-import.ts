@@ -7,6 +7,7 @@
  * não recebe nenhuma marca extra, mesmo quando é mais velha que o limite.
  */
 import { getTrustedTime } from "@/utils/server-time";
+import { calcularMarcador, embutirMarcador, lerMarcadorDeBlob } from "@/utils/foto-marcador";
 
 /**
  * false: aceita a foto antiga, sem marcar a imagem.
@@ -81,5 +82,18 @@ export async function prepararFotoDaGaleria(
     // Auditoria sem marca na imagem: a foto entra como veio, com o carimbo original da câmera.
   }
 
-  return lerComoBase64(blob);
+  return lerComoBase64(await comMarcador(blob));
+}
+
+/**
+ * A foto da galeria já saiu do app com o marcador da imagem original embutido: ele é mantido, para que a mesma foto
+ * seja reconhecida onde for reusada. Foto mais antiga (sem marcador) recebe o dela, calculado sobre a foto como está.
+ */
+async function comMarcador(blob: Blob): Promise<Blob> {
+  try {
+    if (await lerMarcadorDeBlob(blob)) return blob;
+    return await embutirMarcador(blob, await calcularMarcador(blob));
+  } catch {
+    return blob; // auditoria apenas: nunca impede a foto de entrar
+  }
 }

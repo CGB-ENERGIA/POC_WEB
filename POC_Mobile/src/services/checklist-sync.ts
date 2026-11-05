@@ -4,6 +4,7 @@ import { isSupabaseSyncEnabled, isR2Configured } from "@/lib/config";
 import type { ObservacaoChecklist } from "@/types/checklist";
 import { buildChecklistPhotoKey, uploadImageToR2 } from "@/services/r2-upload";
 import { uploadPhotoToStorage } from "@/services/supabase-storage";
+import { lerMarcadorDeDataUrl } from "@/utils/foto-marcador";
 
 const BUCKET_DRAFT = "checklist-photos";
 
@@ -271,14 +272,23 @@ export async function syncChecklistToRemote(
   }
 
   if (localPhotoKeys.length) {
-    const { error: photoErr } = await supabase.from("checklist_photos").insert(
-      localPhotoKeys.map(({ key, sortOrder }) => ({
-        submission_id: submissionId,
-        tipo: "local",
-        r2_key: key,
-        sort_order: sortOrder,
-      }))
-    );
+    const linhas = localPhotoKeys.map(({ key, sortOrder }) => ({
+      submission_id: submissionId,
+      tipo: "local",
+      r2_key: key,
+      sort_order: sortOrder,
+    }));
+    // Marcador da imagem (identifica foto repetida), embutido na foto desde a captura.
+    const comMarcador = linhas.map((linha, idx) => {
+      const foto = entry.fotosLocal[localPhotoKeys[idx]!.sortOrder];
+      const m = foto ? lerMarcadorDeDataUrl(foto) : null;
+      return m ? { ...linha, sha256: m.s, dhash: m.d } : linha;
+    });
+    let { error: photoErr } = await supabase.from("checklist_photos").insert(comMarcador);
+    // Banco ainda sem as colunas do marcador: o envio segue sem elas (o marcador não pode travar o checklist).
+    if (photoErr && comMarcador.some((l) => "sha256" in l) && /sha256|dhash|column|schema cache/i.test(photoErr.message)) {
+      ({ error: photoErr } = await supabase.from("checklist_photos").insert(linhas));
+    }
     if (photoErr) throw new ChecklistSyncError(photoErr.message);
   }
 
