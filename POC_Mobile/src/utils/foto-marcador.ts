@@ -18,8 +18,8 @@ export type Marcador = {
 
 export type TipoRepeticao = "identica" | "parecida";
 
-/** Distância máxima (de 64 bits) para considerar duas imagens "a mesma foto". */
-export const LIMITE_PARECIDA = 4;
+/** Distância máxima (de 64 bits) para considerar duas imagens "a mesma foto". Medido em ~9 mil fotos reais: não há pares a distância 2 entre fotos diferentes; 3 e 4 já são ruído. */
+export const LIMITE_PARECIDA = 2;
 
 /** Faixa vertical analisada: sem o topo (faixa de aviso) e sem o rodapé (carimbo). */
 const CORTE_TOPO = 0.15;
