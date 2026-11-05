@@ -32,7 +32,8 @@
           <figcaption class="cf__legenda cf__legenda--atual">Este checklist</figcaption>
           <img v-if="atual.url" :src="atual.url" class="cf__img" alt="Foto deste checklist" @click="$emit('abrir', atual.url!)" />
           <div class="cf__dados">
-            <strong>{{ atual.equipe }}</strong> · {{ atual.observador }}<br />
+            <span class="cf__rot">Equipe</span> <strong>{{ atual.equipe }}</strong><br />
+            <span class="cf__rot">Obs.</span> {{ atual.observador }}<br />
             <template v-if="atual.enviadoTexto">Enviado {{ atual.enviadoTexto }}<br />Checklist/foto de {{ atual.dataTexto }}</template>
             <template v-else>{{ atual.dataTexto }}</template><span v-if="atual.codigo" class="cf__codigo">#{{ atual.codigo }}</span>
           </div>
@@ -41,7 +42,8 @@
           <figcaption class="cf__legenda">Já enviada antes</figcaption>
           <img v-if="urlDoPar" :src="urlDoPar" class="cf__img" alt="Foto enviada antes" @click="$emit('abrir', urlDoPar!)" />
           <div class="cf__dados">
-            <strong>{{ par.equipe }}</strong> · {{ par.observador }}<br />
+            <span class="cf__rot">Equipe</span> <strong>{{ par.equipe }}</strong><br />
+            <span class="cf__rot">Obs.</span> {{ par.observador }}<br />
             <template v-if="envioDoPar">Enviado {{ envioDoPar }}<br />Checklist/foto de {{ dataDoPar }}</template>
             <template v-else>{{ dataDoPar }}</template><span v-if="par.sha256" class="cf__codigo">#{{ par.sha256.slice(0, 6).toUpperCase() }}</span>
           </div>
@@ -113,6 +115,7 @@ const reenvio = computed(() => !!par.value && provavelReenvio(props.atual, par.v
 .cf__legenda { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .65; }
 .cf__legenda--atual { color: #8B1C2B; opacity: 1; }
 .cf__img { width: 100%; max-height: 52vh; object-fit: contain; border-radius: 8px; background: rgba(128, 128, 128, .14); cursor: zoom-in; }
+.cf__rot { font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; opacity: .6; }
 .cf__dados { font-size: 12.5px; line-height: 1.5; }
 .cf__codigo { margin-left: 8px; font-family: ui-monospace, monospace; font-weight: 700; font-size: 11.5px; opacity: .8; }
 .cf__dica { font-size: 12px; opacity: .7; padding-top: 0; }

@@ -59,12 +59,18 @@
             <span class="af__chip af__chip--info">{{ g.checklists }} checklists</span>
             <span v-if="g.temParecida" class="af__chip af__chip--info">parecida</span>
           </div>
+          <div class="af__equipes">
+            <span class="af__equipes-rot">Mesma foto usada por:</span>
+            <span v-for="e in equipesDoGrupo(g)" :key="e.equipe" class="af__eq">
+              {{ e.equipe }}<template v-if="e.vezes > 1"> ×{{ e.vezes }}</template>
+            </span>
+          </div>
           <div class="af__fotos">
             <div v-for="f in g.fotos" :key="f.id" class="af__item">
               <img v-if="urlDe(f.r2Key)" :src="urlDe(f.r2Key)!" class="af__img" loading="lazy" alt="Foto repetida" @click="$emit('abrir', urlDe(f.r2Key)!)" />
               <div class="af__dados">
-                <strong>{{ f.equipe }}</strong><br />
-                {{ f.observador }}<br />
+                <span class="af__rot">Equipe</span> <strong>{{ f.equipe }}</strong><br />
+                <span class="af__rot">Obs.</span> {{ f.observador }}<br />
                 <template v-if="f.enviadoEm && diaLocalISO(f.enviadoEm) !== diaLocalISO(f.data)">
                   enviado {{ formatarDataHora(f.enviadoEm) }}<br />foto de {{ formatarDataHora(f.data) }}
                 </template>
@@ -106,6 +112,19 @@ const resumo = ref<{ fotos: number; semMarcador: number } | null>(null);
 
 const gruposVisiveis = computed(() => (mostrarReenvios.value ? grupos.value : grupos.value.filter((g) => !g.reenvio)));
 const ocultos = computed(() => (mostrarReenvios.value ? 0 : grupos.value.filter((g) => g.reenvio).length));
+
+/** Equipes que usaram a imagem, da que mais usou para a que menos usou (cada checklist conta uma vez). */
+function equipesDoGrupo(g: GrupoRepetido): { equipe: string; vezes: number }[] {
+  const porEquipe = new Map<string, Set<string>>();
+  for (const f of g.fotos) {
+    const s = porEquipe.get(f.equipe) ?? new Set<string>();
+    s.add(f.submissionId);
+    porEquipe.set(f.equipe, s);
+  }
+  return [...porEquipe.entries()]
+    .map(([equipe, subs]) => ({ equipe, vezes: subs.size }))
+    .sort((a, b) => b.vezes - a.vezes || a.equipe.localeCompare(b.equipe, "pt-BR"));
+}
 
 function desdeISO(): string {
   const d = new Date(Date.now() - dias.value * 86_400_000 - 3 * 3_600_000);
@@ -186,6 +205,10 @@ async function calcularAntigas() {
 .af__chip--alerta { background: rgba(234,88,12,.15); color: #c2410c; }
 .af__chip--neutro { background: rgba(100,116,139,.16); color: #475569; }
 .af__chip--info { background: rgba(100,116,139,.12); }
+.af__equipes { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; font-size: 12.5px; }
+.af__equipes-rot { font-weight: 600; opacity: .75; }
+.af__eq { font-weight: 700; padding: 2px 9px; border-radius: 6px; background: rgba(139,28,43,.16); }
+.af__rot { font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; opacity: .6; }
 .af__fotos { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .af__item { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
 .af__img { width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: 8px; background: rgba(128,128,128,.14); cursor: zoom-in; }
