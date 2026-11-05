@@ -205,6 +205,10 @@
             <q-icon name="mdi-file-excel-outline" size="16px" />
             Atualizar planilha
           </button>
+          <button class="dbp-add-btn" type="button" @click="trocaCoordOpen = true">
+            <q-icon name="mdi-swap-horizontal" size="16px" />
+            Trocar coordenação
+          </button>
           <button class="dbp-add-btn" @click="openEqDialog()">
             <q-icon name="mdi-plus" size="16px" />
             Adicionar
@@ -463,6 +467,10 @@
             <q-select v-model="empForm.coordenador" :options="coordFormOpts" label="Coordenador" dense outlined clearable class="col" emit-value map-options use-input new-value-mode="add" />
             <q-select v-model="empForm.gerente" :options="gerenteFormOpts" label="Gerente/Supervisor" dense outlined clearable class="col" emit-value map-options use-input new-value-mode="add" />
           </div>
+          <p v-if="empForm.funcao === 'Coordenador'" class="text-caption q-mb-none" style="opacity:.75;line-height:1.35">
+            Este cadastro é da pessoa. Para mudar as equipes que ele coordena (troca de base ou entre coordenadores), use
+            <b>Equipes → Trocar coordenação</b>.
+          </p>
           <q-input
             v-model="empForm.desligado_em" type="date" label="Data de desligamento" dense outlined clearable stack-label
             hint="Deixe vazio se a pessoa está no quadro. O histórico é mantido; ela deixa de aparecer nas listas e metas dos períodos que começam depois desta data."
@@ -510,6 +518,8 @@
       </q-card>
     </q-dialog>
 
+    <TrocarCoordenacaoDialog v-model="trocaCoordOpen" :equipes="equipes" :gerentes="gerenteFormOpts" @aplicada="fetchEquipes" />
+
     <!-- ══ DIALOG EQUIPE ════════════════════════════════════════════════════════ -->
     <q-dialog v-model="eqDialog" persistent :maximized="$q.screen.lt.sm" transition-show="scale" transition-hide="scale">
       <q-card class="dbp-dlg">
@@ -549,6 +559,7 @@ import { supabase } from "@/lib/supabase";
 import * as XLSX from "xlsx";
 import { FUNCIONARIOS } from "@/data/funcionarios";
 import { allPages, uniqueHierarchyOpts } from "@/lib/dashboard";
+import TrocarCoordenacaoDialog from "@/components/TrocarCoordenacaoDialog.vue";
 
 const $q      = useQuasar();
 const loading     = ref(false);
@@ -884,6 +895,7 @@ const gerenteFormOpts = computed(() => uniqueHierarchyOpts([...employees.value, 
 const eqSearch         = ref("");
 const eqGerenciaFilter  = ref("Todas");
 const eqDialog         = ref(false);
+const trocaCoordOpen   = ref(false);
 const eqError          = ref("");
 const eqForm           = ref<Partial<Equipe>>({});
 
