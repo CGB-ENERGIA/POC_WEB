@@ -4,11 +4,19 @@
       <q-card-section class="cf__topo">
         <div>
           <div class="cf__titulo">Comparar fotos</div>
-          <div class="cf__sub">
+          <div v-if="atual" class="cf__sub">
             A foto de {{ atual.rotulo }} aparece também em {{ matches.length === 1 ? "outro checklist" : `${matches.length} outros checklists` }}.
           </div>
         </div>
         <q-btn flat round dense icon="mdi-close" v-close-popup aria-label="Fechar" />
+      </q-card-section>
+
+      <q-card-section v-if="casos.length > 1" class="cf__casos">
+        <span class="cf__casos-rot">Fotos repetidas deste checklist:</span>
+        <button
+          v-for="(c, i) in casos" :key="i" type="button"
+          class="cf__caso" :class="i === caso && 'cf__caso--ativo'" @click="caso = i"
+        >{{ c.atual.rotulo }}<span v-if="c.atual.codigo" class="cf__caso-cod">#{{ c.atual.codigo }}</span></button>
       </q-card-section>
 
       <q-card-section v-if="par" class="cf__faixa">
@@ -28,7 +36,7 @@
       </q-card-section>
 
       <q-card-section v-if="par" class="cf__lado-a-lado">
-        <figure class="cf__fig">
+        <figure v-if="atual" class="cf__fig">
           <figcaption class="cf__legenda cf__legenda--atual">Este checklist</figcaption>
           <img v-if="atual.url" :src="atual.url" class="cf__img" alt="Foto deste checklist" @click="$emit('abrir', atual.url!)" />
           <div class="cf__dados">
@@ -76,18 +84,28 @@ export interface FotoAtual {
   codigo: string | null;
 }
 
-const props = defineProps<{
+export interface CasoComparacao {
   atual: FotoAtual;
   matches: FotoRepetida[];
+}
+
+const props = defineProps<{
+  casos: CasoComparacao[];
+  /** Qual caso abre primeiro. */
+  inicial?: number;
   urlDe: (chave: string) => string | null;
 }>();
 defineEmits<{ (e: "abrir", url: string): void }>();
 const aberto = defineModel<boolean>({ default: false });
 
+const caso = ref(0);
 const indice = ref(0);
-watch(() => props.matches, () => { indice.value = 0; });
+watch([() => props.casos, aberto], () => { caso.value = Math.min(props.inicial ?? 0, Math.max(0, props.casos.length - 1)); indice.value = 0; });
+watch(caso, () => { indice.value = 0; });
+const atual = computed(() => props.casos[caso.value]?.atual ?? null);
+const matches = computed(() => props.casos[caso.value]?.matches ?? []);
 
-const par = computed(() => props.matches[indice.value] ?? null);
+const par = computed(() => matches.value[indice.value] ?? null);
 const urlDoPar = computed(() => (par.value ? props.urlDe(par.value.r2Key) : null));
 const dataDoPar = computed(() => (par.value ? formatarDataHora(par.value.data) : ""));
 const envioDoPar = computed(() => {
@@ -95,7 +113,7 @@ const envioDoPar = computed(() => {
   if (!p?.enviadoEm || diaLocalISO(p.enviadoEm) === diaLocalISO(p.data)) return "";
   return formatarDataHora(p.enviadoEm);
 });
-const reenvio = computed(() => !!par.value && provavelReenvio(props.atual, par.value));
+const reenvio = computed(() => !!par.value && !!atual.value && provavelReenvio(atual.value, par.value));
 </script>
 
 <style scoped>
@@ -103,6 +121,11 @@ const reenvio = computed(() => !!par.value && provavelReenvio(props.atual, par.v
 .cf__topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .cf__titulo { font-size: 17px; font-weight: 700; }
 .cf__sub { font-size: 13px; opacity: .75; margin-top: 2px; }
+.cf__casos { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 0; }
+.cf__casos-rot { font-size: 12px; font-weight: 600; opacity: .75; }
+.cf__caso { border: 1.5px solid rgba(128, 128, 128, .4); background: transparent; color: inherit; border-radius: 999px; padding: 3px 11px; font: 600 12px inherit; cursor: pointer; }
+.cf__caso--ativo { background: rgba(139, 28, 43, .2); border-color: #8B1C2B; }
+.cf__caso-cod { margin-left: 6px; font-family: ui-monospace, monospace; font-size: 10.5px; opacity: .7; }
 .cf__faixa { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 0; }
 .cf__selo { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
 .cf__selo--forte { background: rgba(220, 38, 38, .12); color: #b91c1c; }

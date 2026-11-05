@@ -193,17 +193,22 @@
               {{ evidenciasDe(item) === 0 ? "Sem evidências" : `Evidências ${evidenciasDe(item)}/${exigidas(item)}` }}
             </span>
 
-            <span
+            <button
               v-if="repetidaDe(item)"
-              class="rep-badge"
+              type="button"
+              class="rep-badge rep-badge--btn"
               :class="repetidaDe(item)!.soReenvio ? 'rep-badge--reenvio' : 'rep-badge--real'"
+              :disabled="comparandoId === item.id"
               :title="repetidaDe(item)!.soReenvio
-                ? 'Foto igual à de outro checklist da mesma equipe no mesmo dia: provável reenvio'
-                : 'Foto igual à de outro checklist (outra data ou equipe): abra as respostas e compare'"
+                ? 'Foto igual à de outro checklist da mesma equipe no mesmo dia: provável reenvio. Clique para comparar.'
+                : 'Foto igual à de outro checklist (outra data ou equipe). Clique para comparar lado a lado.'"
+              @click="compararChecklist(item)"
             >
-              <q-icon name="mdi-content-duplicate" size="13px" class="q-mr-xs" />
+              <q-spinner v-if="comparandoId === item.id" size="12px" class="q-mr-xs" />
+              <q-icon v-else name="mdi-content-duplicate" size="13px" class="q-mr-xs" />
               {{ repetidaDe(item)!.soReenvio ? "Foto repetida (reenvio?)" : "Foto repetida" }}
-            </span>
+              <span class="rep-badge__ver">comparar</span>
+            </button>
           </div>
           <div class="analise-item__date">
             {{ fmtDate(dataEnvioReal(item)) }}
@@ -637,10 +642,10 @@
 
     <!-- Comparação lado a lado de foto repetida -->
     <ComparacaoFotosDialog
-      v-if="comparacao.atual"
+      v-if="comparacao.casos.length"
       v-model="comparacao.open"
-      :atual="comparacao.atual"
-      :matches="comparacao.matches"
+      :casos="comparacao.casos"
+      :inicial="comparacao.inicial"
       :url-de="fotoUrl"
       @abrir="abrirFoto"
     />
@@ -720,7 +725,7 @@ import {
 import { carregarColaboradores, sugerirColaboradores, type ColaboradorSugestao } from "@/lib/colaboradores-geral";
 import { useAuth } from "@/composables/useAuth";
 import { rotuloSemana, partesLocais, diaLocalISO, formatarDataHora } from "@/lib/semanas";
-import ComparacaoFotosDialog, { type FotoAtual } from "@/components/ComparacaoFotosDialog.vue";
+import ComparacaoFotosDialog, { type CasoComparacao, type FotoAtual } from "@/components/ComparacaoFotosDialog.vue";
 import AuditoriaFotosDialog from "@/components/AuditoriaFotosDialog.vue";
 import {
   codigoDaFoto, fetchEnvioDoChecklist, fetchRepeticoesDoChecklist, fetchSubmissionsComFotoRepetida, type FotoRepetida,
@@ -946,23 +951,64 @@ function repeticoesDoSlot(slot: number): FotoRepetida[] {
   return f ? repeticoesExpand.value.get(f.id) ?? [] : [];
 }
 
-const comparacao = reactive({ open: false, atual: null as FotoAtual | null, matches: [] as FotoRepetida[] });
-async function abrirComparacao(item: ChecklistParaAnalise, slot: number) {
-  const f = fotoSlot(slot);
-  if (!f) return;
+const comparacao = reactive({ open: false, casos: [] as CasoComparacao[], inicial: 0 });
+const comparandoId = ref<string | null>(null);
+
+/** Monta um caso de comparação por foto do checklist que tem repetição. */
+async function montarCasos(
+  item: ChecklistParaAnalise, fotos: FotoChecklistRow[], reps: Map<string, FotoRepetida[]>,
+): Promise<CasoComparacao[]> {
   const envio = (await fetchEnvioDoChecklist(item.id)) ?? dataEnvioReal(item);
-  comparacao.atual = {
-    rotulo: FOTO_LABELS[slot]?.label ?? `foto ${slot + 1}`,
-    url: fotoUrl(f.r2_key),
-    equipe: item.equipe,
-    observador: item.observador,
-    data: item.data,
-    dataTexto: formatarDataHora(item.data),
-    enviadoTexto: diaLocalISO(envio) !== diaLocalISO(item.data) ? formatarDataHora(envio) : null,
-    codigo: codigoDaFoto(f),
-  };
-  comparacao.matches = repeticoesDoSlot(slot);
-  comparacao.open = true;
+  const enviadoTexto = diaLocalISO(envio) !== diaLocalISO(item.data) ? formatarDataHora(envio) : null;
+  const casos: CasoComparacao[] = [];
+  for (const f of fotos) {
+    const matches = reps.get(f.id);
+    if (f.tipo !== "local" || !matches?.length) continue;
+    const atual: FotoAtual = {
+      rotulo: FOTO_LABELS[f.sort_order]?.label ?? `Foto adicional ${f.sort_order - 2}`,
+      url: fotoUrl(f.r2_key),
+      equipe: item.equipe,
+      observador: item.observador,
+      data: item.data,
+      dataTexto: formatarDataHora(item.data),
+      enviadoTexto,
+      codigo: codigoDaFoto(f),
+    };
+    casos.push({ atual, matches });
+  }
+  return casos;
+}
+
+/** Botão da foto dentro das respostas: abre a comparação já nessa foto. */
+async function abrirComparacao(item: ChecklistParaAnalise, slot: number) {
+  const casos = await montarCasos(item, fotosExpand.value, repeticoesExpand.value);
+  const f = fotoSlot(slot);
+  const pos = casos.findIndex((c) => c.atual.codigo === (f ? codigoDaFoto(f) : null));
+  comparacao.casos = casos;
+  comparacao.inicial = Math.max(0, pos);
+  comparacao.open = casos.length > 0;
+}
+
+/** Selo "Foto repetida" do cartão: carrega as fotos do checklist e abre a comparação sem precisar expandir. */
+async function compararChecklist(item: ChecklistParaAnalise) {
+  if (comparandoId.value) return;
+  comparandoId.value = item.id;
+  try {
+    const fotos = await fetchFotosChecklist(item.id);
+    const reps = await fetchRepeticoesDoChecklist(item.id, fotos);
+    const casos = await montarCasos(item, fotos, reps);
+    if (!casos.length) {
+      $q.notify({ type: "info", position: "top", timeout: 4000, message: "Não encontrei mais a foto repetida deste checklist." });
+      return;
+    }
+    comparacao.casos = casos;
+    comparacao.inicial = 0;
+    comparacao.open = true;
+  } catch (e) {
+    $q.notify({ type: "negative", position: "top", timeout: 6000, message: `Erro ao comparar: ${(e as Error).message}` });
+  } finally {
+    comparandoId.value = null;
+  }
 }
 
 /** Aprovar um checklist com foto reaproveitada de outro dia/equipe pede uma confirmação a mais (só avisa, não bloqueia). */
@@ -1576,6 +1622,8 @@ $inactive-text: #475569;
 }
 .rep-badge {
   display: inline-flex; align-items: center;
+  &--btn { border: 0; cursor: pointer; font-family: inherit; &:hover { filter: brightness(1.15); text-decoration: underline; } &:disabled { cursor: wait; opacity: .7; } }
+  &__ver { margin-left: 6px; padding-left: 6px; border-left: 1px solid currentColor; font-weight: 600; opacity: .85; }
   font-size: 11px; font-weight: 700;
   padding: 2px 8px; border-radius: 999px;
   &--real { background: rgba(234,88,12,.15); color: #c2410c; }
