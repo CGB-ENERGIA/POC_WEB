@@ -723,7 +723,7 @@ import { rotuloSemana, partesLocais, diaLocalISO, formatarDataHora } from "@/lib
 import ComparacaoFotosDialog, { type FotoAtual } from "@/components/ComparacaoFotosDialog.vue";
 import AuditoriaFotosDialog from "@/components/AuditoriaFotosDialog.vue";
 import {
-  codigoDaFoto, fetchRepeticoesDoChecklist, fetchSubmissionsComFotoRepetida, type FotoRepetida,
+  codigoDaFoto, fetchEnvioDoChecklist, fetchRepeticoesDoChecklist, fetchSubmissionsComFotoRepetida, type FotoRepetida,
 } from "@/lib/foto-repetida";
 import AvisoCoordenadorDialog from "@/components/AvisoCoordenadorDialog.vue";
 import AvisosPendentesDialog from "@/components/AvisosPendentesDialog.vue";
@@ -947,9 +947,10 @@ function repeticoesDoSlot(slot: number): FotoRepetida[] {
 }
 
 const comparacao = reactive({ open: false, atual: null as FotoAtual | null, matches: [] as FotoRepetida[] });
-function abrirComparacao(item: ChecklistParaAnalise, slot: number) {
+async function abrirComparacao(item: ChecklistParaAnalise, slot: number) {
   const f = fotoSlot(slot);
   if (!f) return;
+  const envio = (await fetchEnvioDoChecklist(item.id)) ?? dataEnvioReal(item);
   comparacao.atual = {
     rotulo: FOTO_LABELS[slot]?.label ?? `foto ${slot + 1}`,
     url: fotoUrl(f.r2_key),
@@ -957,6 +958,7 @@ function abrirComparacao(item: ChecklistParaAnalise, slot: number) {
     observador: item.observador,
     data: item.data,
     dataTexto: formatarDataHora(item.data),
+    enviadoTexto: diaLocalISO(envio) !== diaLocalISO(item.data) ? formatarDataHora(envio) : null,
     codigo: codigoDaFoto(f),
   };
   comparacao.matches = repeticoesDoSlot(slot);

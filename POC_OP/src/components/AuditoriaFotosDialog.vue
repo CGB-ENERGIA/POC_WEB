@@ -65,7 +65,10 @@
               <div class="af__dados">
                 <strong>{{ f.equipe }}</strong><br />
                 {{ f.observador }}<br />
-                {{ formatarDataHora(f.data) }} · foto {{ f.sortOrder + 1 }}
+                <template v-if="f.enviadoEm && diaLocalISO(f.enviadoEm) !== diaLocalISO(f.data)">
+                  enviado {{ formatarDataHora(f.enviadoEm) }}<br />foto de {{ formatarDataHora(f.data) }}
+                </template>
+                <template v-else>{{ formatarDataHora(f.data) }}</template> · foto {{ f.sortOrder + 1 }}
               </div>
             </div>
           </div>
@@ -81,7 +84,7 @@ import {
   agruparRepeticoes, calcularEGravarMarcador, fetchFotosParaAuditoria,
   type FotoAuditoria, type GrupoRepetido,
 } from "@/lib/foto-repetida";
-import { formatarDataHora } from "@/lib/semanas";
+import { formatarDataHora, diaLocalISO } from "@/lib/semanas";
 
 const props = defineProps<{ urlDe: (chave: string) => string | null }>();
 const emit = defineEmits<{ (e: "abrir", url: string): void; (e: "calculadas"): void }>();

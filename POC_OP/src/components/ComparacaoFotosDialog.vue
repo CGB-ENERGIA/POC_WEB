@@ -33,7 +33,8 @@
           <img v-if="atual.url" :src="atual.url" class="cf__img" alt="Foto deste checklist" @click="$emit('abrir', atual.url!)" />
           <div class="cf__dados">
             <strong>{{ atual.equipe }}</strong> · {{ atual.observador }}<br />
-            {{ atual.dataTexto }}<span v-if="atual.codigo" class="cf__codigo">#{{ atual.codigo }}</span>
+            <template v-if="atual.enviadoTexto">Enviado {{ atual.enviadoTexto }}<br />Checklist/foto de {{ atual.dataTexto }}</template>
+            <template v-else>{{ atual.dataTexto }}</template><span v-if="atual.codigo" class="cf__codigo">#{{ atual.codigo }}</span>
           </div>
         </figure>
         <figure class="cf__fig">
@@ -41,7 +42,8 @@
           <img v-if="urlDoPar" :src="urlDoPar" class="cf__img" alt="Foto enviada antes" @click="$emit('abrir', urlDoPar!)" />
           <div class="cf__dados">
             <strong>{{ par.equipe }}</strong> · {{ par.observador }}<br />
-            {{ dataDoPar }}<span v-if="par.sha256" class="cf__codigo">#{{ par.sha256.slice(0, 6).toUpperCase() }}</span>
+            <template v-if="envioDoPar">Enviado {{ envioDoPar }}<br />Checklist/foto de {{ dataDoPar }}</template>
+            <template v-else>{{ dataDoPar }}</template><span v-if="par.sha256" class="cf__codigo">#{{ par.sha256.slice(0, 6).toUpperCase() }}</span>
           </div>
         </figure>
       </q-card-section>
@@ -58,7 +60,7 @@
 import { computed, ref, watch } from "vue";
 import type { FotoRepetida } from "@/lib/foto-repetida";
 import { provavelReenvio } from "@/lib/foto-repetida";
-import { formatarDataHora } from "@/lib/semanas";
+import { formatarDataHora, diaLocalISO } from "@/lib/semanas";
 
 export interface FotoAtual {
   rotulo: string;
@@ -67,6 +69,8 @@ export interface FotoAtual {
   observador: string;
   data: string;
   dataTexto: string;
+  /** Horário real de envio, quando difere do dia do checklist. */
+  enviadoTexto?: string | null;
   codigo: string | null;
 }
 
@@ -84,6 +88,11 @@ watch(() => props.matches, () => { indice.value = 0; });
 const par = computed(() => props.matches[indice.value] ?? null);
 const urlDoPar = computed(() => (par.value ? props.urlDe(par.value.r2Key) : null));
 const dataDoPar = computed(() => (par.value ? formatarDataHora(par.value.data) : ""));
+const envioDoPar = computed(() => {
+  const p = par.value;
+  if (!p?.enviadoEm || diaLocalISO(p.enviadoEm) === diaLocalISO(p.data)) return "";
+  return formatarDataHora(p.enviadoEm);
+});
 const reenvio = computed(() => !!par.value && provavelReenvio(props.atual, par.value));
 </script>
 

@@ -21,6 +21,8 @@ export interface FotoRepetida {
   observador: string;
   base: string;
   distancia: number;
+  /** Quando o checklist foi realmente enviado (a data do checklist segue a data da foto). */
+  enviadoEm?: string | undefined;
 }
 
 /** Código curto da foto (6 primeiros caracteres do SHA), o mesmo que o app mostra ao observador. */
@@ -68,6 +70,7 @@ export async function fetchRepeticoesDoChecklist(
     } as never);
     if (error) throw error;
     const achadas = ((data ?? []) as LinhaRpc[]).map(daLinha);
+    await preencherEnvio(achadas);
     for (const foto of comMarcador) {
       const m = { s: foto.sha256 as string, d: foto.dhash ?? null };
       const lista: FotoRepetida[] = [];
@@ -81,6 +84,23 @@ export async function fetchRepeticoesDoChecklist(
     console.warn("[foto-repetida] consulta indisponível:", (e as Error).message);
   }
   return out;
+}
+
+/** Acrescenta o horário real de envio (a data do checklist pode ser a da foto, dias antes). */
+async function preencherEnvio(fotos: FotoRepetida[]): Promise<void> {
+  const ids = [...new Set(fotos.map((f) => f.submissionId))];
+  if (!ids.length) return;
+  try {
+    const linhas = await fetchAllByIds<{ id: string; created_at: string }>("checklist_submissions", "id,created_at", "id", ids);
+    const envio = new Map(linhas.map((l) => [l.id, l.created_at]));
+    for (const f of fotos) f.enviadoEm = envio.get(f.submissionId);
+  } catch { /* sem o horário de envio a tela mostra só a data do checklist */ }
+}
+
+/** Horário real de envio de um checklist (created_at), ou null se não der para ler. */
+export async function fetchEnvioDoChecklist(id: string): Promise<string | null> {
+  const { data } = await supabase.from("checklist_submissions").select("created_at").eq("id", id).maybeSingle();
+  return (data as { created_at?: string } | null)?.created_at ?? null;
 }
 
 /** Checklists (da lista) que têm foto repetida em outro checklist. soReenvio: só repete com a mesma equipe no mesmo dia. */
@@ -104,6 +124,7 @@ export async function fetchSubmissionsComFotoRepetida(ids: string[]): Promise<Ma
 // ── Auditoria por período ───────────────────────────────────────────────────────
 
 export interface FotoAuditoria {
+  enviadoEm?: string | undefined;
   id: string;
   submissionId: string;
   sortOrder: number;
@@ -128,11 +149,11 @@ export interface GrupoRepetido {
 
 /** Fotos de evidência dos checklists enviados desde `desdeISO` (AAAA-MM-DD), com data/equipe/observador. */
 export async function fetchFotosParaAuditoria(desdeISO: string): Promise<{ fotos: FotoAuditoria[]; semMarcador: number }> {
-  const subs: { id: string; data: string; equipe: string; observador: string; base: string }[] = [];
+  const subs: { id: string; data: string; created_at: string; equipe: string; observador: string; base: string }[] = [];
   for (let de = 0; ; de += 1000) {
     const { data, error } = await supabase
       .from("checklist_submissions")
-      .select("id,data,equipe,observador,base")
+      .select("id,data,created_at,equipe,observador,base")
       .gte("data", `${desdeISO}T00:00:00-03:00`)
       .order("data", { ascending: false })
       .range(de, de + 999);
@@ -152,7 +173,7 @@ export async function fetchFotosParaAuditoria(desdeISO: string): Promise<{ fotos
     if (!l.sha256) semMarcador++;
     fotos.push({
       id: l.id, submissionId: l.submission_id, sortOrder: l.sort_order, r2Key: l.r2_key, sha256: l.sha256, dhash: l.dhash,
-      data: s.data, equipe: s.equipe, observador: s.observador, base: s.base,
+      data: s.data, enviadoEm: s.created_at, equipe: s.equipe, observador: s.observador, base: s.base,
     });
   }
   return { fotos, semMarcador };
