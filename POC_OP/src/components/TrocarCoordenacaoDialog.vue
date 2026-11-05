@@ -65,10 +65,14 @@
           <q-select v-model="c2" :options="opcoesTodos" label="Coordenador 2" dense outlined emit-value map-options />
           <div v-if="c1 && c1 === c2" class="tc-aviso">Escolha dois coordenadores diferentes.</div>
           <div v-else-if="c1 && c2" class="tc-dica">
-            Tudo de {{ c1 }} (equipes: {{ equipesDoCoord(c1).length }}, observadores: {{ observadoresDoCoord(c1).length }}) passa para {{ c2 }},
-            e tudo de {{ c2 }} (equipes: {{ equipesDoCoord(c2).length }}, observadores: {{ observadoresDoCoord(c2).length }}) passa para {{ c1 }}.
+            O que era de {{ c1 }} ({{ plural(equipesDoCoord(c1).length, "equipe", "equipes") }}, {{ plural(observadoresDoCoord(c1).length, "observador", "observadores") }})
+            passa para {{ c2 }}, e o que era de {{ c2 }} ({{ plural(equipesDoCoord(c2).length, "equipe", "equipes") }}, {{ plural(observadoresDoCoord(c2).length, "observador", "observadores") }})
+            passa para {{ c1 }}. Desmarque o que não deve trocar.
           </div>
-          <q-checkbox v-if="c1 && c2 && c1 !== c2" v-model="levarObservadores" dense label="Trocar também os observadores" />
+          <div v-if="c1 && c2 && c1 !== c2" class="tc-opcoes">
+            <q-checkbox v-model="trocarEquipes" dense label="Trocar as equipes" />
+            <q-checkbox v-model="levarObservadores" dense label="Trocar os observadores" />
+          </div>
         </template>
 
         <!-- Prévia -->
@@ -141,6 +145,7 @@ const novoGerente = ref<string | null>(null);
 const c1 = ref<string | null>(null);
 const c2 = ref<string | null>(null);
 const levarObservadores = ref(true);
+const trocarEquipes = ref(true);
 const salvando = ref(false);
 const erro = ref("");
 
@@ -148,19 +153,26 @@ const gerenciasOpts = ["ADM", "GERE", "GOMAN", "GSTC", "LOGISTICA", "OFICINA", "
 const basesOpts = ["BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const gerentesOpts = computed(() => props.gerentes);
 
-/** Coordenadores que têm equipe (um nome só por pessoa, sem diferença de maiúsculas e acentos). */
+/** Coordenadores que têm equipe ou observador (um nome só por pessoa, sem diferença de maiúsculas e acentos). */
 const coordenadores = computed(() => {
-  const mapa = new Map<string, { nome: string; n: number }>();
-  for (const eq of props.equipes) {
-    const nome = (eq.coordenador ?? "").trim();
-    if (!nome) continue;
+  const mapa = new Map<string, { nome: string; eq: number; ob: number }>();
+  const ver = (bruto: string | null | undefined, campo: "eq" | "ob") => {
+    const nome = (bruto ?? "").trim();
+    if (!nome) return;
     const k = foldName(nome);
-    const atual = mapa.get(k);
-    mapa.set(k, { nome: atual?.nome ?? nome, n: (atual?.n ?? 0) + 1 });
-  }
-  return [...mapa.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+    const atual = mapa.get(k) ?? { nome, eq: 0, ob: 0 };
+    atual[campo]++;
+    mapa.set(k, atual);
+  };
+  for (const eq of props.equipes) ver(eq.coordenador, "eq");
+  for (const o of props.observadores) ver(o.coordenador, "ob");
+  return [...mapa.values()].sort((x, y) => x.nome.localeCompare(y.nome, "pt-BR"));
 });
-const opcoesDe = computed(() => coordenadores.value.map((c) => ({ label: `${c.nome} (${c.n} equipe${c.n !== 1 ? "s" : ""})`, value: c.nome })));
+const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
+const opcoesDe = computed(() => coordenadores.value.map((c) => ({
+  label: `${c.nome} (${plural(c.eq, "equipe", "equipes")}, ${plural(c.ob, "observador", "observadores")})`,
+  value: c.nome,
+})));
 const opcoesTodos = opcoesDe;
 
 const nomesPara = computed(() => coordenadores.value.map((c) => c.nome));
@@ -210,7 +222,7 @@ interface Mudanca {
 /** O que vai mudar, equipe a equipe (a prévia e o que é gravado saem desta mesma lista). */
 const mudancas = computed<Mudanca[]>(() => {
   if (modo.value === "trocar") {
-    if (!c1.value || !c2.value || foldName(c1.value) === foldName(c2.value)) return [];
+    if (!trocarEquipes.value || !c1.value || !c2.value || foldName(c1.value) === foldName(c2.value)) return [];
     const a = c1.value, b = c2.value;
     return [
       ...equipesDoCoord(a).map((eq) => ({ eq, coordenador: b, resumoExtra: "" })),
@@ -264,7 +276,7 @@ watch(modo, () => { erro.value = ""; });
 watch(aberto, (v) => {
   if (!v) return;
   modo.value = "passar";
-  de.value = null; para.value = null; c1.value = null; c2.value = null; levarObservadores.value = true;
+  de.value = null; para.value = null; c1.value = null; c2.value = null; levarObservadores.value = true; trocarEquipes.value = true;
   marcadas.value = new Set();
   novaGerencia.value = null; novaBase.value = null; novoGerente.value = null;
   erro.value = "";
@@ -330,6 +342,7 @@ async function confirmar() {
 .tc-previa__titulo { font-size: 13px; font-weight: 800; margin-bottom: 6px; }
 .tc-previa__lista { display: flex; flex-direction: column; gap: 3px; max-height: 170px; overflow-y: auto; }
 .tc-previa__linha { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 4px; }
+.tc-opcoes { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 .tc-aviso { font-size: 12.5px; color: #b91c1c; font-weight: 600; }
 .tc-dica { font-size: 12.5px; opacity: .8; }
 .tc-foot { padding: 10px 16px 14px; justify-content: flex-end; gap: 8px; }
