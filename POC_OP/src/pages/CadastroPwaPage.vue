@@ -518,7 +518,7 @@
       </q-card>
     </q-dialog>
 
-    <TrocarCoordenacaoDialog v-model="trocaCoordOpen" :equipes="equipes" :gerentes="gerenteFormOpts" @aplicada="fetchEquipes" />
+    <TrocarCoordenacaoDialog v-model="trocaCoordOpen" :equipes="equipes" :gerentes="gerenteFormOpts" :observadores="employees" @aplicada="fetchAll" />
 
     <!-- ══ DIALOG EQUIPE ════════════════════════════════════════════════════════ -->
     <q-dialog v-model="eqDialog" persistent :maximized="$q.screen.lt.sm" transition-show="scale" transition-hide="scale">
