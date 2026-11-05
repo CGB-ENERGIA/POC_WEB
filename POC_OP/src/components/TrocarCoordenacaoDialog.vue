@@ -4,7 +4,7 @@
       <q-card-section class="tc-head">
         <div>
           <div class="tc-title">Trocar coordenação</div>
-          <div class="tc-sub">Tudo que era de um coordenador (equipes e observadores) passa para o outro. Vale para todo o histórico dos relatórios.</div>
+          <div class="tc-sub">Passe equipes e observadores de um coordenador para outro. Tudo vem marcado: desmarque o que não deve mudar. Vale para todo o histórico dos relatórios.</div>
         </div>
         <q-btn flat round dense icon="mdi-close" :disable="salvando" @click="aberto = false" />
       </q-card-section>
@@ -18,36 +18,17 @@
           ]"
         />
 
-        <!-- Passar equipes de um coordenador para outro -->
+        <!-- Passar de um coordenador para outro -->
         <template v-if="modo === 'passar'">
-          <q-select
-            v-model="de" :options="opcoesDe" label="Coordenador atual" dense outlined emit-value map-options
+          <q-select v-model="de" :options="opcoesCoord" label="Coordenador atual" dense outlined emit-value map-options />
+          <TrocarCoordenacaoLado
+            v-if="de" v-model:equipes-marcadas="eqA" v-model:observadores-marcados="obA"
+            :equipes="equipesDoCoord(de)" :observadores="observadoresDoCoord(de)"
           />
-          <div v-if="de" class="tc-lista">
-            <div class="tc-lista__head">
-              <q-checkbox
-                :model-value="todasMarcadas ? true : (marcadas.size ? null : false)" dense
-                :label="`Equipes (${marcadas.size} de ${equipesDe.length})`" @update:model-value="alternarTodas"
-              />
-            </div>
-            <div class="tc-lista__itens">
-              <q-checkbox
-                v-for="eq in equipesDe" :key="eq.id" dense
-                :model-value="marcadas.has(eq.id)" @update:model-value="alternar(eq.id)"
-              >
-                <span class="tc-prefixo">{{ eq.prefixo }}</span>
-                <span class="tc-meta">{{ eq.base }} · {{ eq.gerencia }}</span>
-              </q-checkbox>
-            </div>
-          </div>
           <q-select
             v-model="para" :options="opcoesPara" label="Novo coordenador" dense outlined use-input input-debounce="0"
             new-value-mode="add-unique" hint="Escolha um da lista ou digite um nome novo" hide-bottom-space
             @filter="filtrarPara"
-          />
-          <q-checkbox
-            v-if="de" v-model="levarObservadores" dense
-            :label="`Passar também os observadores (${observadoresDe.length})`"
           />
           <div class="tc-extra">
             <div class="tc-extra__titulo">Também mudar (opcional, nas equipes marcadas)</div>
@@ -59,34 +40,39 @@
           </div>
         </template>
 
-        <!-- Trocar duas coordenações -->
+        <!-- Trocar duas coordenações: cada lado escolhe o que sai -->
         <template v-else>
-          <q-select v-model="c1" :options="opcoesTodos" label="Coordenador 1" dense outlined emit-value map-options />
-          <q-select v-model="c2" :options="opcoesTodos" label="Coordenador 2" dense outlined emit-value map-options />
+          <q-select v-model="c1" :options="opcoesCoord" label="Coordenador 1" dense outlined emit-value map-options />
+          <TrocarCoordenacaoLado
+            v-if="c1" v-model:equipes-marcadas="eqA" v-model:observadores-marcados="obA"
+            :equipes="equipesDoCoord(c1)" :observadores="observadoresDoCoord(c1)"
+          />
+          <q-select v-model="c2" :options="opcoesCoord" label="Coordenador 2" dense outlined emit-value map-options />
+          <TrocarCoordenacaoLado
+            v-if="c2" v-model:equipes-marcadas="eqB" v-model:observadores-marcados="obB"
+            :equipes="equipesDoCoord(c2)" :observadores="observadoresDoCoord(c2)"
+          />
           <div v-if="c1 && c1 === c2" class="tc-aviso">Escolha dois coordenadores diferentes.</div>
           <div v-else-if="c1 && c2" class="tc-dica">
-            O que era de {{ c1 }} ({{ plural(equipesDoCoord(c1).length, "equipe", "equipes") }}, {{ plural(observadoresDoCoord(c1).length, "observador", "observadores") }})
-            passa para {{ c2 }}, e o que era de {{ c2 }} ({{ plural(equipesDoCoord(c2).length, "equipe", "equipes") }}, {{ plural(observadoresDoCoord(c2).length, "observador", "observadores") }})
-            passa para {{ c1 }}. Desmarque o que não deve trocar.
-          </div>
-          <div v-if="c1 && c2 && c1 !== c2" class="tc-opcoes">
-            <q-checkbox v-model="trocarEquipes" dense label="Trocar as equipes" />
-            <q-checkbox v-model="levarObservadores" dense label="Trocar os observadores" />
+            O que estiver marcado em {{ c1 }} passa para {{ c2 }}, e o que estiver marcado em {{ c2 }} passa para {{ c1 }}.
           </div>
         </template>
 
         <!-- Prévia -->
-        <div v-if="mudancas.length || mudancasObservadores.length" class="tc-previa">
+        <div v-if="totalMudancas" class="tc-previa">
           <div class="tc-previa__titulo">
             {{ mudancas.length }} equipe{{ mudancas.length !== 1 ? 's' : '' }}
             e {{ mudancasObservadores.length }} observador{{ mudancasObservadores.length !== 1 ? 'es' : '' }} vão mudar
           </div>
-          <div v-if="resumoObservadores" class="tc-meta q-mb-xs">Observadores: {{ resumoObservadores }}</div>
           <div class="tc-previa__lista">
             <div v-for="m in mudancas" :key="m.eq.id" class="tc-previa__linha">
               <span class="tc-prefixo">{{ m.eq.prefixo }}</span>
               <span class="tc-meta">{{ m.eq.coordenador || '—' }} → <b>{{ m.coordenador }}</b></span>
               <span v-if="m.resumoExtra" class="tc-meta">· {{ m.resumoExtra }}</span>
+            </div>
+            <div v-for="m in mudancasObservadores" :key="m.matricula" class="tc-previa__linha">
+              <span class="tc-prefixo">{{ m.nome }}</span>
+              <span class="tc-meta">{{ m.de }} → <b>{{ m.para }}</b></span>
             </div>
           </div>
         </div>
@@ -110,22 +96,14 @@ import { computed, ref, watch } from "vue";
 import { useQuasar } from "quasar";
 import { supabase } from "@/lib/supabase";
 import { foldName } from "@/lib/dashboard";
-
-interface EquipeLinha {
-  id: string;
-  prefixo: string;
-  base: string;
-  gerencia: string;
-  coordenador?: string | undefined;
-  gerente?: string | undefined;
-}
+import TrocarCoordenacaoLado, { type EquipeLinha, type ObservadorLinha } from "@/components/TrocarCoordenacaoLado.vue";
 
 const props = defineProps<{
   modelValue: boolean;
   equipes: EquipeLinha[];
   gerentes: string[];
   /** Funcionários/observadores (employees): cada um tem o seu coordenador. */
-  observadores: { matricula: string; coordenador?: string | null | undefined }[];
+  observadores: ObservadorLinha[];
 }>();
 const emit = defineEmits<{
   (e: "update:modelValue", v: boolean): void;
@@ -138,20 +116,35 @@ const aberto = computed({ get: () => props.modelValue, set: (v) => emit("update:
 const modo = ref<"passar" | "trocar">("passar");
 const de = ref<string | null>(null);
 const para = ref<string | null>(null);
-const marcadas = ref<Set<string>>(new Set());
+const c1 = ref<string | null>(null);
+const c2 = ref<string | null>(null);
+// o que está marcado em cada lado (A = coordenador atual / coordenador 1; B = coordenador 2)
+const eqA = ref<Set<string>>(new Set());
+const obA = ref<Set<string>>(new Set());
+const eqB = ref<Set<string>>(new Set());
+const obB = ref<Set<string>>(new Set());
 const novaGerencia = ref<string | null>(null);
 const novaBase = ref<string | null>(null);
 const novoGerente = ref<string | null>(null);
-const c1 = ref<string | null>(null);
-const c2 = ref<string | null>(null);
-const levarObservadores = ref(true);
-const trocarEquipes = ref(true);
 const salvando = ref(false);
 const erro = ref("");
 
 const gerenciasOpts = ["ADM", "GERE", "GOMAN", "GSTC", "LOGISTICA", "OFICINA", "SESMT", "SPOT"];
 const basesOpts = ["BCB", "BDC", "ITM", "PDS", "PDT", "STI"];
 const gerentesOpts = computed(() => props.gerentes);
+
+function equipesDoCoord(nome: string | null): EquipeLinha[] {
+  if (!nome) return [];
+  const k = foldName(nome);
+  return props.equipes.filter((e) => foldName(e.coordenador ?? "") === k).sort((a, b) => a.prefixo.localeCompare(b.prefixo));
+}
+function observadoresDoCoord(nome: string | null): ObservadorLinha[] {
+  if (!nome) return [];
+  const k = foldName(nome);
+  return props.observadores
+    .filter((o) => foldName(o.coordenador ?? "") === k)
+    .sort((a, b) => (a.nome_completo ?? a.nome ?? "").localeCompare(b.nome_completo ?? b.nome ?? "", "pt-BR"));
+}
 
 /** Coordenadores que têm equipe ou observador (um nome só por pessoa, sem diferença de maiúsculas e acentos). */
 const coordenadores = computed(() => {
@@ -169,11 +162,10 @@ const coordenadores = computed(() => {
   return [...mapa.values()].sort((x, y) => x.nome.localeCompare(y.nome, "pt-BR"));
 });
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
-const opcoesDe = computed(() => coordenadores.value.map((c) => ({
+const opcoesCoord = computed(() => coordenadores.value.map((c) => ({
   label: `${c.nome} (${plural(c.eq, "equipe", "equipes")}, ${plural(c.ob, "observador", "observadores")})`,
   value: c.nome,
 })));
-const opcoesTodos = opcoesDe;
 
 const nomesPara = computed(() => coordenadores.value.map((c) => c.nome));
 const opcoesPara = ref<string[]>([]);
@@ -185,30 +177,20 @@ function filtrarPara(val: string, update: (fn: () => void) => void) {
   });
 }
 
-function equipesDoCoord(nome: string | null): EquipeLinha[] {
-  if (!nome) return [];
-  const k = foldName(nome);
-  return props.equipes.filter((e) => foldName(e.coordenador ?? "") === k).sort((a, b) => a.prefixo.localeCompare(b.prefixo));
-}
-function observadoresDoCoord(nome: string | null): { matricula: string; coordenador?: string | null | undefined }[] {
-  if (!nome) return [];
-  const k = foldName(nome);
-  return props.observadores.filter((o) => foldName(o.coordenador ?? "") === k);
-}
-const equipesDe = computed(() => equipesDoCoord(de.value));
-const observadoresDe = computed(() => observadoresDoCoord(de.value));
-const todasMarcadas = computed(() => equipesDe.value.length > 0 && marcadas.value.size === equipesDe.value.length);
-
-// ao escolher o coordenador, todas as equipes dele já vêm marcadas
-watch(de, () => { marcadas.value = new Set(equipesDe.value.map((e) => e.id)); });
-function alternar(id: string) {
-  const n = new Set(marcadas.value);
-  if (n.has(id)) n.delete(id); else n.add(id);
-  marcadas.value = n;
-}
-function alternarTodas() {
-  marcadas.value = todasMarcadas.value ? new Set() : new Set(equipesDe.value.map((e) => e.id));
-}
+// ao escolher o coordenador, tudo dele já vem marcado
+watch(() => (modo.value === "passar" ? de.value : c1.value), (nome) => {
+  eqA.value = new Set(equipesDoCoord(nome).map((e) => e.id));
+  obA.value = new Set(observadoresDoCoord(nome).map((o) => o.matricula));
+});
+watch(c2, (nome) => {
+  eqB.value = new Set(equipesDoCoord(nome).map((e) => e.id));
+  obB.value = new Set(observadoresDoCoord(nome).map((o) => o.matricula));
+});
+watch(modo, () => {
+  erro.value = "";
+  de.value = null; c1.value = null; c2.value = null;
+  eqA.value = new Set(); obA.value = new Set(); eqB.value = new Set(); obB.value = new Set();
+});
 
 interface Mudanca {
   eq: EquipeLinha;
@@ -218,21 +200,24 @@ interface Mudanca {
   gerente?: string;
   resumoExtra: string;
 }
+interface MudancaObs { matricula: string; nome: string; de: string; para: string }
 
-/** O que vai mudar, equipe a equipe (a prévia e o que é gravado saem desta mesma lista). */
+const nomeObs = (o: ObservadorLinha) => o.nome_completo || o.nome || o.matricula;
+
+/** O que vai mudar (a prévia e o que é gravado saem destas duas listas). */
 const mudancas = computed<Mudanca[]>(() => {
   if (modo.value === "trocar") {
-    if (!trocarEquipes.value || !c1.value || !c2.value || foldName(c1.value) === foldName(c2.value)) return [];
+    if (!c1.value || !c2.value || foldName(c1.value) === foldName(c2.value)) return [];
     const a = c1.value, b = c2.value;
     return [
-      ...equipesDoCoord(a).map((eq) => ({ eq, coordenador: b, resumoExtra: "" })),
-      ...equipesDoCoord(b).map((eq) => ({ eq, coordenador: a, resumoExtra: "" })),
+      ...equipesDoCoord(a).filter((eq) => eqA.value.has(eq.id)).map((eq) => ({ eq, coordenador: b, resumoExtra: "" })),
+      ...equipesDoCoord(b).filter((eq) => eqB.value.has(eq.id)).map((eq) => ({ eq, coordenador: a, resumoExtra: "" })),
     ];
   }
   const novo = (para.value ?? "").trim();
   if (!de.value || !novo) return [];
-  return equipesDe.value
-    .filter((eq) => marcadas.value.has(eq.id))
+  return equipesDoCoord(de.value)
+    .filter((eq) => eqA.value.has(eq.id))
     .map((eq) => {
       const extras: string[] = [];
       const m: Mudanca = { eq, coordenador: novo, resumoExtra: "" };
@@ -246,38 +231,30 @@ const mudancas = computed<Mudanca[]>(() => {
     .filter((m) => foldName(m.eq.coordenador ?? "") !== foldName(m.coordenador) || m.gerencia || m.base || m.gerente);
 });
 
-interface MudancaObs { matricula: string; de: string; para: string }
-
-/** Observadores que trocam de coordenador (a prévia e o que é gravado saem desta lista). */
 const mudancasObservadores = computed<MudancaObs[]>(() => {
-  if (!levarObservadores.value) return [];
   if (modo.value === "trocar") {
     if (!c1.value || !c2.value || foldName(c1.value) === foldName(c2.value)) return [];
     const a = c1.value, b = c2.value;
     return [
-      ...observadoresDoCoord(a).map((o) => ({ matricula: o.matricula, de: a, para: b })),
-      ...observadoresDoCoord(b).map((o) => ({ matricula: o.matricula, de: b, para: a })),
+      ...observadoresDoCoord(a).filter((o) => obA.value.has(o.matricula)).map((o) => ({ matricula: o.matricula, nome: nomeObs(o), de: a, para: b })),
+      ...observadoresDoCoord(b).filter((o) => obB.value.has(o.matricula)).map((o) => ({ matricula: o.matricula, nome: nomeObs(o), de: b, para: a })),
     ];
   }
   const novo = (para.value ?? "").trim();
   if (!de.value || !novo || foldName(novo) === foldName(de.value)) return [];
-  return observadoresDe.value.map((o) => ({ matricula: o.matricula, de: de.value!, para: novo }));
-});
-
-const resumoObservadores = computed(() => {
-  const cont = new Map<string, number>();
-  for (const m of mudancasObservadores.value) cont.set(`${m.de} → ${m.para}`, (cont.get(`${m.de} → ${m.para}`) ?? 0) + 1);
-  return [...cont.entries()].map(([k, n]) => `${k} (${n})`).join(" · ");
+  const origem = de.value;
+  return observadoresDoCoord(origem)
+    .filter((o) => obA.value.has(o.matricula))
+    .map((o) => ({ matricula: o.matricula, nome: nomeObs(o), de: origem, para: novo }));
 });
 
 const totalMudancas = computed(() => mudancas.value.length + mudancasObservadores.value.length);
 
-watch(modo, () => { erro.value = ""; });
 watch(aberto, (v) => {
   if (!v) return;
   modo.value = "passar";
-  de.value = null; para.value = null; c1.value = null; c2.value = null; levarObservadores.value = true; trocarEquipes.value = true;
-  marcadas.value = new Set();
+  de.value = null; para.value = null; c1.value = null; c2.value = null;
+  eqA.value = new Set(); obA.value = new Set(); eqB.value = new Set(); obB.value = new Set();
   novaGerencia.value = null; novaBase.value = null; novoGerente.value = null;
   erro.value = "";
 });
@@ -289,7 +266,7 @@ async function confirmar() {
   salvando.value = true;
   erro.value = "";
   try {
-    // em lotes, para não abrir centenas de conexões de uma vez
+    // equipes, em lotes para não abrir centenas de conexões de uma vez
     for (let i = 0; i < lista.length; i += 15) {
       const lote = lista.slice(i, i + 15);
       const resultados = await Promise.all(lote.map((m) => {
@@ -318,7 +295,7 @@ async function confirmar() {
     emit("aplicada");
     aberto.value = false;
   } catch (e) {
-    erro.value = `Não foi possível concluir: ${(e as Error).message}. Confira a lista de equipes antes de repetir (parte pode ter sido gravada).`;
+    erro.value = `Não foi possível concluir: ${(e as Error).message}. Confira a lista antes de repetir (parte pode ter sido gravada).`;
   } finally {
     salvando.value = false;
   }
@@ -326,23 +303,19 @@ async function confirmar() {
 </script>
 
 <style scoped>
-.tc-card { width: 560px; max-width: 100%; display: flex; flex-direction: column; }
+.tc-card { width: 600px; max-width: 100%; display: flex; flex-direction: column; }
 .tc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding-bottom: 8px; }
 .tc-title { font-size: 18px; font-weight: 800; }
 .tc-sub { font-size: 12px; opacity: .7; margin-top: 2px; line-height: 1.35; }
 .tc-body { display: flex; flex-direction: column; gap: 14px; overflow-y: auto; max-height: calc(100vh - 190px); }
-.tc-lista { border: 1px solid rgba(128,128,128,.3); border-radius: 8px; }
-.tc-lista__head { padding: 6px 10px; border-bottom: 1px solid rgba(128,128,128,.25); }
-.tc-lista__itens { display: flex; flex-direction: column; gap: 2px; padding: 6px 10px; max-height: 190px; overflow-y: auto; }
 .tc-prefixo { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; margin-right: 8px; }
 .tc-meta { font-size: 12px; opacity: .75; }
 .tc-extra__titulo { font-size: 12px; font-weight: 700; margin-bottom: 6px; opacity: .8; }
 .tc-extra__linha { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .tc-previa { border: 1px solid rgba(153,27,27,.35); border-radius: 8px; padding: 10px 12px; }
 .tc-previa__titulo { font-size: 13px; font-weight: 800; margin-bottom: 6px; }
-.tc-previa__lista { display: flex; flex-direction: column; gap: 3px; max-height: 170px; overflow-y: auto; }
+.tc-previa__lista { display: flex; flex-direction: column; gap: 3px; max-height: 190px; overflow-y: auto; }
 .tc-previa__linha { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 4px; }
-.tc-opcoes { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 .tc-aviso { font-size: 12.5px; color: #b91c1c; font-weight: 600; }
 .tc-dica { font-size: 12.5px; opacity: .8; }
 .tc-foot { padding: 10px 16px 14px; justify-content: flex-end; gap: 8px; }
