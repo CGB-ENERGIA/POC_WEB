@@ -373,6 +373,18 @@
             Adicionar
           </button>
 
+          <button
+            class="dbp-add-btn dbp-add-btn--sec"
+            :disabled="!filteredFuncionarios.length"
+            :title="filtroGeralAtivo
+              ? `Baixar os ${filteredFuncionarios.length} colaboradores filtrados (Excel)`
+              : `Baixar os ${colaboradores.length} colaboradores (Excel)`"
+            @click="exportColaboradores"
+          >
+            <q-icon name="mdi-arrow-down-circle-outline" size="16px" />
+            Exportar<span v-if="filtroGeralAtivo"> ({{ filteredFuncionarios.length }})</span>
+          </button>
+
           <div class="dbp-pills">
             <button
               v-for="b in ['Todas', 'BCB', 'BDC', 'ITM', 'PDS', 'PDT', 'STI', 'ADM']" :key="b"
@@ -1065,6 +1077,37 @@ function withFilter(ws: XLSX.WorkSheet) {
   return ws;
 }
 
+/** Aba Geral: baixa em Excel o que está na lista (com a busca e a base escolhidas; sem filtro, todos). */
+const filtroGeralAtivo = computed(() => !!geralSearch.value.trim() || geralBaseFilter.value !== "Todas");
+
+function exportColaboradores() {
+  const linhas = filteredFuncionarios.value;
+  if (!linhas.length) return;
+  const dados = linhas.map((c) => ({
+    Chapa: c.chapa,
+    Nome: c.nome,
+    "Função": c.funcao,
+    Base: c.base,
+    Rateio: c.rateio,
+  }));
+  const ws = withFilter(XLSX.utils.json_to_sheet(dados));
+  ws["!cols"] = [10, 38, 34, 8, 14].map((w) => ({ wch: w }));
+  // chapa e rateio como texto: o Excel não pode tirar zeros à esquerda nem virar número/data
+  const faixa = XLSX.utils.decode_range(ws["!ref"] ?? "A1");
+  for (let r = faixa.s.r + 1; r <= faixa.e.r; r++) {
+    for (const col of [0, 4]) {
+      const cel = ws[XLSX.utils.encode_cell({ r, c: col })];
+      if (cel) { cel.t = "s"; cel.v = String(cel.v ?? ""); }
+    }
+  }
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Colaboradores");
+  const dia = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10);
+  const sufixo = geralBaseFilter.value !== "Todas" ? ` - ${geralBaseFilter.value}` : "";
+  XLSX.writeFile(wb, `Colaboradores${sufixo} - ${dia}.xlsx`);
+  $q.notify({ type: "positive", position: "top", timeout: 2500, message: `${linhas.length} colaboradores exportados.` });
+}
+
 function exportExcel() {
   const wb = XLSX.utils.book_new();
 
@@ -1711,6 +1754,15 @@ async function onImportFile(event: Event) {
     box-shadow: 0 4px 18px rgba(var(--dbp-accent-rgb),.4);
   }
   &:active { transform: translateY(0); box-shadow: 0 1px 6px rgba(var(--dbp-accent-rgb),.2); }
+}
+
+.dbp-add-btn--sec {
+  background: transparent;
+  color: inherit;
+  border: 1px solid rgba(128, 128, 128, .45);
+  box-shadow: none;
+  &:hover { background: rgba(128, 128, 128, .14); box-shadow: none; }
+  &:disabled { opacity: .45; cursor: not-allowed; transform: none; }
 }
 
 // ── Count + Collapse ──────────────────────────────────────────────────────────
