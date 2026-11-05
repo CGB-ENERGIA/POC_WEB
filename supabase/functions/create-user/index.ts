@@ -1,5 +1,5 @@
 // Edge Function: create-user
-// Permite que o admin (ADMIN_EMAIL) crie ou remova usuários com um papel
+// Permite que os administradores (ADMIN_EMAILS) criem ou remova usuários com um papel
 // definido ("admin" ou "member"). Usuários "member" só enxergam páginas de
 // gráficos/visões no POC_OP (restrição aplicada no router do frontend).
 
@@ -11,7 +11,8 @@ const CORS = {
   "Content-Type": "application/json",
 };
 
-const ADMIN_EMAIL = "italo.fontes@cgbengenharia.com.br";
+// Mesma lista de POC_OP/src/lib/admins.ts e da migração 20261106030000.
+const ADMIN_EMAILS = ["italo.fontes@cgbengenharia.com.br", "marcus.vinicius@cgbengenharia.com.br"];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -31,7 +32,7 @@ Deno.serve(async (req) => {
     );
 
     const { data: caller, error: callerErr } = await admin.auth.getUser(token);
-    if (callerErr || caller.user?.email !== ADMIN_EMAIL) {
+    if (callerErr || !ADMIN_EMAILS.includes((caller.user?.email ?? "").toLowerCase())) {
       return new Response(JSON.stringify({ error: "Apenas o administrador pode gerenciar usuários" }), {
         status: 403,
         headers: CORS,

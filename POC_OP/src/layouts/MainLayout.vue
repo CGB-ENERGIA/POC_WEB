@@ -134,21 +134,20 @@ import EssentialLink, {
 } from "@/components/EssentialLink.vue";
 import { useAuth } from "@/composables/useAuth";
 import { getRole, type Role } from "@/lib/role";
+import { ehAdmin } from "@/lib/admins";
 import { applyChartInk } from "@/lib/chart-ink";
 import { ultimaValidacao, carregarUltimaValidacao, formatarValidacao } from "@/lib/ultima-validacao";
-
-const ADMIN_EMAIL = "italo.fontes@cgbengenharia.com.br";
 
 const $q = useQuasar();
 watch(() => $q.dark.isActive, (dark) => applyChartInk(dark), { immediate: true });
 const { user, signOut } = useAuth();
-const isAdmin = computed(() => user.value?.email === ADMIN_EMAIL);
+const isAdmin = computed(() => ehAdmin(user.value?.email));
 
 const role = ref<Role | null>(null);
 watch(
   user,
   async (u) => {
-    role.value = u && u.email !== ADMIN_EMAIL ? await getRole(u.id) : null;
+    role.value = u && !ehAdmin(u.email) ? await getRole(u.id) : null;
   },
   { immediate: true }
 );

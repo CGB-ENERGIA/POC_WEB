@@ -9,6 +9,7 @@ import {
 import routes from "./routes";
 import { supabase, exchangeRecoveryCodeFromUrl } from "@/lib/supabase";
 import { getProfile } from "@/lib/role";
+import { ehAdmin } from "@/lib/admins";
 import { ehErroDeArquivo, recarregarPorVersaoNova } from "@/boot/versao-nova";
 
 // Páginas de gráficos/visões liberadas para o papel "member" (somente
@@ -56,15 +57,13 @@ export default defineRouter((/* { store, ssrContext } */) => {
     history: createHistory(import.meta.env.QUASAR_VUE_ROUTER_BASE)
   });
 
-  const ADMIN_EMAIL = "italo.fontes@cgbengenharia.com.br";
-
   Router.beforeEach(async (to) => {
     if (to.meta.public) return true;
     const { data } = await supabase.auth.getSession();
     if (!data.session) return "/login";
     const email = data.session.user.email;
 
-    if (email !== ADMIN_EMAIL) {
+    if (!ehAdmin(email)) {
       const profile = await getProfile(data.session.user.id);
 
       // Força troca de senha antes de qualquer outra página
@@ -83,7 +82,7 @@ export default defineRouter((/* { store, ssrContext } */) => {
         if (!MEMBER_ALLOWED_PATHS.has(relPath)) return "/";
       }
     } else {
-      if (to.meta.requiresAdmin && email !== ADMIN_EMAIL) return "/";
+      if (to.meta.requiresAdmin && !ehAdmin(email)) return "/";
     }
 
     return true;

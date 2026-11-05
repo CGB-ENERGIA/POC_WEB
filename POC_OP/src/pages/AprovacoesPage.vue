@@ -488,8 +488,8 @@ import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useQuasar } from "quasar";
 import { supabase, supabaseUrl } from "@/lib/supabase";
+import { ehAdmin } from "@/lib/admins";
 
-const ADMIN_EMAIL = "italo.fontes@cgbengenharia.com.br";
 
 interface Registration {
   id: string;
@@ -636,7 +636,7 @@ async function salvarSenha() {
 
 onMounted(async () => {
   const { data: { user } } = await supabase.auth.getUser();
-  if (user?.email !== ADMIN_EMAIL) {
+  if (!ehAdmin(user?.email)) {
     router.replace("/");
     return;
   }
