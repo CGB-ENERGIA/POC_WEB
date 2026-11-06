@@ -842,12 +842,15 @@ $icit-red:    #dc2626;
   flex: 1;
   overflow-x: auto;
   overflow-y: auto;
-  padding: 12px 16px;
+  /* sem padding: com padding, o cabeçalho fixo (sticky) para dentro dele e as linhas passam por cima.
+     O respiro fica na margem da tabela, que rola junto. */
+  padding: 0;
 }
 
 /* ─── Table ──────────────────────────────────────────────────────────────── */
 .hist-table {
-  width: 100%;
+  width: calc(100% - 32px);
+  margin: 12px 16px;
   border-collapse: separate;
   border-spacing: 2px;
   font-size: 11px;
