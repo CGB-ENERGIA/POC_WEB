@@ -30,17 +30,12 @@
       <q-slide-transition>
         <div v-show="filtrosAbertos">
 
-          <!-- Semana + Mês + Gerência -->
-          <div class="filter-row">
-            <div class="fgroup">
-              <span class="flabel">Semana</span>
-              <div class="fchips">
-                <button
-                  v-for="s in semanas" :key="s.value"
-                  :class="['fchip', marcado(filters.semana, String(s.value)) && 'fchip--on']"
-                  @click="toggleSemana(s.value, $event)"
-                >{{ s.label }}</button>
-              </div>
+          <!-- Grade de 12 colunas: rótulo sempre em cima, cada grupo no seu lugar (colunas pela largura do painel) -->
+          <div class="filter-grid">
+
+            <div class="fgroup fgroup--ano">
+              <span class="flabel">Ano</span>
+              <div class="ano-box">{{ filters.ano }}</div>
             </div>
 
             <div class="fgroup fgroup--mes">
@@ -54,21 +49,18 @@
               </div>
             </div>
 
-            <div class="fgroup">
-              <span class="flabel">Gerência</span>
+            <div class="fgroup fgroup--semana">
+              <span class="flabel">Semana</span>
               <div class="fchips">
                 <button
-                  v-for="g in gerencias" :key="g"
-                  :class="['fchip', marcado(filters.gerencia, g) && 'fchip--on']"
-                  @click="toggleGerencia(g, $event)"
-                >{{ g }}</button>
+                  v-for="s in semanas" :key="s.value"
+                  :class="['fchip', marcado(filters.semana, String(s.value)) && 'fchip--on']"
+                  @click="toggleSemana(s.value, $event)"
+                >{{ s.label }}</button>
               </div>
             </div>
-          </div>
 
-          <!-- Base + Ano + Gerente -->
-          <div class="filter-row">
-            <div class="fgroup">
+            <div class="fgroup fgroup--base">
               <span class="flabel">Base</span>
               <div class="fchips">
                 <button
@@ -79,9 +71,15 @@
               </div>
             </div>
 
-            <div class="fgroup fgroup--ano">
-              <span class="flabel">Ano</span>
-              <div class="ano-box">{{ filters.ano }}</div>
+            <div class="fgroup fgroup--gerencia">
+              <span class="flabel">Gerência</span>
+              <div class="fchips">
+                <button
+                  v-for="g in gerencias" :key="g"
+                  :class="['fchip', marcado(filters.gerencia, g) && 'fchip--on']"
+                  @click="toggleGerencia(g, $event)"
+                >{{ g }}</button>
+              </div>
             </div>
 
             <div class="fgroup fgroup--gerente">
@@ -94,7 +92,8 @@
                 >{{ g }}</button>
               </div>
             </div>
-            <div class="fgroup fgroup--gerente">
+
+            <div class="fgroup fgroup--coord">
               <span class="flabel">Coordenador</span>
               <div class="fchips">
                 <button
@@ -104,28 +103,30 @@
                 >{{ g }}</button>
               </div>
             </div>
-          </div>
 
-          <!-- Observador + Equipe -->
-          <div class="filter-row filter-row--selects">
-            <q-select
-              multiple :model-value="valores(filters.observador)" @update:model-value="(v: string[]) => filters.observador = juntar(v)" :display-value="rotulo(filters.observador)"
-              :options="semTodos(observadoresOpts)"
-              label="Observador"
-              outlined dense clearable
-              style="min-width: 180px"
-              popup-content-class="banco-popup"
+            <div class="fgroup fgroup--obs">
+              <span class="flabel">Observador</span>
+              <q-select
+                multiple :model-value="valores(filters.observador)" @update:model-value="(v: string[]) => filters.observador = juntar(v)" :display-value="rotulo(filters.observador)"
+                :options="semTodos(observadoresOpts)"
+                menu-anchor="bottom left" menu-self="top left" :menu-offset="[0, 4]"
+              outlined dense clearable class="filtro-select"
+              popup-content-class="banco-popup" :popup-content-style="{ maxHeight: '260px' }"
             ><template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
-            <q-select
-              multiple :model-value="valores(filters.equipe)" @update:model-value="(v: string[]) => filters.equipe = juntar(v)" :display-value="rotulo(filters.equipe)"
-              :options="semTodos(equipesOpts)"
-              label="Equipe"
-              outlined dense clearable
-              style="min-width: 180px"
-              popup-content-class="banco-popup"
-            ><template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
-          </div>
+            </div>
 
+            <div class="fgroup fgroup--equipe">
+              <span class="flabel">Equipe</span>
+              <q-select
+                multiple :model-value="valores(filters.equipe)" @update:model-value="(v: string[]) => filters.equipe = juntar(v)" :display-value="rotulo(filters.equipe)"
+                :options="semTodos(equipesOpts)"
+                menu-anchor="bottom left" menu-self="top left" :menu-offset="[0, 4]"
+              outlined dense clearable class="filtro-select"
+              popup-content-class="banco-popup" :popup-content-style="{ maxHeight: '260px' }"
+            ><template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
+            </div>
+
+          </div>
         </div>
       </q-slide-transition>
     </div>
@@ -542,6 +543,8 @@ $brand: #8B1C2E;
   // Aberto, o painel nunca passa da altura da tela: rola por dentro
   max-height: calc(100vh - var(--app-header-h) - 70px);
   overflow-y: auto;
+  // as colunas da grade de filtros seguem a largura do painel (com ou sem o menu lateral aberto)
+  container: banco / inline-size;
 }
 
 .filters-toggle {
@@ -575,30 +578,73 @@ $brand: #8B1C2E;
   &__chevron { margin-left: 2px; }
 }
 
-.filter-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 16px;
+// ── Grade de filtros ─────────────────────────────────────────────────────────
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 14px 24px;
+  align-items: start;
   margin-top: 10px;
-
-  &--selects {
-    gap: 12px;
-    :deep(.q-field--outlined .q-field__control) { border-radius: 999px; }
-    :deep(.q-field--outlined .q-field__control::before) { border-color: #e2e8f0; border-width: 1.5px; border-radius: 999px; }
-    :deep(.q-field--outlined .q-field__control:hover::before) { border-color: $brand; }
-    :deep(.q-field--focused .q-field__control::after) { border-color: $brand; border-radius: 999px; }
-  }
+  padding-bottom: 6px;
 }
 
+// estreito: um grupo por linha
 .fgroup {
+  grid-column: 1 / -1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+}
 
-  &--mes { flex: 1; }
-  &--ano { min-width: 90px; }
-  &--gerente { flex: 1; }
+// médio: pares lado a lado
+@container banco (min-width: 640px) {
+  // Ano + Semana na mesma linha e o Mês (largo) logo abaixo; o resto segue a ordem normal
+  .fgroup--ano     { grid-column: span 3; order: 1; }
+  .fgroup--semana  { grid-column: span 9; order: 2; }
+  .fgroup--mes     { order: 3; }
+  .fgroup--base,
+  .fgroup--gerencia,
+  .fgroup--gerente,
+  .fgroup--coord,
+  .fgroup--obs,
+  .fgroup--equipe  { order: 4; }
+  .fgroup--base,
+  .fgroup--gerencia,
+  .fgroup--obs,
+  .fgroup--equipe  { grid-column: span 6; }
+}
+
+// largo: período numa linha, escopo na seguinte, hierarquia e buscas na última
+@container banco (min-width: 1000px) {
+  .fgroup { order: 0; }
+  .fgroup--ano     { grid-column: span 2; }
+  .fgroup--mes     { grid-column: span 6; }
+  .fgroup--semana  { grid-column: span 4; }
+  .fgroup--base    { grid-column: span 4; }
+  .fgroup--gerencia{ grid-column: span 4; }
+  .fgroup--gerente { grid-column: span 4; }
+  .fgroup--coord   { grid-column: span 8; }
+  .fgroup--obs     { grid-column: span 2; }
+  .fgroup--equipe  { grid-column: span 2; }
+}
+
+// Seletores no mesmo porte das pílulas (28px), como no Histórico ICIT
+.filtro-select {
+  width: 100%;
+  :deep(.q-field__control) {
+    height: 28px; min-height: 28px; border-radius: 999px; padding: 0 10px; background: #f1f5f9;
+  }
+  :deep(.q-field__control::before) { border: 1.5px solid #e2e8f0; border-radius: 999px; }
+  :deep(.q-field__control:hover::before) { border-color: $brand; }
+  :deep(.q-field--focused .q-field__control::after) { border-color: $brand; border-radius: 999px; }
+  :deep(.q-field__control-container) { padding-top: 0 !important; }
+  :deep(.q-field__native) {
+    font-size: 11px; font-weight: 500; color: #475569;
+    min-height: unset; height: 28px; line-height: 28px; padding: 0; align-self: center;
+  }
+  :deep(.q-field__append) { height: 28px; align-self: center; }
+  :deep(.q-field__append .q-icon) { font-size: 16px; color: var(--poc-muted); }
 }
 
 .flabel {
@@ -806,7 +852,8 @@ $brand: #8B1C2E;
   }
 }
 
-:global(.banco-popup .q-item) { font-size: .85rem; }
+:global(.banco-popup .q-item) { font-size: 12px; min-height: 30px; padding: 2px 12px; }
+:global(.banco-popup .q-item__section--side) { padding-right: 10px; }
 :global(.banco-popup .q-item--active) { color: $brand !important; }
 
 // ── Dark mode ──────────────────────────────────────────────────────────────────
@@ -830,10 +877,13 @@ $brand: #8B1C2E;
     &--on { background: $brand; border-color: $brand; color: #fff; }
   }
 
-  .filter-row--selects {
-    :deep(.q-field--outlined .q-field__control) { background: #1e293b; }
-    :deep(.q-field--outlined .q-field__control::before) { border-color: #334155; }
-    :deep(.q-field--outlined .q-field__control:hover::before) { border-color: $brand; }
+  .filtro-select {
+    :deep(.q-field__control) { background: #1e293b; }
+    :deep(.q-field__control::before) { border-color: #334155; }
+    :deep(.q-field__control:hover::before) { border-color: $brand; }
+    :deep(.q-field--focused .q-field__control::after) { border-color: $brand; }
+    :deep(.q-field__native) { color: var(--poc-muted); }
+    :deep(.q-field__append .q-icon) { color: #475569; }
   }
 
   .banco-table-wrap { }
