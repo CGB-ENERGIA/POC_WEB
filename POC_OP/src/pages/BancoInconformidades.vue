@@ -584,6 +584,10 @@ $brand: #8B1C2E;
 
   &--selects {
     gap: 12px;
+    :deep(.q-field--outlined .q-field__control) { border-radius: 999px; }
+    :deep(.q-field--outlined .q-field__control::before) { border-color: #e2e8f0; border-width: 1.5px; border-radius: 999px; }
+    :deep(.q-field--outlined .q-field__control:hover::before) { border-color: $brand; }
+    :deep(.q-field--focused .q-field__control::after) { border-color: $brand; border-radius: 999px; }
   }
 }
 
@@ -598,11 +602,12 @@ $brand: #8B1C2E;
 }
 
 .flabel {
-  font-size: .72rem;
-  font-weight: 600;
-  color: #555;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--poc-muted);
   text-transform: uppercase;
-  letter-spacing: .05em;
+  letter-spacing: .8px;
+  line-height: 1;
 }
 
 .fchips {
@@ -611,24 +616,33 @@ $brand: #8B1C2E;
   gap: 4px;
 }
 
+// Mesmo visual das pílulas de filtro do Histórico ICIT
 .fchip {
-  padding: 2px 10px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  background: #fff;
-  font-size: .78rem;
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1.5px solid #e2e8f0;
+  background: #f1f5f9;
+  font-size: 11px;
   font-weight: 500;
-  color: #555;
+  color: #475569;
   cursor: pointer;
-  transition: all .15s;
+  outline: none;
+  transition: background .15s, color .15s, border-color .15s, transform .1s;
   white-space: nowrap;
 
-  &:hover { border-color: $brand; color: $brand; }
+  &:hover:not(.fchip--on) { border-color: $brand; color: $brand; background: rgba($brand, .05); }
+  &:active { transform: scale(.96); }
+  &:focus-visible { outline: 2px solid $brand; outline-offset: 1px; }
 
   &--on {
     background: $brand;
     border-color: $brand;
     color: #fff;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba($brand, .3);
   }
 }
 
@@ -636,12 +650,14 @@ $brand: #8B1C2E;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 4px 14px;
-  background: #222;
+  height: 28px;
+  padding: 0 14px;
+  background: #1e293b;
   color: #fff;
-  font-size: .9rem;
+  font-size: 12px;
   font-weight: 700;
-  border-radius: 4px;
+  border: 1.5px solid #334155;
+  border-radius: 999px;
   min-width: 72px;
   text-align: center;
 }
@@ -807,10 +823,17 @@ $brand: #8B1C2E;
   .flabel { color: var(--poc-muted); }
 
   .fchip {
-    background: #0f172a;
+    background: #1e293b;
     border-color: #334155;
-    color: #cbd5e1;
+    color: var(--poc-muted);
+    &:hover:not(.fchip--on) { border-color: $brand; color: #fca5a5; background: rgba($brand, .1); }
     &--on { background: $brand; border-color: $brand; color: #fff; }
+  }
+
+  .filter-row--selects {
+    :deep(.q-field--outlined .q-field__control) { background: #1e293b; }
+    :deep(.q-field--outlined .q-field__control::before) { border-color: #334155; }
+    :deep(.q-field--outlined .q-field__control:hover::before) { border-color: $brand; }
   }
 
   .banco-table-wrap { }
