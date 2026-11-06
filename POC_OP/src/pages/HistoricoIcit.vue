@@ -1,5 +1,5 @@
 ﻿<template>
-  <q-page class="hist-page">
+  <q-page class="hist-page" :class="{ 'hist-page--expandida': expandida }">
     <q-linear-progress v-if="loading" indeterminate color="negative" style="position:sticky;top:0;z-index:200" />
 
     <!-- ═══════════════════════════════════════════════════════════
@@ -14,7 +14,11 @@
           <span>{{ dataAtual }}</span>
           <span class="date-muted"> · Última Atualização</span>
         </div>
-        <div class="filtrar-por">
+        <div v-if="filtrosOcultos" class="filtros-resumo" title="Filtros ocultos: clique no funil para mostrar">
+          <q-icon name="mdi-filter-outline" size="13px" />
+          {{ resumoFiltros }}
+        </div>
+        <div v-show="!filtrosOcultos" class="filtrar-por">
           <span class="filtrar-label">Filtrar por</span>
           <button
             v-for="f in filtroTipos" :key="f.value"
@@ -26,7 +30,7 @@
       </div>
 
       <!-- Right: filter pills -->
-      <div class="hist-header__right">
+      <div v-show="!filtrosOcultos" class="hist-header__right">
         <div class="frow">
 
           <div class="fgroup">
@@ -98,9 +102,21 @@
         </div>
       </div>
 
-      <!-- Back button -->
-      <q-btn flat round icon="mdi-arrow-left" color="grey-7" size="md"
-        class="back-btn" @click="$router.push('/icit')" />
+      <!-- Ações: ocultar filtros, expandir a tela, voltar -->
+      <div class="hist-acoes">
+        <q-btn flat round :icon="filtrosOcultos ? 'mdi-filter-outline' : 'mdi-filter-off-outline'" color="grey-7" size="md"
+          :aria-label="filtrosOcultos ? 'Mostrar filtros' : 'Ocultar filtros'" @click="filtrosOcultos = !filtrosOcultos">
+          <q-tooltip>{{ filtrosOcultos ? "Mostrar filtros" : "Ocultar filtros" }}</q-tooltip>
+        </q-btn>
+        <q-btn flat round :icon="expandida ? 'mdi-fullscreen-exit' : 'mdi-fullscreen'" color="grey-7" size="md"
+          :aria-label="expandida ? 'Sair da tela expandida' : 'Expandir a tela'" @click="alternarExpandir">
+          <q-tooltip>{{ expandida ? "Sair da tela expandida (Esc)" : "Expandir a tela" }}</q-tooltip>
+        </q-btn>
+        <q-btn flat round icon="mdi-arrow-left" color="grey-7" size="md" aria-label="Voltar"
+          @click="$router.push('/icit')">
+          <q-tooltip>Voltar</q-tooltip>
+        </q-btn>
+      </div>
     </div>
 
     <!-- ═══════════════════════════════════════════════════════════
@@ -279,7 +295,7 @@
 
 <script setup lang="ts">
 import { valores, juntar, marcado, alternar, rotulo, semTodos, casa, igualCI, ativo } from "@/lib/multi-filtro";
-import { reactive, computed, ref, shallowRef, watch, onMounted } from "vue";
+import { reactive, computed, ref, shallowRef, watch, onMounted, onUnmounted } from "vue";
 import { persistirFiltros } from "@/lib/filtros-persistentes";
 import { useChecklistData } from "@/composables/useChecklistData";
 import {
@@ -338,6 +354,47 @@ const filters = reactive({
   tipo:       "Geral",
 });
 persistirFiltros("historico-icit", filters);
+
+// ─── Ocultar filtros e expandir a tela ────────────────────────────────────────
+const filtrosOcultos = ref(false);
+persistirFiltros("historico-icit-ocultar", filtrosOcultos);
+
+/** Texto curto dos filtros ativos, mostrado quando a faixa de filtros está oculta. */
+const resumoFiltros = computed(() => {
+  const partes: string[] = [String(filters.ano)];
+  for (const v of [filters.base, filters.gerente, filters.coordenador, filters.gerencia, filters.prefixo]) {
+    if (ativo(v)) partes.push(rotulo(v));
+  }
+  const tipo = filtroTipos.find((t) => t.value === filters.tipo);
+  if (tipo && tipo.value !== "Geral") partes.push(tipo.label);
+  return partes.join(" · ");
+});
+
+/** Tela expandida: cobre o menu e o cabeçalho do app (e tenta a tela cheia do navegador). Esc ou o botão saem. */
+const expandida = ref(false);
+function alternarExpandir() {
+  expandida.value = !expandida.value;
+  try {
+    if (expandida.value) void document.documentElement.requestFullscreen?.().catch(() => { /* segue só com a tela expandida */ });
+    else if (document.fullscreenElement) void document.exitFullscreen().catch(() => { /* já saiu */ });
+  } catch { /* navegador sem tela cheia */ }
+}
+function aoMudarTelaCheia() {
+  // saiu da tela cheia com Esc: sai também da tela expandida
+  if (!document.fullscreenElement && expandida.value) expandida.value = false;
+}
+function aoTeclar(e: KeyboardEvent) {
+  if (e.key === "Escape" && expandida.value && !document.fullscreenElement) expandida.value = false;
+}
+onMounted(() => {
+  document.addEventListener("fullscreenchange", aoMudarTelaCheia);
+  document.addEventListener("keydown", aoTeclar);
+});
+onUnmounted(() => {
+  document.removeEventListener("fullscreenchange", aoMudarTelaCheia);
+  document.removeEventListener("keydown", aoTeclar);
+  if (document.fullscreenElement) void document.exitFullscreen().catch(() => { /* já saiu */ });
+});
 
 // ─── Data loading ─────────────────────────────────────────────────────────────
 const acidentes = ref<AcidenteRow[]>([]);
@@ -766,7 +823,19 @@ $icit-red:    #dc2626;
 :global(.prefixo-popup .q-item) { font-size: 11px; min-height: 28px; padding: 2px 10px; }
 :global(.prefixo-popup .q-item--active) { color: $brand !important; font-weight: 600; }
 
-.back-btn { align-self: center; margin-left: auto; flex-shrink: 0; }
+.hist-acoes { align-self: center; margin-left: auto; flex-shrink: 0; display: flex; align-items: center; gap: 2px; }
+
+.filtros-resumo {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-top: 4px; font-size: 11px; font-weight: 600; color: #64748b;
+}
+
+/* Tela expandida: cobre menu e cabeçalho do app; só a tabela rola */
+.hist-page--expandida {
+  position: fixed; inset: 0; z-index: 5000;
+  height: 100vh; min-height: 0 !important; overflow: hidden;
+  .table-wrap { min-height: 0; }
+}
 
 /* ─── Table wrapper ──────────────────────────────────────────────────────── */
 .table-wrap {
