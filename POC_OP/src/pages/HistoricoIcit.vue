@@ -5,12 +5,12 @@
     <!-- ═══════════════════════════════════════════════════════════
          HEADER BAR
     ═══════════════════════════════════════════════════════════ -->
-    <div class="hist-header">
+    <div class="hist-header" :class="{ 'hist-header--compacto': filtrosOcultos }">
 
       <!-- Left: title · date · filtrar por -->
       <div class="hist-header__left">
         <div class="hist-title">HISTÓRICO — ICIT</div>
-        <div class="hist-date">
+        <div v-show="!filtrosOcultos" class="hist-date">
           <span>{{ dataAtual }}</span>
           <span class="date-muted"> · Última Atualização</span>
         </div>
@@ -104,15 +104,15 @@
 
       <!-- Ações: ocultar filtros, expandir a tela, voltar -->
       <div class="hist-acoes">
-        <q-btn flat round :icon="filtrosOcultos ? 'mdi-filter-outline' : 'mdi-filter-off-outline'" color="grey-7" size="md"
+        <q-btn flat round :icon="filtrosOcultos ? 'mdi-filter-outline' : 'mdi-filter-off-outline'" color="grey-7" :size="filtrosOcultos ? 'sm' : 'md'"
           :aria-label="filtrosOcultos ? 'Mostrar filtros' : 'Ocultar filtros'" @click="filtrosOcultos = !filtrosOcultos">
           <q-tooltip>{{ filtrosOcultos ? "Mostrar filtros" : "Ocultar filtros" }}</q-tooltip>
         </q-btn>
-        <q-btn flat round :icon="expandida ? 'mdi-fullscreen-exit' : 'mdi-fullscreen'" color="grey-7" size="md"
+        <q-btn flat round :icon="expandida ? 'mdi-fullscreen-exit' : 'mdi-fullscreen'" color="grey-7" :size="filtrosOcultos ? 'sm' : 'md'"
           :aria-label="expandida ? 'Sair da tela expandida' : 'Expandir a tela'" @click="alternarExpandir">
           <q-tooltip>{{ expandida ? "Sair da tela expandida (Esc)" : "Expandir a tela" }}</q-tooltip>
         </q-btn>
-        <q-btn flat round icon="mdi-arrow-left" color="grey-7" size="md" aria-label="Voltar"
+        <q-btn flat round icon="mdi-arrow-left" color="grey-7" :size="filtrosOcultos ? 'sm' : 'md'" aria-label="Voltar"
           @click="$router.push('/icit')">
           <q-tooltip>Voltar</q-tooltip>
         </q-btn>
@@ -829,6 +829,21 @@ $icit-red:    #dc2626;
   display: inline-flex; align-items: center; gap: 5px;
   margin-top: 4px; font-size: 11px; font-weight: 600; color: #64748b;
 }
+
+/* Filtros ocultos: o cabeçalho vira uma única linha fina (título + resumo + botões) para dar o máximo à tabela */
+.hist-header--compacto {
+  padding: 3px 12px;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px;
+  box-shadow: none;
+  min-height: 0;
+  .hist-header__left { flex-direction: row; align-items: center; gap: 12px; min-width: 0; flex: 1 1 auto; }
+  .hist-title { font-size: 14px; white-space: nowrap; }
+  .filtros-resumo { margin-top: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hist-acoes { gap: 0; }
+}
+.hist-header--compacto ~ .table-wrap .hist-table { margin-top: 6px; }
 
 /* Tela expandida: cobre menu e cabeçalho do app; só a tabela rola */
 .hist-page--expandida {
