@@ -99,6 +99,18 @@
             </div>
           </div>
 
+          <div class="filter-divider" />
+
+          <div class="fgroup">
+            <span class="fgroup__label">Mês</span>
+            <div class="pill-group">
+              <button v-for="(m, i) in mesesAbrev" :key="m"
+                :class="['pill pill--sm', marcado(filters.mes, String(i + 1)) && 'pill--active']"
+                :title="monthNames[i]"
+                @click="filters.mes = alternar(filters.mes, String(i + 1), $event)">{{ m }}</button>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -127,8 +139,8 @@
         <thead>
           <tr>
             <th class="th-prefix">Prefixo</th>
-            <th v-for="name in monthNames" :key="name" class="th-month">
-              {{ name }}
+            <th v-for="mi in mesesVisiveis" :key="mi" class="th-month">
+              {{ monthNames[mi] }}
             </th>
             <th class="th-total th-total--menu" tabindex="0" role="button" aria-haspopup="true" title="Ordenar"
               @keydown.enter="($event.currentTarget as HTMLElement).click()">
@@ -150,11 +162,11 @@
         </thead>
         <tbody>
           <tr v-if="loading && !filteredRows.length">
-            <td :colspan="14" class="td-loading">Carregando dados…</td>
+            <td :colspan="mesesVisiveis.length + 2" class="td-loading">Carregando dados…</td>
           </tr>
           <tr v-for="row in filteredRows" :key="row.prefixo" class="table-row">
             <td class="td-prefix">{{ row.prefixo }}</td>
-            <td v-for="(cell, mi) in row.months" :key="mi"
+            <td v-for="{ mi, cell } in celulasDe(row)" :key="mi"
               :class="['td-cell',
                 cell ? `${cellClass(cell)} td-cell--click` : 'td-empty']"
               :tabindex="cell ? 0 : undefined"
@@ -334,6 +346,7 @@ const filtroTipos = [
   { value: "Acidentes", label: "Acidentes",  color: "red"    },
   { value: "Geral",     label: "Geral",      color: "dark"   },
 ];
+const mesesAbrev = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
 const monthNames = [
   "janeiro","fevereiro","março","abril",
   "maio","junho","julho","agosto",
@@ -351,6 +364,7 @@ const filters = reactive({
   gerente:    "",
   coordenador:"",
   gerencia:   "",
+  mes:        "Todos",
   tipo:       "Geral",
 });
 persistirFiltros("historico-icit", filters);
@@ -362,6 +376,7 @@ persistirFiltros("historico-icit-ocultar", filtrosOcultos);
 /** Texto curto dos filtros ativos, mostrado quando a faixa de filtros está oculta. */
 const resumoFiltros = computed(() => {
   const partes: string[] = [String(filters.ano)];
+  if (mesesSel.value) partes.push(mesesSel.value.map((m) => mesesAbrev[m - 1]).join(", "));
   for (const v of [filters.base, filters.gerente, filters.coordenador, filters.gerencia, filters.prefixo]) {
     if (ativo(v)) partes.push(rotulo(v));
   }
@@ -395,6 +410,24 @@ onUnmounted(() => {
   document.removeEventListener("keydown", aoTeclar);
   if (document.fullscreenElement) void document.exitFullscreen().catch(() => { /* já saiu */ });
 });
+
+// ─── Filtro de mês ────────────────────────────────────────────────────────────
+/** Meses escolhidos (1 a 12), ou null quando nenhum está marcado (= o ano todo). */
+const mesesSel = computed<number[] | null>(() => {
+  const v = valores(filters.mes).map(Number).filter((n) => n >= 1 && n <= 12).sort((a, b) => a - b);
+  return v.length ? v : null;
+});
+/** Índices (0 a 11) das colunas de mês que aparecem na tabela. */
+const mesesVisiveis = computed<number[]>(() => (mesesSel.value ?? Array.from({ length: 12 }, (_, i) => i + 1)).map((m) => m - 1));
+function celulasDe(row: Row): { mi: number; cell: Cell | null }[] {
+  return mesesVisiveis.value.map((mi) => ({ mi, cell: row.months[mi] ?? null }));
+}
+const contaMes = (m: number) => !mesesSel.value || mesesSel.value.includes(m);
+/** "Janeiro", "Janeiro e Março" ou "Janeiro, Março e Maio". */
+function nomesDosMeses(meses: number[]): string {
+  const nomes = meses.map((m) => { const n = monthNames[m - 1] ?? ""; return n.charAt(0).toUpperCase() + n.slice(1); });
+  return nomes.length <= 1 ? (nomes[0] ?? "") : `${nomes.slice(0, -1).join(", ")} e ${nomes[nomes.length - 1]}`;
+}
 
 // ─── Data loading ─────────────────────────────────────────────────────────────
 const acidentes = ref<AcidenteRow[]>([]);
@@ -538,16 +571,20 @@ const rawRows = computed<Row[]>(() => {
     for (let mi = 1; mi <= 12; mi++) {
       const st = mStats[mi];
       const acid = acidMeses?.[mi - 1] ?? 0;
-      acidTotal += acid;
+      // Com o filtro de mês, o total soma só os meses escolhidos (as células dos demais nem aparecem)
+      const conta = contaMes(mi);
+      if (conta) acidTotal += acid;
       if (!st) { months.push(acid ? { pct: null, acid } : null); continue; }
       const pct = Math.round((st.semNc / st.total) * 10000) / 100;
       // Reincidência = mês abaixo de 80% de ICIT; o total soma os meses nessa situação.
       const cell: Cell = { pct };
-      if (pct < ICIT_META) { cell.reinc = 1; reincidencias++; }
+      if (pct < ICIT_META) { cell.reinc = 1; if (conta) reincidencias++; }
       if (acid) cell.acid = acid;
       months.push(cell);
-      totalSubs  += st.total;
-      totalSemNc += st.semNc;
+      if (conta) {
+        totalSubs  += st.total;
+        totalSemNc += st.semNc;
+      }
     }
     const avgPct = totalSubs > 0 ? Math.round((totalSemNc / totalSubs) * 10000) / 100 : 0;
     return { prefixo, months, semVisitas: totalSubs === 0, total: { reinc: reincidencias, acid: acidTotal, pct: avgPct } };
@@ -570,6 +607,10 @@ const filteredRows = computed<Row[]>(() => {
 
   if (ativo(filters.prefixo))
     rows = rows.filter(r => casa(filters.prefixo, r.prefixo));
+
+  // Equipe sem visita nem acidente nos meses escolhidos não aparece
+  const sel = mesesSel.value;
+  if (sel) rows = rows.filter((r) => sel.some((m) => r.months[m - 1]));
 
   if      (filters.tipo === ">80%")      rows = rows.filter(r => r.total.pct >= 80);
   else if (filters.tipo === "<80%")      rows = rows.filter(r => r.total.pct < 80);
@@ -598,7 +639,7 @@ function abrirDetalhe(prefixo: string, mes: number | null) {
 const detalheTitulo = computed(() => {
   const d = detalhe.value;
   if (!d) return "";
-  if (d.mes === null) return `Ano de ${filters.ano} (total)`;
+  if (d.mes === null) return mesesSel.value ? `${nomesDosMeses(mesesSel.value)} de ${filters.ano} (total)` : `Ano de ${filters.ano} (total)`;
   const nome = monthNames[d.mes - 1] ?? "";
   return `${nome.charAt(0).toUpperCase()}${nome.slice(1)} de ${filters.ano}`;
 });
@@ -615,7 +656,7 @@ const detalheDados = computed(() => {
     if (normPrefixo(s.equipe) !== d.prefixo) continue;
     const dt = new Date(s.data ?? "");
     if (isNaN(dt.getTime())) continue;
-    if (d.mes !== null && dt.getMonth() + 1 !== d.mes) continue;
+    if (d.mes !== null ? dt.getMonth() + 1 !== d.mes : !contaMes(dt.getMonth() + 1)) continue;
 
     const comNc = ncIds.value.has(s.id);
     const emp = matchSubmissionToEmployee(s, idx);
@@ -632,7 +673,7 @@ const detalheDados = computed(() => {
   const linhas = [...porObs.values()]
     .sort((a, b) => b.visitas - a.visitas || a.observador.localeCompare(b.observador, "pt-BR"));
   const acids = acidentesFiltrados.value
-    .filter((a) => normPrefixo(a.prefixo) === d.prefixo && (d.mes === null || Number(a.data.slice(5, 7)) === d.mes))
+    .filter((a) => normPrefixo(a.prefixo) === d.prefixo && (d.mes === null ? contaMes(Number(a.data.slice(5, 7))) : Number(a.data.slice(5, 7)) === d.mes))
     .sort((a, b) => a.data.localeCompare(b.data));
   return {
     linhas, conformes, inconformes, visitas, acidentes: acids,
