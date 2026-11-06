@@ -40,7 +40,7 @@
         <q-icon :name="slotAtivo !== null ? (SLOTS[slotAtivo]?.icon ?? 'mdi-image') : 'mdi-image'" size="18px" class="q-mr-sm" />
         {{ slotAtivo !== null ? (SLOTS[slotAtivo]?.label ?? '') : '' }}
       </div>
-      <div class="foto-sheet__actions">
+      <div class="foto-sheet__actions" :class="{ 'foto-sheet__actions--3': temMinhasFotos }">
         <button class="foto-sheet__btn" @click="escolher('camera')">
           <div class="foto-sheet__btn-icon">
             <q-icon name="mdi-camera" size="26px" />
@@ -53,7 +53,36 @@
           </div>
           <span class="foto-sheet__btn-label">Da galeria</span>
         </button>
+        <button v-if="temMinhasFotos" class="foto-sheet__btn" @click="escolher('minhas')">
+          <div class="foto-sheet__btn-icon foto-sheet__btn-icon--minhas">
+            <q-icon name="mdi-image-album" size="26px" />
+          </div>
+          <span class="foto-sheet__btn-label">Das minhas fotos</span>
+        </button>
       </div>
+    </div>
+  </q-dialog>
+
+  <!-- Reaproveitar uma foto já tirada em "Outras fotos" -->
+  <q-dialog v-model="minhasAbertas" position="bottom">
+    <div class="foto-sheet">
+      <div class="foto-sheet__handle" />
+      <div class="foto-sheet__title">
+        <q-icon name="mdi-image-album" size="18px" class="q-mr-sm" />
+        Escolha uma das suas fotos{{ slotAtivo !== null ? ` · ${slotAtivo + 1}º ${SLOTS[slotAtivo]?.label ?? ''}` : '' }}
+      </div>
+      <div class="minhas-grid">
+        <button
+          v-for="o in opcoesMinhasFotos" :key="o.i" type="button"
+          class="minhas-thumb" :class="{ 'minhas-thumb--usada': o.usadaEm !== null }"
+          :disabled="o.usadaEm !== null"
+          @click="usarMinhaFoto(o.foto)"
+        >
+          <img :src="o.foto" alt="" />
+          <span v-if="o.usadaEm !== null" class="minhas-thumb__tag">já no {{ o.usadaEm + 1 }}º</span>
+        </button>
+      </div>
+      <div class="minhas-dica">A foto continua em “Outras fotos”. Cada evidência obrigatória precisa de uma foto diferente.</div>
     </div>
   </q-dialog>
 
@@ -82,6 +111,8 @@ const props = defineProps<{
   observador: string;
   matricula?: string | undefined;
   slots?: { icon: string; label: string }[] | undefined;
+  /** Fotos de "Outras fotos (opcional)" que podem ser reaproveitadas numa evidência obrigatória. */
+  fotosDisponiveis?: string[] | undefined;
 }>();
 
 const SLOTS = computed(() => props.slots ?? SLOTS_PADRAO);
@@ -118,10 +149,33 @@ function abrirSlot(idx: number) {
   actionSheetAberto.value = true;
 }
 
-function escolher(opcao: "camera" | "galeria") {
+function escolher(opcao: "camera" | "galeria" | "minhas") {
   actionSheetAberto.value = false;
   if (opcao === "camera") cameraAberta.value = true;
-  else galeriaAberta.value = true;
+  else if (opcao === "galeria") galeriaAberta.value = true;
+  else minhasAbertas.value = true;
+}
+
+// ── Reaproveitar uma foto já tirada ────────────────────────────────────────────
+const minhasAbertas = ref(false);
+const temMinhasFotos = computed(() => (props.fotosDisponiveis?.length ?? 0) > 0);
+
+/** Cada foto disponível, e em qual OUTRA evidência obrigatória ela já está (a mesma foto não vale para duas evidências). */
+const opcoesMinhasFotos = computed(() =>
+  (props.fotosDisponiveis ?? []).map((foto, i) => {
+    const idx = props.modelValue.findIndex((f, k) => k !== slotAtivo.value && f === foto);
+    return { foto, i, usadaEm: idx >= 0 ? idx : null };
+  }),
+);
+
+function usarMinhaFoto(foto: string) {
+  const idx = idxAtivo.value;
+  if (idx === null) return;
+  const next = [...props.modelValue];
+  next[idx] = foto;
+  emit("update:modelValue", next);
+  minhasAbertas.value = false;
+  $q.notify({ type: "positive", message: `Foto usada como ${idx + 1}º: ${SLOTS.value[idx]?.label ?? ""}`, position: "top", timeout: 2200 });
 }
 
 async function processarFoto(blob: Blob) {
@@ -353,6 +407,47 @@ async function onGaleriaImportada(blob: Blob, dataHora?: string) {
   background: rgba(59, 130, 246, 0.18);
   color: #60a5fa;
 }
+.foto-sheet__btn-icon--minhas {
+  background: rgba(34, 197, 94, 0.18);
+  color: #4ade80;
+}
+.foto-sheet__actions--3 { grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.foto-sheet__actions--3 .foto-sheet__btn { padding: 16px 6px; }
+.foto-sheet__actions--3 .foto-sheet__btn-label { font-size: 12px; text-align: center; }
+
+/* ── Escolher entre as fotos já tiradas ── */
+.minhas-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+.minhas-thumb {
+  position: relative;
+  aspect-ratio: 1;
+  padding: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+}
+.minhas-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.minhas-thumb:active:not(:disabled) { border-color: #4ade80; }
+.minhas-thumb--usada { opacity: 0.4; cursor: not-allowed; }
+.minhas-thumb__tag {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+.minhas-dica { margin-top: 12px; font-size: 11.5px; color: rgba(255, 255, 255, 0.5); line-height: 1.4; }
 
 .foto-sheet__btn-label {
   font-size: 13px;

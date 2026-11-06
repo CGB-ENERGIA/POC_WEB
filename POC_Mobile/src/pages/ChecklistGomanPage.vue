@@ -89,6 +89,7 @@
             :equipe="equipe"
             :observador="session.employee?.nomeCompleto ?? session.employee?.nome ?? ''"
             :matricula="session.employee?.matricula"
+            :fotos-disponiveis="fotosGerais"
             @data-foto="onDataFoto"
           />
         </div>
@@ -402,7 +403,7 @@
           </div>
 
           <div v-if="fotosLocal.length" class="q-mb-md">
-            <div class="field-label q-mb-xs">Fotos do local da auditagem</div>
+            <div class="field-label q-mb-xs">Usar uma foto que já tirei neste checklist</div>
             <div class="fotos-local-picker">
               <div
                 v-for="(foto, i) in fotosLocal"
