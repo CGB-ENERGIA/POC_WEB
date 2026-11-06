@@ -165,6 +165,9 @@
               />
               <div class="nc-cell-text">
                 <span>{{ props.value }}</span>
+                <span v-if="props.row.historico" class="nc-historico" title="Checklist da base histórica: não tem foto de evidência">
+                  <q-icon name="mdi-image-off-outline" size="11px" /> sem foto · base histórica
+                </span>
                 <div v-if="props.row.itens && props.row.itens.length" class="nc-subitems">
                   <span
                     v-for="it in props.row.itens"
@@ -340,6 +343,8 @@ interface NcRow {
   itens: { nome: string; conforme: boolean }[] | null;
   fotoSrc: string | null;
   atribuido: string | null;
+  /** Checklist da base histórica (meses anteriores a outubro/2026): a não conformidade existe, mas não tem foto. */
+  historico: boolean;
 }
 
 const subMap = computed(() => {
@@ -348,9 +353,15 @@ const subMap = computed(() => {
   return m;
 });
 
+function ehHistorico(sub: SubmissionRow | undefined): boolean {
+  return !!(sub?.resumo as { legado?: unknown } | null | undefined)?.legado;
+}
+
 const todasNcs = computed<NcRow[]>(() => {
   return responses.value
-    .filter((r: ResponseRow) => r.resposta === "nao_conforme" && r.foto_r2_key !== null)
+    // Com foto (envios pelo app) ou da base histórica, que nunca teve foto
+    .filter((r: ResponseRow) => r.resposta === "nao_conforme"
+      && (r.foto_r2_key !== null || ehHistorico(subMap.value[r.submission_id])))
     .map((r: ResponseRow) => {
       const sub = subMap.value[r.submission_id];
       if (!sub) return null;
@@ -377,6 +388,7 @@ const todasNcs = computed<NcRow[]>(() => {
         itens:          r.itens ?? null,
         fotoSrc:        fotoUrl(r.foto_r2_key),
         atribuido:      atrib,
+        historico:      r.foto_r2_key === null,
       } satisfies NcRow;
     })
     .filter(Boolean) as NcRow[];
@@ -721,6 +733,16 @@ $brand: #8B1C2E;
     top: 16px;
     right: 16px;
   }
+}
+
+.nc-historico {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: .7rem;
+  font-weight: 600;
+  opacity: .6;
 }
 
 .nc-subitems {
