@@ -113,6 +113,17 @@
             </div>
           </div>
 
+          <div class="filter-divider" />
+
+          <div class="fgroup">
+            <span class="fgroup__label">Categoria</span>
+            <div class="pill-group">
+              <button v-for="c in categorias" :key="c"
+                :class="['pill', { 'pill--active': marcado(filters.categoria, c) }]"
+                @click="filters.categoria = alternar(filters.categoria, c, $event)">{{ c }}</button>
+            </div>
+          </div>
+
         </div>
       </div>
       </div>
@@ -127,6 +138,7 @@
           <span v-if="filters.gerente !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.gerente = 'Todos'">{{ rotulo(filters.gerente) }}</span>
           <span v-if="filters.coordenador !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.coordenador = 'Todos'">{{ rotulo(filters.coordenador) }}</span>
           <span v-if="filters.tipoPoc !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.tipoPoc = 'Todos'">{{ rotulo(filters.tipoPoc) }}</span>
+          <span v-if="filters.categoria !== 'Todos'" class="filter-chip filter-chip--hit" @click="filters.categoria = 'Todos'">{{ rotulo(filters.categoria) }}</span>
           <span v-if="viz.equipe" class="filter-chip filter-chip--hit" @click="viz.equipe = null">{{ viz.equipe }}</span>
           <span v-if="viz.perguntaCurta" class="filter-chip filter-chip--hit" @click="clearPergunta">{{ viz.perguntaCurta }}</span>
           <button class="filter-clear" @click="resetSlice">
@@ -312,6 +324,7 @@ const filters = reactive({
   gerencia: "Todos",
   base:     "Todos",
   tipoPoc:  lerTipoPoc(tiposPoc),
+  categoria: "Todos",
   gerente:  "Todos", coordenador: "Todos",
 });
 persistirFiltros("indice-conformidade", filters);
@@ -327,6 +340,13 @@ const {
   gerentesOpts: gerentes,
   coordenadoresOpts: coordenadores,
 } = useChecklistData();
+
+// Categorias vêm das respostas (cada pergunta pertence a uma categoria)
+const categorias = computed<string[]>(() => {
+  const set = new Set<string>();
+  for (const r of responses.value) if (r.categoria) set.add(r.categoria);
+  return ["Todos", ...[...set].sort((a, b) => a.localeCompare(b, "pt-BR"))];
+});
 
 // ─── Hierarquia da EQUIPE (coordenador, gerente, gerência, base) ──────────────
 // Gerência, base, coordenador e gerente olham a equipe do checklist (como o BI), não o cadastro do observador.
@@ -425,6 +445,7 @@ function resetSlice() {
   filters.gerencia = "Todos";
   filters.base = "Todos";
   filters.tipoPoc = "Todos";
+  filters.categoria = "Todos";
   filters.gerente = "Todos";
   filters.coordenador = "Todos";
   viz.equipe = null;
@@ -484,6 +505,7 @@ const hasActiveFilters = computed(() =>
   || filters.gerente !== "Todos"
   || filters.coordenador !== "Todos"
   || filters.tipoPoc !== "Todos"
+  || filters.categoria !== "Todos"
   || !!viz.equipe
   || !!viz.pergunta,
 );
@@ -502,6 +524,7 @@ async function recarregarAno() {
   const opts: NcPorMesOpts = {
     contarMeta: true,
     allowedAuditagens: ativo(filters.tipoPoc) ? valores(filters.tipoPoc).flatMap((t) => TIPO_AUDITAGEM[t] ?? []) : undefined,
+    categoria: ativo(filters.categoria) ? valores(filters.categoria) : undefined,
     filtro: passaHierarquia,
   };
   const resultado = await fetchNaoConformesPorMes(filters.ano, undefined, opts);
@@ -516,7 +539,7 @@ async function recarregar() {
 onMounted(recarregar);
 watch(() => [filters.ano, filters.mes], recarregarMes);
 watch(
-  () => [filters.ano, filters.base, filters.tipoPoc, filters.gerencia, filters.gerente, filters.coordenador],
+  () => [filters.ano, filters.base, filters.tipoPoc, filters.gerencia, filters.gerente, filters.coordenador, filters.categoria],
   recarregarAno,
 );
 watch(hierEquipes, recarregarAno);
@@ -555,6 +578,7 @@ const subsNoEquipe = computed(() => applySlice(submissions.value, { equipe: true
 function respsOf(subs: typeof submissions.value, omitPergunta = false) {
   const ids = new Set(subs.map((s) => s.id));
   let r = responses.value.filter((resp) => ids.has(resp.submission_id));
+  if (ativo(filters.categoria)) r = r.filter((resp) => casa(filters.categoria, resp.categoria, igualCI));
   if (!omitPergunta && viz.pergunta) r = r.filter((resp) => resp.pergunta === viz.pergunta);
   return r;
 }

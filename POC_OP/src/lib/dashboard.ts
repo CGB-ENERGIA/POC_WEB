@@ -505,6 +505,8 @@ export interface NcPorMesOpts {
   gerencia?: string;
   gerente?: string;
   coordenador?: string;
+  /** Só conta as não conformidades dessas categorias (sem diferenciar maiúsculas); vazio/ausente = todas. */
+  categoria?: string[] | undefined;
   /** Filtro extra sobre as submissions (ex.: hierarquia da equipe), aplicado depois dos demais. */
   filtro?: ((s: { id: string; data: string; auditagem: string; equipe: string; base: string }) => boolean) | undefined;
 }
@@ -517,7 +519,7 @@ type SubLight = Pick<SubmissionRow, "id" | "data" | "auditagem" | "matricula" | 
  * só filtrar em memória, sem ir ao banco de novo.
  */
 const CACHE_NC_ANO_MS = 5 * 60 * 1000;
-const cacheNcAno = new Map<string, { quando: number; dados: Promise<{ subs: SubLight[]; ncPorSub: Map<string, number> }> }>();
+const cacheNcAno = new Map<string, { quando: number; dados: Promise<{ subs: SubLight[]; ncPorSub: Map<string, number>; ncPorSubCat: Map<string, Map<string, number>> }> }>();
 
 function baseNcDoAno(ano: number, contarMeta: boolean, base?: string) {
   const chave = `${ano}|${contarMeta ? 1 : 0}|${base ?? ""}`;
@@ -537,17 +539,24 @@ function baseNcDoAno(ano: number, contarMeta: boolean, base?: string) {
       return q;
     });
     const ncPorSub = new Map<string, number>();
+    const ncPorSubCat = new Map<string, Map<string, number>>();
     if (subs.length) {
       const lotes = await mapLimit(chunked(subs.map((x) => x.id), 300), 3, (chunk) =>
-        allPages<{ submission_id: string }>(
-          () => supabase.from("checklist_responses").select("submission_id")
+        allPages<{ submission_id: string; categoria: string | null }>(
+          () => supabase.from("checklist_responses").select("submission_id,categoria")
             .eq("resposta", "nao_conforme").in("submission_id", chunk),
           ORD_RESP,
         ),
       );
-      for (const r of lotes.flat()) ncPorSub.set(r.submission_id, (ncPorSub.get(r.submission_id) ?? 0) + 1);
+      for (const r of lotes.flat()) {
+        ncPorSub.set(r.submission_id, (ncPorSub.get(r.submission_id) ?? 0) + 1);
+        const cat = (r.categoria ?? "").trim().toLowerCase();
+        let porCat = ncPorSubCat.get(r.submission_id);
+        if (!porCat) { porCat = new Map(); ncPorSubCat.set(r.submission_id, porCat); }
+        porCat.set(cat, (porCat.get(cat) ?? 0) + 1);
+      }
     }
-    return { subs, ncPorSub };
+    return { subs, ncPorSub, ncPorSubCat };
   })();
   cacheNcAno.set(chave, { quando: Date.now(), dados });
   dados.catch(() => { cacheNcAno.delete(chave); }); // falha não fica guardada
@@ -560,9 +569,9 @@ export async function fetchNaoConformesPorMes(
   base?: string,
   opts?: NcPorMesOpts,
 ): Promise<Record<number, number>> {
-  const { contarMeta, allowedAuditagens, employees = [], gerencia, gerente, coordenador, filtro } = opts ?? {};
+  const { contarMeta, allowedAuditagens, employees = [], gerencia, gerente, coordenador, filtro, categoria } = opts ?? {};
 
-  const { subs: todas, ncPorSub } = await baseNcDoAno(ano, !!contarMeta, base);
+  const { subs: todas, ncPorSub, ncPorSubCat } = await baseNcDoAno(ano, !!contarMeta, base);
   let subs = todas;
   if (!subs.length) return {};
 
@@ -582,9 +591,14 @@ export async function fetchNaoConformesPorMes(
   }
   if (filtro) subs = subs.filter((s) => filtro(s as never));
 
+  const cats = categoria?.length ? new Set(categoria.map((c) => c.trim().toLowerCase())) : null;
   const map: Record<number, number> = {};
   for (const s of subs) {
-    const nc = ncPorSub.get(s.id);
+    let nc = ncPorSub.get(s.id);
+    if (nc && cats) {
+      nc = 0;
+      for (const [c, n] of ncPorSubCat.get(s.id) ?? []) if (cats.has(c)) nc += n;
+    }
     if (!nc) continue;
     const mes = partesLocais(s.data).mes;
     map[mes] = (map[mes] ?? 0) + nc;
