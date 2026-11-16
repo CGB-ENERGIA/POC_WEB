@@ -209,7 +209,7 @@
                   :color="verTodosObs ? 'primary' : 'grey-7'"
                   @click="verTodosObs = !verTodosObs"
                 >
-                  <q-tooltip>{{ verTodosObs ? 'Voltar à visão com rolagem' : `Mostrar todos os ${observerRows.length} observadores de uma vez` }}</q-tooltip>
+                  <q-tooltip>{{ verTodosObs ? 'Voltar à visão com rolagem' : `Mostrar todos os ${observerRowsOrd.length} observadores de uma vez` }}</q-tooltip>
                 </q-btn>
               </div>
             </q-card-section>
@@ -787,7 +787,8 @@ const observerRows = computed(() => {
 // Ordenação do gráfico "Observações Realizadas na Semana" (null = ordem do cadastro)
 const ordemObs = ref<"desc" | "asc" | null>(null);
 const observerRowsOrd = computed(() => {
-  const rows = observerRows.value;
+  // quem está com meta 0 (ex.: desligado) não aparece no gráfico, nome incluído; os KPIs seguem usando todos
+  const rows = observerRows.value.filter((r) => r.meta > 0);
   if (!ordemObs.value) return rows;
   const dir = ordemObs.value === "desc" ? -1 : 1;
   return [...rows].sort((a, b) => dir * (a.contado - b.contado) || a.nome.localeCompare(b.nome, "pt-BR"));
@@ -1079,7 +1080,7 @@ const porLinhaObs = computed(() =>
   verTodosObs.value ? Math.max(12, Math.floor(larguraObs.value / PX_POR_NOME)) : Number.MAX_SAFE_INTEGER,
 );
 const linhasObs = computed(() =>
-  verTodosObs.value ? Math.max(1, Math.ceil(observerRows.value.length / porLinhaObs.value)) : 1,
+  verTodosObs.value ? Math.max(1, Math.ceil(observerRowsOrd.value.length / porLinhaObs.value)) : 1,
 );
 const alturaObs = computed(() =>
   verTodosObs.value ? Math.max(380, linhasObs.value * ALTURA_LINHA_OBS + 24) : 300,
