@@ -74,6 +74,24 @@
               </template>
             <template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
           </div>
+          <div class="fgroup fgroup--gerente">
+            <span class="fgroup__label">Base</span>
+            <q-select
+              multiple :model-value="valores(viz.base)" @update:model-value="(v: string[]) => viz.base = ativo(juntar(v)) ? juntar(v) : null" :display-value="rotulo(viz.base)"
+              :clearable="ativo(viz.base)"
+              @clear="viz.base = null"
+              :options="basesOpts"
+              dense
+              outlined
+              hide-bottom-space
+              class="gerente-select"
+              popup-content-class="gerente-popup"
+            >
+              <template #prepend>
+                <q-icon name="mdi-map-marker-radius" size="16px" class="gerente-icon" />
+              </template>
+            <template #option="{ itemProps, opt, selected, toggleOption }"><q-item v-bind="itemProps"><q-item-section side><q-checkbox :model-value="selected" dense @update:model-value="toggleOption(opt)" /></q-item-section><q-item-section>{{ opt }}</q-item-section></q-item></template></q-select>
+          </div>
 
         </div>
 
@@ -144,7 +162,7 @@
           <span v-if="filters.coordenador && filters.coordenador !== 'Todos'" class="filter-chip">{{ rotulo(filters.coordenador) }}</span>
           <span v-if="filters.gerencia !== 'Todos'" class="filter-chip">{{ rotulo(filters.gerencia) }}</span>
           <span v-if="viz.observadorNome" class="filter-chip filter-chip--hit" @click="viz.matricula = null; viz.observadorNome = null">{{ viz.observadorNome }}</span>
-          <span v-if="viz.base" class="filter-chip filter-chip--hit" @click="viz.base = null">{{ viz.base }}</span>
+          <span v-if="ativo(viz.base)" class="filter-chip filter-chip--hit" @click="viz.base = null">{{ rotulo(viz.base) }}</span>
           <span v-if="viz.processo" class="filter-chip filter-chip--hit" @click="toggleProcesso(viz.processo)">{{ labelProcesso(viz.processo) }}</span>
           <button class="filter-clear" @click="resetFilters">
             <q-icon name="mdi-close-circle" size="14px" />
@@ -502,7 +520,8 @@ function onObsClick(p: EcClick) {
 
 function onBaseClick(p: EcClick) {
   if (p.componentType !== "series" || !p.name) return;
-  viz.base = viz.base === p.name ? null : p.name;
+  const novo = alternar(viz.base, p.name, eventoDe(p as never));
+  viz.base = ativo(novo) ? novo : null;
 }
 
 function onProcessoClick(p: EcClick) {
@@ -528,7 +547,7 @@ const hasActiveFilters = computed(() =>
   || filters.coordenador !== "Todos"
   || filters.gerencia !== "Todos"
   || !!viz.matricula
-  || !!viz.base
+  || ativo(viz.base)
   || !!viz.processo
 );
 
@@ -583,13 +602,30 @@ const barraGerencia = computed(() =>
   ),
 );
 
+/** Bases dos observadores (as do cadastro), para o filtro de Base. */
+const basesOpts = computed(() => {
+  const set = new Set<string>();
+  for (const e of employees.value) if (e.base?.trim()) set.add(e.base.trim());
+  for (const r of metasMes.value) if (r.base?.trim()) set.add(r.base.trim());
+  for (const b of valores(viz.base)) set.add(b);
+  return [...set].sort((a, b) => a.localeCompare(b, "pt-BR"));
+});
+
+/** Base do observador que fez o checklist (a do cadastro); sem cadastro, a base registrada no checklist. */
+function baseDaSub(sub: (typeof submissions.value)[number], idx: ReturnType<typeof indexEmployees>): string {
+  return matchSubmissionToEmployee(sub, idx)?.base ?? sub.base;
+}
+
 function applySlice(
   source: typeof submissions.value,
   omit: { week?: boolean; base?: boolean; processo?: boolean; mat?: boolean } = {},
 ) {
   let s = source;
   if (!omit.week) s = s.filter((sub) => semanasNum.value.includes(semanaDaSub(sub)));
-  if (!omit.base && viz.base) s = s.filter((sub) => sub.base === viz.base);
+  if (!omit.base && ativo(viz.base)) {
+    const idxB = indexEmployees(employees.value);
+    s = s.filter((sub) => casa(viz.base, baseDaSub(sub, idxB)));
+  }
   if (!omit.processo && viz.processo) s = s.filter((sub) => auditagemKey(sub) === viz.processo);
   if (!omit.mat && viz.matricula) {
     const idx = indexEmployees(employees.value);
@@ -609,11 +645,18 @@ const subsWeekNoBase = computed(() => applySlice(barraGerencia.value, { base: tr
 const subsWeekNoProc = computed(() => applySlice(barraGerencia.value, { processo: true }));
 
 const totalSubmissions = computed(() => filteredSubs.value.length);
-const basesCovertas = computed(() => new Set(filteredSubs.value.map(s => s.base)).size);
+const basesCovertas = computed(() => {
+  const idx = indexEmployees(employees.value);
+  return new Set(filteredSubs.value.map((s) => baseDaSub(s, idx))).size;
+});
 
 const byBase = computed(() => {
+  const idx = indexEmployees(employees.value);
   const m: Record<string, number> = {};
-  for (const s of subsWeekNoBase.value) m[s.base] = (m[s.base] ?? 0) + 1;
+  for (const s of subsWeekNoBase.value) {
+    const b = baseDaSub(s, idx);
+    m[b] = (m[b] ?? 0) + 1;
+  }
   return m;
 });
 
@@ -643,7 +686,7 @@ const bySemana = computed(() => {
         coordenador: filters.coordenador,
         periodoInicio: `${filters.ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`,
       });
-      if (viz.base) roster = roster.filter((e) => e.base === viz.base);
+      if (ativo(viz.base)) roster = roster.filter((e) => casa(viz.base, e.base));
       if (viz.processo) {
         const presentes = new Set(
           slice.map((sub) => normMatricula(matchSubmissionToEmployee(sub, idx)?.matricula ?? sub.matricula)),
@@ -695,7 +738,7 @@ function mesmoNome(a: string | null | undefined, b: string | null | undefined): 
 function passaFiltrosTabela(r: MetaSemanalRow): boolean {
   if (ativo(filters.gerencia) && !valores(filters.gerencia).some((g) => (r.gerencia ?? "").toUpperCase() === g.toUpperCase())) return false;
   if (ativo(filters.gerente) && !valores(filters.gerente).some((g) => mesmoNome(r.gerente, g))) return false;
-  if (viz.base && r.base !== viz.base) return false;
+  if (ativo(viz.base) && !casa(viz.base, r.base)) return false;
   if (ativo(filters.coordenador)) {
     const emp = indexEmployees(employees.value).byMat.get(normMatricula(r.matricula));
     if (!emp || !valores(filters.coordenador).some((c) => mesmoNome(emp.coordenador, c))) return false;
@@ -749,7 +792,7 @@ const observerRows = computed(() => {
         coordenador: filters.coordenador,
         periodoInicio: `${filters.ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`,
       });
-      if (viz.base) roster = roster.filter((e) => e.base === viz.base);
+      if (ativo(viz.base)) roster = roster.filter((e) => casa(viz.base, e.base));
       if (viz.processo) {
         const presentes = new Set<string>();
         for (const sub of slice) presentes.add(normMatricula(matchSubmissionToEmployee(sub, idx)?.matricula ?? sub.matricula));
@@ -824,7 +867,7 @@ function filtrosTexto() {
   if (ativo(filters.gerencia)) f.push(`Gerência ${rotulo(filters.gerencia)}`);
   if (ativo(filters.gerente)) f.push(`Gerente ${rotulo(filters.gerente)}`);
   if (ativo(filters.coordenador)) f.push(`Coord. ${rotulo(filters.coordenador)}`);
-  if (viz.base) f.push(`Base ${viz.base}`);
+  if (ativo(viz.base)) f.push(`Base ${rotulo(viz.base)}`);
   if (viz.processo) f.push(labelProcesso(viz.processo));
   return f;
 }
@@ -1382,7 +1425,7 @@ const barBase = computed(() => {
       type: "bar" as const,
       data: entries.map(([nome, v]) => ({
         value: v,
-        itemStyle: { opacity: !viz.base || viz.base === nome ? 1 : 0.22 },
+        itemStyle: { opacity: !ativo(viz.base) || marcado(viz.base, nome) ? 1 : 0.22 },
       })),
       barMaxWidth: 56,
       cursor: "pointer",
